@@ -171,13 +171,12 @@ corpus with different task contexts.
 **MCP** (Model Context Protocol) defines how agents connect to tools. KCP defines how knowledge
 is structured for those tools to serve.
 
-**Synthesis** ([github.com/exoreaction/Synthesis](https://github.com/exoreaction/Synthesis)) is
-an open-source knowledge infrastructure tool and reference implementation of a KCP-native
+**Synthesis** is a knowledge infrastructure tool and reference implementation of a KCP-native
 knowledge server. It indexes workspaces — code, documentation, configuration, PDFs — and serves
 them via MCP with sub-second retrieval. KCP is the format specification; Synthesis is one engine
 that implements it.
 
-`synthesis export --format kcp` (planned) will generate a `knowledge.yaml` from an existing
+`synthesis export --format kcp` will generate a `knowledge.yaml` from an existing
 Synthesis index automatically.
 
 ---
