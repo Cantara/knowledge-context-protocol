@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kcp"
+version = "0.1.0"
+description = "Knowledge Context Protocol — reference parser and validator"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+keywords = ["kcp", "knowledge", "ai-agents", "documentation"]
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+kcp = "kcp.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["kcp"]
