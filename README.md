@@ -4,6 +4,8 @@
 
 **KCP is to knowledge what MCP is to tools.**
 
+→ [**Read the spec**](./SPEC.md) · [Read the proposal](./PROPOSAL.md)
+
 The [Model Context Protocol](https://modelcontextprotocol.io) defines how agents connect to tools.
 KCP defines how knowledge is structured so those tools can serve it effectively.
 MCP solved the tool connectivity problem. KCP addresses the knowledge structure problem that remains.
@@ -183,12 +185,14 @@ Synthesis index automatically.
 
 ## Status
 
-**Current:** Draft specification — v0.1.0
+**Current:** Draft specification — v0.1
 
 This is an early proposal. The format is intentionally minimal. Feedback, use cases, and pull
 requests are welcome.
 
-Reference parser: (Python/Java) in parsers
+- **[SPEC.md](./SPEC.md)** — Normative specification (field definitions, validation rules, conformance levels)
+- **[PROPOSAL.md](./PROPOSAL.md)** — The case for a knowledge architecture standard
+- **parsers/** — Reference implementations (Python, Java)
 
 ---
 
