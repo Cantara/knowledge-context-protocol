@@ -103,6 +103,24 @@ class KcpParserTest {
         assertEquals(LocalDate.of(2026, 2, 24), about.validated());
     }
 
+    @Test
+    void parsesTriggers() {
+        KnowledgeManifest m = KcpParser.fromMap(COMPLETE);
+        KnowledgeUnit methodology = m.units().stream()
+                .filter(u -> u.id().equals("methodology")).findFirst().orElseThrow();
+        assertTrue(methodology.triggers().contains("methodology"));
+        assertTrue(methodology.triggers().contains("productivity"));
+    }
+
+    @Test
+    void parsesRelationshipContent() {
+        KnowledgeManifest m = KcpParser.fromMap(COMPLETE);
+        var rel = m.relationships().stream()
+                .filter(r -> r.fromId().equals("methodology")).findFirst().orElseThrow();
+        assertEquals("knowledge-infra", rel.toId());
+        assertEquals("enables", rel.type());
+    }
+
     // -----------------------------------------------------------------------
     // Validator tests
     // -----------------------------------------------------------------------
@@ -140,6 +158,25 @@ class KcpParserTest {
     }
 
     @Test
+    void isValidReturnsFalseWhenErrors() {
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("project", "");
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertFalse(result.isValid());
+    }
+
+    @Test
+    void rejectsEmptyUnits() {
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("units", List.of());
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertFalse(result.isValid());
+        assertTrue(result.errors().stream().anyMatch(e -> e.contains("units")));
+    }
+
+    @Test
     void rejectsMissingProject() {
         Map<String, Object> data = new HashMap<>(MINIMAL);
         data.put("project", "");
@@ -147,6 +184,38 @@ class KcpParserTest {
         KcpValidator.ValidationResult result = KcpValidator.validate(m);
         assertFalse(result.isValid());
         assertTrue(result.errors().stream().anyMatch(e -> e.contains("project")));
+    }
+
+    @Test
+    void rejectsMissingPath() {
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0",
+                "units", List.of(Map.of(
+                        "id", "u1", "path", "",
+                        "intent", "test", "scope", "global",
+                        "audience", List.of("agent")
+                ))
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertFalse(result.isValid());
+        assertTrue(result.errors().stream().anyMatch(e -> e.contains("path")));
+    }
+
+    @Test
+    void rejectsMissingIntent() {
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0",
+                "units", List.of(Map.of(
+                        "id", "u1", "path", "f.md",
+                        "intent", "", "scope", "global",
+                        "audience", List.of("agent")
+                ))
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertFalse(result.isValid());
+        assertTrue(result.errors().stream().anyMatch(e -> e.contains("intent")));
     }
 
     @Test
@@ -166,6 +235,22 @@ class KcpParserTest {
     }
 
     @Test
+    void unknownAudienceProducesWarning() {
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0",
+                "units", List.of(Map.of(
+                        "id", "u1", "path", "f.md",
+                        "intent", "test", "scope", "global",
+                        "audience", List.of("agent", "martian")
+                ))
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid()); // warning, not error
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("martian")));
+    }
+
+    @Test
     void unknownDependsOnProducesWarning() {
         Map<String, Object> data = Map.of(
                 "project", "test", "version", "1.0.0",
@@ -175,6 +260,21 @@ class KcpParserTest {
                         "audience", List.of("agent"),
                         "depends_on", List.of("ghost")
                 ))
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid()); // warning, not error
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("ghost")));
+    }
+
+    @Test
+    void unknownRelationshipUnitProducesWarning() {
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0",
+                "units", List.of(
+                        Map.of("id", "a", "path", "a.md", "intent", "A", "scope", "global", "audience", List.of("agent"))
+                ),
+                "relationships", List.of(Map.of("from", "ghost", "to", "a", "type", "enables"))
         );
         KnowledgeManifest m = KcpParser.fromMap(data);
         KcpValidator.ValidationResult result = KcpValidator.validate(m);
