@@ -28,5 +28,6 @@ class KnowledgeManifest:
     project: str
     version: str
     units: list[KnowledgeUnit]
+    kcp_version: Optional[str] = None
     updated: Optional[date] = None
     relationships: list[Relationship] = field(default_factory=list)

@@ -1,19 +1,48 @@
+from typing import NamedTuple
+
 from .model import KnowledgeManifest
 
 VALID_SCOPES = {"global", "project", "module"}
 VALID_AUDIENCES = {"human", "agent", "developer", "operator", "architect", "devops"}
 VALID_RELATIONSHIP_TYPES = {"enables", "context", "supersedes", "contradicts"}
+KNOWN_KCP_VERSIONS = {"0.1"}
 
 
-def validate(manifest: KnowledgeManifest) -> list[str]:
-    """Validate a parsed KnowledgeManifest. Returns a list of error strings."""
+class ValidationResult(NamedTuple):
+    """Result of validating a KCP manifest.
+
+    ``errors``   — conditions that make the manifest invalid (MUST fix).
+    ``warnings`` — conditions that are permitted but suspicious (SHOULD fix).
+    """
+    errors: list[str]
+    warnings: list[str]
+
+    @property
+    def is_valid(self) -> bool:
+        return len(self.errors) == 0
+
+
+def validate(manifest: KnowledgeManifest) -> ValidationResult:
+    """Validate a parsed KnowledgeManifest.
+
+    Returns a :class:`ValidationResult` with separate ``errors`` and ``warnings`` lists.
+    """
     errors: list[str] = []
+    warnings: list[str] = []
     unit_ids = {u.id for u in manifest.units}
 
+    # kcp_version — RECOMMENDED; warn if missing or unknown
+    if not manifest.kcp_version:
+        warnings.append("manifest: 'kcp_version' not declared; assuming 0.1")
+    elif manifest.kcp_version not in KNOWN_KCP_VERSIONS:
+        warnings.append(
+            f"manifest: unknown kcp_version '{manifest.kcp_version}'; "
+            f"processing as {max(KNOWN_KCP_VERSIONS)}"
+        )
+
+    # Required root fields
     if not manifest.project:
         errors.append("manifest: 'project' is required")
-    if not manifest.version:
-        errors.append("manifest: 'version' is required")
     if not manifest.units:
         errors.append("manifest: 'units' must not be empty")
 
@@ -34,22 +63,22 @@ def validate(manifest: KnowledgeManifest) -> list[str]:
             )
         invalid_audience = set(unit.audience) - VALID_AUDIENCES
         if invalid_audience:
-            errors.append(
+            warnings.append(
                 f"{p}: unknown audience value(s): {sorted(invalid_audience)}"
             )
         for dep in unit.depends_on:
             if dep not in unit_ids:
-                errors.append(f"{p}: 'depends_on' references unknown unit '{dep}'")
+                warnings.append(f"{p}: 'depends_on' references unknown unit '{dep}'")
 
     for rel in manifest.relationships:
         p = f"relationship '{rel.from_id}' -> '{rel.to_id}'"
         if rel.from_id not in unit_ids:
-            errors.append(f"{p}: 'from' references unknown unit '{rel.from_id}'")
+            warnings.append(f"{p}: 'from' references unknown unit '{rel.from_id}'")
         if rel.to_id not in unit_ids:
-            errors.append(f"{p}: 'to' references unknown unit '{rel.to_id}'")
+            warnings.append(f"{p}: 'to' references unknown unit '{rel.to_id}'")
         if rel.type not in VALID_RELATIONSHIP_TYPES:
-            errors.append(
+            warnings.append(
                 f"{p}: 'type' must be one of {sorted(VALID_RELATIONSHIP_TYPES)}, got '{rel.type}'"
             )
 
-    return errors
+    return ValidationResult(errors=errors, warnings=warnings)

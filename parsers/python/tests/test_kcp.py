@@ -1,6 +1,6 @@
 import pytest
 from datetime import date
-from kcp import parse_dict, validate
+from kcp import parse_dict, validate, ValidationResult
 from kcp.model import KnowledgeManifest, KnowledgeUnit, Relationship
 
 
@@ -18,9 +18,12 @@ MINIMAL = {
     ],
 }
 
+MINIMAL_WITH_KCP_VERSION = {**MINIMAL, "kcp_version": "0.1"}
+
 COMPLETE = {
     "project": "wiki.example.org",
     "version": "1.0.0",
+    "kcp_version": "0.1",
     "updated": "2026-02-25",
     "units": [
         {
@@ -64,12 +67,18 @@ class TestParser:
         m = parse_dict(MINIMAL)
         assert m.project == "test-project"
         assert m.version == "1.0.0"
+        assert m.kcp_version is None
         assert len(m.units) == 1
         assert m.units[0].id == "overview"
+
+    def test_kcp_version_parsed(self):
+        m = parse_dict(MINIMAL_WITH_KCP_VERSION)
+        assert m.kcp_version == "0.1"
 
     def test_complete_parse(self):
         m = parse_dict(COMPLETE)
         assert m.project == "wiki.example.org"
+        assert m.kcp_version == "0.1"
         assert m.updated == date(2026, 2, 25)
         assert len(m.units) == 3
         assert len(m.relationships) == 2
@@ -97,25 +106,48 @@ class TestParser:
 
 
 class TestValidator:
-    def test_valid_minimal(self):
+    def test_returns_validation_result(self):
         m = parse_dict(MINIMAL)
-        assert validate(m) == []
+        result = validate(m)
+        assert isinstance(result, ValidationResult)
+        assert hasattr(result, "errors")
+        assert hasattr(result, "warnings")
 
     def test_valid_complete(self):
         m = parse_dict(COMPLETE)
-        assert validate(m) == []
+        result = validate(m)
+        assert result.errors == []
+        assert result.warnings == []
+        assert result.is_valid
+
+    def test_missing_kcp_version_produces_warning(self):
+        m = parse_dict(MINIMAL)  # no kcp_version
+        result = validate(m)
+        assert result.errors == []
+        assert any("kcp_version" in w for w in result.warnings)
+
+    def test_known_kcp_version_no_warning(self):
+        m = parse_dict(MINIMAL_WITH_KCP_VERSION)
+        result = validate(m)
+        assert not any("kcp_version" in w for w in result.warnings)
+
+    def test_unknown_kcp_version_produces_warning(self):
+        m = parse_dict({**MINIMAL, "kcp_version": "99.0"})
+        result = validate(m)
+        assert result.errors == []
+        assert any("kcp_version" in w and "99.0" in w for w in result.warnings)
 
     def test_missing_project(self):
         data = {**MINIMAL, "project": ""}
         m = parse_dict(data)
-        errors = validate(m)
-        assert any("project" in e for e in errors)
+        result = validate(m)
+        assert any("project" in e for e in result.errors)
 
     def test_invalid_scope(self):
         data = {**MINIMAL, "units": [{**MINIMAL["units"][0], "scope": "invalid"}]}
         m = parse_dict(data)
-        errors = validate(m)
-        assert any("scope" in e for e in errors)
+        result = validate(m)
+        assert any("scope" in e for e in result.errors)
 
     def test_unknown_depends_on(self):
         data = {
@@ -123,8 +155,8 @@ class TestValidator:
             "units": [{**MINIMAL["units"][0], "depends_on": ["nonexistent"]}],
         }
         m = parse_dict(data)
-        errors = validate(m)
-        assert any("nonexistent" in e for e in errors)
+        result = validate(m)
+        assert any("nonexistent" in w for w in result.warnings)
 
     def test_invalid_relationship_type(self):
         data = {
@@ -132,8 +164,8 @@ class TestValidator:
             "relationships": [{"from": "about", "to": "methodology", "type": "invented"}],
         }
         m = parse_dict(data)
-        errors = validate(m)
-        assert any("type" in e for e in errors)
+        result = validate(m)
+        assert any("type" in w for w in result.warnings)
 
     def test_relationship_unknown_unit(self):
         data = {
@@ -141,5 +173,5 @@ class TestValidator:
             "relationships": [{"from": "ghost", "to": "methodology", "type": "enables"}],
         }
         m = parse_dict(data)
-        errors = validate(m)
-        assert any("ghost" in e for e in errors)
+        result = validate(m)
+        assert any("ghost" in w for w in result.warnings)

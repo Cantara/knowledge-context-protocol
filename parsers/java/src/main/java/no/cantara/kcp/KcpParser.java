@@ -33,6 +33,7 @@ public class KcpParser {
 
     @SuppressWarnings("unchecked")
     public static KnowledgeManifest fromMap(Map<String, Object> data) {
+        String kcpVersion = (String) data.get("kcp_version");
         String project = (String) data.get("project");
         String version = (String) data.get("version");
         LocalDate updated = parseDate(data.get("updated"));
@@ -43,7 +44,7 @@ public class KcpParser {
         List<Map<String, Object>> relMaps = (List<Map<String, Object>>) data.getOrDefault("relationships", List.of());
         List<Relationship> relationships = relMaps.stream().map(KcpParser::parseRelationship).toList();
 
-        return new KnowledgeManifest(project, version, updated, units, relationships);
+        return new KnowledgeManifest(kcpVersion, project, version, updated, units, relationships);
     }
 
     @SuppressWarnings("unchecked")

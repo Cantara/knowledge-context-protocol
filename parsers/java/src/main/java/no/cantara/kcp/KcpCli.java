@@ -32,10 +32,13 @@ public class KcpCli {
             return;
         }
 
-        List<String> errors = KcpValidator.validate(manifest);
-        if (!errors.isEmpty()) {
-            System.err.println("Validation failed — " + errors.size() + " error(s):");
-            errors.forEach(e -> System.err.println("  • " + e));
+        KcpValidator.ValidationResult result = KcpValidator.validate(manifest);
+        if (result.hasWarnings()) {
+            result.warnings().forEach(w -> System.err.println("  ⚠ " + w));
+        }
+        if (!result.isValid()) {
+            System.err.println("Validation failed — " + result.errors().size() + " error(s):");
+            result.errors().forEach(e -> System.err.println("  • " + e));
             System.exit(1);
         }
 

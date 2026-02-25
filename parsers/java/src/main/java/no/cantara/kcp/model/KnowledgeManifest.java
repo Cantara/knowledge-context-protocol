@@ -7,6 +7,7 @@ import java.util.List;
  * The root KCP manifest parsed from knowledge.yaml.
  */
 public record KnowledgeManifest(
+        String kcpVersion,
         String project,
         String version,
         LocalDate updated,

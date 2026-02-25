@@ -5,6 +5,7 @@ import no.cantara.kcp.model.KnowledgeUnit;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -24,9 +25,16 @@ class KcpParserTest {
             ))
     );
 
+    private static Map<String, Object> minimalWith(String key, Object value) {
+        Map<String, Object> m = new HashMap<>(MINIMAL);
+        m.put(key, value);
+        return m;
+    }
+
     private static final Map<String, Object> COMPLETE = Map.of(
             "project", "wiki.example.org",
             "version", "1.0.0",
+            "kcp_version", "0.1",
             "updated", "2026-02-25",
             "units", List.of(
                     Map.of("id", "about", "path", "about.md",
@@ -49,19 +57,31 @@ class KcpParserTest {
             )
     );
 
+    // -----------------------------------------------------------------------
+    // Parser tests
+    // -----------------------------------------------------------------------
+
     @Test
     void parsesMinimalManifest() {
         KnowledgeManifest m = KcpParser.fromMap(MINIMAL);
         assertEquals("test-project", m.project());
         assertEquals("1.0.0", m.version());
+        assertNull(m.kcpVersion());
         assertEquals(1, m.units().size());
         assertEquals("overview", m.units().get(0).id());
+    }
+
+    @Test
+    void parsesKcpVersion() {
+        KnowledgeManifest m = KcpParser.fromMap(minimalWith("kcp_version", "0.1"));
+        assertEquals("0.1", m.kcpVersion());
     }
 
     @Test
     void parsesCompleteManifest() {
         KnowledgeManifest m = KcpParser.fromMap(COMPLETE);
         assertEquals("wiki.example.org", m.project());
+        assertEquals("0.1", m.kcpVersion());
         assertEquals(LocalDate.of(2026, 2, 25), m.updated());
         assertEquals(3, m.units().size());
         assertEquals(2, m.relationships().size());
@@ -83,16 +103,50 @@ class KcpParserTest {
         assertEquals(LocalDate.of(2026, 2, 24), about.validated());
     }
 
-    @Test
-    void validatesValidMinimal() {
-        KnowledgeManifest m = KcpParser.fromMap(MINIMAL);
-        assertTrue(KcpValidator.validate(m).isEmpty());
-    }
+    // -----------------------------------------------------------------------
+    // Validator tests
+    // -----------------------------------------------------------------------
 
     @Test
     void validatesValidComplete() {
         KnowledgeManifest m = KcpParser.fromMap(COMPLETE);
-        assertTrue(KcpValidator.validate(m).isEmpty());
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid());
+        assertFalse(result.hasWarnings());
+    }
+
+    @Test
+    void missingKcpVersionProducesWarning() {
+        KnowledgeManifest m = KcpParser.fromMap(MINIMAL); // no kcp_version
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid());
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("kcp_version")));
+    }
+
+    @Test
+    void knownKcpVersionNoWarning() {
+        KnowledgeManifest m = KcpParser.fromMap(minimalWith("kcp_version", "0.1"));
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid());
+        assertTrue(result.warnings().stream().noneMatch(w -> w.contains("kcp_version")));
+    }
+
+    @Test
+    void unknownKcpVersionProducesWarning() {
+        KnowledgeManifest m = KcpParser.fromMap(minimalWith("kcp_version", "99.0"));
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid()); // warning, not error
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("kcp_version") && w.contains("99.0")));
+    }
+
+    @Test
+    void rejectsMissingProject() {
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("project", "");
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertFalse(result.isValid());
+        assertTrue(result.errors().stream().anyMatch(e -> e.contains("project")));
     }
 
     @Test
@@ -106,13 +160,13 @@ class KcpParserTest {
                 ))
         );
         KnowledgeManifest m = KcpParser.fromMap(data);
-        List<String> errors = KcpValidator.validate(m);
-        assertFalse(errors.isEmpty());
-        assertTrue(errors.stream().anyMatch(e -> e.contains("scope")));
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertFalse(result.isValid());
+        assertTrue(result.errors().stream().anyMatch(e -> e.contains("scope")));
     }
 
     @Test
-    void rejectsUnknownDependsOn() {
+    void unknownDependsOnProducesWarning() {
         Map<String, Object> data = Map.of(
                 "project", "test", "version", "1.0.0",
                 "units", List.of(Map.of(
@@ -123,12 +177,13 @@ class KcpParserTest {
                 ))
         );
         KnowledgeManifest m = KcpParser.fromMap(data);
-        List<String> errors = KcpValidator.validate(m);
-        assertTrue(errors.stream().anyMatch(e -> e.contains("ghost")));
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid()); // warning, not error
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("ghost")));
     }
 
     @Test
-    void rejectsInvalidRelationshipType() {
+    void invalidRelationshipTypeProducesWarning() {
         Map<String, Object> data = Map.of(
                 "project", "test", "version", "1.0.0",
                 "units", List.of(
@@ -138,7 +193,8 @@ class KcpParserTest {
                 "relationships", List.of(Map.of("from", "a", "to", "b", "type", "invented"))
         );
         KnowledgeManifest m = KcpParser.fromMap(data);
-        List<String> errors = KcpValidator.validate(m);
-        assertTrue(errors.stream().anyMatch(e -> e.contains("type")));
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid()); // warning, not error
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("type")));
     }
 }

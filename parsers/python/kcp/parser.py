@@ -45,6 +45,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
     return KnowledgeManifest(
         project=data["project"],
         version=data["version"],
+        kcp_version=data.get("kcp_version"),
         updated=_to_date(data.get("updated")),
         units=units,
         relationships=relationships,
