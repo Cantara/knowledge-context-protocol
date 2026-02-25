@@ -1,0 +1,214 @@
+# Open source community wiki example
+# Based on cantara.github.io/wiki — a 2,290-article archive of an open source
+# community knowledge base covering IAM, microservices, agile, and enterprise architecture.
+#
+# Shows: topology across a large multi-section knowledge base, dependency chains
+# between architecture → implementation → operations layers, freshness distinction
+# between archive content and actively maintained files, and audience targeting
+# for developer, operator, and architect roles.
+
+project: community-wiki
+version: 1.0.0
+updated: 2026-02-25
+
+units:
+
+  # ── Site entry points ─────────────────────────────────────────────────────────
+
+  - id: home
+    path: index.md
+    intent: "What is this community and how is the wiki organised?"
+    scope: global
+    audience: [human, agent, developer, architect]
+    validated: 2022-12-01
+    triggers: [overview, navigation, community, home]
+
+  - id: projects-index
+    path: projects/index.md
+    intent: "What open source projects does this community develop and maintain?"
+    scope: global
+    audience: [human, agent, developer]
+    validated: 2022-12-01
+    depends_on: [home]
+    triggers: [projects, open source, software, repositories]
+
+  - id: knowledge-hub
+    path: knowledge/index.md
+    intent: "Which knowledge base sections exist and what does each cover?"
+    scope: global
+    audience: [human, agent, developer, architect]
+    validated: 2022-12-01
+    depends_on: [home]
+    triggers: [knowledge base, sections, architecture, agile, soa, enterprise]
+
+  # ── AI/LLM discoverability ────────────────────────────────────────────────────
+
+  - id: llms-index
+    path: llms.txt
+    intent: "What does this wiki contain and where are the key sections? (machine-readable index)"
+    scope: global
+    audience: [agent]
+    validated: 2026-02-25
+    triggers: [site map, machine readable, ai navigation, llms]
+
+  - id: llms-full
+    path: llms-full.txt
+    intent: "What is the complete machine-readable content of this wiki?"
+    scope: global
+    audience: [agent]
+    validated: 2026-02-25
+    depends_on: [llms-index]
+    triggers: [full content, complete index]
+
+  # ── Projects ──────────────────────────────────────────────────────────────────
+
+  - id: iam-sso
+    path: whydah/Getting-started.md
+    intent: "How do I get started with this community's production IAM and SSO platform?"
+    scope: module
+    audience: [human, agent, developer, operator]
+    validated: 2022-12-01
+    depends_on: [projects-index]
+    triggers: [SSO, IAM, identity, authentication, OAuth2, OpenID Connect, LDAP, single sign-on]
+
+  - id: iam-architecture
+    path: whydah/Architecture-Overview.md
+    intent: "How is the IAM platform architected and what are its core components?"
+    scope: module
+    audience: [human, agent, architect, developer]
+    validated: 2022-12-01
+    depends_on: [iam-sso]
+    triggers: [SSO architecture, Whydah components, SecurityTokenService, UserIdentityBackend]
+
+  - id: config-and-update
+    path: JAU/index.md
+    intent: "How does runtime configuration management and zero-downtime auto-update work?"
+    scope: module
+    audience: [human, agent, developer, operator]
+    validated: 2022-12-01
+    depends_on: [projects-index]
+    triggers: [ConfigService, JAU, Java Auto-Update, runtime config, zero-downtime, upgrade]
+
+  - id: reactive-framework
+    path: xorcery/index.md
+    intent: "How do I build reactive event-sourced microservices with this framework?"
+    scope: module
+    audience: [human, agent, developer, architect]
+    validated: 2022-12-01
+    depends_on: [projects-index]
+    triggers: [Xorcery, reactive, event sourcing, HK2, RxJava, microservices framework]
+
+  - id: messaging
+    path: messi/index.md
+    intent: "How do I decouple microservices from messaging infrastructure using the abstraction layer?"
+    scope: module
+    audience: [human, agent, developer]
+    validated: 2022-12-01
+    depends_on: [reactive-framework]
+    triggers: [Messi, messaging, AWS SQS, Kinesis, RabbitMQ, streaming, provider abstraction]
+
+  # ── Knowledge base sections ───────────────────────────────────────────────────
+
+  - id: software-architecture
+    path: architecture/index.md
+    intent: "What architectural patterns, principles, and decision frameworks does this community recommend?"
+    scope: module
+    audience: [human, agent, architect, developer]
+    validated: 2022-12-01
+    depends_on: [knowledge-hub]
+    triggers: [DDD, microservices, CQRS, event sourcing, bounded context, architecture patterns]
+
+  - id: enterprise-architecture
+    path: EA/index.md
+    intent: "How does enterprise architecture relate to software architecture in this community's practice?"
+    scope: module
+    audience: [human, agent, architect]
+    validated: 2022-12-01
+    depends_on: [software-architecture]
+    triggers: [TOGAF, Zachman, enterprise architecture, EA frameworks, canonical model]
+
+  - id: agile-development
+    path: dev/index.md
+    intent: "What development practices, CI/CD patterns, and quality standards does this community follow?"
+    scope: module
+    audience: [human, agent, developer]
+    validated: 2022-12-01
+    depends_on: [knowledge-hub]
+    triggers: [CI/CD, testing, Maven, clean code, Docker, Spring, agile, continuous delivery]
+
+  - id: soa-and-rest
+    path: OWSOA/index.md
+    intent: "How should services be categorised and REST APIs designed in a service-oriented architecture?"
+    scope: module
+    audience: [human, agent, architect, developer]
+    validated: 2022-12-01
+    depends_on: [software-architecture]
+    triggers: [SOA, REST, API design, enterprise integration patterns, SOAP, service categorisation]
+
+  - id: release-strategies
+    path: ARS/index.md
+    intent: "What patterns exist for releasing software safely and continuously?"
+    scope: module
+    audience: [human, agent, developer, operator]
+    validated: 2022-12-01
+    depends_on: [agile-development]
+    triggers: [release, feature flags, canary, blue-green, zero-downtime, deployment patterns]
+
+  - id: security
+    path: security/index.md
+    intent: "How should microservice security and threat modelling be approached?"
+    scope: module
+    audience: [human, agent, architect, developer]
+    validated: 2022-12-01
+    depends_on: [software-architecture]
+    triggers: [security, STRIDE, threat modelling, token-based security, OWASP]
+
+relationships:
+
+  # Architecture is the prerequisite for understanding the projects
+  - from: software-architecture
+    to: iam-architecture
+    type: enables
+  - from: software-architecture
+    to: reactive-framework
+    type: enables
+
+  # Enterprise architecture frames software architecture
+  - from: enterprise-architecture
+    to: software-architecture
+    type: context
+
+  # SOA patterns sit within the broader architecture space
+  - from: soa-and-rest
+    to: software-architecture
+    type: context
+
+  # Dev practices implement architectural decisions
+  - from: agile-development
+    to: software-architecture
+    type: context
+
+  # Release strategies are part of the development lifecycle
+  - from: release-strategies
+    to: agile-development
+    type: context
+
+  # Security principles apply directly to the IAM platform
+  - from: security
+    to: iam-sso
+    type: context
+
+  # Config/update service is a prerequisite for deploying IAM
+  - from: config-and-update
+    to: iam-sso
+    type: enables
+
+  # Reactive framework is the foundation for the messaging layer
+  - from: reactive-framework
+    to: messaging
+    type: enables
+
+  # llms-full is the detailed companion to the concise index
+  - from: llms-full
+    to: llms-index
+    type: enables

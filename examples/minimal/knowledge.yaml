@@ -1,0 +1,11 @@
+# Minimal KCP example — three fields, five minutes.
+# This is the smallest valid knowledge.yaml.
+# Add more fields as your needs grow.
+
+project: my-project
+version: 1.0.0
+
+units:
+  - id: overview
+    path: README.md
+    intent: "What is this project and how do I get started?"

@@ -1,0 +1,117 @@
+# Personal site / portfolio example
+# Based on wiki.totto.org — a software architect's personal wiki.
+# Shows: intent targeting, audience differentiation, freshness, and
+# a clean separation between human-only content and agent-accessible content.
+
+project: wiki.example.org
+version: 1.0.0
+updated: 2026-02-25
+
+units:
+
+  # ── Entry points ─────────────────────────────────────────────────────────────
+
+  - id: home
+    path: index.md
+    intent: "Who is this person and what is this site about?"
+    scope: global
+    audience: [human, agent]
+    validated: 2026-02-25
+    triggers: [overview, about, biography, portfolio]
+
+  - id: about
+    path: about/index.md
+    intent: "What has this person built, what do they believe, and what are they doing now?"
+    scope: global
+    audience: [human, agent, architect]
+    validated: 2026-02-25
+    depends_on: [home]
+    triggers: [biography, background, current work, beliefs, philosophy]
+
+  # ── Professional record ───────────────────────────────────────────────────────
+
+  - id: cv
+    path: about/cv.md
+    intent: "What is this person's full professional history, credentials, and employment record?"
+    scope: project
+    audience: [human, agent]
+    validated: 2026-02-25
+    depends_on: [about]
+    triggers: [cv, resume, employment, education, certifications, career]
+
+  - id: projects
+    path: about/projects.md
+    intent: "Which projects has this person built and what was their role in each?"
+    scope: project
+    audience: [human, agent, developer]
+    validated: 2026-02-25
+    depends_on: [cv]
+    triggers: [projects, portfolio, built, created, open source contributions]
+
+  - id: open-source
+    path: open-source.md
+    intent: "What open source software has this person created or contributed to?"
+    scope: project
+    audience: [human, agent, developer]
+    validated: 2026-02-25
+    depends_on: [about]
+    triggers: [open source, github, libraries, frameworks, OSS]
+
+  # ── Writing ───────────────────────────────────────────────────────────────────
+
+  - id: blog
+    path: blog/index.md
+    intent: "What topics does this person write about and where are recent posts?"
+    scope: project
+    audience: [human, agent]
+    validated: 2026-02-25
+    triggers: [blog, writing, articles, posts, opinions]
+
+  # ── Interests (human-only) ────────────────────────────────────────────────────
+
+  - id: reading
+    path: interests/reading/index.md
+    intent: "What books has this person read and what are their recommendations?"
+    scope: project
+    audience: [human]
+    validated: 2026-02-25
+    triggers: [books, reading, science fiction, recommendations]
+
+  # ── AI/LLM discoverability (agent-only) ──────────────────────────────────────
+
+  - id: llms-index
+    path: llms.txt
+    intent: "What does this site contain and where are the key sections? (machine-readable index)"
+    scope: global
+    audience: [agent]
+    validated: 2026-02-25
+    triggers: [site index, machine readable, llms, ai navigation]
+
+  - id: llms-full
+    path: llms-full.txt
+    intent: "What is the complete machine-readable content of this site?"
+    scope: global
+    audience: [agent]
+    validated: 2026-02-25
+    depends_on: [llms-index]
+    triggers: [full content, complete index, machine readable]
+
+relationships:
+  - from: about
+    to: home
+    type: context
+  - from: cv
+    to: about
+    type: context
+  - from: projects
+    to: cv
+    type: context
+  - from: open-source
+    to: projects
+    type: context
+  - from: llms-index
+    to: home
+    type: context
+  - from: llms-full
+    to: llms-index
+    type: enables
