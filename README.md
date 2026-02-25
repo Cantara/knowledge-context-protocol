@@ -188,7 +188,7 @@ Synthesis index automatically.
 This is an early proposal. The format is intentionally minimal. Feedback, use cases, and pull
 requests are welcome.
 
-Reference parser: *coming soon* (Python)
+Reference parser: (Python/Java) in parsers
 
 ---
 
