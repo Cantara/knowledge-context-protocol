@@ -206,6 +206,6 @@ do not need it.
 
 ## License
 
-MIT.
+Apache V2.
 
 *Proposed by [eXOReaction AS](https://www.exoreaction.com) — builders of Synthesis, based in Oslo, Norway.*
