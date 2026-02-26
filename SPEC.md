@@ -370,6 +370,72 @@ manifest size, unit count, and string field lengths to guard against resource ex
 **Trust:** A `knowledge.yaml` is as trustworthy as its source. Agents consuming KCP manifests
 from untrusted sources SHOULD treat the content as untrusted input.
 
+### 12.1 Trust Model
+
+KCP is a declarative format. A manifest describes properties of knowledge units — their
+intended audience, freshness, access requirements, compliance scope, and dependencies. It does
+not enforce any of these properties. Enforcement is the responsibility of the systems and agents
+that consume the manifest.
+
+**All KCP metadata is advisory.** The presence of a field in a manifest is a declaration by the
+publisher, not a guarantee of correctness or a technical control. Agents and tools MUST NOT
+treat KCP metadata as a substitute for independent verification where verification is required.
+
+The following specific cases apply:
+
+- **Freshness (`validated`):** A `validated` date declares when a human last confirmed the
+  content. It does not prove the content is accurate at the time of consumption. Agents that
+  require freshness guarantees MUST verify content independently.
+
+- **Compliance scope (e.g. `regulations`, `data_residency`):** A manifest declaring compliance
+  with a regulation (e.g. GDPR, HIPAA) asserts the publisher's stated intent, not verified
+  compliance status. Agents and operators MUST NOT rely on compliance metadata as a legal basis
+  for processing decisions. Compliance verification remains the responsibility of the data
+  controller.
+
+- **Access requirements (e.g. `access`, `auth`):** Auth metadata declares the publisher's
+  intended access controls. It does not constitute an access control mechanism. A manifest
+  declaring `access: restricted` does not prevent an agent from loading the referenced content
+  if no enforcement layer exists at the transport or storage level.
+
+- **Processing restrictions (e.g. `no-external-llm`, `no-training`):** Restrictions declared
+  in a manifest are signals to the agent's orchestration layer. They MUST be evaluated before
+  content is loaded into an agent context. An orchestration layer that loads content and then
+  checks restrictions has already violated them.
+
+- **Publisher identity:** Free-text publisher fields (e.g. `publisher: "Example Corp"`) carry
+  no trust value. Only cryptographically verified identifiers (e.g. a DID resolved and verified
+  at consumption time) provide publisher identity assurance.
+
+**Agents SHOULD surface trust limitations to operators** when acting on metadata that has
+security or legal implications. An agent that silently treats advisory compliance metadata as
+enforced is creating hidden liability for its operator.
+
+### 12.2 YAML Safety
+
+Parsers MUST use a safe YAML constructor that disables arbitrary type instantiation. YAML
+documents containing type tags that instantiate non-primitive types (e.g.
+`!!javax.script.ScriptEngineManager` in Java) MUST be rejected.
+
+Parsers MUST NOT use YAML loaders that execute code embedded in the document. This requirement
+applies to all YAML content, including content fetched from remote sources.
+
+### 12.3 Remote Content
+
+Parsers and agents that fetch remote manifests (e.g. via federation or external references)
+MUST apply the following constraints:
+
+- Remote manifest URLs MUST use HTTPS. Plain HTTP URLs MUST be rejected.
+- Parsers MUST NOT resolve URLs that target private address ranges (RFC 1918: 10.0.0.0/8,
+  172.16.0.0/12, 192.168.0.0/16), link-local addresses (169.254.0.0/16), or loopback
+  addresses (127.0.0.0/8, ::1). This check MUST be performed after DNS resolution to
+  guard against DNS rebinding attacks.
+- Parsers MUST detect and halt on cycles in remote manifest references. A visited-set of
+  resolved manifest URLs MUST be maintained across the fetch chain. A manifest URL that
+  appears in its own transitive fetch chain MUST be silently ignored.
+- Parsers SHOULD enforce a maximum remote fetch depth. The RECOMMENDED default is 5.
+- The YAML safety requirements of §12.2 apply to all remotely fetched manifests.
+
 ---
 
 ## Appendix A: Minimal Example
