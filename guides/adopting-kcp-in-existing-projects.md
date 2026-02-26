@@ -22,6 +22,41 @@ The only new file is `knowledge.yaml`. Everything else is declared, not created.
 
 ---
 
+## Mature project? Start with classification
+
+If your project already has 10+ artifacts — skill files, agent definitions, hooks, API specs,
+documentation — **classify them by `kind` before doing anything else.**
+
+The most disorienting part of retrofitting KCP onto a mature project is not knowing which
+artifacts belong in the manifest and in what form. The `kind` taxonomy answers this:
+
+| What you have | `kind` | How to think about it |
+|---------------|--------|----------------------|
+| README, guides, wiki pages | `knowledge` (default) | "What question does this answer?" |
+| OpenAPI / AsyncAPI / gRPC proto | `schema` | "What structure does this define?" |
+| Running API, MCP server, webhook | `service` | "What capability does this expose?" |
+| Skill files, behavioral instructions | `knowledge` | "What does this teach the agent to do?" |
+| Agent definitions, runnable workers | `executable` | "What does this do when invoked?" |
+| Pre-commit hooks, policy rules | `policy` | "What rule does this enforce?" |
+
+**Why classification first:** The `kind` determines how you write the `intent`. A policy's
+intent ("What checks run before every commit?") is fundamentally different from a knowledge
+unit's intent ("How do I authenticate API requests?"). If you try to write intents before
+classifying, you will write documentation-style intents for everything — and the dispatch
+signal that agents need will be missing.
+
+**The mature-project path through this guide:**
+
+1. Classify all artifacts by `kind` (this section — you just did it)
+2. Step 1: Audit with classification in hand (the questions now have context)
+3. Step 2: Write Level 1 entries — include `kind` from the start
+4. Steps 3-5: Add structure, triggers, and relationships as normal
+
+If you are starting a new project with mostly documentation, skip this section and go
+straight to Step 1.
+
+---
+
 ## Step 1: Audit what you already have
 
 Walk your project and list the knowledge artifacts that exist:
@@ -37,10 +72,10 @@ openapi/payments.yaml        — API definition
 ```
 
 For each one, ask:
-1. What question does this answer? (→ `intent`)
-2. Who is it for? (→ `audience`)
-3. Does anything need to be read before this? (→ `depends_on`)
-4. What kind of artifact is it? (→ `kind`)
+1. What kind of artifact is it — documentation, schema, executable, policy? (→ `kind`)
+2. What question does this answer, or what does it do? (→ `intent`)
+3. Who is it for? (→ `audience`)
+4. Does anything need to be read before this? (→ `depends_on`)
 
 ---
 
@@ -92,10 +127,11 @@ as potentially stale.
 
 ---
 
-## Step 4: Add `kind` for non-documentation artifacts
+## Step 4: Verify `kind` for non-documentation artifacts
 
-If your project has API specs, agent definitions, hooks, or runnable scripts, add `kind`
-to distinguish them from narrative documentation.
+If you classified artifacts by `kind` earlier (see "Mature project? Start with
+classification"), verify your classifications against the table below. If you skipped
+classification, now is the time to add `kind` to any unit that is not narrative documentation.
 
 | What you have | `kind` | Default behavior |
 |---------------|--------|-----------------|
@@ -195,6 +231,19 @@ Use `supersedes` to mark the older unit as replaced:
 ```
 
 The superseded unit can remain in the manifest (for historical reference) or be removed.
+
+### "Should the manifest describe team-shared or personal/local knowledge?"
+
+Team-shared. The `knowledge.yaml` manifest lives in the repository and describes knowledge
+that is shared across the team and its agents. Personal or local knowledge — your own
+scratch notes, local agent memory, per-developer configuration — does not belong in the
+manifest.
+
+If you need to distinguish team knowledge from personal knowledge, the signals are:
+- **In the manifest:** committed to the repository, audience includes `developer` or `agent`
+- **Not in the manifest:** local-only files (`.claude/memory/`, personal notes, local config)
+- **Grey area:** team-level agent memory or shared skill files that are committed but
+  developer-specific — include these with `audience: [agent]` so the intent is clear
 
 ### "I have 80+ documents. Do I need to declare all of them?"
 
