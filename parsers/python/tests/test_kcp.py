@@ -2,6 +2,7 @@ import pytest
 from datetime import date
 from kcp import parse_dict, validate, ValidationResult
 from kcp.model import KnowledgeManifest, KnowledgeUnit, Relationship
+from kcp.parser import _validate_unit_path
 
 
 MINIMAL = {
@@ -175,3 +176,31 @@ class TestValidator:
         m = parse_dict(data)
         result = validate(m)
         assert any("ghost" in w for w in result.warnings)
+
+
+class TestPathTraversalValidation:
+    def test_safe_relative_path(self):
+        assert _validate_unit_path("docs/guide.md") == "docs/guide.md"
+
+    def test_safe_flat_path(self):
+        assert _validate_unit_path("README.md") == "README.md"
+
+    def test_none_passes_through(self):
+        assert _validate_unit_path(None) is None
+
+    def test_absolute_path_rejected(self):
+        with pytest.raises(ValueError, match="relative"):
+            _validate_unit_path("/etc/passwd")
+
+    def test_traversal_rejected(self):
+        with pytest.raises(ValueError, match="escapes"):
+            _validate_unit_path("../../etc/shadow")
+
+    def test_single_dotdot_rejected(self):
+        with pytest.raises(ValueError, match="escapes"):
+            _validate_unit_path("../sibling.md")
+
+    def test_traversal_in_parse_dict_rejected(self):
+        data = {**MINIMAL, "units": [{**MINIMAL["units"][0], "path": "../../.env"}]}
+        with pytest.raises(ValueError, match="escapes"):
+            parse_dict(data)

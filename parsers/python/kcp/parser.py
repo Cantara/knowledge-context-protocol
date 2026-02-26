@@ -1,5 +1,5 @@
 from datetime import date
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Optional, Union
 
 import yaml
@@ -15,6 +15,24 @@ def _to_date(value) -> Optional[date]:
     return date.fromisoformat(str(value))
 
 
+def _validate_unit_path(raw: str) -> str:
+    """Validate that a unit path does not traverse outside the manifest root.
+
+    Spec §12 requires parsers to reject paths containing '..' that escape
+    the root. Raises ValueError for invalid paths.
+    """
+    if raw is None:
+        return raw
+    # Reject absolute paths
+    if raw.startswith("/") or raw.startswith("\\"):
+        raise ValueError(f"Unit path must be relative: {raw!r}")
+    # Normalise with PurePosixPath (forward-slash semantics, no OS calls)
+    normalised = PurePosixPath(raw)
+    if normalised.parts and normalised.parts[0] == "..":
+        raise ValueError(f"Unit path escapes manifest root: {raw!r}")
+    return raw
+
+
 def parse(path: Union[str, Path]) -> KnowledgeManifest:
     """Parse a knowledge.yaml file from disk."""
     with Path(path).open(encoding="utf-8") as f:
@@ -27,7 +45,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
     units = [
         KnowledgeUnit(
             id=u["id"],
-            path=u["path"],
+            path=_validate_unit_path(u["path"]),
             intent=u["intent"],
             scope=u.get("scope", "global"),
             audience=u.get("audience", []),
