@@ -479,7 +479,7 @@ Nothing in this document is committed to the spec until it completes the full pr
 
 **Share a use case:** Open a [new issue](https://github.com/Cantara/knowledge-context-protocol/issues/new) describing your scenario. We want real use cases, not theoretical ones.
 
-**Join the discussion:** GitHub Discussions thread: [RFC-0001 Discussion](https://github.com/Cantara/knowledge-context-protocol/discussions)
+**Join the discussion:** GitHub Discussions thread: [RFC-0001 Discussion](https://github.com/Cantara/knowledge-context-protocol/discussions/15)
 
 **Try it today:** Add a `knowledge.yaml` to your project. The current spec works with three fields. Use `x-` prefix fields for anything in this RFC that you need now — they are forward-compatible.
 
@@ -511,7 +511,7 @@ units:
 | K | Caching and update frequency | Navigation | [Issue #10](https://github.com/Cantara/knowledge-context-protocol/issues/10) |
 | L | Multilingual and localisation | Navigation | [Issue #14](https://github.com/Cantara/knowledge-context-protocol/issues/14) |
 | M | Cross-manifest federation | Scale | [Issue #12](https://github.com/Cantara/knowledge-context-protocol/issues/12) |
-| N | Service description extension | Scope | [Stig's question + discussion](https://github.com/Cantara/knowledge-context-protocol/issues/7) |
+| N | Service description boundary (`kind` field + `x-service-*`) | Scope | [Issue #16](https://github.com/Cantara/knowledge-context-protocol/issues/16) |
 
 ---
 
