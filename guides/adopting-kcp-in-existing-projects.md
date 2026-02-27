@@ -278,11 +278,10 @@ Check your manifest is valid:
 
 ```bash
 # Python
-cd parsers/python && python -m kcp validate /path/to/knowledge.yaml
+python -m kcp /path/to/knowledge.yaml
 
 # Java
-cd parsers/java && mvn exec:java -Dexec.mainClass="no.cantara.kcp.KcpCli" \
-  -Dexec.args="validate /path/to/knowledge.yaml"
+java -jar parsers/java/target/kcp-parser-0.1.0.jar /path/to/knowledge.yaml
 ```
 
 Both parsers follow the validation rules in SPEC.md §7: required fields produce errors,
