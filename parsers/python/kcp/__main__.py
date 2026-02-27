@@ -20,16 +20,22 @@ def main() -> None:
         print(f"Parse error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    errors = validate(manifest)
-    if errors:
-        print(f"Validation failed — {len(errors)} error(s):")
-        for err in errors:
+    result = validate(manifest)
+
+    if result.warnings:
+        for w in result.warnings:
+            print(f"  ⚠ {w}", file=sys.stderr)
+
+    if not result.is_valid:
+        print(f"Validation failed — {len(result.errors)} error(s):")
+        for err in result.errors:
             print(f"  • {err}")
         sys.exit(1)
 
+    version_str = f" v{manifest.version}" if manifest.version else ""
     print(
         f"✓ {path} is valid"
-        f" — project '{manifest.project}' v{manifest.version}"
+        f" — project '{manifest.project}'{version_str}"
         f", {len(manifest.units)} unit(s)"
         f", {len(manifest.relationships)} relationship(s)"
     )

@@ -76,6 +76,12 @@ class TestParser:
         m = parse_dict(MINIMAL_WITH_KCP_VERSION)
         assert m.kcp_version == "0.1"
 
+    def test_missing_version_does_not_crash(self):
+        data = {"project": "test", "units": MINIMAL["units"]}
+        m = parse_dict(data)
+        assert m.project == "test"
+        assert m.version == ""
+
     def test_complete_parse(self):
         m = parse_dict(COMPLETE)
         assert m.project == "wiki.example.org"
