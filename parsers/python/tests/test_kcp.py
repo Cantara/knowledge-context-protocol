@@ -183,6 +183,62 @@ class TestValidator:
         result = validate(m)
         assert any("ghost" in w for w in result.warnings)
 
+    def test_duplicate_id_produces_warning(self):
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.1",
+            "units": [
+                MINIMAL["units"][0],
+                {**MINIMAL["units"][0], "path": "other.md", "intent": "Duplicate"},
+            ],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert result.is_valid  # warning, not error
+        assert any("duplicate" in w for w in result.warnings)
+
+    def test_invalid_id_format_produces_warning(self):
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.1",
+            "units": [{**MINIMAL["units"][0], "id": "Has_Uppercase!"}],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert any("id" in w and "lowercase" in w for w in result.warnings)
+
+    def test_valid_id_formats(self):
+        for valid_id in ["overview", "my-unit", "v2.0", "a.b-c.1"]:
+            data = {
+                **MINIMAL,
+                "kcp_version": "0.1",
+                "units": [{**MINIMAL["units"][0], "id": valid_id}],
+            }
+            m = parse_dict(data)
+            result = validate(m)
+            assert not any("lowercase" in w for w in result.warnings), f"ID '{valid_id}' flagged incorrectly"
+
+    def test_trigger_exceeding_60_chars_produces_warning(self):
+        long_trigger = "a" * 61
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.1",
+            "units": [{**MINIMAL["units"][0], "triggers": [long_trigger]}],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert any("exceeds" in w for w in result.warnings)
+
+    def test_more_than_20_triggers_produces_warning(self):
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.1",
+            "units": [{**MINIMAL["units"][0], "triggers": [f"t{i}" for i in range(25)]}],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert any("more than 20" in w for w in result.warnings)
+
 
 class TestPathTraversalValidation:
     def test_safe_relative_path(self):

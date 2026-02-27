@@ -5,8 +5,10 @@ import no.cantara.kcp.model.KnowledgeUnit;
 import no.cantara.kcp.model.Relationship;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -21,6 +23,9 @@ public class KcpValidator {
     private static final Set<String> VALID_AUDIENCES = Set.of("human", "agent", "developer", "operator", "architect", "devops");
     private static final Set<String> VALID_RELATIONSHIP_TYPES = Set.of("enables", "context", "supersedes", "contradicts");
     private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1");
+    private static final Pattern ID_PATTERN = Pattern.compile("^[a-z0-9.\\-]+$");
+    private static final int MAX_TRIGGER_LENGTH = 60;
+    private static final int MAX_TRIGGERS_PER_UNIT = 20;
 
     /**
      * Immutable result of validating a manifest.
@@ -59,6 +64,9 @@ public class KcpValidator {
             errors.add("manifest: 'units' must not be empty");
         }
 
+        // Duplicate ID detection (§7: SHOULD warn, use first occurrence)
+        Set<String> seenIds = new HashSet<>();
+
         for (KnowledgeUnit unit : manifest.units()) {
             String p = "unit '" + unit.id() + "'";
 
@@ -66,6 +74,17 @@ public class KcpValidator {
                 errors.add("unit: 'id' is required");
                 continue;
             }
+
+            // Duplicate ID check
+            if (!seenIds.add(unit.id())) {
+                warnings.add(p + ": duplicate 'id' (first occurrence takes precedence)");
+            }
+
+            // ID format check (§4.2: lowercase a-z, digits, hyphens, dots)
+            if (!ID_PATTERN.matcher(unit.id()).matches()) {
+                warnings.add(p + ": 'id' should contain only lowercase a-z, digits, hyphens, and dots");
+            }
+
             if (unit.path() == null || unit.path().isBlank()) {
                 errors.add(p + ": 'path' is required");
             }
@@ -88,6 +107,18 @@ public class KcpValidator {
             for (String dep : unit.dependsOn()) {
                 if (!unitIds.contains(dep)) {
                     warnings.add(p + ": 'depends_on' references unknown unit '" + dep + "'");
+                }
+            }
+
+            // Trigger constraints (§4.9)
+            if (unit.triggers().size() > MAX_TRIGGERS_PER_UNIT) {
+                warnings.add(p + ": more than " + MAX_TRIGGERS_PER_UNIT + " triggers (" +
+                        unit.triggers().size() + "); excess will be ignored");
+            }
+            for (String trigger : unit.triggers()) {
+                if (trigger.length() > MAX_TRIGGER_LENGTH) {
+                    warnings.add(p + ": trigger '" + trigger.substring(0, Math.min(30, trigger.length())) +
+                            "...' exceeds " + MAX_TRIGGER_LENGTH + " characters");
                 }
             }
         }

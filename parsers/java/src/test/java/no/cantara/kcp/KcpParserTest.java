@@ -297,4 +297,83 @@ class KcpParserTest {
         assertTrue(result.isValid()); // warning, not error
         assertTrue(result.warnings().stream().anyMatch(w -> w.contains("type")));
     }
+
+    // -----------------------------------------------------------------------
+    // Duplicate ID, ID format, and trigger constraint tests
+    // -----------------------------------------------------------------------
+
+    @Test
+    void duplicateIdProducesWarning() {
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "units", List.of(
+                        Map.of("id", "dup", "path", "a.md", "intent", "A", "scope", "global", "audience", List.of("agent")),
+                        Map.of("id", "dup", "path", "b.md", "intent", "B", "scope", "global", "audience", List.of("agent"))
+                )
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid()); // warning, not error
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("duplicate")));
+    }
+
+    @Test
+    void invalidIdFormatProducesWarning() {
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "units", List.of(
+                        Map.of("id", "Has_Uppercase!", "path", "a.md", "intent", "A", "scope", "global", "audience", List.of("agent"))
+                )
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("lowercase")));
+    }
+
+    @Test
+    void validIdFormatsProduceNoWarning() {
+        for (String validId : List.of("overview", "my-unit", "v2.0", "a.b-c.1")) {
+            Map<String, Object> data = Map.of(
+                    "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                    "units", List.of(
+                            Map.of("id", validId, "path", "a.md", "intent", "A", "scope", "global", "audience", List.of("agent"))
+                    )
+            );
+            KnowledgeManifest m = KcpParser.fromMap(data);
+            KcpValidator.ValidationResult result = KcpValidator.validate(m);
+            assertTrue(result.warnings().stream().noneMatch(w -> w.contains("lowercase")),
+                    "ID '" + validId + "' should be valid");
+        }
+    }
+
+    @Test
+    void triggerExceeding60CharsProducesWarning() {
+        String longTrigger = "a".repeat(61);
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "units", List.of(
+                        Map.of("id", "a", "path", "a.md", "intent", "A", "scope", "global",
+                                "audience", List.of("agent"), "triggers", List.of(longTrigger))
+                )
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("exceeds")));
+    }
+
+    @Test
+    void moreThan20TriggersProducesWarning() {
+        List<String> triggers = new java.util.ArrayList<>();
+        for (int i = 0; i < 25; i++) triggers.add("t" + i);
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "units", List.of(
+                        Map.of("id", "a", "path", "a.md", "intent", "A", "scope", "global",
+                                "audience", List.of("agent"), "triggers", triggers)
+                )
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("more than 20")));
+    }
 }

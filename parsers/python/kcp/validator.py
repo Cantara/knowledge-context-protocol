@@ -1,3 +1,4 @@
+import re
 from typing import NamedTuple
 
 from .model import KnowledgeManifest
@@ -6,6 +7,9 @@ VALID_SCOPES = {"global", "project", "module"}
 VALID_AUDIENCES = {"human", "agent", "developer", "operator", "architect", "devops"}
 VALID_RELATIONSHIP_TYPES = {"enables", "context", "supersedes", "contradicts"}
 KNOWN_KCP_VERSIONS = {"0.1"}
+_ID_PATTERN = re.compile(r"^[a-z0-9.\-]+$")
+_MAX_TRIGGER_LENGTH = 60
+_MAX_TRIGGERS_PER_UNIT = 20
 
 
 class ValidationResult(NamedTuple):
@@ -46,11 +50,26 @@ def validate(manifest: KnowledgeManifest) -> ValidationResult:
     if not manifest.units:
         errors.append("manifest: 'units' must not be empty")
 
+    # Duplicate ID detection (§7: SHOULD warn, use first occurrence)
+    seen_ids: set[str] = set()
+
     for unit in manifest.units:
         p = f"unit '{unit.id}'"
         if not unit.id:
             errors.append("unit: 'id' is required")
             continue
+
+        # Duplicate ID check
+        if unit.id in seen_ids:
+            warnings.append(f"{p}: duplicate 'id' (first occurrence takes precedence)")
+        seen_ids.add(unit.id)
+
+        # ID format check (§4.2: lowercase a-z, digits, hyphens, dots)
+        if not _ID_PATTERN.match(unit.id):
+            warnings.append(
+                f"{p}: 'id' should contain only lowercase a-z, digits, hyphens, and dots"
+            )
+
         if not unit.path:
             errors.append(f"{p}: 'path' is required")
         if not unit.intent:
@@ -69,6 +88,18 @@ def validate(manifest: KnowledgeManifest) -> ValidationResult:
         for dep in unit.depends_on:
             if dep not in unit_ids:
                 warnings.append(f"{p}: 'depends_on' references unknown unit '{dep}'")
+
+        # Trigger constraints (§4.9)
+        if len(unit.triggers) > _MAX_TRIGGERS_PER_UNIT:
+            warnings.append(
+                f"{p}: more than {_MAX_TRIGGERS_PER_UNIT} triggers "
+                f"({len(unit.triggers)}); excess will be ignored"
+            )
+        for trigger in unit.triggers:
+            if len(trigger) > _MAX_TRIGGER_LENGTH:
+                warnings.append(
+                    f"{p}: trigger '{trigger[:30]}...' exceeds {_MAX_TRIGGER_LENGTH} characters"
+                )
 
     for rel in manifest.relationships:
         p = f"relationship '{rel.from_id}' -> '{rel.to_id}'"
