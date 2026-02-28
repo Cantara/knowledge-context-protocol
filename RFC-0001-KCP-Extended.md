@@ -337,6 +337,8 @@ units:
 
 #### Proposal M — Cross-manifest federation ([Issue #12](https://github.com/Cantara/knowledge-context-protocol/issues/12))
 
+> **Superseded by [RFC-0003](./RFC-0003-Federation.md).** The full proposal — hub-and-spoke `manifests` block, `external_depends_on`, `external_relationships`, cycle detection, and security constraints — is now maintained there.
+
 The current spec explicitly excludes cross-manifest relationships (§1.3). That was the right decision for v0.1 minimalism. But it limits enterprise adoption.
 
 **Interim approach (works today, no spec change):**
@@ -514,7 +516,7 @@ units:
 | J | Context window hints | Navigation | [Issue #9](https://github.com/Cantara/knowledge-context-protocol/issues/9) — open |
 | K | Caching and update frequency | Navigation | ✅ Promoted to core in v0.3 (`update_frequency` field) |
 | L | Multilingual and localisation | Navigation | ✅ Promoted to core in v0.3 (`language` field) |
-| M | Cross-manifest federation | Scale | [Issue #12](https://github.com/Cantara/knowledge-context-protocol/issues/12) — open |
+| M | Cross-manifest federation | Scale | → [RFC-0003](./RFC-0003-Federation.md) |
 | N | Service description boundary (`kind` field + `x-service-*`) | Scope | ✅ Promoted to core in v0.3 (`kind` field) |
 
 ---

@@ -48,6 +48,15 @@ units:
     depends_on: [spec, rfc-0001]
     triggers: [auth, authentication, oauth2, delegation, access control, security, spiffe, did, multi-agent]
 
+  - id: rfc-0003
+    path: RFC-0003-Federation.md
+    intent: "How should KCP support cross-manifest federation — linking knowledge across repositories and teams via a hub-and-spoke manifests block?"
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-02-28"
+    depends_on: [spec, rfc-0002]
+    triggers: [federation, cross-manifest, multi-repo, hub, sub-manifest, external, enterprise, synthesis]
+
   - id: readme
     path: README.md
     intent: "What is KCP, how does it relate to MCP and llms.txt, and how do I get started?"

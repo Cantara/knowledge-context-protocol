@@ -230,6 +230,7 @@ requests are welcome.
 - **[PROPOSAL.md](./PROPOSAL.md)** — The case for a knowledge architecture standard
 - **[RFC-0001](./RFC-0001-KCP-Extended.md)** — Extended capabilities (overview of all proposals; F/H/I/K/L/N promoted to v0.3 core)
 - **[RFC-0002](./RFC-0002-Auth-and-Delegation.md)** — Auth and delegation metadata proposal (`access`, `auth`, `delegation`)
+- **[RFC-0003](./RFC-0003-Federation.md)** — Cross-manifest federation proposal (`manifests` block, `external_depends_on`, hub-and-spoke model)
 - **parsers/** — Reference implementations (Python, Java)
 
 ---
