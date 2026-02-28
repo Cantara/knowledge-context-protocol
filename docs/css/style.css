@@ -1941,6 +1941,199 @@ section:nth-child(even) {
   line-height: 1.6;
 }
 
+/* ---------- Quickstart ---------- */
+.quickstart-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--card-border);
+  margin-bottom: 1.5rem;
+}
+
+.qs-tab {
+  padding: 0.625rem 1.25rem;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.2s, border-color 0.2s;
+  font-family: var(--font-sans);
+}
+
+.qs-tab:hover { color: var(--text-primary); }
+
+.qs-tab.is-active {
+  color: var(--accent-primary);
+  border-bottom-color: var(--accent-primary);
+}
+
+.qs-panel { display: none; }
+.qs-panel.is-active { display: block; }
+
+.qs-note {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-3);
+  line-height: var(--lh-relaxed);
+}
+
+/* ---------- Adopters ---------- */
+.adopters-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  justify-content: center;
+  margin-bottom: 2.5rem;
+}
+
+.adopters-cta-box {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  padding: 2rem 2rem 1.75rem;
+  text-align: center;
+  max-width: 38rem;
+  margin: 0 auto 2.5rem;
+}
+
+.adopters-cta-box h3 {
+  font-size: var(--fs-md);
+  margin-bottom: 0.5rem;
+}
+
+.adopters-cta-box p {
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  margin-bottom: 1.25rem;
+}
+
+.adopter-snippet {
+  background: var(--code-bg);
+  border-radius: var(--radius-md);
+  padding: 0.875rem 1.25rem;
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
+  text-align: left;
+  margin-bottom: 1.25rem;
+  color: var(--text-secondary);
+  overflow-x: auto;
+  white-space: pre;
+  border: 1px solid var(--card-border);
+}
+
+/* ---------- Community ---------- */
+.community-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+@media (max-width: 768px) {
+  .community-grid { grid-template-columns: 1fr; }
+}
+
+.community-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem;
+}
+
+.community-card__icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+  color: var(--accent-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.community-card h3 {
+  font-size: 1.05rem;
+  margin-bottom: 0.5rem;
+}
+
+.community-card p {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin-bottom: 1.25rem;
+  line-height: var(--lh-relaxed);
+}
+
+.rfc-lifecycle {
+  display: flex;
+  align-items: stretch;
+}
+
+.rfc-step {
+  flex: 1;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-right: none;
+  padding: 1.25rem 0.875rem;
+  text-align: center;
+  position: relative;
+}
+
+.rfc-step:first-child { border-radius: var(--radius-md) 0 0 var(--radius-md); }
+.rfc-step:last-child {
+  border-right: 1px solid var(--card-border);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.rfc-step::after {
+  content: '›';
+  position: absolute;
+  right: -0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  font-size: 1.1rem;
+  z-index: 1;
+  background: var(--bg-primary);
+  line-height: 1;
+}
+
+.rfc-step:last-child::after { display: none; }
+
+.rfc-step__num {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-primary);
+  margin-bottom: 0.3rem;
+}
+
+.rfc-step__label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.2rem;
+}
+
+.rfc-step__desc {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .rfc-lifecycle { flex-wrap: wrap; }
+  .rfc-step { min-width: 45%; flex: 1 1 45%; border-right: 1px solid var(--card-border); border-bottom: none; border-radius: 0; }
+  .rfc-step:first-child { border-radius: var(--radius-md) 0 0 0; }
+  .rfc-step:last-child { border-radius: 0 0 var(--radius-md) 0; }
+  .rfc-step::after { display: none; }
+  .rfc-step__desc { display: none; }
+}
+
 /* ---------- Utility ---------- */
 .visually-hidden {
   position: absolute;

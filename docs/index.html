@@ -62,10 +62,13 @@
         <li><a href="#examples">Examples</a></li>
         <li><a href="#parsers">Parsers</a></li>
         <li><a href="#use-cases">Use Cases</a></li>
+        <li><a href="#adopters">Adopters</a></li>
         <li><a href="#roadmap">Roadmap</a></li>
         <li><a href="#adopt">Adopt</a></li>
+        <li><a href="#quickstart">Quickstart</a></li>
         <li><a href="#playground">Try it</a></li>
         <li><a href="#faq">FAQ</a></li>
+        <li><a href="#community">Community</a></li>
       </ul>
 
       <div class="nav__actions">
@@ -1246,6 +1249,79 @@ units:
 
 
   <!-- ============================================================
+       ADOPTERS
+       ============================================================ -->
+  <section id="adopters">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">Adopters</span>
+        <h2>Who's using KCP</h2>
+        <p class="section-sub">KCP is early-stage and growing. Be among the first projects to publish a <code>knowledge.yaml</code>.</p>
+      </div>
+
+      <div class="adopters-badges reveal">
+        <img src="https://img.shields.io/github/stars/Cantara/knowledge-context-protocol?style=flat-square&logo=github&label=GitHub%20Stars&color=2563eb" alt="GitHub Stars" height="20">
+        <img src="https://img.shields.io/github/forks/Cantara/knowledge-context-protocol?style=flat-square&logo=github&label=Forks&color=7c3aed" alt="GitHub Forks" height="20">
+        <img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License: Apache 2.0" height="20">
+        <img src="https://img.shields.io/badge/KCP-v0.3-22c55e?style=flat-square&logo=yaml&logoColor=white" alt="KCP v0.3" height="20">
+        <img src="https://img.shields.io/badge/spec-stable-22c55e?style=flat-square" alt="Spec: Stable" height="20">
+      </div>
+
+      <div class="adopters-cta-box reveal">
+        <h3>Add your project</h3>
+        <p>Using KCP in a public repository? Open an issue and we'll add you to this list. You can also add a badge to your own README.</p>
+        <div class="adopter-snippet">[![KCP](https://img.shields.io/badge/KCP-v0.3-2563eb?style=flat-square&logo=yaml&logoColor=white)](https://cantara.github.io/knowledge-context-protocol/)</div>
+        <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+          <a href="https://github.com/Cantara/knowledge-context-protocol/issues/new?title=Add+adopter:+[your+project]&body=Project+name:%0ARepository+URL:%0ABrief+description:" target="_blank" rel="noopener" class="btn btn--primary">Open issue to add your project</a>
+          <a href="https://github.com/Cantara/knowledge-context-protocol" target="_blank" rel="noopener" class="btn btn--outline">View on GitHub</a>
+        </div>
+      </div>
+
+      <div class="section-header reveal" style="margin-top: 2rem; margin-bottom: 1.5rem;">
+        <h3 style="font-size: var(--fs-lg);">Known adopters</h3>
+      </div>
+
+      <div class="usecase-grid reveal">
+        <div class="usecase-card">
+          <div class="usecase-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg>
+          </div>
+          <div class="usecase-card__content">
+            <div class="usecase-card__persona">
+              <span>Founding repo</span>
+            </div>
+            <h3>knowledge-context-protocol</h3>
+            <p>The KCP specification repository ships its own <code>knowledge.yaml</code> &mdash; dogfooding the protocol with the spec, RFCs, parsers, and guides as declared units.</p>
+            <div class="usecase-card__fields">
+              <span class="usecase-field-tag">L3 conformance</span>
+              <span class="usecase-field-tag">6 RFCs</span>
+              <span class="usecase-field-tag">Cantara</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="usecase-card" style="border-style: dashed; opacity: 0.7;">
+          <div class="usecase-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          </div>
+          <div class="usecase-card__content">
+            <div class="usecase-card__persona">
+              <span>Your project here</span>
+            </div>
+            <h3>Could be your repo</h3>
+            <p>Add a <code>knowledge.yaml</code> to your project, <a href="https://github.com/Cantara/knowledge-context-protocol/issues/new?title=Add+adopter:+[your+project]&body=Project+name:%0ARepository+URL:%0ABrief+description:" target="_blank" rel="noopener">open an issue</a>, and your project will appear here.</p>
+            <div class="usecase-card__fields">
+              <span class="usecase-field-tag">any language</span>
+              <span class="usecase-field-tag">any size</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
        RFC ROADMAP
        ============================================================ -->
   <section id="roadmap">
@@ -1462,6 +1538,201 @@ units:
 
 
   <!-- ============================================================
+       QUICKSTART TEMPLATES
+       ============================================================ -->
+  <section id="quickstart">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">Templates</span>
+        <h2>Start with a ready-made template</h2>
+        <p class="section-sub">Pick a conformance level, copy, and paste into your repo root. Then <a href="#playground">validate it</a> in the browser.</p>
+      </div>
+
+      <div class="reveal" style="max-width: 52rem; margin: 0 auto;">
+        <div class="quickstart-tabs" role="tablist" aria-label="Conformance level templates">
+          <button class="qs-tab is-active" role="tab" aria-selected="true"  aria-controls="qs-l1" data-qs="qs-l1">L1 &middot; Minimal</button>
+          <button class="qs-tab"            role="tab" aria-selected="false" aria-controls="qs-l2" data-qs="qs-l2">L2 &middot; Standard</button>
+          <button class="qs-tab"            role="tab" aria-selected="false" aria-controls="qs-l3" data-qs="qs-l3">L3 &middot; Full</button>
+        </div>
+
+        <!-- L1 -->
+        <div id="qs-l1" class="qs-panel is-active" role="tabpanel">
+          <div class="code-block">
+            <div class="code-block__header">
+              <div class="code-block__dots">
+                <span class="code-block__dot"></span>
+                <span class="code-block__dot"></span>
+                <span class="code-block__dot"></span>
+              </div>
+              <span class="code-block__filename">knowledge.yaml &mdash; Level 1 Minimal</span>
+              <button class="copy-btn" data-copy="qs-code-l1" aria-label="Copy to clipboard">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div class="code-block__body">
+              <pre><code id="qs-code-l1" class="language-yaml">kcp_version: "0.3"
+project: my-project
+version: 1.0.0
+
+units:
+  - id: readme
+    path: README.md
+    intent: "What is this project and how do I get started?"
+    scope: global
+    audience: [human, agent]
+
+  - id: contributing
+    path: CONTRIBUTING.md
+    intent: "How do I contribute patches, issues, and pull requests?"
+    scope: global
+    audience: [developer]</code></pre>
+            </div>
+          </div>
+          <p class="qs-note">Five required fields per unit: <code>id</code>, <code>path</code>, <code>intent</code>, <code>scope</code>, <code>audience</code>. Agents can already fetch and route with this alone.</p>
+        </div>
+
+        <!-- L2 -->
+        <div id="qs-l2" class="qs-panel" role="tabpanel">
+          <div class="code-block">
+            <div class="code-block__header">
+              <div class="code-block__dots">
+                <span class="code-block__dot"></span>
+                <span class="code-block__dot"></span>
+                <span class="code-block__dot"></span>
+              </div>
+              <span class="code-block__filename">knowledge.yaml &mdash; Level 2 Standard</span>
+              <button class="copy-btn" data-copy="qs-code-l2" aria-label="Copy to clipboard">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div class="code-block__body">
+              <pre><code id="qs-code-l2" class="language-yaml">kcp_version: "0.3"
+project: my-project
+version: 1.0.0
+updated: "2026-01-01"
+
+units:
+  - id: readme
+    path: README.md
+    intent: "What is this project and how do I get started?"
+    scope: global
+    audience: [human, agent]
+    validated: "2026-01-01"
+    update_frequency: monthly
+
+  - id: architecture
+    path: docs/architecture.md
+    intent: "What are the key architectural decisions and component boundaries?"
+    scope: global
+    audience: [developer, architect, agent]
+    kind: knowledge
+    format: markdown
+    depends_on: [readme]
+    validated: "2026-01-01"
+
+  - id: api-guide
+    path: docs/api.md
+    intent: "How do I authenticate and call the API?"
+    scope: module
+    audience: [developer, agent]
+    kind: knowledge
+    format: markdown
+    depends_on: [architecture]
+    validated: "2026-01-01"</code></pre>
+            </div>
+          </div>
+          <p class="qs-note">Adds <code>validated</code>, <code>update_frequency</code>, <code>kind</code>, <code>format</code>, and <code>depends_on</code>. Agents understand reading order and can flag stale units.</p>
+        </div>
+
+        <!-- L3 -->
+        <div id="qs-l3" class="qs-panel" role="tabpanel">
+          <div class="code-block">
+            <div class="code-block__header">
+              <div class="code-block__dots">
+                <span class="code-block__dot"></span>
+                <span class="code-block__dot"></span>
+                <span class="code-block__dot"></span>
+              </div>
+              <span class="code-block__filename">knowledge.yaml &mdash; Level 3 Full</span>
+              <button class="copy-btn" data-copy="qs-code-l3" aria-label="Copy to clipboard">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div class="code-block__body">
+              <pre><code id="qs-code-l3" class="language-yaml">kcp_version: "0.3"
+project: my-project
+version: 1.0.0
+updated: "2026-01-01"
+language: en
+license: "Apache-2.0"
+indexing: open
+
+units:
+  - id: readme
+    path: README.md
+    intent: "What is this project and how do I get started?"
+    scope: global
+    audience: [human, agent]
+    validated: "2026-01-01"
+    update_frequency: monthly
+    triggers: [overview, introduction, getting-started, install]
+
+  - id: architecture
+    path: docs/architecture.md
+    intent: "What are the key architectural decisions and component boundaries?"
+    scope: global
+    audience: [developer, architect, agent]
+    kind: knowledge
+    format: markdown
+    depends_on: [readme]
+    validated: "2026-01-01"
+    triggers: [architecture, design, components, decisions, adr]
+
+  - id: api-reference
+    path: docs/api.md
+    intent: "What endpoints does the API expose and how do I authenticate?"
+    scope: module
+    audience: [developer, agent]
+    kind: schema
+    format: openapi
+    depends_on: [architecture]
+    validated: "2026-01-01"
+    triggers: [api, endpoints, authentication, rest, openapi, swagger]
+
+relationships:
+  - from: readme
+    to: architecture
+    type: introduces
+  - from: architecture
+    to: api-reference
+    type: enables</code></pre>
+            </div>
+          </div>
+          <p class="qs-note">Adds <code>triggers</code> for task-based retrieval, root-level <code>language</code> / <code>license</code> / <code>indexing</code>, and a <code>relationships</code> block. Agents find the right unit by context without scanning everything.</p>
+        </div>
+      </div>
+    </div>
+    <script>
+    (function () {
+      var tabs = document.querySelectorAll('.qs-tab');
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          tabs.forEach(function (t) { t.classList.remove('is-active'); t.setAttribute('aria-selected', 'false'); });
+          document.querySelectorAll('.qs-panel').forEach(function (p) { p.classList.remove('is-active'); });
+          tab.classList.add('is-active');
+          tab.setAttribute('aria-selected', 'true');
+          document.getElementById(tab.dataset.qs).classList.add('is-active');
+        });
+      });
+    })();
+    </script>
+  </section>
+
+
+  <!-- ============================================================
        PLAYGROUND
        ============================================================ -->
   <section id="playground">
@@ -1595,6 +1866,91 @@ units:
 
 
   <!-- ============================================================
+       COMMUNITY
+       ============================================================ -->
+  <section id="community">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">Community</span>
+        <h2>Get involved</h2>
+        <p class="section-sub">KCP is an open standard. Proposals, feedback, and implementations are all welcome.</p>
+      </div>
+
+      <div class="community-grid reveal">
+        <div class="community-card">
+          <div class="community-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+          </div>
+          <h3>Report a bug or request a feature</h3>
+          <p>Found something wrong in the spec, a parser, or the site? Have a concrete use case that KCP doesn't handle well yet? Open a GitHub issue.</p>
+          <a href="https://github.com/Cantara/knowledge-context-protocol/issues/new" target="_blank" rel="noopener" class="btn btn--outline">Open an issue</a>
+        </div>
+
+        <div class="community-card">
+          <div class="community-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <h3>Propose an RFC</h3>
+          <p>Have an idea for a new capability — auth, federation, payment, hints? Proposals that follow the RFC process have a clear path from idea to standard.</p>
+          <a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0001-KCP-Extended.md" target="_blank" rel="noopener" class="btn btn--outline">Read RFC-0001 (active proposals)</a>
+        </div>
+
+        <div class="community-card">
+          <div class="community-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg>
+          </div>
+          <h3>Contribute a parser or integration</h3>
+          <p>We have reference parsers for Python and Java. Contributions for TypeScript, Go, Rust, or editor plugins (VS Code, JetBrains) are very welcome.</p>
+          <a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/SPEC.md" target="_blank" rel="noopener" class="btn btn--outline">Read the spec first</a>
+        </div>
+
+        <div class="community-card">
+          <div class="community-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          </div>
+          <h3>Ask a question or start a discussion</h3>
+          <p>Not sure if KCP is right for your use case? Wondering how to model a specific knowledge structure? GitHub Discussions is the right place.</p>
+          <a href="https://github.com/Cantara/knowledge-context-protocol/discussions" target="_blank" rel="noopener" class="btn btn--outline">Go to Discussions</a>
+        </div>
+      </div>
+
+      <div class="section-header reveal" style="margin-top: 2rem; margin-bottom: 1.5rem;">
+        <h3 style="font-size: var(--fs-lg);">RFC lifecycle</h3>
+        <p style="font-size: var(--fs-sm); color: var(--text-secondary);">How a capability goes from idea to standard</p>
+      </div>
+
+      <div class="rfc-lifecycle reveal">
+        <div class="rfc-step">
+          <div class="rfc-step__num">01</div>
+          <div class="rfc-step__label">Idea</div>
+          <div class="rfc-step__desc">Open a GitHub Issue describing the problem and use case</div>
+        </div>
+        <div class="rfc-step">
+          <div class="rfc-step__num">02</div>
+          <div class="rfc-step__label">Draft RFC</div>
+          <div class="rfc-step__desc">Fork, write RFC-XXXX.md following the template, open a PR</div>
+        </div>
+        <div class="rfc-step">
+          <div class="rfc-step__num">03</div>
+          <div class="rfc-step__label">Discussion</div>
+          <div class="rfc-step__desc">Community review, revisions, 2-week open comment period</div>
+        </div>
+        <div class="rfc-step">
+          <div class="rfc-step__num">04</div>
+          <div class="rfc-step__label">Decision</div>
+          <div class="rfc-step__desc">Maintainer accepts (merges) or declines with explanation</div>
+        </div>
+        <div class="rfc-step">
+          <div class="rfc-step__num">05</div>
+          <div class="rfc-step__label">Final</div>
+          <div class="rfc-step__desc">RFC merged, added to RFC-0001 summary table, parsers updated</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
        FOOTER
        ============================================================ -->
   <footer class="footer">
@@ -1625,6 +1981,8 @@ units:
           <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0004-Trust-and-Compliance.md" target="_blank" rel="noopener">RFC-0004</a></li>
           <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0005-Payment-and-Rate-Limits.md" target="_blank" rel="noopener">RFC-0005</a></li>
           <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0006-Context-Window-Hints.md" target="_blank" rel="noopener">RFC-0006</a></li>
+          <li><a href="https://github.com/Cantara/knowledge-context-protocol/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://github.com/Cantara/knowledge-context-protocol/discussions" target="_blank" rel="noopener">Discussions</a></li>
           <li><a href="https://github.com/Cantara" target="_blank" rel="noopener">Cantara</a></li>
           <li><a href="https://www.exoreaction.com" target="_blank" rel="noopener">eXOReaction</a></li>
         </ul>
