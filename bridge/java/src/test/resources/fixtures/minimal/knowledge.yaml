@@ -1,0 +1,10 @@
+kcp_version: "0.3"
+project: my-project
+version: 1.0.0
+
+units:
+  - id: overview
+    path: README.md
+    intent: "What is this project and how do I get started?"
+    scope: global
+    audience: [human, agent]

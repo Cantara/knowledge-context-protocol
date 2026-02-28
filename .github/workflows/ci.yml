@@ -53,6 +53,27 @@ jobs:
           cd parsers/java
           mvn test -q
 
+  java-bridge-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 17
+
+      - name: Install KCP parser
+        run: |
+          cd parsers/java
+          mvn install -q
+
+      - name: Run tests
+        run: |
+          cd bridge/java
+          mvn test -q
+
   python-bridge-tests:
     runs-on: ubuntu-latest
     strategy:
