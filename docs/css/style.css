@@ -316,14 +316,15 @@ section:nth-child(even) {
 .nav__links {
   display: flex;
   align-items: center;
-  gap: var(--space-6);
+  gap: var(--space-3);
   list-style: none;
 }
 
 .nav__links a {
-  font-size: var(--fs-sm);
+  font-size: 0.8rem;
   font-weight: var(--fw-medium);
   color: var(--text-secondary);
+  white-space: nowrap;
   text-decoration: none;
   transition: color var(--duration-fast);
 }
