@@ -228,6 +228,8 @@ requests are welcome.
 
 - **[SPEC.md](./SPEC.md)** — Normative specification (field definitions, validation rules, conformance levels)
 - **[PROPOSAL.md](./PROPOSAL.md)** — The case for a knowledge architecture standard
+- **[RFC-0001](./RFC-0001-KCP-Extended.md)** — Extended capabilities (overview of all proposals; F/H/I/K/L/N promoted to v0.3 core)
+- **[RFC-0002](./RFC-0002-Auth-and-Delegation.md)** — Auth and delegation metadata proposal (`access`, `auth`, `delegation`)
 - **parsers/** — Reference implementations (Python, Java)
 
 ---

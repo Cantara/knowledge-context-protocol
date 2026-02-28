@@ -75,6 +75,8 @@ We have organised the proposals into six themes. Each links to a detailed GitHub
 
 #### Proposal A — Auth metadata ([Issue #1](https://github.com/Cantara/knowledge-context-protocol/issues/1))
 
+> **Superseded by [RFC-0002](./RFC-0002-Auth-and-Delegation.md).** The full proposal is now maintained there. See RFC-0002 for field definitions, examples, and open questions.
+
 A per-unit `access` field and a root-level `auth` block describing how to authenticate to the knowledge source.
 
 ```yaml
@@ -102,6 +104,8 @@ units:
 Supported auth types: `none`, `oauth2`, `api_key`, `bearer_token`, `spiffe`, `did`, `http_signature`.
 
 #### Proposal B — Delegation constraints ([Issue #3](https://github.com/Cantara/knowledge-context-protocol/issues/3))
+
+> **Superseded by [RFC-0002](./RFC-0002-Auth-and-Delegation.md).** The full proposal is now maintained there alongside the auth metadata proposal.
 
 Agents operate in chains: human → orchestrator → sub-agent → tool. How many hops away from a human may this knowledge be accessed?
 
@@ -498,20 +502,20 @@ units:
 
 | # | Proposal | Theme | Status |
 |---|----------|-------|--------|
-| A | Auth metadata (`access` + `auth` block) | Access | [Issue #1](https://github.com/Cantara/knowledge-context-protocol/issues/1) |
-| B | Delegation constraints | Access | [Issue #3](https://github.com/Cantara/knowledge-context-protocol/issues/3) |
-| C | Payment metadata | Economics | [Issue #2](https://github.com/Cantara/knowledge-context-protocol/issues/2) |
-| D | Rate limit metadata | Economics | [Issue #4](https://github.com/Cantara/knowledge-context-protocol/issues/4) |
-| E | Trust and audit metadata | Governance | [Issue #5](https://github.com/Cantara/knowledge-context-protocol/issues/5) |
-| F | License and usage rights | Governance | [Issue #8](https://github.com/Cantara/knowledge-context-protocol/issues/8) |
-| G | Data residency and compliance | Governance | [Issue #11](https://github.com/Cantara/knowledge-context-protocol/issues/11) |
-| H | AI crawling permissions | Governance | [Issue #13](https://github.com/Cantara/knowledge-context-protocol/issues/13) |
-| I | Content format metadata | Navigation | [Issue #7](https://github.com/Cantara/knowledge-context-protocol/issues/7) |
-| J | Context window hints | Navigation | [Issue #9](https://github.com/Cantara/knowledge-context-protocol/issues/9) |
-| K | Caching and update frequency | Navigation | [Issue #10](https://github.com/Cantara/knowledge-context-protocol/issues/10) |
-| L | Multilingual and localisation | Navigation | [Issue #14](https://github.com/Cantara/knowledge-context-protocol/issues/14) |
-| M | Cross-manifest federation | Scale | [Issue #12](https://github.com/Cantara/knowledge-context-protocol/issues/12) |
-| N | Service description boundary (`kind` field + `x-service-*`) | Scope | [Issue #16](https://github.com/Cantara/knowledge-context-protocol/issues/16) |
+| A | Auth metadata (`access` + `auth` block) | Access | → [RFC-0002](./RFC-0002-Auth-and-Delegation.md) |
+| B | Delegation constraints | Access | → [RFC-0002](./RFC-0002-Auth-and-Delegation.md) |
+| C | Payment metadata | Economics | [Issue #2](https://github.com/Cantara/knowledge-context-protocol/issues/2) — open |
+| D | Rate limit metadata | Economics | [Issue #4](https://github.com/Cantara/knowledge-context-protocol/issues/4) — open |
+| E | Trust and audit metadata | Governance | [Issue #5](https://github.com/Cantara/knowledge-context-protocol/issues/5) — open |
+| F | License and usage rights | Governance | ✅ Promoted to core in v0.3 (`license` field) |
+| G | Data residency and compliance | Governance | [Issue #11](https://github.com/Cantara/knowledge-context-protocol/issues/11) — open |
+| H | AI crawling permissions | Governance | ✅ Promoted to core in v0.3 (`indexing` field) |
+| I | Content format metadata | Navigation | ✅ Promoted to core in v0.3 (`format` + `content_type`) |
+| J | Context window hints | Navigation | [Issue #9](https://github.com/Cantara/knowledge-context-protocol/issues/9) — open |
+| K | Caching and update frequency | Navigation | ✅ Promoted to core in v0.3 (`update_frequency` field) |
+| L | Multilingual and localisation | Navigation | ✅ Promoted to core in v0.3 (`language` field) |
+| M | Cross-manifest federation | Scale | [Issue #12](https://github.com/Cantara/knowledge-context-protocol/issues/12) — open |
+| N | Service description boundary (`kind` field + `x-service-*`) | Scope | ✅ Promoted to core in v0.3 (`kind` field) |
 
 ---
 

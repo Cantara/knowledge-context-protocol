@@ -32,12 +32,21 @@ units:
 
   - id: rfc-0001
     path: RFC-0001-KCP-Extended.md
-    intent: "What extended capabilities are proposed beyond the core spec — auth, payments, compliance, federation, and kind taxonomy?"
+    intent: "What extended capabilities are proposed beyond the core spec — payments, compliance, federation, context hints, and other proposals not yet promoted to core?"
     scope: global
     audience: [human, agent, architect, developer]
     validated: "2026-02-26"
     depends_on: [spec]
-    triggers: [rfc, extensions, auth, payments, compliance, federation, v0.2, roadmap]
+    triggers: [rfc, extensions, payments, compliance, federation, roadmap]
+
+  - id: rfc-0002
+    path: RFC-0002-Auth-and-Delegation.md
+    intent: "How should KCP manifest auth requirements and multi-agent delegation constraints? Proposals for access field, auth block, and delegation block."
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-02-28"
+    depends_on: [spec, rfc-0001]
+    triggers: [auth, authentication, oauth2, delegation, access control, security, spiffe, did, multi-agent]
 
   - id: readme
     path: README.md
