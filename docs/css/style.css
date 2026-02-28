@@ -826,6 +826,10 @@ section:nth-child(even) {
   transition: all var(--duration-normal) var(--ease-out);
 }
 
+.spec-card--required {
+  border-left: 3px solid var(--color-primary);
+}
+
 .spec-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--card-shadow-hover);
@@ -1076,10 +1080,10 @@ section:nth-child(even) {
 
 .footer__inner {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: var(--space-6);
+  gap: var(--space-8);
 }
 
 .footer__brand {
@@ -1095,19 +1099,40 @@ section:nth-child(even) {
   height: 24px;
 }
 
-.footer__links {
+.footer__cols {
   display: flex;
-  align-items: center;
-  gap: var(--space-6);
-  list-style: none;
+  gap: var(--space-10);
+  flex-wrap: wrap;
 }
 
-.footer__links a {
+.footer__col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 140px;
+}
+
+.footer__col-label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-wider);
+}
+
+.footer__col ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.footer__col a {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 
-.footer__links a:hover {
+.footer__col a:hover {
   color: var(--text-primary);
 }
 
@@ -1354,12 +1379,10 @@ section:nth-child(even) {
 
   .footer__inner {
     flex-direction: column;
-    text-align: center;
   }
 
-  .footer__links {
-    flex-wrap: wrap;
-    justify-content: center;
+  .footer__cols {
+    gap: var(--space-6);
   }
 }
 
@@ -1418,6 +1441,26 @@ section:nth-child(even) {
   overflow-x: auto;
   border: 1px solid var(--card-border);
   border-radius: var(--radius-xl);
+  position: relative;
+}
+
+.compare-wrapper::after {
+  content: '';
+  position: sticky;
+  display: block;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  height: 100%;
+  margin-top: -100%;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--bg-primary) 90%);
+  border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+}
+
+@media (min-width: 768px) {
+  .compare-wrapper::after { display: none; }
 }
 
 .compare-table {

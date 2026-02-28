@@ -12,6 +12,15 @@
   <meta property="og:description" content="Give AI agents a map, not just files. A structured metadata standard for navigable knowledge.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://cantara.github.io/knowledge-context-protocol/">
+  <meta property="og:image" content="https://cantara.github.io/knowledge-context-protocol/og-image.svg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="KCP - Knowledge Context Protocol">
+  <meta name="twitter:description" content="Give AI agents a map, not just files. A structured metadata standard for navigable knowledge.">
+  <meta name="twitter:image" content="https://cantara.github.io/knowledge-context-protocol/og-image.svg">
 
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -466,31 +475,31 @@ relationships:
       </div>
 
       <div class="spec-grid">
-        <div class="spec-card reveal">
+        <div class="spec-card spec-card--required reveal">
           <span class="spec-card__field">id</span>
           <span class="spec-card__required">Required</span>
           <p>Unique identifier within the manifest. Lowercase ASCII, digits, hyphens, and dots. Example: <code>api-authentication-guide</code></p>
         </div>
 
-        <div class="spec-card reveal reveal-delay-1">
+        <div class="spec-card spec-card--required reveal reveal-delay-1">
           <span class="spec-card__field">path</span>
           <span class="spec-card__required">Required</span>
           <p>Relative path from the manifest to the content file. Forward slashes only. Example: <code>docs/api/auth.md</code></p>
         </div>
 
-        <div class="spec-card reveal reveal-delay-2">
+        <div class="spec-card spec-card--required reveal reveal-delay-2">
           <span class="spec-card__field">intent</span>
           <span class="spec-card__required">Required</span>
           <p>One sentence: what question does this unit answer? The primary signal for agent task routing. Written as a question, not a title.</p>
         </div>
 
-        <div class="spec-card reveal reveal-delay-3">
+        <div class="spec-card spec-card--required reveal reveal-delay-3">
           <span class="spec-card__field">scope</span>
           <span class="spec-card__required">Required</span>
           <p>Breadth of applicability: <code>global</code>, <code>project</code>, or <code>module</code>. Tells agents how broadly this knowledge applies.</p>
         </div>
 
-        <div class="spec-card reveal">
+        <div class="spec-card spec-card--required reveal">
           <span class="spec-card__field">audience</span>
           <span class="spec-card__required">Required</span>
           <p>Who this unit is for: <code>human</code>, <code>agent</code>, <code>developer</code>, <code>architect</code>, <code>operator</code>. A unit can target multiple audiences.</p>
@@ -1253,14 +1262,6 @@ units:
         <p class="section-sub">KCP is early-stage and growing. Be among the first projects to publish a <code>knowledge.yaml</code>.</p>
       </div>
 
-      <div class="adopters-badges reveal">
-        <img src="https://img.shields.io/github/stars/Cantara/knowledge-context-protocol?style=flat-square&logo=github&label=GitHub%20Stars&color=2563eb" alt="GitHub Stars" height="20">
-        <img src="https://img.shields.io/github/forks/Cantara/knowledge-context-protocol?style=flat-square&logo=github&label=Forks&color=7c3aed" alt="GitHub Forks" height="20">
-        <img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License: Apache 2.0" height="20">
-        <img src="https://img.shields.io/badge/KCP-v0.3-22c55e?style=flat-square&logo=yaml&logoColor=white" alt="KCP v0.3" height="20">
-        <img src="https://img.shields.io/badge/spec-stable-22c55e?style=flat-square" alt="Spec: Stable" height="20">
-      </div>
-
       <div class="adopters-cta-box reveal">
         <h3>Add your project</h3>
         <p>Using KCP in a public repository? Open an issue and we'll add you to this list. You can also add a badge to your own README.</p>
@@ -1269,6 +1270,12 @@ units:
           <a href="https://github.com/Cantara/knowledge-context-protocol/issues/new?title=Add+adopter:+[your+project]&body=Project+name:%0ARepository+URL:%0ABrief+description:" target="_blank" rel="noopener" class="btn btn--primary">Open issue to add your project</a>
           <a href="https://github.com/Cantara/knowledge-context-protocol" target="_blank" rel="noopener" class="btn btn--outline">View on GitHub</a>
         </div>
+      </div>
+
+      <div class="adopters-badges reveal">
+        <img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License: Apache 2.0" height="20">
+        <img src="https://img.shields.io/badge/KCP-v0.3-22c55e?style=flat-square&logo=yaml&logoColor=white" alt="KCP v0.3" height="20">
+        <img src="https://img.shields.io/badge/spec-stable-22c55e?style=flat-square" alt="Spec: Stable" height="20">
       </div>
 
       <div class="section-header reveal" style="margin-top: 2rem; margin-bottom: 1.5rem;">
@@ -1952,21 +1959,36 @@ relationships:
           Knowledge Context Protocol
         </div>
 
-        <ul class="footer__links">
-          <li><a href="https://github.com/Cantara/knowledge-context-protocol" target="_blank" rel="noopener">GitHub</a></li>
-          <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/SPEC.md" target="_blank" rel="noopener">Specification</a></li>
-          <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/PROPOSAL.md" target="_blank" rel="noopener">Proposal</a></li>
-          <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0001-KCP-Extended.md" target="_blank" rel="noopener">RFC-0001</a></li>
-          <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0002-Auth-and-Delegation.md" target="_blank" rel="noopener">RFC-0002</a></li>
-          <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0003-Federation.md" target="_blank" rel="noopener">RFC-0003</a></li>
-          <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0004-Trust-and-Compliance.md" target="_blank" rel="noopener">RFC-0004</a></li>
-          <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0005-Payment-and-Rate-Limits.md" target="_blank" rel="noopener">RFC-0005</a></li>
-          <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0006-Context-Window-Hints.md" target="_blank" rel="noopener">RFC-0006</a></li>
-          <li><a href="https://github.com/Cantara/knowledge-context-protocol/issues" target="_blank" rel="noopener">Issues</a></li>
-          <li><a href="https://github.com/Cantara/knowledge-context-protocol/discussions" target="_blank" rel="noopener">Discussions</a></li>
-          <li><a href="https://github.com/Cantara" target="_blank" rel="noopener">Cantara</a></li>
-          <li><a href="https://www.exoreaction.com" target="_blank" rel="noopener">eXOReaction</a></li>
-        </ul>
+        <div class="footer__cols">
+          <div class="footer__col">
+            <span class="footer__col-label">Resources</span>
+            <ul>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol" target="_blank" rel="noopener">GitHub</a></li>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/SPEC.md" target="_blank" rel="noopener">Specification</a></li>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/PROPOSAL.md" target="_blank" rel="noopener">Proposal</a></li>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/issues" target="_blank" rel="noopener">Issues</a></li>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/discussions" target="_blank" rel="noopener">Discussions</a></li>
+            </ul>
+          </div>
+          <div class="footer__col">
+            <span class="footer__col-label">RFCs</span>
+            <ul>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0001-KCP-Extended.md" target="_blank" rel="noopener">RFC-0001 Extended Fields</a></li>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0002-Auth-and-Delegation.md" target="_blank" rel="noopener">RFC-0002 Auth &amp; Delegation</a></li>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0003-Federation.md" target="_blank" rel="noopener">RFC-0003 Federation</a></li>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0004-Trust-and-Compliance.md" target="_blank" rel="noopener">RFC-0004 Trust &amp; Compliance</a></li>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0005-Payment-and-Rate-Limits.md" target="_blank" rel="noopener">RFC-0005 Payment &amp; Rate Limits</a></li>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0006-Context-Window-Hints.md" target="_blank" rel="noopener">RFC-0006 Context Window Hints</a></li>
+            </ul>
+          </div>
+          <div class="footer__col">
+            <span class="footer__col-label">Project</span>
+            <ul>
+              <li><a href="https://github.com/Cantara" target="_blank" rel="noopener">Cantara</a></li>
+              <li><a href="https://www.exoreaction.com" target="_blank" rel="noopener">eXOReaction</a></li>
+            </ul>
+          </div>
+        </div>
       </div>
 
       <div class="footer__meta">
