@@ -65,11 +65,10 @@
       <ul class="nav__links" id="nav-links">
         <li><a href="#compare">Compare</a></li>
         <li><a href="#spec">Spec</a></li>
-        <li><a href="#parsers">Parsers</a></li>
         <li><a href="#use-cases">Use Cases</a></li>
-        <li><a href="#roadmap">Roadmap</a></li>
-        <li><a href="#adopt">Adopt</a></li>
+        <li><a href="#get-started">Get Started</a></li>
         <li><a href="#playground">Try it</a></li>
+        <li><a href="#roadmap">Roadmap</a></li>
         <li><a href="#faq">FAQ</a></li>
         <li><a href="#community">Community</a></li>
       </ul>
@@ -112,7 +111,7 @@
       </p>
 
       <div class="hero__actions">
-        <a href="#adopt" class="btn btn--primary">
+        <a href="#get-started" class="btn btn--primary">
           Get Started
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="8" x2="13" y2="8"/><polyline points="9 4 13 8 9 12"/></svg>
         </a>
@@ -157,7 +156,7 @@
   <!-- ============================================================
        THE PROBLEM
        ============================================================ -->
-  <section id="problem">
+  <section id="problem" class="section--alt">
     <div class="container">
       <div class="section-header reveal">
         <span class="section-label">The Problem</span>
@@ -323,7 +322,7 @@
   <!-- ============================================================
        WHAT IS KCP
        ============================================================ -->
-  <section id="what">
+  <section id="what" class="section--alt">
     <div class="container">
       <div class="what-grid">
         <div class="what-content reveal">
@@ -466,7 +465,7 @@ relationships:
   <!-- ============================================================
        SPEC HIGHLIGHTS
        ============================================================ -->
-  <section id="spec">
+  <section id="spec" class="section--alt">
     <div class="container">
       <div class="section-header reveal">
         <span class="section-label">Specification</span>
@@ -607,6 +606,7 @@ relationships:
         <p>Real <code>knowledge.yaml</code> files from the KCP repository, showing the adoption gradient from a single unit to a full knowledge graph.</p>
       </div>
 
+      <div class="tab-group">
       <div class="reveal">
         <div class="tabs" role="tablist">
           <button class="tab-btn active" role="tab" aria-selected="true" data-tab="minimal">Minimal</button>
@@ -793,6 +793,7 @@ relationships:
           </div>
         </div>
       </div>
+      </div>
     </div>
   </section>
 
@@ -800,7 +801,7 @@ relationships:
   <!-- ============================================================
        PARSERS
        ============================================================ -->
-  <section id="parsers">
+  <section id="parsers" class="section--alt">
     <div class="container">
       <div class="section-header reveal">
         <span class="section-label">Parsers</span>
@@ -1066,12 +1067,22 @@ units:
           </details>
         </div>
 
+      </div>
+
+      <div class="usecase-rfc-divider reveal">
+        <span class="section-label">RFC Extensions</span>
+        <p>These scenarios use KCP RFC proposals. Fields are extensions to the core spec &mdash; open for community feedback.</p>
+      </div>
+
+      <div class="usecase-grid">
+
         <!-- 4: GDPR-Safe Knowledge -->
         <div class="usecase-card reveal">
           <div class="usecase-card__header">
             <div class="usecase-card__icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             </div>
+            <span class="rfc-badge">RFC-0004</span>
             <span class="usecase-card__persona">Finance &middot; healthcare &middot; public sector</span>
           </div>
           <h4>GDPR-Safe Knowledge for Agents</h4>
@@ -1113,6 +1124,7 @@ units:
             <div class="usecase-card__icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
             </div>
+            <span class="rfc-badge">RFC-0005</span>
             <span class="usecase-card__persona">Data vendors &middot; knowledge APIs</span>
           </div>
           <h4>Monetized Knowledge APIs</h4>
@@ -1163,6 +1175,7 @@ units:
             <div class="usecase-card__icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
             </div>
+            <span class="rfc-badge">RFC-0003</span>
             <span class="usecase-card__persona">Enterprise &middot; platform engineering</span>
           </div>
           <h4>Cross-Team Knowledge Federation</h4>
@@ -1206,6 +1219,7 @@ units:
             <div class="usecase-card__icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             </div>
+            <span class="rfc-badge">RFC-0002</span>
             <span class="usecase-card__persona">AI governance &middot; multi-agent systems</span>
           </div>
           <h4>Secure Agent Delegation Chains</h4>
@@ -1249,6 +1263,258 @@ units:
       </div>
     </div>
   </section>
+
+
+  <!-- ============================================================
+       GET STARTED
+       ============================================================ -->
+  <section id="get-started">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">Getting Started</span>
+        <h2>Four steps to adopt KCP</h2>
+        <p>KCP wraps your existing documentation with metadata. Your files stay where they are. The only new file is <code>knowledge.yaml</code>.</p>
+      </div>
+
+      <div class="adoption-steps">
+        <div class="adoption-step reveal reveal-delay-1">
+          <div class="adoption-step__number">1</div>
+          <h4>Audit</h4>
+          <p>Walk your project. List the key documents: README, architecture docs, API guides, agent definitions. For each, ask: what question does this answer?</p>
+        </div>
+
+        <div class="adoption-step reveal reveal-delay-2">
+          <div class="adoption-step__number">2</div>
+          <h4>Declare</h4>
+          <p>Create <code>knowledge.yaml</code> at the root. Add <code>id</code>, <code>path</code>, <code>intent</code>, <code>scope</code>, and <code>audience</code> for each unit. This is Level 1 &mdash; already useful.</p>
+        </div>
+
+        <div class="adoption-step reveal reveal-delay-3">
+          <div class="adoption-step__number">3</div>
+          <h4>Structure</h4>
+          <p>Add <code>validated</code> dates and <code>depends_on</code> relationships. Agents now understand reading order and can flag stale content. This is Level 2.</p>
+        </div>
+
+        <div class="adoption-step reveal reveal-delay-4">
+          <div class="adoption-step__number">4</div>
+          <h4>Navigate</h4>
+          <p>Add <code>triggers</code> and <code>relationships</code> for task-based retrieval. Agents find the right unit by context, not by scanning everything. This is Level 3.</p>
+        </div>
+      </div>
+
+        <div class="section-header reveal" style="margin-top: 3rem; margin-bottom: 1rem;">
+          <h3>Pick a template and start</h3>
+          <p class="section-sub">Copy a ready-made <code>knowledge.yaml</code> at your target conformance level, then <a href="#playground">validate it</a> in the browser.</p>
+        </div>
+
+        <div class="tab-group reveal" style="max-width: 52rem; margin: 0 auto;">
+        <div class="tabs" role="tablist" aria-label="Conformance level templates">
+          <button class="tab-btn active" role="tab" aria-selected="true"  aria-controls="tab-qs-l1" data-tab="qs-l1">L1 &middot; Minimal</button>
+          <button class="tab-btn"            role="tab" aria-selected="false" aria-controls="tab-qs-l2" data-tab="qs-l2">L2 &middot; Standard</button>
+          <button class="tab-btn"            role="tab" aria-selected="false" aria-controls="tab-qs-l3" data-tab="qs-l3">L3 &middot; Full</button>
+        </div>
+
+        <!-- L1 -->
+        <div id="tab-qs-l1" class="tab-panel active" role="tabpanel">
+          <div class="code-block">
+            <div class="code-block__header">
+              <div class="code-block__dots">
+                <span class="code-block__dot"></span>
+                <span class="code-block__dot"></span>
+                <span class="code-block__dot"></span>
+              </div>
+              <span class="code-block__filename">knowledge.yaml &mdash; Level 1 Minimal</span>
+              <button class="copy-btn" data-copy="qs-code-l1" aria-label="Copy to clipboard">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div class="code-block__body">
+              <pre><code id="qs-code-l1" class="language-yaml">kcp_version: "0.3"
+project: my-project
+version: 1.0.0
+
+units:
+  - id: readme
+    path: README.md
+    intent: "What is this project and how do I get started?"
+    scope: global
+    audience: [human, agent]
+
+  - id: contributing
+    path: CONTRIBUTING.md
+    intent: "How do I contribute patches, issues, and pull requests?"
+    scope: global
+    audience: [developer]</code></pre>
+            </div>
+          </div>
+          <p class="qs-note">Five required fields per unit: <code>id</code>, <code>path</code>, <code>intent</code>, <code>scope</code>, <code>audience</code>. Agents can already fetch and route with this alone.</p>
+        </div>
+
+        <!-- L2 -->
+        <div id="tab-qs-l2" class="tab-panel" role="tabpanel">
+          <div class="code-block">
+            <div class="code-block__header">
+              <div class="code-block__dots">
+                <span class="code-block__dot"></span>
+                <span class="code-block__dot"></span>
+                <span class="code-block__dot"></span>
+              </div>
+              <span class="code-block__filename">knowledge.yaml &mdash; Level 2 Standard</span>
+              <button class="copy-btn" data-copy="qs-code-l2" aria-label="Copy to clipboard">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div class="code-block__body">
+              <pre><code id="qs-code-l2" class="language-yaml">kcp_version: "0.3"
+project: my-project
+version: 1.0.0
+updated: "2026-01-01"
+
+units:
+  - id: readme
+    path: README.md
+    intent: "What is this project and how do I get started?"
+    scope: global
+    audience: [human, agent]
+    validated: "2026-01-01"
+    update_frequency: monthly
+
+  - id: architecture
+    path: docs/architecture.md
+    intent: "What are the key architectural decisions and component boundaries?"
+    scope: global
+    audience: [developer, architect, agent]
+    kind: knowledge
+    format: markdown
+    depends_on: [readme]
+    validated: "2026-01-01"
+
+  - id: api-guide
+    path: docs/api.md
+    intent: "How do I authenticate and call the API?"
+    scope: module
+    audience: [developer, agent]
+    kind: knowledge
+    format: markdown
+    depends_on: [architecture]
+    validated: "2026-01-01"</code></pre>
+            </div>
+          </div>
+          <p class="qs-note">Adds <code>validated</code>, <code>update_frequency</code>, <code>kind</code>, <code>format</code>, and <code>depends_on</code>. Agents understand reading order and can flag stale units.</p>
+        </div>
+
+        <!-- L3 -->
+        <div id="tab-qs-l3" class="tab-panel" role="tabpanel">
+          <div class="code-block">
+            <div class="code-block__header">
+              <div class="code-block__dots">
+                <span class="code-block__dot"></span>
+                <span class="code-block__dot"></span>
+                <span class="code-block__dot"></span>
+              </div>
+              <span class="code-block__filename">knowledge.yaml &mdash; Level 3 Full</span>
+              <button class="copy-btn" data-copy="qs-code-l3" aria-label="Copy to clipboard">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div class="code-block__body">
+              <pre><code id="qs-code-l3" class="language-yaml">kcp_version: "0.3"
+project: my-project
+version: 1.0.0
+updated: "2026-01-01"
+language: en
+license: "Apache-2.0"
+indexing: open
+
+units:
+  - id: readme
+    path: README.md
+    intent: "What is this project and how do I get started?"
+    scope: global
+    audience: [human, agent]
+    validated: "2026-01-01"
+    update_frequency: monthly
+    triggers: [overview, introduction, getting-started, install]
+
+  - id: architecture
+    path: docs/architecture.md
+    intent: "What are the key architectural decisions and component boundaries?"
+    scope: global
+    audience: [developer, architect, agent]
+    kind: knowledge
+    format: markdown
+    depends_on: [readme]
+    validated: "2026-01-01"
+    triggers: [architecture, design, components, decisions, adr]
+
+  - id: api-reference
+    path: docs/api.md
+    intent: "What endpoints does the API expose and how do I authenticate?"
+    scope: module
+    audience: [developer, agent]
+    kind: schema
+    format: openapi
+    depends_on: [architecture]
+    validated: "2026-01-01"
+    triggers: [api, endpoints, authentication, rest, openapi, swagger]
+
+relationships:
+  - from: readme
+    to: architecture
+    type: introduces
+  - from: architecture
+    to: api-reference
+    type: enables</code></pre>
+            </div>
+          </div>
+          <p class="qs-note">Adds <code>triggers</code> for task-based retrieval, root-level <code>language</code> / <code>license</code> / <code>indexing</code>, and a <code>relationships</code> block. Agents find the right unit by context without scanning everything.</p>
+        </div>
+
+        </div>
+    </div>
+  </section>
+
+
+
+
+  <!-- ============================================================
+       PLAYGROUND
+       ============================================================ -->
+  <section id="playground">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">Try it</span>
+        <h2>Validate your <code>knowledge.yaml</code></h2>
+        <p class="section-sub">Paste any manifest, pick an example, or press <kbd>Ctrl+Enter</kbd> to validate in-browser — no server required.</p>
+      </div>
+
+      <div class="playground reveal">
+        <div class="playground__editor">
+          <div class="playground__toolbar">
+            <label for="example-select">Load example:</label>
+            <select id="example-select">
+              <option value="">— choose —</option>
+              <option value="level1">Level 1 — Minimal</option>
+              <option value="level2">Level 2 — Standard</option>
+              <option value="level3">Level 3 — Full</option>
+              <option value="invalid">Invalid (shows errors)</option>
+            </select>
+          </div>
+          <textarea id="yaml-input" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+          <div class="playground__controls">
+            <button id="validate-btn" class="btn btn--primary">Validate</button>
+          </div>
+        </div>
+        <div class="playground__output">
+          <div id="playground-output" class="pg-note">Paste a <code>knowledge.yaml</code> above and click Validate.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
 
 
   <!-- ============================================================
@@ -1320,6 +1586,7 @@ units:
       </div>
     </div>
   </section>
+
 
 
   <!-- ============================================================
@@ -1453,313 +1720,11 @@ units:
   </section>
 
 
-  <!-- ============================================================
-       ADOPTION GUIDE
-       ============================================================ -->
-  <section id="adopt">
-    <div class="container">
-      <div class="section-header reveal">
-        <span class="section-label">Getting Started</span>
-        <h2>Four steps to adopt KCP</h2>
-        <p>KCP wraps your existing documentation with metadata. Your files stay where they are. The only new file is <code>knowledge.yaml</code>.</p>
-      </div>
-
-      <div class="adoption-steps">
-        <div class="adoption-step reveal reveal-delay-1">
-          <div class="adoption-step__number">1</div>
-          <h4>Audit</h4>
-          <p>Walk your project. List the key documents: README, architecture docs, API guides, agent definitions. For each, ask: what question does this answer?</p>
-        </div>
-
-        <div class="adoption-step reveal reveal-delay-2">
-          <div class="adoption-step__number">2</div>
-          <h4>Declare</h4>
-          <p>Create <code>knowledge.yaml</code> at the root. Add <code>id</code>, <code>path</code>, <code>intent</code>, <code>scope</code>, and <code>audience</code> for each unit. This is Level 1 &mdash; already useful.</p>
-        </div>
-
-        <div class="adoption-step reveal reveal-delay-3">
-          <div class="adoption-step__number">3</div>
-          <h4>Structure</h4>
-          <p>Add <code>validated</code> dates and <code>depends_on</code> relationships. Agents now understand reading order and can flag stale content. This is Level 2.</p>
-        </div>
-
-        <div class="adoption-step reveal reveal-delay-4">
-          <div class="adoption-step__number">4</div>
-          <h4>Navigate</h4>
-          <p>Add <code>triggers</code> and <code>relationships</code> for task-based retrieval. Agents find the right unit by context, not by scanning everything. This is Level 3.</p>
-        </div>
-      </div>
-
-      <div class="text-center mt-12 reveal">
-        <div class="code-block" style="max-width: 44rem; margin: 0 auto; text-align: left;">
-          <div class="code-block__header">
-            <div class="code-block__dots">
-              <span class="code-block__dot"></span>
-              <span class="code-block__dot"></span>
-              <span class="code-block__dot"></span>
-            </div>
-            <span class="code-block__filename">Start in five minutes</span>
-            <button class="copy-btn" data-copy="adopt-code" aria-label="Copy to clipboard">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
-              <span>Copy</span>
-            </button>
-          </div>
-          <div class="code-block__body">
-            <pre><code id="adopt-code" class="language-yaml"># Drop this at the root of any project. Done.
-kcp_version: "0.3"
-project: my-project
-version: 1.0.0
-
-units:
-  - id: overview
-    path: README.md
-    intent: "What is this project and how do I get started?"
-    scope: global
-    audience: [human, agent]
-
-  - id: architecture
-    path: docs/architecture.md
-    intent: "What are the architectural decisions and why?"
-    scope: global
-    audience: [developer, architect, agent]
-    depends_on: [overview]
-
-  - id: api-guide
-    path: docs/api/authentication.md
-    intent: "How do I authenticate API requests?"
-    scope: module
-    audience: [developer, agent]
-    depends_on: [architecture]
-    triggers: [authentication, oauth2, jwt, api-security]</code></pre>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-
-  <!-- ============================================================
-       QUICKSTART TEMPLATES
-       ============================================================ -->
-  <section id="quickstart">
-    <div class="container">
-      <div class="section-header reveal">
-        <span class="section-label">Templates</span>
-        <h2>Start with a ready-made template</h2>
-        <p class="section-sub">Pick a conformance level, copy, and paste into your repo root. Then <a href="#playground">validate it</a> in the browser.</p>
-      </div>
-
-      <div class="reveal" style="max-width: 52rem; margin: 0 auto;">
-        <div class="quickstart-tabs" role="tablist" aria-label="Conformance level templates">
-          <button class="qs-tab is-active" role="tab" aria-selected="true"  aria-controls="qs-l1" data-qs="qs-l1">L1 &middot; Minimal</button>
-          <button class="qs-tab"            role="tab" aria-selected="false" aria-controls="qs-l2" data-qs="qs-l2">L2 &middot; Standard</button>
-          <button class="qs-tab"            role="tab" aria-selected="false" aria-controls="qs-l3" data-qs="qs-l3">L3 &middot; Full</button>
-        </div>
-
-        <!-- L1 -->
-        <div id="qs-l1" class="qs-panel is-active" role="tabpanel">
-          <div class="code-block">
-            <div class="code-block__header">
-              <div class="code-block__dots">
-                <span class="code-block__dot"></span>
-                <span class="code-block__dot"></span>
-                <span class="code-block__dot"></span>
-              </div>
-              <span class="code-block__filename">knowledge.yaml &mdash; Level 1 Minimal</span>
-              <button class="copy-btn" data-copy="qs-code-l1" aria-label="Copy to clipboard">
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
-                <span>Copy</span>
-              </button>
-            </div>
-            <div class="code-block__body">
-              <pre><code id="qs-code-l1" class="language-yaml">kcp_version: "0.3"
-project: my-project
-version: 1.0.0
-
-units:
-  - id: readme
-    path: README.md
-    intent: "What is this project and how do I get started?"
-    scope: global
-    audience: [human, agent]
-
-  - id: contributing
-    path: CONTRIBUTING.md
-    intent: "How do I contribute patches, issues, and pull requests?"
-    scope: global
-    audience: [developer]</code></pre>
-            </div>
-          </div>
-          <p class="qs-note">Five required fields per unit: <code>id</code>, <code>path</code>, <code>intent</code>, <code>scope</code>, <code>audience</code>. Agents can already fetch and route with this alone.</p>
-        </div>
-
-        <!-- L2 -->
-        <div id="qs-l2" class="qs-panel" role="tabpanel">
-          <div class="code-block">
-            <div class="code-block__header">
-              <div class="code-block__dots">
-                <span class="code-block__dot"></span>
-                <span class="code-block__dot"></span>
-                <span class="code-block__dot"></span>
-              </div>
-              <span class="code-block__filename">knowledge.yaml &mdash; Level 2 Standard</span>
-              <button class="copy-btn" data-copy="qs-code-l2" aria-label="Copy to clipboard">
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
-                <span>Copy</span>
-              </button>
-            </div>
-            <div class="code-block__body">
-              <pre><code id="qs-code-l2" class="language-yaml">kcp_version: "0.3"
-project: my-project
-version: 1.0.0
-updated: "2026-01-01"
-
-units:
-  - id: readme
-    path: README.md
-    intent: "What is this project and how do I get started?"
-    scope: global
-    audience: [human, agent]
-    validated: "2026-01-01"
-    update_frequency: monthly
-
-  - id: architecture
-    path: docs/architecture.md
-    intent: "What are the key architectural decisions and component boundaries?"
-    scope: global
-    audience: [developer, architect, agent]
-    kind: knowledge
-    format: markdown
-    depends_on: [readme]
-    validated: "2026-01-01"
-
-  - id: api-guide
-    path: docs/api.md
-    intent: "How do I authenticate and call the API?"
-    scope: module
-    audience: [developer, agent]
-    kind: knowledge
-    format: markdown
-    depends_on: [architecture]
-    validated: "2026-01-01"</code></pre>
-            </div>
-          </div>
-          <p class="qs-note">Adds <code>validated</code>, <code>update_frequency</code>, <code>kind</code>, <code>format</code>, and <code>depends_on</code>. Agents understand reading order and can flag stale units.</p>
-        </div>
-
-        <!-- L3 -->
-        <div id="qs-l3" class="qs-panel" role="tabpanel">
-          <div class="code-block">
-            <div class="code-block__header">
-              <div class="code-block__dots">
-                <span class="code-block__dot"></span>
-                <span class="code-block__dot"></span>
-                <span class="code-block__dot"></span>
-              </div>
-              <span class="code-block__filename">knowledge.yaml &mdash; Level 3 Full</span>
-              <button class="copy-btn" data-copy="qs-code-l3" aria-label="Copy to clipboard">
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
-                <span>Copy</span>
-              </button>
-            </div>
-            <div class="code-block__body">
-              <pre><code id="qs-code-l3" class="language-yaml">kcp_version: "0.3"
-project: my-project
-version: 1.0.0
-updated: "2026-01-01"
-language: en
-license: "Apache-2.0"
-indexing: open
-
-units:
-  - id: readme
-    path: README.md
-    intent: "What is this project and how do I get started?"
-    scope: global
-    audience: [human, agent]
-    validated: "2026-01-01"
-    update_frequency: monthly
-    triggers: [overview, introduction, getting-started, install]
-
-  - id: architecture
-    path: docs/architecture.md
-    intent: "What are the key architectural decisions and component boundaries?"
-    scope: global
-    audience: [developer, architect, agent]
-    kind: knowledge
-    format: markdown
-    depends_on: [readme]
-    validated: "2026-01-01"
-    triggers: [architecture, design, components, decisions, adr]
-
-  - id: api-reference
-    path: docs/api.md
-    intent: "What endpoints does the API expose and how do I authenticate?"
-    scope: module
-    audience: [developer, agent]
-    kind: schema
-    format: openapi
-    depends_on: [architecture]
-    validated: "2026-01-01"
-    triggers: [api, endpoints, authentication, rest, openapi, swagger]
-
-relationships:
-  - from: readme
-    to: architecture
-    type: introduces
-  - from: architecture
-    to: api-reference
-    type: enables</code></pre>
-            </div>
-          </div>
-          <p class="qs-note">Adds <code>triggers</code> for task-based retrieval, root-level <code>language</code> / <code>license</code> / <code>indexing</code>, and a <code>relationships</code> block. Agents find the right unit by context without scanning everything.</p>
-        </div>
-      </div>
-    </div>
-    <!-- Quickstart tab logic handled by app.js -->
-  </section>
-
-
-  <!-- ============================================================
-       PLAYGROUND
-       ============================================================ -->
-  <section id="playground">
-    <div class="container">
-      <div class="section-header reveal">
-        <span class="section-label">Try it</span>
-        <h2>Validate your <code>knowledge.yaml</code></h2>
-        <p class="section-sub">Paste any manifest, pick an example, or press <kbd>Ctrl+Enter</kbd> to validate in-browser — no server required.</p>
-      </div>
-
-      <div class="playground reveal">
-        <div class="playground__editor">
-          <div class="playground__toolbar">
-            <label for="example-select">Load example:</label>
-            <select id="example-select">
-              <option value="">— choose —</option>
-              <option value="level1">Level 1 — Minimal</option>
-              <option value="level2">Level 2 — Standard</option>
-              <option value="level3">Level 3 — Full</option>
-              <option value="invalid">Invalid (shows errors)</option>
-            </select>
-          </div>
-          <textarea id="yaml-input" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
-          <div class="playground__controls">
-            <button id="validate-btn" class="btn btn--primary">Validate</button>
-          </div>
-        </div>
-        <div class="playground__output">
-          <div id="playground-output" class="pg-note">Paste a <code>knowledge.yaml</code> above and click Validate.</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
 
   <!-- ============================================================
        FAQ
        ============================================================ -->
-  <section id="faq">
+  <section id="faq" class="section--alt">
     <div class="container">
       <div class="section-header reveal">
         <span class="section-label">FAQ</span>
@@ -1851,6 +1816,7 @@ relationships:
       </div>
     </div>
   </section>
+
 
 
   <!-- ============================================================
@@ -2009,5 +1975,10 @@ relationships:
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
   <script src="js/app.js"></script>
   <script src="js/playground.js"></script>
+
+  <!-- Back to top -->
+  <button class="back-to-top" id="back-to-top" aria-label="Back to top">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><polyline points="18 15 12 9 6 15"/></svg>
+  </button>
 </body>
 </html>

@@ -87,36 +87,30 @@
 
 
   // ──────────────────────────────────────────────
-  // Tabs (Examples section)
+  // Tabs (all tab groups — scoped per .tab-group)
   // ──────────────────────────────────────────────
 
-  var tabBtns = document.querySelectorAll('.tab-btn');
-  var tabPanels = document.querySelectorAll('.tab-panel');
-
-  tabBtns.forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var target = btn.getAttribute('data-tab');
-
-      // Deactivate all
-      tabBtns.forEach(function (b) {
-        b.classList.remove('active');
-        b.setAttribute('aria-selected', 'false');
-      });
-      tabPanels.forEach(function (p) {
-        p.classList.remove('active');
-      });
-
-      // Activate target
-      btn.classList.add('active');
-      btn.setAttribute('aria-selected', 'true');
-      document.getElementById('tab-' + target).classList.add('active');
-
-      // Re-highlight code in newly visible panel
-      var panel = document.getElementById('tab-' + target);
-      panel.querySelectorAll('pre code').forEach(function (block) {
-        if (!block.dataset.highlighted) {
-          hljs.highlightElement(block);
-        }
+  document.querySelectorAll('.tab-group').forEach(function (group) {
+    var btns = group.querySelectorAll('.tab-btn');
+    btns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var target = btn.getAttribute('data-tab');
+        btns.forEach(function (b) {
+          b.classList.remove('active');
+          b.setAttribute('aria-selected', 'false');
+        });
+        group.querySelectorAll('.tab-panel').forEach(function (p) {
+          p.classList.remove('active');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+        var panel = group.querySelector('#tab-' + target);
+        panel.classList.add('active');
+        panel.querySelectorAll('pre code').forEach(function (block) {
+          if (!block.dataset.highlighted) {
+            hljs.highlightElement(block);
+          }
+        });
       });
     });
   });
@@ -253,25 +247,19 @@
   }
 
 
+
   // ──────────────────────────────────────────────
-  // Quickstart Tabs (L1 / L2 / L3 templates)
+  // Back to Top
   // ──────────────────────────────────────────────
 
-  var qsTabs = document.querySelectorAll('.qs-tab');
-
-  qsTabs.forEach(function (tab) {
-    tab.addEventListener('click', function () {
-      qsTabs.forEach(function (t) {
-        t.classList.remove('is-active');
-        t.setAttribute('aria-selected', 'false');
-      });
-      document.querySelectorAll('.qs-panel').forEach(function (p) {
-        p.classList.remove('is-active');
-      });
-      tab.classList.add('is-active');
-      tab.setAttribute('aria-selected', 'true');
-      document.getElementById(tab.dataset.qs).classList.add('is-active');
+  var backToTop = document.getElementById('back-to-top');
+  if (backToTop) {
+    window.addEventListener('scroll', function () {
+      backToTop.classList.toggle('visible', window.scrollY > 400);
     });
-  });
+    backToTop.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
 
 })();

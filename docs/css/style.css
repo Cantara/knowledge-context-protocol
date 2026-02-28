@@ -257,7 +257,7 @@ section {
   padding: var(--space-24) 0;
 }
 
-section:nth-child(even) {
+.section--alt {
   background-color: var(--bg-secondary);
 }
 
@@ -1985,37 +1985,6 @@ section:nth-child(even) {
 }
 
 /* ---------- Quickstart ---------- */
-.quickstart-tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 2px solid var(--card-border);
-  margin-bottom: 1.5rem;
-}
-
-.qs-tab {
-  padding: 0.625rem 1.25rem;
-  font-size: var(--fs-sm);
-  font-weight: 500;
-  cursor: pointer;
-  border: none;
-  background: none;
-  color: var(--text-secondary);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  transition: color 0.2s, border-color 0.2s;
-  font-family: var(--font-sans);
-}
-
-.qs-tab:hover { color: var(--text-primary); }
-
-.qs-tab.is-active {
-  color: var(--accent-primary);
-  border-bottom-color: var(--accent-primary);
-}
-
-.qs-panel { display: none; }
-.qs-panel.is-active { display: block; }
-
 .qs-note {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
@@ -2175,6 +2144,64 @@ section:nth-child(even) {
   .rfc-step:last-child { border-radius: 0 0 var(--radius-md) 0; }
   .rfc-step::after { display: none; }
   .rfc-step__desc { display: none; }
+}
+
+/* ---------- Back to Top ---------- */
+.back-to-top {
+  position: fixed;
+  bottom: var(--space-6);
+  right: var(--space-6);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: var(--accent-primary);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.back-to-top.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.back-to-top:hover {
+  background: var(--accent-primary-hover);
+}
+
+/* ---------- Use Cases RFC Divider ---------- */
+.usecase-rfc-divider {
+  margin: var(--space-16) 0 var(--space-8);
+  text-align: center;
+}
+
+.usecase-rfc-divider p {
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  max-width: 540px;
+  margin: var(--space-2) auto 0;
+}
+
+/* ---------- RFC Badge (use-case cards) ---------- */
+.rfc-badge {
+  display: inline-block;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  background: var(--accent-primary-subtle);
+  color: var(--accent-primary);
+  letter-spacing: var(--ls-wide);
+  margin-left: auto;
 }
 
 /* ---------- Utility ---------- */
