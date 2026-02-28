@@ -204,6 +204,24 @@ corpus with different task contexts.
 
 ---
 
+## Relationship to HATEOAS
+
+KCP shares a foundational insight with HATEOAS (Hypermedia As The Engine Of Application State):
+typed, directional relationships between resources are necessary for navigation — a flat list is
+not enough. KCP's `depends_on`, `supersedes`, and `relationships` fields are the same idea as
+HATEOAS link relations.
+
+The key difference is static vs dynamic. HATEOAS links are generated per-response based on live
+resource state. KCP is a committed file: it declares topology at authoring time without a server.
+Where KCP goes further: the `intent` field (what question does this unit answer?), `validated`
+(human-confirmed freshness, not just file modification time), and `audience` targeting — concerns
+that arise specifically when the consumer is a context-window-constrained AI agent rather than an
+API client.
+
+See [SPEC.md §11](./SPEC.md#11-relationship-to-hateoas) for a full treatment.
+
+---
+
 ## Relationship to MCP and Synthesis
 
 **MCP** (Model Context Protocol) defines how agents connect to tools. KCP defines how knowledge

@@ -597,7 +597,49 @@ A knowledge server MAY expose KCP-structured content via MCP. The knowledge unit
 
 ---
 
-## 11. Extension Fields
+## 11. Relationship to HATEOAS
+
+HATEOAS (Hypermedia As The Engine Of Application State) is a REST architectural constraint in
+which server responses include typed links describing the transitions available to the client from
+its current state. KCP shares the same foundational insight — that typed, directional
+relationships between resources are necessary for navigation — but applies it in a different
+domain with a different execution model.
+
+**Shared insight:** Both reject the "flat list of resources" model. A consumer navigating an
+information space needs to know not just what exists, but how resources relate, what transitions
+are valid, and what each resource is for. KCP's `depends_on`, `supersedes`, and `relationships`
+fields are the same idea as HATEOAS link relations: typed directed edges that tell the consumer
+how to move through the space.
+
+**Key difference — static vs dynamic:** HATEOAS links are generated per-response, reflecting the
+current state of the resource. A HATEOAS server may offer a `cancel` link on a pending order and
+omit it on a fulfilled one. KCP is a committed file. The manifest declares topology at authoring
+time; it does not adapt to the agent's current task or the state of the knowledge base at query
+time. This is a deliberate design choice that enables KCP to work without a server, but it means
+KCP cannot express conditional navigation ("this unit is relevant only if you have already loaded
+unit X").
+
+**Where KCP goes beyond HATEOAS:** HATEOAS link relations express what action a client can take
+next. KCP's `intent` field expresses what question a unit answers — a different kind of metadata
+that enables semantic routing without loading content. KCP's `validated` field distinguishes human
+confirmation of accuracy from file modification time, which has no equivalent in HTTP caching
+semantics. KCP's `audience` field and `triggers` list address relevance filtering concerns that
+REST never needed because its consumers are not context-window-constrained agents navigating
+heterogeneous corpora.
+
+**Where HATEOAS goes beyond KCP:** Runtime, state-dependent navigation. A HATEOAS server adjusts
+its link set based on live resource state. KCP cannot model this. If future implementations add a
+KCP-aware query server (such as a KCP-over-MCP bridge), this gap narrows for the dynamic case.
+For the static file format, it is a fundamental constraint.
+
+Implementations that are familiar with HATEOAS may find the `relationships` section the most
+natural entry point into KCP. The conceptual vocabulary — typed links, link relations, navigation
+graph — transfers directly. The intent, freshness, and audience fields represent concerns that
+arise specifically when the consumer is an AI agent rather than an API client.
+
+---
+
+## 12. Extension Fields
 
 Implementations MAY add custom fields to the root manifest or to individual units. Custom fields
 SHOULD use a namespaced prefix to avoid collisions with future spec fields (e.g.
@@ -608,7 +650,7 @@ implementations. This is required for forward compatibility.
 
 ---
 
-## 12. Security Considerations
+## 13. Security Considerations
 
 **Path traversal:** Parsers MUST NOT resolve `path` values that traverse outside the manifest's
 root directory (i.e. paths containing `..` that escape the root). Such paths SHOULD be rejected
