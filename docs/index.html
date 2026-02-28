@@ -57,6 +57,7 @@
         <li><a href="#spec">Spec</a></li>
         <li><a href="#examples">Examples</a></li>
         <li><a href="#parsers">Parsers</a></li>
+        <li><a href="#use-cases">Use Cases</a></li>
         <li><a href="#adopt">Adopt</a></li>
         <li><a href="#faq">FAQ</a></li>
       </ul>
@@ -787,6 +788,326 @@ result.warnings().forEach(System.out::println);</code></pre>
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       USE CASES
+       ============================================================ -->
+  <section id="use-cases">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">Use Cases</span>
+        <h2>What people build with KCP</h2>
+        <p>KCP solves different problems at different scales. Find the scenario that matches your project today.</p>
+      </div>
+
+      <div class="usecase-grid">
+
+        <!-- 1: Open Source Docs -->
+        <div class="usecase-card reveal">
+          <div class="usecase-card__header">
+            <div class="usecase-card__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            </div>
+            <span class="usecase-card__persona">Open source &middot; developer tools</span>
+          </div>
+          <h4>Open Source Docs That Scale</h4>
+          <p>Your project has a README, an API reference, three migration guides, and a changelog. An agent asked "how do I authenticate?" loads all of them and picks at random. With KCP, it finds the right unit by intent, checks the <code>validated</code> date, skips the stale v2 guide via <code>supersedes</code>, and reads the architecture overview before the API reference via <code>depends_on</code>. Five fields. Five minutes.</p>
+          <div class="usecase-card__fields">
+            <span class="usecase-card__field-tag">intent</span>
+            <span class="usecase-card__field-tag">depends_on</span>
+            <span class="usecase-card__field-tag">validated</span>
+            <span class="usecase-card__field-tag">supersedes</span>
+            <span class="usecase-card__field-tag">triggers</span>
+          </div>
+          <details class="usecase-snippet">
+            <summary><span>knowledge.yaml</span></summary>
+            <pre><code class="language-yaml">units:
+  - id: quickstart
+    path: docs/quickstart.md
+    intent: "How do I install and run my first example?"
+    scope: global
+    audience: [human, agent, developer]
+    validated: "2026-02-15"
+    triggers: [install, setup, getting-started]
+
+  - id: api-auth
+    path: docs/api/authentication.md
+    intent: "How do I authenticate API requests?"
+    scope: module
+    audience: [developer, agent]
+    depends_on: [quickstart]
+    supersedes: api-auth-v1
+    triggers: [oauth2, bearer-token, jwt]</code></pre>
+          </details>
+        </div>
+
+        <!-- 2: Agent-Navigable API Reference -->
+        <div class="usecase-card reveal reveal-delay-1">
+          <div class="usecase-card__header">
+            <div class="usecase-card__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            </div>
+            <span class="usecase-card__persona">Platform teams &middot; API products</span>
+          </div>
+          <h4>Agent-Navigable API Reference</h4>
+          <p>Your API reference is 62,000 tokens. An agent with 16,000 tokens of remaining context tries to load it and fails. With KCP, the manifest declares the full reference as <code>load_strategy: never</code> and exposes it as five named chunks. The agent loads only the "Authentication endpoints" chunk when the user asks about tokens &mdash; the rest stays available without ever touching the context window.</p>
+          <div class="usecase-card__fields">
+            <span class="usecase-card__field-tag">hints.token_estimate</span>
+            <span class="usecase-card__field-tag">hints.chunked</span>
+            <span class="usecase-card__field-tag">hints.chunk_of</span>
+            <span class="usecase-card__field-tag">hints.load_strategy</span>
+            <span class="usecase-card__field-tag">kind</span>
+          </div>
+          <details class="usecase-snippet">
+            <summary><span>knowledge.yaml</span></summary>
+            <pre><code class="language-yaml">units:
+  - id: api-reference
+    path: api/reference.md
+    kind: schema
+    format: openapi
+    intent: "What endpoints does the API expose?"
+    scope: module
+    audience: [developer, agent]
+    hints:
+      token_estimate: 62000
+      load_strategy: never
+      chunked: true
+      chunk_count: 5
+
+  - id: api-ref-auth
+    path: api/reference-auth.md
+    intent: "What are the authentication endpoints?"
+    hints:
+      token_estimate: 9400
+      chunk_of: api-reference
+      chunk_index: 1
+      chunk_topic: "Authentication and token management"</code></pre>
+          </details>
+        </div>
+
+        <!-- 3: Multilingual Knowledge Base -->
+        <div class="usecase-card reveal reveal-delay-2">
+          <div class="usecase-card__header">
+            <div class="usecase-card__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            </div>
+            <span class="usecase-card__persona">International teams &middot; localization</span>
+          </div>
+          <h4>Multilingual Knowledge Base</h4>
+          <p>Your engineering wiki exists in English and Norwegian. An agent defaults to English. A Norwegian user expects Norwegian. Without language metadata, agents pick whichever file appears first. With KCP, each unit declares its BCP 47 language tag. Agents select the right variant for the user's locale. Translation staleness is visible at a glance through mismatched <code>validated</code> dates between language variants.</p>
+          <div class="usecase-card__fields">
+            <span class="usecase-card__field-tag">language</span>
+            <span class="usecase-card__field-tag">audience</span>
+            <span class="usecase-card__field-tag">validated</span>
+          </div>
+          <details class="usecase-snippet">
+            <summary><span>knowledge.yaml</span></summary>
+            <pre><code class="language-yaml">project: engineering-wiki
+language: en               # default for all units
+
+units:
+  - id: methodology-en
+    path: methodology/overview-en.md
+    intent: "What development methodology is used?"
+    language: en
+    scope: global
+    audience: [human, agent, developer]
+    validated: "2026-02-20"
+
+  - id: methodology-no
+    path: methodology/overview-no.md
+    intent: "Hvilken utviklingsmetodologi brukes?"
+    language: "no"
+    scope: global
+    audience: [human]
+    validated: "2026-01-10"    # stale — translation not synced</code></pre>
+          </details>
+        </div>
+
+        <!-- 4: GDPR-Safe Knowledge -->
+        <div class="usecase-card reveal">
+          <div class="usecase-card__header">
+            <div class="usecase-card__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <span class="usecase-card__persona">Finance &middot; healthcare &middot; public sector</span>
+          </div>
+          <h4>GDPR-Safe Knowledge for Agents</h4>
+          <p>An autonomous agent loads a customer PII schema and sends it to an external LLM for summarization &mdash; violating GDPR. There was no machine-readable signal that this unit cannot leave the EEA. With KCP compliance metadata, the manifest declares data residency, regulation scope, sensitivity level, and processing restrictions. The orchestration layer reads these before loading the content and routes to an on-premise model instead.</p>
+          <div class="usecase-card__fields">
+            <span class="usecase-card__field-tag">compliance.data_residency</span>
+            <span class="usecase-card__field-tag">compliance.regulations</span>
+            <span class="usecase-card__field-tag">compliance.sensitivity</span>
+            <span class="usecase-card__field-tag">compliance.restrictions</span>
+            <span class="usecase-card__field-tag">access</span>
+          </div>
+          <details class="usecase-snippet">
+            <summary><span>knowledge.yaml</span></summary>
+            <pre><code class="language-yaml">compliance:                    # root-level defaults
+  data_residency:
+    regions: [EEA]
+    hard_requirement: true
+  regulations: [GDPR]
+  sensitivity: confidential
+
+units:
+  - id: customer-pii-schema
+    path: data/customer-pii.md
+    intent: "How is customer personal data structured?"
+    scope: module
+    audience: [developer]
+    access: restricted
+    compliance:
+      restrictions:
+        - no-external-llm
+        - audit-required
+        - human-approval-required</code></pre>
+          </details>
+        </div>
+
+        <!-- 5: Monetized Knowledge APIs -->
+        <div class="usecase-card reveal reveal-delay-1">
+          <div class="usecase-card__header">
+            <div class="usecase-card__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            </div>
+            <span class="usecase-card__persona">Data vendors &middot; knowledge APIs</span>
+          </div>
+          <h4>Monetized Knowledge APIs</h4>
+          <p>You publish a knowledge API: free documentation, and real-time data at $0.002 per request via stablecoin micropayment. Agents discover your pricing by crashing into a 402 error. With KCP, the manifest declares payment methods (including x402), rate limits per authentication tier, and per-unit overrides. An agent reads the manifest, checks its budget, picks the free summary over the paid corpus, and plans its request rate &mdash; before issuing a single request.</p>
+          <div class="usecase-card__fields">
+            <span class="usecase-card__field-tag">payment.methods</span>
+            <span class="usecase-card__field-tag">payment.default_tier</span>
+            <span class="usecase-card__field-tag">rate_limits</span>
+          </div>
+          <details class="usecase-snippet">
+            <summary><span>knowledge.yaml</span></summary>
+            <pre><code class="language-yaml">payment:
+  default_tier: free
+  methods:
+    - type: free
+    - type: x402
+      currency: USDC
+      price_per_request: "0.002"
+      networks: [base, ethereum]
+
+rate_limits:
+  default:
+    requests_per_minute: 10
+  authenticated:
+    requests_per_minute: 60
+
+units:
+  - id: docs
+    path: docs/index.md
+    intent: "What knowledge is available?"
+    # inherits root defaults: free, 10 rpm
+
+  - id: realtime-data
+    path: data/feed.json
+    intent: "What are the current prices?"
+    payment:
+      default_tier: metered
+      methods:
+        - type: x402
+          currency: USDC
+          price_per_request: "0.05"</code></pre>
+          </details>
+        </div>
+
+        <!-- 6: Cross-Team Federation -->
+        <div class="usecase-card reveal reveal-delay-2">
+          <div class="usecase-card__header">
+            <div class="usecase-card__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+            </div>
+            <span class="usecase-card__persona">Enterprise &middot; platform engineering</span>
+          </div>
+          <h4>Cross-Team Knowledge Federation</h4>
+          <p>Five teams each have their own <code>knowledge.yaml</code>. Product Alpha's deployment guide depends on Platform's infrastructure docs. Security's GDPR policy governs Product Alpha's data handling. Each manifest is an island. With KCP federation, a hub manifest composes sub-manifests with typed relationships: Platform is "foundation," Security is "governance." Units declare cross-manifest dependencies. Agents follow the graph across team boundaries.</p>
+          <div class="usecase-card__fields">
+            <span class="usecase-card__field-tag">manifests</span>
+            <span class="usecase-card__field-tag">external_depends_on</span>
+            <span class="usecase-card__field-tag">external_relationships</span>
+          </div>
+          <details class="usecase-snippet">
+            <summary><span>knowledge.yaml</span></summary>
+            <pre><code class="language-yaml">project: engineering-hub
+manifests:
+  - id: platform
+    url: "https://platform.internal/knowledge.yaml"
+    label: "Platform — infrastructure, CI/CD"
+    relationship: foundation
+  - id: security
+    url: "https://security.internal/knowledge.yaml"
+    label: "Security — policy, compliance"
+    relationship: governance
+
+units:
+  - id: product-deployment
+    path: ops/deployment.md
+    intent: "How do I deploy Product Alpha?"
+    scope: global
+    audience: [developer, agent]
+    external_depends_on:
+      - manifest: platform
+        unit: deployment-architecture
+      - manifest: security
+        unit: gdpr-policy
+        required: true</code></pre>
+          </details>
+        </div>
+
+        <!-- 7: Secure Agent Delegation -->
+        <div class="usecase-card reveal">
+          <div class="usecase-card__header">
+            <div class="usecase-card__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <span class="usecase-card__persona">AI governance &middot; multi-agent systems</span>
+          </div>
+          <h4>Secure Agent Delegation Chains</h4>
+          <p>A human authorizes an orchestrator, which delegates to a sub-agent, which calls a tool that accesses sensitive clinical data. Nobody knows how many hops the content has traveled from the original decision-maker. With KCP delegation metadata, the manifest declares maximum chain depth, mandatory capability attenuation, human-in-the-loop consent, and W3C Trace Context requirements for full audit chain reconstruction. An orchestrator two hops deep knows before it tries: this content requires direct human approval.</p>
+          <div class="usecase-card__fields">
+            <span class="usecase-card__field-tag">delegation.max_depth</span>
+            <span class="usecase-card__field-tag">delegation.human_in_the_loop</span>
+            <span class="usecase-card__field-tag">trust.audit</span>
+            <span class="usecase-card__field-tag">trust.agent_requirements</span>
+          </div>
+          <details class="usecase-snippet">
+            <summary><span>knowledge.yaml</span></summary>
+            <pre><code class="language-yaml">delegation:                    # root-level defaults
+  max_depth: 2
+  require_capability_attenuation: true
+  audit_chain: true
+
+trust:
+  audit:
+    require_trace_context: true
+
+units:
+  - id: patient-summary
+    path: reports/patient-cohort.md
+    intent: "What does the patient cohort analysis show?"
+    scope: module
+    audience: [operator]
+    access: restricted
+    delegation:
+      max_depth: 1
+      human_in_the_loop:
+        required: true
+        approval_mechanism: oauth_consent
+    trust:
+      agent_requirements:
+        require_attestation: true
+        trusted_providers: ["agents.hospital.internal"]</code></pre>
+          </details>
+        </div>
+
       </div>
     </div>
   </section>
