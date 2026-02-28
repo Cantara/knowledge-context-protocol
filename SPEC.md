@@ -294,6 +294,20 @@ The following conditions MUST cause the parser to reject the manifest:
 
 ---
 
+### 7.1 JSON Schema
+
+A JSON Schema (draft-07) for `knowledge.yaml` is available at
+[`schema/knowledge-schema.json`](./schema/knowledge-schema.json). It covers all fields defined in
+this specification: root fields (`kcp_version`, `project`, `version`, `updated`), unit fields
+(`id`, `path`, `intent`, `scope`, `audience`, `validated`, `depends_on`, `supersedes`, `triggers`),
+and relationship fields (`from`, `to`, `type`).
+
+The schema enforces required fields, value constraints (e.g. `id` pattern, trigger `maxLength`
+and `maxItems`), and structural rules. It can be used with any JSON Schema validator to check
+manifest correctness before parsing, and by editors for autocompletion and inline validation.
+
+---
+
 ## 8. Conformance Levels
 
 Implementations are encouraged to adopt KCP incrementally. Three levels are defined:

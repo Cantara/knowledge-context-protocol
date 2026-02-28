@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cantara.github.io/knowledge-context-protocol/schema/knowledge-schema.json",
+  "title": "Knowledge Context Protocol Manifest",
+  "description": "Schema for knowledge.yaml — a KCP manifest describing the knowledge units in a project. See https://github.com/Cantara/knowledge-context-protocol/blob/main/SPEC.md",
+  "type": "object",
+  "required": ["project", "units"],
+  "additionalProperties": true,
+  "properties": {
+    "kcp_version": {
+      "type": "string",
+      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current valid value: \"0.1\".",
+      "enum": ["0.1"]
+    },
+    "project": {
+      "type": "string",
+      "description": "Human-readable name of the project or documentation site. REQUIRED.",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "description": "Semver version of this manifest. Increment when units are added or removed. RECOMMENDED.",
+      "pattern": "^[0-9]"
+    },
+    "updated": {
+      "type": "string",
+      "description": "ISO 8601 date (YYYY-MM-DD) when this manifest was last modified. RECOMMENDED.",
+      "format": "date",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "units": {
+      "type": "array",
+      "description": "Ordered list of knowledge unit declarations. REQUIRED. Must contain at least one unit.",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/unit" }
+    },
+    "relationships": {
+      "type": "array",
+      "description": "Explicit cross-unit relationship declarations. OPTIONAL.",
+      "items": { "$ref": "#/definitions/relationship" }
+    }
+  },
+  "definitions": {
+    "unit": {
+      "type": "object",
+      "description": "A self-contained piece of knowledge in the manifest.",
+      "required": ["id", "path", "intent", "scope", "audience"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier within this manifest. Lowercase ASCII letters (a-z), digits (0-9), hyphens (-), and dots (.) only. Must not be empty.",
+          "pattern": "^[a-z0-9.\\-]+$",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "description": "Relative path from the manifest file's location to the content file. Forward slashes must be used as path separators. Must not start with '/' or contain '..' traversal that escapes the root.",
+          "minLength": 1,
+          "not": {
+            "pattern": "^/"
+          }
+        },
+        "intent": {
+          "type": "string",
+          "description": "One sentence describing the question this unit answers or the task it enables. Written as a question or task description, not a title.",
+          "minLength": 1
+        },
+        "scope": {
+          "type": "string",
+          "description": "Breadth of applicability: global (entire project), project (specific project/service), or module (specific module/component).",
+          "enum": ["global", "project", "module"]
+        },
+        "audience": {
+          "type": "array",
+          "description": "Who this unit is for. One or more of: human, agent, developer, architect, operator, devops. Unknown values are silently ignored.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        },
+        "validated": {
+          "type": "string",
+          "description": "ISO 8601 date when a human last confirmed the content was accurate. RECOMMENDED.",
+          "format": "date",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "depends_on": {
+          "type": "array",
+          "description": "IDs of units that should be loaded before this one. Values must be IDs declared in the same manifest. Cycles are detected and silently ignored.",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9.\\-]+$"
+          }
+        },
+        "supersedes": {
+          "type": "string",
+          "description": "ID of the unit this replaces. The referenced unit may no longer exist in the manifest.",
+          "pattern": "^[a-z0-9.\\-]+$"
+        },
+        "triggers": {
+          "type": "array",
+          "description": "Keywords or short phrases indicating when this unit is relevant. Used for task-based retrieval. Each trigger must not exceed 60 characters. A unit must not declare more than 20 triggers.",
+          "items": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "maxItems": 20
+        },
+        "kind": {
+          "type": "string",
+          "description": "Type of artifact: knowledge (default), schema, service, executable, or policy. Extension field from RFC-0001."
+        }
+      }
+    },
+    "relationship": {
+      "type": "object",
+      "description": "An explicit directional relationship between two knowledge units.",
+      "required": ["from", "to", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "ID of the source unit.",
+          "pattern": "^[a-z0-9.\\-]+$"
+        },
+        "to": {
+          "type": "string",
+          "description": "ID of the target unit.",
+          "pattern": "^[a-z0-9.\\-]+$"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of relationship: enables (from unlocks to), context (from provides context for to), supersedes (from replaces to), contradicts (from conflicts with to).",
+          "enum": ["enables", "context", "supersedes", "contradicts"]
+        }
+      }
+    }
+  }
+}
