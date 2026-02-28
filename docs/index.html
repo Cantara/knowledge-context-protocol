@@ -27,6 +27,9 @@
 
   <!-- Styles -->
   <link rel="stylesheet" href="css/style.css">
+  <!-- Playground dependencies (loaded in <head> so playground.js can use them) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ajv/6.12.6/ajv.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
 
@@ -52,13 +55,16 @@
 
       <ul class="nav__links" id="nav-links">
         <li><a href="#problem">Problem</a></li>
+        <li><a href="#compare">Compare</a></li>
         <li><a href="#what">What is KCP</a></li>
         <li><a href="#how">How it works</a></li>
         <li><a href="#spec">Spec</a></li>
         <li><a href="#examples">Examples</a></li>
         <li><a href="#parsers">Parsers</a></li>
         <li><a href="#use-cases">Use Cases</a></li>
+        <li><a href="#roadmap">Roadmap</a></li>
         <li><a href="#adopt">Adopt</a></li>
+        <li><a href="#playground">Try it</a></li>
         <li><a href="#faq">FAQ</a></li>
       </ul>
 
@@ -178,6 +184,132 @@
           <p>Flat indexes list what exists. They cannot express that A depends on B, C supersedes D, or that unit E is only relevant for authentication tasks.</p>
         </div>
       </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       COMPARISON
+       ============================================================ -->
+  <section id="compare">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">Comparison</span>
+        <h2>KCP in the landscape</h2>
+        <p>Different standards solve different parts of the agent knowledge problem. KCP fills the gap none of the others address.</p>
+      </div>
+
+      <div class="compare-wrapper reveal">
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th class="kcp-col">KCP<br><small style="font-weight:400;text-transform:none;letter-spacing:0">knowledge.yaml</small></th>
+              <th>llms.txt</th>
+              <th>AGENTS.md</th>
+              <th>A2A Cards</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Structured knowledge index</td>
+              <td><span class="cmp-yes">✓</span></td>
+              <td><span class="cmp-yes">✓</span> <small style="color:var(--text-tertiary)">(flat)</small></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+            </tr>
+            <tr>
+              <td>Dependency graph</td>
+              <td><span class="cmp-yes">✓</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+            </tr>
+            <tr>
+              <td>Intent / question mapping</td>
+              <td><span class="cmp-yes">✓</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+            </tr>
+            <tr>
+              <td>Freshness dating</td>
+              <td><span class="cmp-yes">✓</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+            </tr>
+            <tr>
+              <td>Audience targeting</td>
+              <td><span class="cmp-yes">✓</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+            </tr>
+            <tr>
+              <td>Scales to enterprise corpora</td>
+              <td><span class="cmp-yes">✓</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+            </tr>
+            <tr>
+              <td>Auth &amp; access metadata</td>
+              <td><span class="cmp-rfc">RFC</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-yes">✓</span></td>
+            </tr>
+            <tr>
+              <td>Compliance / data residency</td>
+              <td><span class="cmp-rfc">RFC</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+            </tr>
+            <tr>
+              <td>Payment metadata</td>
+              <td><span class="cmp-rfc">RFC</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+            </tr>
+            <tr>
+              <td>Cross-repo federation</td>
+              <td><span class="cmp-rfc">RFC</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+            </tr>
+            <tr>
+              <td>Codebase working instructions</td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-yes">✓</span></td>
+              <td><span class="cmp-no">—</span></td>
+            </tr>
+            <tr>
+              <td>Agent capability discovery</td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-no">—</span></td>
+              <td><span class="cmp-yes">✓</span></td>
+            </tr>
+            <tr>
+              <td>File-only, no server needed</td>
+              <td><span class="cmp-yes">✓</span></td>
+              <td><span class="cmp-yes">✓</span></td>
+              <td><span class="cmp-yes">✓</span></td>
+              <td><span class="cmp-no">—</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="compare-note reveal">
+        <span class="cmp-rfc" style="vertical-align:middle">RFC</span> = proposed in the RFC series, open for community feedback &middot;
+        llms.txt and KCP are complementary — KCP adds the metadata layer llms.txt cannot express &middot;
+        AGENTS.md provides codebase instructions; KCP describes knowledge units &mdash; both can coexist
+      </p>
     </div>
   </section>
 
@@ -1114,6 +1246,137 @@ units:
 
 
   <!-- ============================================================
+       RFC ROADMAP
+       ============================================================ -->
+  <section id="roadmap">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">Roadmap</span>
+        <h2>Where KCP is headed</h2>
+        <p>The v0.3 core is stable. Five RFC proposals extend it for enterprise use cases. All are open for community feedback through 2026.</p>
+      </div>
+
+      <div class="roadmap-core reveal">
+        <div class="roadmap-core__info">
+          <span class="roadmap-core__badge">v0.3 — Shipped</span>
+          <h3>Core specification</h3>
+          <p>Required fields + 7 new optional fields promoted from RFC-0001.</p>
+        </div>
+        <div class="roadmap-core__fields">
+          <span class="roadmap-field-pill">id</span>
+          <span class="roadmap-field-pill">path</span>
+          <span class="roadmap-field-pill">intent</span>
+          <span class="roadmap-field-pill">scope</span>
+          <span class="roadmap-field-pill">audience</span>
+          <span class="roadmap-field-pill">validated</span>
+          <span class="roadmap-field-pill">depends_on</span>
+          <span class="roadmap-field-pill">supersedes</span>
+          <span class="roadmap-field-pill">triggers</span>
+          <span class="roadmap-field-pill">kind</span>
+          <span class="roadmap-field-pill">format</span>
+          <span class="roadmap-field-pill">content_type</span>
+          <span class="roadmap-field-pill">language</span>
+          <span class="roadmap-field-pill">license</span>
+          <span class="roadmap-field-pill">indexing</span>
+          <span class="roadmap-field-pill">update_frequency</span>
+          <span class="roadmap-field-pill">relationships</span>
+        </div>
+      </div>
+
+      <div class="roadmap-rfcs reveal">
+
+        <div class="rfc-card">
+          <div class="rfc-card__header">
+            <span class="rfc-card__num">RFC-0002</span>
+            <span class="rfc-card__theme">Access</span>
+          </div>
+          <h4>Auth &amp; Delegation</h4>
+          <div class="rfc-card__blocks">
+            <span class="rfc-card__block">access</span>
+            <span class="rfc-card__block">auth</span>
+            <span class="rfc-card__block">delegation</span>
+          </div>
+          <p>Authentication methods (OAuth 2.1, API key, SPIFFE, DID), per-unit access control, and multi-agent delegation chain constraints.</p>
+          <div class="rfc-card__footer">
+            <span class="rfc-card__status">Open for feedback</span>
+            <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0002-Auth-and-Delegation.md" target="_blank" rel="noopener">Read RFC →</a>
+          </div>
+        </div>
+
+        <div class="rfc-card">
+          <div class="rfc-card__header">
+            <span class="rfc-card__num">RFC-0003</span>
+            <span class="rfc-card__theme">Scale</span>
+          </div>
+          <h4>Federation</h4>
+          <div class="rfc-card__blocks">
+            <span class="rfc-card__block">manifests</span>
+            <span class="rfc-card__block">external_depends_on</span>
+            <span class="rfc-card__block">external_relationships</span>
+          </div>
+          <p>Hub-and-spoke cross-manifest federation with typed relationships (foundation, governance, peer), cycle detection, and security constraints.</p>
+          <div class="rfc-card__footer">
+            <span class="rfc-card__status">Open for feedback</span>
+            <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0003-Federation.md" target="_blank" rel="noopener">Read RFC →</a>
+          </div>
+        </div>
+
+        <div class="rfc-card">
+          <div class="rfc-card__header">
+            <span class="rfc-card__num">RFC-0004</span>
+            <span class="rfc-card__theme">Governance</span>
+          </div>
+          <h4>Trust &amp; Compliance</h4>
+          <div class="rfc-card__blocks">
+            <span class="rfc-card__block">trust</span>
+            <span class="rfc-card__block">compliance</span>
+          </div>
+          <p>Publisher provenance, content integrity, audit requirements (W3C Trace Context), data residency, regulation vocabulary (GDPR, NIS2, HIPAA, DORA&hellip;), and processing restrictions.</p>
+          <div class="rfc-card__footer">
+            <span class="rfc-card__status">Open for feedback</span>
+            <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0004-Trust-and-Compliance.md" target="_blank" rel="noopener">Read RFC →</a>
+          </div>
+        </div>
+
+        <div class="rfc-card">
+          <div class="rfc-card__header">
+            <span class="rfc-card__num">RFC-0005</span>
+            <span class="rfc-card__theme">Economics</span>
+          </div>
+          <h4>Payment &amp; Rate Limits</h4>
+          <div class="rfc-card__blocks">
+            <span class="rfc-card__block">payment</span>
+            <span class="rfc-card__block">rate_limits</span>
+          </div>
+          <p>Free, metered, subscription, and x402 stablecoin micropayment methods. Per-tier rate limits with token-based quotas for LLM pipelines. Unit-level overrides for mixed-economics manifests.</p>
+          <div class="rfc-card__footer">
+            <span class="rfc-card__status">Open for feedback</span>
+            <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0005-Payment-and-Rate-Limits.md" target="_blank" rel="noopener">Read RFC →</a>
+          </div>
+        </div>
+
+        <div class="rfc-card">
+          <div class="rfc-card__header">
+            <span class="rfc-card__num">RFC-0006</span>
+            <span class="rfc-card__theme">Navigation</span>
+          </div>
+          <h4>Context Window Hints</h4>
+          <div class="rfc-card__blocks">
+            <span class="rfc-card__block">hints</span>
+          </div>
+          <p>Token estimates, eager/lazy/never load strategies, priority and density signals, summary relationships, and chunking for large documents — so agents plan context budget before fetching.</p>
+          <div class="rfc-card__footer">
+            <span class="rfc-card__status">Open for feedback</span>
+            <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0006-Context-Window-Hints.md" target="_blank" rel="noopener">Read RFC →</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
        ADOPTION GUIDE
        ============================================================ -->
   <section id="adopt">
@@ -1192,6 +1455,42 @@ units:
     depends_on: [architecture]
     triggers: [authentication, oauth2, jwt, api-security]</code></pre>
           </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       PLAYGROUND
+       ============================================================ -->
+  <section id="playground">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">Try it</span>
+        <h2>Validate your <code>knowledge.yaml</code></h2>
+        <p class="section-sub">Paste any manifest, pick an example, or press <kbd>Ctrl+Enter</kbd> to validate in-browser — no server required.</p>
+      </div>
+
+      <div class="playground reveal">
+        <div class="playground__editor">
+          <div class="playground__toolbar">
+            <label for="example-select">Load example:</label>
+            <select id="example-select">
+              <option value="">— choose —</option>
+              <option value="level1">Level 1 — Minimal</option>
+              <option value="level2">Level 2 — Standard</option>
+              <option value="level3">Level 3 — Full</option>
+              <option value="invalid">Invalid (shows errors)</option>
+            </select>
+          </div>
+          <textarea id="yaml-input" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
+          <div class="playground__controls">
+            <button id="validate-btn" class="btn btn-primary">Validate</button>
+          </div>
+        </div>
+        <div class="playground__output">
+          <div id="playground-output" class="pg-note">Paste a <code>knowledge.yaml</code> above and click Validate.</div>
         </div>
       </div>
     </div>
@@ -1348,5 +1647,6 @@ units:
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/playground.js"></script>
 </body>
 </html>
