@@ -1,0 +1,48 @@
+kcp_version: "0.3"
+project: full-example
+version: 2.1.0
+updated: "2026-02-28"
+language: en
+license: "Apache-2.0"
+indexing: open
+
+units:
+  - id: spec
+    path: README.md
+    intent: "What are the normative rules for this project?"
+    scope: global
+    audience: [human, agent, developer]
+    validated: "2026-02-27"
+    triggers: [spec, rules, normative]
+    kind: knowledge
+    format: markdown
+
+  - id: api-schema
+    path: api.json
+    intent: "What is the JSON schema for the API request/response format?"
+    scope: module
+    audience: [developer, agent]
+    validated: "2026-02-20"
+    triggers: [api, schema, json]
+    kind: schema
+    format: json-schema
+    content_type: "application/schema+json"
+    depends_on: [spec]
+
+  - id: guide
+    path: GUIDE.md
+    intent: "How do I integrate this project into my application?"
+    scope: project
+    audience: [human, developer]
+    validated: "2026-02-15"
+    triggers: [guide, integration, how-to]
+    depends_on: [spec]
+    supersedes: old-guide
+
+relationships:
+  - from: api-schema
+    to: spec
+    type: context
+  - from: guide
+    to: spec
+    type: context

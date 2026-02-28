@@ -52,3 +52,38 @@ jobs:
         run: |
           cd parsers/java
           mvn test -q
+
+  typescript-bridge-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ["18", "20", "22"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: |
+          cd bridge/typescript
+          npm install
+
+      - name: Build
+        run: |
+          cd bridge/typescript
+          npm run build
+
+      - name: Run tests
+        run: |
+          cd bridge/typescript
+          npm test
+
+      - name: Validate examples via CLI
+        run: |
+          cd bridge/typescript
+          for f in ../../examples/*/knowledge.yaml; do
+            node dist/cli.js "$f" --help > /dev/null
+          done
