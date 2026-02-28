@@ -128,6 +128,8 @@ delegation:
 
 #### Proposal C — Payment metadata ([Issue #2](https://github.com/Cantara/knowledge-context-protocol/issues/2))
 
+> **Superseded by [RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md)** — The `payment` block (methods, x402, subscription, meter, unit-level overrides) is defined there.
+
 The emerging agentic payments ecosystem (x402, Stripe SPTs, Google AP2) enables agents to pay autonomously for resources. KCP should describe payment requirements so agents can plan before attempting access.
 
 ```yaml
@@ -144,6 +146,8 @@ payment:
 ```
 
 #### Proposal D — Rate limit metadata ([Issue #4](https://github.com/Cantara/knowledge-context-protocol/issues/4))
+
+> **Superseded by [RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md)** — The `rate_limits` block (per-tier limits, token limits, header mapping, backoff) is defined there.
 
 No standard exists for communicating rate limits to agents *before* they attempt access. Today agents discover limits reactively (they hit a 429). KCP can make this proactive.
 
@@ -510,8 +514,8 @@ units:
 |---|----------|-------|--------|
 | A | Auth metadata (`access` + `auth` block) | Access | → [RFC-0002](./RFC-0002-Auth-and-Delegation.md) |
 | B | Delegation constraints | Access | → [RFC-0002](./RFC-0002-Auth-and-Delegation.md) |
-| C | Payment metadata | Economics | [Issue #2](https://github.com/Cantara/knowledge-context-protocol/issues/2) — open |
-| D | Rate limit metadata | Economics | [Issue #4](https://github.com/Cantara/knowledge-context-protocol/issues/4) — open |
+| C | Payment metadata | Economics | → [RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md) (`payment` block) |
+| D | Rate limit metadata | Economics | → [RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md) (`rate_limits` block) |
 | E | Trust and audit metadata | Governance | → [RFC-0004](./RFC-0004-Trust-and-Compliance.md) (`trust` block) |
 | F | License and usage rights | Governance | ✅ Promoted to core in v0.3 (`license` field) |
 | G | Data residency and compliance | Governance | → [RFC-0004](./RFC-0004-Trust-and-Compliance.md) (`compliance` block) |
