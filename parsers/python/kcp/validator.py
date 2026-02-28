@@ -8,7 +8,14 @@ from .model import KnowledgeManifest
 VALID_SCOPES = {"global", "project", "module"}
 VALID_AUDIENCES = {"human", "agent", "developer", "operator", "architect", "devops"}
 VALID_RELATIONSHIP_TYPES = {"enables", "context", "supersedes", "contradicts"}
-KNOWN_KCP_VERSIONS = {"0.1"}
+VALID_KINDS = {"knowledge", "schema", "service", "policy", "executable"}
+VALID_FORMATS = {
+    "markdown", "pdf", "openapi", "json-schema", "jupyter",
+    "html", "asciidoc", "rst", "vtt", "yaml", "json", "csv", "text",
+}
+VALID_UPDATE_FREQUENCIES = {"hourly", "daily", "weekly", "monthly", "rarely", "never"}
+VALID_INDEXING_SHORTHANDS = {"open", "read-only", "no-train", "none"}
+KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3"}
 _ID_PATTERN = re.compile(r"^[a-z0-9.\-]+$")
 _MAX_TRIGGER_LENGTH = 60
 _MAX_TRIGGERS_PER_UNIT = 20
@@ -85,7 +92,7 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
 
     # kcp_version — RECOMMENDED; warn if missing or unknown
     if not manifest.kcp_version:
-        warnings.append("manifest: 'kcp_version' not declared; assuming 0.1")
+        warnings.append("manifest: 'kcp_version' not declared; assuming 0.3")
     elif manifest.kcp_version not in KNOWN_KCP_VERSIONS:
         warnings.append(
             f"manifest: unknown kcp_version '{manifest.kcp_version}'; "
@@ -138,6 +145,32 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
             warnings.append(
                 f"{p}: unknown audience value(s): {sorted(invalid_audience)}"
             )
+
+        # kind validation (§4.3a)
+        if unit.kind is not None and unit.kind not in VALID_KINDS:
+            warnings.append(
+                f"{p}: unknown 'kind' value '{unit.kind}'"
+            )
+
+        # format validation (§4.4a)
+        if unit.format is not None and unit.format not in VALID_FORMATS:
+            warnings.append(
+                f"{p}: unknown 'format' value '{unit.format}'"
+            )
+
+        # update_frequency validation (§4.6b)
+        if unit.update_frequency is not None and unit.update_frequency not in VALID_UPDATE_FREQUENCIES:
+            warnings.append(
+                f"{p}: unknown 'update_frequency' value '{unit.update_frequency}'"
+            )
+
+        # indexing validation (§4.6c)
+        if unit.indexing is not None and isinstance(unit.indexing, str):
+            if unit.indexing not in VALID_INDEXING_SHORTHANDS:
+                warnings.append(
+                    f"{p}: unknown 'indexing' shorthand '{unit.indexing}'"
+                )
+
         for dep in unit.depends_on:
             if dep not in unit_ids:
                 warnings.append(f"{p}: 'depends_on' references unknown unit '{dep}'")

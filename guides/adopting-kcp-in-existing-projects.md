@@ -44,11 +44,10 @@ knowledge unit's intent ("How do I authenticate API requests?"). If you try to w
 before classifying, you will write documentation-style intents for everything — and the
 dispatch signal that agents need will be missing.
 
-> **RFC-0001 note:** The proposed `kind` field (from
-> [RFC-0001](../RFC-0001-KCP-Extended.md)) gives these categories a formal name
-> (`knowledge`, `schema`, `service`, `executable`, `policy`). If your implementation
-> supports RFC-0001, see Step 4 for how to include it. The `kind` field is **not** part of
-> the v0.1 core spec — manifests without it are fully conformant.
+> **v0.3 note:** The `kind` field gives these categories a formal name
+> (`knowledge`, `schema`, `service`, `executable`, `policy`). See Step 4 for how to
+> include it. The `kind` field defaults to `knowledge` if omitted — manifests without it
+> are fully conformant.
 
 **The mature-project path through this guide:**
 
@@ -91,7 +90,7 @@ These five fields are enough for an agent to answer: "what knowledge exists, wha
 piece answer, and who is it for?"
 
 ```yaml
-kcp_version: "0.1"
+kcp_version: "0.3"
 project: my-project
 version: 1.0.0
 
@@ -147,12 +146,12 @@ as potentially stale.
 
 ---
 
-## Step 4: Add `kind` for non-documentation artifacts (RFC-0001 extension)
+## Step 4: Add `kind` for non-documentation artifacts
 
-> **Note:** `kind` is a proposed extension from [RFC-0001](../RFC-0001-KCP-Extended.md),
-> not part of the v0.1 core spec. A manifest without `kind` is fully conformant.
-> Add it if your implementation supports RFC-0001 or if you want to signal artifact type
-> to tools that understand the extension.
+> **Note:** `kind` is part of the v0.3 core spec. A manifest without `kind` is fully
+> conformant — when omitted, parsers treat the unit as `kind: knowledge` (the default).
+> Add it when your project has non-documentation artifacts like API specs, agent
+> definitions, or policy hooks.
 
 If your project has API specs, agent definitions, or policy hooks — not just documentation —
 the `kind` field helps agents and tools interact with them correctly:
@@ -170,21 +169,21 @@ Unknown `kind` values MUST be silently ignored by conformant parsers.
 
 ```yaml
   - id: payments-api-spec
-    kind: schema                   # RFC-0001 extension field
+    kind: schema
     path: openapi/payments.yaml
     intent: "What endpoints does the Payments API expose?"
     scope: module
     audience: [developer, agent]
 
   - id: health-check-agent
-    kind: executable               # RFC-0001 extension field
+    kind: executable
     path: .claude/agents/health-check.md
     intent: "How do I run a health check on this project's AI context setup?"
     scope: project
     audience: [agent]
 
   - id: pre-commit-gate
-    kind: policy                   # RFC-0001 extension field
+    kind: policy
     path: .husky/pre-commit
     intent: "What checks run automatically before every commit?"
     scope: project
@@ -218,12 +217,75 @@ relationships:
 
 ---
 
+## Step 6: Add v0.3 metadata where useful
+
+v0.3 adds several metadata fields that you can add incrementally:
+
+### `format` — what type of content file is it?
+
+```yaml
+  - id: api-reference
+    path: reference/openapi.yaml
+    intent: "What are the API endpoints?"
+    format: openapi                  # signals machine-readable API spec
+    scope: module
+    audience: [developer, agent]
+```
+
+Values: `markdown`, `pdf`, `openapi`, `json-schema`, `jupyter`, `html`, `asciidoc`,
+`rst`, `vtt`, `yaml`, `json`, `csv`, `text`. If omitted, agents may infer from extension.
+
+### `language` — what language is the content in?
+
+```yaml
+language: en                         # root-level default for all units
+```
+
+Use BCP 47 language tags: `en`, `no`, `de`, `fr`, `es`, `ja`, `zh`.
+Override per unit when you have multilingual content.
+
+### `license` — what may agents do with the content?
+
+```yaml
+license: "Apache-2.0"               # root-level default (SPDX identifier)
+```
+
+Or a structured form per unit:
+
+```yaml
+  - id: methodology
+    license:
+      spdx: "CC-BY-4.0"
+      attribution_required: true
+```
+
+### `update_frequency` — how often does this content change?
+
+```yaml
+  - id: changelog
+    path: CHANGELOG.md
+    update_frequency: weekly         # helps agents decide when to re-fetch
+```
+
+Values: `hourly`, `daily`, `weekly`, `monthly`, `rarely`, `never`.
+
+### `indexing` — may AI agents index and train on this content?
+
+```yaml
+indexing: no-train                   # root-level: allow everything except training
+```
+
+Shorthands: `open`, `read-only`, `no-train`, `none`. Or use a structured form
+with explicit `allow` and `deny` lists.
+
+---
+
 ## Common friction points
 
 ### "Where does `knowledge.yaml` go in a monorepo?"
 
 Place it at the root of each subproject that has its own documentation. Each manifest
-is independent (SPEC.md §1.3). Cross-manifest references are not supported in v0.1 —
+is independent (SPEC.md §1.3). Cross-manifest references are not supported in v0.3 —
 see issue #12 for the federation proposal.
 
 Alternatively, place a single manifest at the monorepo root covering all subprojects,
@@ -234,7 +296,7 @@ using relative paths: `path: services/payments/docs/auth.md`.
 KCP requires a `path` to a content file. For external documentation, either:
 - Export key documents to markdown files and declare those
 - Create stub markdown files that summarise and link to the external source
-- Wait for federation support (issue #12) which may support URL-based paths in v0.2
+- Wait for federation support (issue #12) which may support URL-based paths in a future version
 
 ### "How do I keep the manifest in sync with actual docs?"
 

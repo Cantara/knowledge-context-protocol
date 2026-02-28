@@ -54,14 +54,24 @@ project or documentation site. It adds the metadata layer that llms.txt cannot e
 project: <name>
 version: 1.0.0
 updated: <ISO date>
+language: <BCP 47 tag>             # optional — default for all units
+license: <SPDX identifier>        # optional — default for all units
+indexing: open | read-only | no-train | none  # optional — default for all units
 
 units:
   - id: <unique-identifier>
-    path: <relative path to markdown file>
+    path: <relative path to content file>
+    kind: knowledge | schema | service | policy | executable  # optional; default: knowledge
     intent: "<What question does this answer?>"
+    format: markdown | pdf | openapi | ...  # optional
+    content_type: <MIME type>              # optional
+    language: <BCP 47 tag>                 # optional
     scope: global | project | module
     audience: [human, agent, developer, operator, architect]
+    license: <SPDX identifier or object>  # optional
     validated: <ISO date>
+    update_frequency: hourly | daily | weekly | monthly | rarely | never  # optional
+    indexing: open | read-only | no-train | none  # optional
     depends_on: [<unit-id>, ...]       # optional
     supersedes: <unit-id>              # optional
     triggers: [<keyword>, ...]         # optional
@@ -77,11 +87,18 @@ relationships:
 | Field | Required | Description |
 |-------|----------|-------------|
 | `id` | yes | Unique identifier within the project |
-| `path` | yes | Relative path to the Markdown content file |
+| `path` | yes | Relative path to the content file |
+| `kind` | optional | Type of artifact: `knowledge` (default), `schema`, `service`, `policy`, `executable` |
 | `intent` | yes | One sentence: what question does this unit answer? |
+| `format` | optional | Content format: `markdown`, `pdf`, `openapi`, `json-schema`, `jupyter`, etc. |
+| `content_type` | optional | Full MIME type for precise format identification |
+| `language` | optional | BCP 47 language tag (e.g. `en`, `no`, `de`) |
 | `scope` | yes | `global`, `project`, or `module` |
 | `audience` | yes | Who this is for: `human`, `agent`, `developer`, `operator`, `architect` |
+| `license` | optional | SPDX identifier or structured license object |
 | `validated` | recommended | ISO date when content was last confirmed accurate |
+| `update_frequency` | optional | How often content changes: `hourly`, `daily`, `weekly`, `monthly`, `rarely`, `never` |
+| `indexing` | optional | AI crawling permissions: `open`, `read-only`, `no-train`, `none`, or structured object |
 | `depends_on` | optional | Units that must be understood before this one |
 | `supersedes` | optional | The unit-id this replaces |
 | `triggers` | optional | Task contexts or keywords that make this unit relevant |
@@ -91,7 +108,7 @@ relationships:
 Five fields per unit are enough to start:
 
 ```yaml
-kcp_version: "0.2"
+kcp_version: "0.3"
 project: my-project
 version: 1.0.0
 units:
@@ -110,10 +127,13 @@ The standard allows complexity but does not demand it.
 
 ```yaml
 # knowledge.yaml
-kcp_version: "0.2"
+kcp_version: "0.3"
 project: wiki.example.org
 version: 1.0.0
 updated: "2026-02-28"
+language: en
+license: "Apache-2.0"
+indexing: open
 
 units:
   - id: about
@@ -122,15 +142,27 @@ units:
     scope: global
     audience: [human, agent]
     validated: "2026-02-24"
+    update_frequency: monthly
 
   - id: methodology
     path: methodology/overview.md
     intent: "What development methodology is used? Principles, evidence, adoption."
+    format: markdown
     scope: global
     audience: [developer, architect, agent]
     depends_on: [about]
     validated: "2026-02-13"
     triggers: ["methodology", "productivity", "workflow"]
+
+  - id: api-spec
+    kind: schema
+    path: api/openapi.yaml
+    intent: "What endpoints does the API expose?"
+    format: openapi
+    scope: module
+    audience: [developer, agent]
+    validated: "2026-02-25"
+    update_frequency: weekly
 
   - id: knowledge-infrastructure
     path: tools/knowledge-infra.md
@@ -189,7 +221,7 @@ Synthesis index automatically.
 
 ## Status
 
-**Current:** Draft specification — v0.1
+**Current:** Draft specification — v0.3
 
 This is an early proposal. The format is intentionally minimal. Feedback, use cases, and pull
 requests are welcome.

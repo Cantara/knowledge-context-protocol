@@ -23,13 +23,16 @@ MINIMAL = {
     ],
 }
 
-MINIMAL_WITH_KCP_VERSION = {**MINIMAL, "kcp_version": "0.1"}
+MINIMAL_WITH_KCP_VERSION = {**MINIMAL, "kcp_version": "0.3"}
 
 COMPLETE = {
     "project": "wiki.example.org",
     "version": "1.0.0",
-    "kcp_version": "0.1",
+    "kcp_version": "0.3",
     "updated": "2026-02-25",
+    "language": "en",
+    "license": "Apache-2.0",
+    "indexing": "open",
     "units": [
         {
             "id": "about",
@@ -38,6 +41,7 @@ COMPLETE = {
             "scope": "global",
             "audience": ["human", "agent"],
             "validated": "2026-02-24",
+            "update_frequency": "monthly",
         },
         {
             "id": "methodology",
@@ -48,6 +52,8 @@ COMPLETE = {
             "depends_on": ["about"],
             "validated": "2026-02-13",
             "triggers": ["methodology", "productivity"],
+            "language": "en",
+            "format": "markdown",
         },
         {
             "id": "knowledge-infra",
@@ -58,6 +64,23 @@ COMPLETE = {
             "depends_on": ["methodology"],
             "supersedes": "knowledge-infra-v1",
             "triggers": ["MCP", "indexing"],
+        },
+        {
+            "id": "api-spec",
+            "path": "api/openapi.yaml",
+            "kind": "schema",
+            "intent": "What endpoints does the API expose?",
+            "format": "openapi",
+            "content_type": "application/vnd.oai.openapi+yaml;version=3.1",
+            "scope": "module",
+            "audience": ["developer", "agent"],
+            "validated": "2026-02-20",
+            "indexing": "no-train",
+            "license": {
+                "spdx": "CC-BY-4.0",
+                "url": "https://creativecommons.org/licenses/by/4.0/",
+                "attribution_required": True,
+            },
         },
     ],
     "relationships": [
@@ -78,7 +101,7 @@ class TestParser:
 
     def test_kcp_version_parsed(self):
         m = parse_dict(MINIMAL_WITH_KCP_VERSION)
-        assert m.kcp_version == "0.1"
+        assert m.kcp_version == "0.3"
 
     def test_missing_version_does_not_crash(self):
         data = {"project": "test", "units": MINIMAL["units"]}
@@ -89,9 +112,12 @@ class TestParser:
     def test_complete_parse(self):
         m = parse_dict(COMPLETE)
         assert m.project == "wiki.example.org"
-        assert m.kcp_version == "0.1"
+        assert m.kcp_version == "0.3"
         assert m.updated == date(2026, 2, 25)
-        assert len(m.units) == 3
+        assert m.language == "en"
+        assert m.license == "Apache-2.0"
+        assert m.indexing == "open"
+        assert len(m.units) == 4
         assert len(m.relationships) == 2
 
     def test_depends_on_parsed(self):
@@ -114,6 +140,67 @@ class TestParser:
         m = parse_dict(COMPLETE)
         about = next(u for u in m.units if u.id == "about")
         assert about.validated == date(2026, 2, 24)
+
+    def test_kind_parsed(self):
+        m = parse_dict(COMPLETE)
+        api_spec = next(u for u in m.units if u.id == "api-spec")
+        assert api_spec.kind == "schema"
+        # Default is None (treated as knowledge)
+        about = next(u for u in m.units if u.id == "about")
+        assert about.kind is None
+
+    def test_format_parsed(self):
+        m = parse_dict(COMPLETE)
+        api_spec = next(u for u in m.units if u.id == "api-spec")
+        assert api_spec.format == "openapi"
+        methodology = next(u for u in m.units if u.id == "methodology")
+        assert methodology.format == "markdown"
+
+    def test_content_type_parsed(self):
+        m = parse_dict(COMPLETE)
+        api_spec = next(u for u in m.units if u.id == "api-spec")
+        assert api_spec.content_type == "application/vnd.oai.openapi+yaml;version=3.1"
+
+    def test_language_parsed(self):
+        m = parse_dict(COMPLETE)
+        assert m.language == "en"
+        methodology = next(u for u in m.units if u.id == "methodology")
+        assert methodology.language == "en"
+
+    def test_license_string_parsed(self):
+        m = parse_dict(COMPLETE)
+        assert m.license == "Apache-2.0"
+
+    def test_license_object_parsed(self):
+        m = parse_dict(COMPLETE)
+        api_spec = next(u for u in m.units if u.id == "api-spec")
+        assert isinstance(api_spec.license, dict)
+        assert api_spec.license["spdx"] == "CC-BY-4.0"
+        assert api_spec.license["attribution_required"] is True
+
+    def test_update_frequency_parsed(self):
+        m = parse_dict(COMPLETE)
+        about = next(u for u in m.units if u.id == "about")
+        assert about.update_frequency == "monthly"
+
+    def test_indexing_parsed(self):
+        m = parse_dict(COMPLETE)
+        assert m.indexing == "open"
+        api_spec = next(u for u in m.units if u.id == "api-spec")
+        assert api_spec.indexing == "no-train"
+
+    def test_indexing_object_parsed(self):
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.3",
+            "units": [{
+                **MINIMAL["units"][0],
+                "indexing": {"allow": ["read", "index"], "deny": ["train"]},
+            }],
+        }
+        m = parse_dict(data)
+        assert isinstance(m.units[0].indexing, dict)
+        assert m.units[0].indexing["allow"] == ["read", "index"]
 
 
 class TestValidator:
@@ -190,7 +277,7 @@ class TestValidator:
     def test_duplicate_id_produces_warning(self):
         data = {
             **MINIMAL,
-            "kcp_version": "0.1",
+            "kcp_version": "0.3",
             "units": [
                 MINIMAL["units"][0],
                 {**MINIMAL["units"][0], "path": "other.md", "intent": "Duplicate"},
@@ -204,7 +291,7 @@ class TestValidator:
     def test_invalid_id_format_produces_warning(self):
         data = {
             **MINIMAL,
-            "kcp_version": "0.1",
+            "kcp_version": "0.3",
             "units": [{**MINIMAL["units"][0], "id": "Has_Uppercase!"}],
         }
         m = parse_dict(data)
@@ -215,7 +302,7 @@ class TestValidator:
         for valid_id in ["overview", "my-unit", "v2.0", "a.b-c.1"]:
             data = {
                 **MINIMAL,
-                "kcp_version": "0.1",
+                "kcp_version": "0.3",
                 "units": [{**MINIMAL["units"][0], "id": valid_id}],
             }
             m = parse_dict(data)
@@ -226,7 +313,7 @@ class TestValidator:
         long_trigger = "a" * 61
         data = {
             **MINIMAL,
-            "kcp_version": "0.1",
+            "kcp_version": "0.3",
             "units": [{**MINIMAL["units"][0], "triggers": [long_trigger]}],
         }
         m = parse_dict(data)
@@ -236,12 +323,123 @@ class TestValidator:
     def test_more_than_20_triggers_produces_warning(self):
         data = {
             **MINIMAL,
-            "kcp_version": "0.1",
+            "kcp_version": "0.3",
             "units": [{**MINIMAL["units"][0], "triggers": [f"t{i}" for i in range(25)]}],
         }
         m = parse_dict(data)
         result = validate(m)
         assert any("more than 20" in w for w in result.warnings)
+
+    # -- v0.3 field validation tests --
+
+    def test_unknown_kind_produces_warning(self):
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.3",
+            "units": [{**MINIMAL["units"][0], "kind": "imaginary"}],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert result.is_valid
+        assert any("kind" in w and "imaginary" in w for w in result.warnings)
+
+    def test_valid_kind_no_warning(self):
+        for kind in ["knowledge", "schema", "service", "policy", "executable"]:
+            data = {
+                **MINIMAL,
+                "kcp_version": "0.3",
+                "units": [{**MINIMAL["units"][0], "kind": kind}],
+            }
+            m = parse_dict(data)
+            result = validate(m)
+            assert not any("kind" in w for w in result.warnings), f"kind '{kind}' flagged incorrectly"
+
+    def test_unknown_format_produces_warning(self):
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.3",
+            "units": [{**MINIMAL["units"][0], "format": "docx"}],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert result.is_valid
+        assert any("format" in w and "docx" in w for w in result.warnings)
+
+    def test_valid_format_no_warning(self):
+        for fmt in ["markdown", "pdf", "openapi", "json-schema", "jupyter", "html", "text"]:
+            data = {
+                **MINIMAL,
+                "kcp_version": "0.3",
+                "units": [{**MINIMAL["units"][0], "format": fmt}],
+            }
+            m = parse_dict(data)
+            result = validate(m)
+            assert not any("format" in w for w in result.warnings), f"format '{fmt}' flagged incorrectly"
+
+    def test_unknown_update_frequency_produces_warning(self):
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.3",
+            "units": [{**MINIMAL["units"][0], "update_frequency": "biweekly"}],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert result.is_valid
+        assert any("update_frequency" in w and "biweekly" in w for w in result.warnings)
+
+    def test_valid_update_frequency_no_warning(self):
+        for freq in ["hourly", "daily", "weekly", "monthly", "rarely", "never"]:
+            data = {
+                **MINIMAL,
+                "kcp_version": "0.3",
+                "units": [{**MINIMAL["units"][0], "update_frequency": freq}],
+            }
+            m = parse_dict(data)
+            result = validate(m)
+            assert not any("update_frequency" in w for w in result.warnings)
+
+    def test_unknown_indexing_shorthand_produces_warning(self):
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.3",
+            "units": [{**MINIMAL["units"][0], "indexing": "custom-unknown"}],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert result.is_valid
+        assert any("indexing" in w and "custom-unknown" in w for w in result.warnings)
+
+    def test_valid_indexing_shorthand_no_warning(self):
+        for idx in ["open", "read-only", "no-train", "none"]:
+            data = {
+                **MINIMAL,
+                "kcp_version": "0.3",
+                "units": [{**MINIMAL["units"][0], "indexing": idx}],
+            }
+            m = parse_dict(data)
+            result = validate(m)
+            assert not any("indexing" in w for w in result.warnings)
+
+    def test_indexing_object_no_warning(self):
+        """Structured indexing objects should not produce warnings."""
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.3",
+            "units": [{
+                **MINIMAL["units"][0],
+                "indexing": {"allow": ["read", "index"], "deny": ["train"]},
+            }],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert not any("indexing" in w for w in result.warnings)
+
+    def test_v02_kcp_version_accepted(self):
+        """v0.2 manifests should be accepted without warning."""
+        m = parse_dict({**MINIMAL, "kcp_version": "0.2"})
+        result = validate(m)
+        assert result.is_valid
+        assert not any("kcp_version" in w for w in result.warnings)
 
 
 class TestCycleDetection:
@@ -288,7 +486,7 @@ class TestCycleDetection:
         """Per §4.7, cycles are silently ignored — no error, no warning required."""
         data = {
             **MINIMAL,
-            "kcp_version": "0.1",
+            "kcp_version": "0.3",
             "units": [
                 {"id": "a", "path": "a.md", "intent": "A", "scope": "global", "audience": ["agent"], "depends_on": ["b"]},
                 {"id": "b", "path": "b.md", "intent": "B", "scope": "global", "audience": ["agent"], "depends_on": ["a"]},
@@ -303,7 +501,7 @@ class TestCycleDetection:
         """A graph with both cyclic and non-cyclic units validates correctly."""
         data = {
             **MINIMAL,
-            "kcp_version": "0.1",
+            "kcp_version": "0.3",
             "units": [
                 {"id": "root", "path": "root.md", "intent": "Root", "scope": "global", "audience": ["agent"]},
                 {"id": "a", "path": "a.md", "intent": "A", "scope": "global", "audience": ["agent"], "depends_on": ["root", "b"]},
@@ -321,14 +519,13 @@ class TestPathExistenceChecking:
     def test_existing_path_no_warning(self):
         """When path exists, no warning is produced."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Create the file the unit references
             readme = os.path.join(tmpdir, "README.md")
             with open(readme, "w") as f:
                 f.write("# Test")
 
             data = {
                 **MINIMAL,
-                "kcp_version": "0.1",
+                "kcp_version": "0.3",
                 "units": [{**MINIMAL["units"][0], "path": "README.md"}],
             }
             m = parse_dict(data)
@@ -341,7 +538,7 @@ class TestPathExistenceChecking:
         with tempfile.TemporaryDirectory() as tmpdir:
             data = {
                 **MINIMAL,
-                "kcp_version": "0.1",
+                "kcp_version": "0.3",
                 "units": [{**MINIMAL["units"][0], "path": "nonexistent.md"}],
             }
             m = parse_dict(data)
@@ -354,7 +551,7 @@ class TestPathExistenceChecking:
         with tempfile.TemporaryDirectory() as tmpdir:
             data = {
                 **MINIMAL,
-                "kcp_version": "0.1",
+                "kcp_version": "0.3",
                 "units": [{**MINIMAL["units"][0], "path": "docs/guide.md"}],
             }
             m = parse_dict(data)
@@ -366,7 +563,7 @@ class TestPathExistenceChecking:
         """When manifest_dir is None, no path existence check is performed."""
         data = {
             **MINIMAL,
-            "kcp_version": "0.1",
+            "kcp_version": "0.3",
             "units": [{**MINIMAL["units"][0], "path": "definitely-does-not-exist.md"}],
         }
         m = parse_dict(data)
@@ -383,7 +580,7 @@ class TestPathExistenceChecking:
 
             data = {
                 **MINIMAL,
-                "kcp_version": "0.1",
+                "kcp_version": "0.3",
                 "units": [
                     {**MINIMAL["units"][0], "id": "exists", "path": "exists.md"},
                     {**MINIMAL["units"][0], "id": "missing", "path": "missing.md"},

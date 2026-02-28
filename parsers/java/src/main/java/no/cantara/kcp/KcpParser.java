@@ -43,6 +43,9 @@ public class KcpParser {
         String project = (String) data.get("project");
         String version = (String) data.get("version");
         LocalDate updated = parseDate(data.get("updated"));
+        String language = (String) data.get("language");
+        Object license = data.get("license");
+        Object indexing = data.get("indexing");
 
         List<Map<String, Object>> unitMaps = (List<Map<String, Object>>) data.getOrDefault("units", List.of());
         List<KnowledgeUnit> units = unitMaps.stream().map(KcpParser::parseUnit).toList();
@@ -50,7 +53,7 @@ public class KcpParser {
         List<Map<String, Object>> relMaps = (List<Map<String, Object>>) data.getOrDefault("relationships", List.of());
         List<Relationship> relationships = relMaps.stream().map(KcpParser::parseRelationship).toList();
 
-        return new KnowledgeManifest(kcpVersion, project, version, updated, units, relationships);
+        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, units, relationships);
     }
 
     /**
@@ -80,10 +83,17 @@ public class KcpParser {
         return new KnowledgeUnit(
                 (String) u.get("id"),
                 validateUnitPath((String) u.get("path")),
+                (String) u.get("kind"),
                 (String) u.get("intent"),
+                (String) u.get("format"),
+                (String) u.get("content_type"),
+                (String) u.get("language"),
                 (String) u.getOrDefault("scope", "global"),
                 (List<String>) u.getOrDefault("audience", List.of()),
+                u.get("license"),
                 parseDate(u.get("validated")),
+                (String) u.get("update_frequency"),
+                u.get("indexing"),
                 (List<String>) u.getOrDefault("depends_on", List.of()),
                 (String) u.get("supersedes"),
                 (List<String>) u.getOrDefault("triggers", List.of())

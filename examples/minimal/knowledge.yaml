@@ -2,7 +2,7 @@
 # This is a valid knowledge.yaml at Level 1 conformance.
 # Add more fields (validated, depends_on, triggers) as your needs grow.
 
-kcp_version: "0.2"
+kcp_version: "0.3"
 project: my-project
 version: 1.0.0
 

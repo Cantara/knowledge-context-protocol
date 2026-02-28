@@ -26,7 +26,13 @@ public class KcpValidator {
     private static final Set<String> VALID_SCOPES = Set.of("global", "project", "module");
     private static final Set<String> VALID_AUDIENCES = Set.of("human", "agent", "developer", "operator", "architect", "devops");
     private static final Set<String> VALID_RELATIONSHIP_TYPES = Set.of("enables", "context", "supersedes", "contradicts");
-    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1");
+    private static final Set<String> VALID_KINDS = Set.of("knowledge", "schema", "service", "policy", "executable");
+    private static final Set<String> VALID_FORMATS = Set.of(
+            "markdown", "pdf", "openapi", "json-schema", "jupyter",
+            "html", "asciidoc", "rst", "vtt", "yaml", "json", "csv", "text");
+    private static final Set<String> VALID_UPDATE_FREQUENCIES = Set.of("hourly", "daily", "weekly", "monthly", "rarely", "never");
+    private static final Set<String> VALID_INDEXING_SHORTHANDS = Set.of("open", "read-only", "no-train", "none");
+    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3");
     private static final Pattern ID_PATTERN = Pattern.compile("^[a-z0-9.\\-]+$");
     private static final int MAX_TRIGGER_LENGTH = 60;
     private static final int MAX_TRIGGERS_PER_UNIT = 20;
@@ -68,16 +74,14 @@ public class KcpValidator {
         Set<String> unitIds = manifest.units().stream().map(KnowledgeUnit::id).collect(Collectors.toSet());
 
         // Cycle detection (§4.7) — detect and silently ignore cycle-closing edges.
-        // No error or warning is required by the spec, but we run the detection
-        // so that traversal code can rely on it.
         detectCycles(manifest.units(), unitIds);
 
         // kcp_version — RECOMMENDED; warn if absent or unknown
         if (manifest.kcpVersion() == null || manifest.kcpVersion().isBlank()) {
-            warnings.add("manifest: 'kcp_version' not declared; assuming 0.1");
+            warnings.add("manifest: 'kcp_version' not declared; assuming 0.3");
         } else if (!KNOWN_KCP_VERSIONS.contains(manifest.kcpVersion())) {
             warnings.add("manifest: unknown kcp_version '" + manifest.kcpVersion() +
-                    "'; processing as " + KNOWN_KCP_VERSIONS.stream().max(String::compareTo).orElse("0.1"));
+                    "'; processing as " + KNOWN_KCP_VERSIONS.stream().max(String::compareTo).orElse("0.3"));
         }
 
         // Required root fields
@@ -112,7 +116,6 @@ public class KcpValidator {
             if (unit.path() == null || unit.path().isBlank()) {
                 errors.add(p + ": 'path' is required");
             } else if (manifestDir != null) {
-                // Path existence check (§4.3 / §7: SHOULD warn if path does not exist)
                 Path resolved = manifestDir.resolve(unit.path());
                 if (!Files.exists(resolved)) {
                     warnings.add(p + ": path '" + unit.path() + "' does not exist");
@@ -132,6 +135,26 @@ public class KcpValidator {
                     .toList();
             if (!invalidAudience.isEmpty()) {
                 warnings.add(p + ": unknown audience value(s): " + invalidAudience);
+            }
+
+            // kind validation (§4.3a)
+            if (unit.kind() != null && !VALID_KINDS.contains(unit.kind())) {
+                warnings.add(p + ": unknown 'kind' value '" + unit.kind() + "'");
+            }
+
+            // format validation (§4.4a)
+            if (unit.format() != null && !VALID_FORMATS.contains(unit.format())) {
+                warnings.add(p + ": unknown 'format' value '" + unit.format() + "'");
+            }
+
+            // update_frequency validation (§4.6b)
+            if (unit.updateFrequency() != null && !VALID_UPDATE_FREQUENCIES.contains(unit.updateFrequency())) {
+                warnings.add(p + ": unknown 'update_frequency' value '" + unit.updateFrequency() + "'");
+            }
+
+            // indexing validation (§4.6c)
+            if (unit.indexing() instanceof String idx && !VALID_INDEXING_SHORTHANDS.contains(idx)) {
+                warnings.add(p + ": unknown 'indexing' shorthand '" + idx + "'");
             }
 
             for (String dep : unit.dependsOn()) {
@@ -176,7 +199,6 @@ public class KcpValidator {
      * @return The set of edges (as "from-&gt;to" strings) that would close a cycle.
      */
     static Set<String> detectCycles(List<KnowledgeUnit> units, Set<String> unitIds) {
-        // Build adjacency list
         Map<String, List<String>> adj = new HashMap<>();
         for (KnowledgeUnit unit : units) {
             List<String> deps = unit.dependsOn().stream()
@@ -186,7 +208,6 @@ public class KcpValidator {
         }
 
         Set<String> cycleEdges = new HashSet<>();
-        // 0 = unvisited, 1 = in current path, 2 = completed
         Map<String, Integer> state = new HashMap<>();
         for (String id : unitIds) {
             state.put(id, 0);
@@ -203,17 +224,16 @@ public class KcpValidator {
 
     private static void dfs(String node, Map<String, List<String>> adj,
                             Map<String, Integer> state, Set<String> cycleEdges) {
-        state.put(node, 1); // in current path
+        state.put(node, 1);
         for (String dep : adj.getOrDefault(node, List.of())) {
             int depState = state.getOrDefault(dep, 0);
             if (depState == 1) {
-                // dep is in the current DFS path — this edge closes a cycle
                 cycleEdges.add(node + "->" + dep);
             } else if (depState == 0) {
                 dfs(dep, adj, state, cycleEdges);
             }
         }
-        state.put(node, 2); // completed
+        state.put(node, 2);
     }
 
     private static List<String> sorted(Set<String> set) {

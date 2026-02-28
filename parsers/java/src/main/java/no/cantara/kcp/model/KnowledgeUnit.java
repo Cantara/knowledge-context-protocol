@@ -9,10 +9,17 @@ import java.util.List;
 public record KnowledgeUnit(
         String id,
         String path,
+        String kind,
         String intent,
+        String format,
+        String contentType,
+        String language,
         String scope,
         List<String> audience,
+        Object license,
         LocalDate validated,
+        String updateFrequency,
+        Object indexing,
         List<String> dependsOn,
         String supersedes,
         List<String> triggers

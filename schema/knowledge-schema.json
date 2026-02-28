@@ -9,8 +9,8 @@
   "properties": {
     "kcp_version": {
       "type": "string",
-      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.2\". The value \"0.1\" (prior draft) is also accepted for backward compatibility.",
-      "enum": ["0.1", "0.2"]
+      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.3\". The values \"0.1\" and \"0.2\" (prior drafts) are also accepted for backward compatibility.",
+      "enum": ["0.1", "0.2", "0.3"]
     },
     "project": {
       "type": "string",
@@ -24,8 +24,36 @@
     },
     "updated": {
       "type": "string",
-      "description": "ISO 8601 date (YYYY-MM-DD) when this manifest was last modified. RECOMMENDED. Quote the value in YAML (e.g. \"2026-02-25\") to prevent YAML 1.1 parsers from coercing it to a native date object.",
+      "description": "ISO 8601 date (YYYY-MM-DD) when this manifest was last modified. RECOMMENDED. Quote the value in YAML.",
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "language": {
+      "type": "string",
+      "description": "BCP 47 language tag as default for all units. OPTIONAL. Example: \"en\", \"no\", \"de\".",
+      "minLength": 2,
+      "maxLength": 35
+    },
+    "license": {
+      "description": "Default license for all units. OPTIONAL. Either an SPDX identifier string or a structured object.",
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "SPDX license identifier (shorthand form).",
+          "minLength": 1
+        },
+        { "$ref": "#/definitions/license_object" }
+      ]
+    },
+    "indexing": {
+      "description": "Default AI crawling and indexing permissions for all units. OPTIONAL.",
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Shorthand: open, read-only, no-train, or none.",
+          "enum": ["open", "read-only", "no-train", "none"]
+        },
+        { "$ref": "#/definitions/indexing_object" }
+      ]
     },
     "units": {
       "type": "array",
@@ -40,6 +68,47 @@
     }
   },
   "definitions": {
+    "license_object": {
+      "type": "object",
+      "description": "Structured license metadata.",
+      "additionalProperties": true,
+      "properties": {
+        "spdx": {
+          "type": "string",
+          "description": "SPDX license identifier. Use LicenseRef-Proprietary for custom licenses.",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "description": "URL to the full license text."
+        },
+        "attribution_required": {
+          "type": "boolean",
+          "description": "Whether the agent must cite the source when reproducing content. Default: false."
+        }
+      }
+    },
+    "indexing_object": {
+      "type": "object",
+      "description": "Structured AI crawling and indexing permissions.",
+      "additionalProperties": true,
+      "properties": {
+        "allow": {
+          "type": "array",
+          "description": "Operations that agents MAY perform. Values: read, index, reproduce-in-response, train, cache-permanently, share-externally, summarise.",
+          "items": { "type": "string" }
+        },
+        "deny": {
+          "type": "array",
+          "description": "Operations that agents MUST NOT perform. Values: read, index, reproduce-in-response, train, cache-permanently, share-externally, summarise.",
+          "items": { "type": "string" }
+        },
+        "attribution_required": {
+          "type": "boolean",
+          "description": "Whether reproduction requires citing the source. Default: false."
+        }
+      }
+    },
     "unit": {
       "type": "object",
       "description": "A self-contained piece of knowledge in the manifest.",
@@ -48,44 +117,91 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier within this manifest. Lowercase ASCII letters (a-z), digits (0-9), hyphens (-), and dots (.) only. Must not be empty.",
+          "description": "Unique identifier within this manifest. Lowercase ASCII letters (a-z), digits (0-9), hyphens (-), and dots (.) only.",
           "pattern": "^[a-z0-9.\\-]+$",
           "minLength": 1
         },
         "path": {
           "type": "string",
-          "description": "Relative path from the manifest file's location to the content file. Forward slashes must be used as path separators. Must not start with '/' or contain '..' traversal that escapes the root.",
+          "description": "Relative path from the manifest file's location to the content file.",
           "minLength": 1,
           "not": {
             "pattern": "^/"
           }
         },
+        "kind": {
+          "type": "string",
+          "description": "Type of artifact. Default: knowledge. Values: knowledge (documentation), schema (machine-readable definition), service (callable endpoint), policy (authoritative rules), executable (runnable artifact).",
+          "enum": ["knowledge", "schema", "service", "policy", "executable"],
+          "default": "knowledge"
+        },
         "intent": {
           "type": "string",
-          "description": "One sentence describing the question this unit answers or the task it enables. Written as a question or task description, not a title.",
+          "description": "One sentence describing the question this unit answers or the task it enables.",
           "minLength": 1
+        },
+        "format": {
+          "type": "string",
+          "description": "Content format of the referenced file. Values: markdown, pdf, openapi, json-schema, jupyter, html, asciidoc, rst, vtt, yaml, json, csv, text. Unknown values are silently ignored."
+        },
+        "content_type": {
+          "type": "string",
+          "description": "Full MIME type for precise format identification. Takes precedence over format when both are present."
+        },
+        "language": {
+          "type": "string",
+          "description": "BCP 47 language tag for this unit's content. Overrides root-level language.",
+          "minLength": 2,
+          "maxLength": 35
         },
         "scope": {
           "type": "string",
-          "description": "Breadth of applicability: global (entire project), project (specific project/service), or module (specific module/component).",
+          "description": "Breadth of applicability: global, project, or module.",
           "enum": ["global", "project", "module"]
         },
         "audience": {
           "type": "array",
-          "description": "Who this unit is for. One or more of: human, agent, developer, architect, operator, devops. Unknown values are silently ignored.",
+          "description": "Who this unit is for. One or more of: human, agent, developer, architect, operator, devops.",
           "items": {
             "type": "string"
           },
           "minItems": 0
         },
+        "license": {
+          "description": "License and usage rights for this unit. Overrides root-level license.",
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "SPDX license identifier (shorthand form).",
+              "minLength": 1
+            },
+            { "$ref": "#/definitions/license_object" }
+          ]
+        },
         "validated": {
           "type": "string",
-          "description": "ISO 8601 date when a human last confirmed the content was accurate. RECOMMENDED. Quote the value in YAML (e.g. \"2026-02-25\") to prevent YAML 1.1 parsers from coercing it to a native date object.",
+          "description": "ISO 8601 date when a human last confirmed the content was accurate. RECOMMENDED.",
           "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "update_frequency": {
+          "type": "string",
+          "description": "How often this content typically changes. Values: hourly, daily, weekly, monthly, rarely, never.",
+          "enum": ["hourly", "daily", "weekly", "monthly", "rarely", "never"]
+        },
+        "indexing": {
+          "description": "AI crawling and indexing permissions for this unit. Overrides root-level indexing.",
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "Shorthand: open, read-only, no-train, or none.",
+              "enum": ["open", "read-only", "no-train", "none"]
+            },
+            { "$ref": "#/definitions/indexing_object" }
+          ]
         },
         "depends_on": {
           "type": "array",
-          "description": "IDs of units that should be loaded before this one. Values must be IDs declared in the same manifest. Cycles are detected and silently ignored.",
+          "description": "IDs of units that should be loaded before this one.",
           "items": {
             "type": "string",
             "pattern": "^[a-z0-9.\\-]+$"
@@ -93,12 +209,12 @@
         },
         "supersedes": {
           "type": "string",
-          "description": "ID of the unit this replaces. The referenced unit may no longer exist in the manifest.",
+          "description": "ID of the unit this replaces.",
           "pattern": "^[a-z0-9.\\-]+$"
         },
         "triggers": {
           "type": "array",
-          "description": "Keywords or short phrases indicating when this unit is relevant. Used for task-based retrieval. Each trigger must not exceed 60 characters. A unit must not declare more than 20 triggers.",
+          "description": "Keywords or short phrases indicating when this unit is relevant. Max 20 items, each max 60 characters.",
           "items": {
             "type": "string",
             "maxLength": 60
@@ -125,7 +241,7 @@
         },
         "type": {
           "type": "string",
-          "description": "The type of relationship. Defined values: enables (from unlocks to), context (from provides context for to), supersedes (from replaces to), contradicts (from conflicts with to). Unknown values MUST be silently ignored per SPEC.md §5."
+          "description": "The type of relationship. Defined values: enables, context, supersedes, contradicts."
         }
       }
     }

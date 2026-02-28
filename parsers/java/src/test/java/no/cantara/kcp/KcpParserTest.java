@@ -35,31 +35,39 @@ class KcpParserTest {
         return m;
     }
 
-    private static final Map<String, Object> COMPLETE = Map.of(
-            "project", "wiki.example.org",
-            "version", "1.0.0",
-            "kcp_version", "0.1",
-            "updated", "2026-02-25",
-            "units", List.of(
-                    Map.of("id", "about", "path", "about.md",
-                            "intent", "Who maintains this?",
-                            "scope", "global", "audience", List.of("human", "agent"),
-                            "validated", "2026-02-24"),
-                    Map.of("id", "methodology", "path", "methodology/overview.md",
-                            "intent", "What methodology is used?",
-                            "scope", "global", "audience", List.of("developer", "agent"),
-                            "depends_on", List.of("about"),
-                            "triggers", List.of("methodology", "productivity")),
-                    Map.of("id", "knowledge-infra", "path", "tools/knowledge-infra.md",
-                            "intent", "How is knowledge infrastructure set up?",
-                            "scope", "global", "audience", List.of("developer", "agent"),
-                            "depends_on", List.of("methodology"))
-            ),
-            "relationships", List.of(
-                    Map.of("from", "methodology", "to", "knowledge-infra", "type", "enables"),
-                    Map.of("from", "about", "to", "methodology", "type", "context")
-            )
-    );
+    private static final Map<String, Object> COMPLETE;
+    static {
+        // Build COMPLETE with v0.3 fields
+        Map<String, Object> m = new HashMap<>();
+        m.put("project", "wiki.example.org");
+        m.put("version", "1.0.0");
+        m.put("kcp_version", "0.3");
+        m.put("updated", "2026-02-25");
+        m.put("language", "en");
+        m.put("license", "Apache-2.0");
+        m.put("indexing", "open");
+        m.put("units", List.of(
+                Map.of("id", "about", "path", "about.md",
+                        "intent", "Who maintains this?",
+                        "scope", "global", "audience", List.of("human", "agent"),
+                        "validated", "2026-02-24", "update_frequency", "monthly"),
+                Map.of("id", "methodology", "path", "methodology/overview.md",
+                        "intent", "What methodology is used?",
+                        "scope", "global", "audience", List.of("developer", "agent"),
+                        "depends_on", List.of("about"),
+                        "triggers", List.of("methodology", "productivity"),
+                        "format", "markdown", "language", "en"),
+                Map.of("id", "knowledge-infra", "path", "tools/knowledge-infra.md",
+                        "intent", "How is knowledge infrastructure set up?",
+                        "scope", "global", "audience", List.of("developer", "agent"),
+                        "depends_on", List.of("methodology"))
+        ));
+        m.put("relationships", List.of(
+                Map.of("from", "methodology", "to", "knowledge-infra", "type", "enables"),
+                Map.of("from", "about", "to", "methodology", "type", "context")
+        ));
+        COMPLETE = Map.copyOf(m);
+    }
 
     // -----------------------------------------------------------------------
     // Parser tests
@@ -77,16 +85,19 @@ class KcpParserTest {
 
     @Test
     void parsesKcpVersion() {
-        KnowledgeManifest m = KcpParser.fromMap(minimalWith("kcp_version", "0.1"));
-        assertEquals("0.1", m.kcpVersion());
+        KnowledgeManifest m = KcpParser.fromMap(minimalWith("kcp_version", "0.3"));
+        assertEquals("0.3", m.kcpVersion());
     }
 
     @Test
     void parsesCompleteManifest() {
         KnowledgeManifest m = KcpParser.fromMap(COMPLETE);
         assertEquals("wiki.example.org", m.project());
-        assertEquals("0.1", m.kcpVersion());
+        assertEquals("0.3", m.kcpVersion());
         assertEquals(LocalDate.of(2026, 2, 25), m.updated());
+        assertEquals("en", m.language());
+        assertEquals("Apache-2.0", m.license());
+        assertEquals("open", m.indexing());
         assertEquals(3, m.units().size());
         assertEquals(2, m.relationships().size());
     }
@@ -125,6 +136,86 @@ class KcpParserTest {
         assertEquals("enables", rel.type());
     }
 
+    @Test
+    void parsesFormatAndLanguage() {
+        KnowledgeManifest m = KcpParser.fromMap(COMPLETE);
+        KnowledgeUnit methodology = m.units().stream()
+                .filter(u -> u.id().equals("methodology")).findFirst().orElseThrow();
+        assertEquals("markdown", methodology.format());
+        assertEquals("en", methodology.language());
+    }
+
+    @Test
+    void parsesUpdateFrequency() {
+        KnowledgeManifest m = KcpParser.fromMap(COMPLETE);
+        KnowledgeUnit about = m.units().stream()
+                .filter(u -> u.id().equals("about")).findFirst().orElseThrow();
+        assertEquals("monthly", about.updateFrequency());
+    }
+
+    @Test
+    void parsesKindField() {
+        Map<String, Object> unitWithKind = new HashMap<>(Map.of(
+                "id", "api-spec", "path", "api.yaml", "intent", "API spec",
+                "scope", "module", "audience", List.of("developer"), "kind", "schema"
+        ));
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
+                "units", List.of(unitWithKind)
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        assertEquals("schema", m.units().get(0).kind());
+    }
+
+    @Test
+    void parsesLicenseString() {
+        KnowledgeManifest m = KcpParser.fromMap(COMPLETE);
+        assertEquals("Apache-2.0", m.license());
+    }
+
+    @Test
+    void parsesLicenseObject() {
+        Map<String, Object> licenseObj = Map.of("spdx", "CC-BY-4.0", "attribution_required", true);
+        Map<String, Object> unitData = new HashMap<>(Map.of(
+                "id", "u1", "path", "f.md", "intent", "test", "scope", "global",
+                "audience", List.of("agent"), "license", licenseObj
+        ));
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
+                "units", List.of(unitData)
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        assertInstanceOf(Map.class, m.units().get(0).license());
+    }
+
+    @Test
+    void parsesIndexingField() {
+        Map<String, Object> unitData = new HashMap<>(Map.of(
+                "id", "u1", "path", "f.md", "intent", "test", "scope", "global",
+                "audience", List.of("agent"), "indexing", "no-train"
+        ));
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
+                "units", List.of(unitData)
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        assertEquals("no-train", m.units().get(0).indexing());
+    }
+
+    @Test
+    void parsesContentType() {
+        Map<String, Object> unitData = new HashMap<>(Map.of(
+                "id", "u1", "path", "api.yaml", "intent", "API", "scope", "module",
+                "audience", List.of("developer"), "content_type", "application/vnd.oai.openapi+yaml"
+        ));
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
+                "units", List.of(unitData)
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        assertEquals("application/vnd.oai.openapi+yaml", m.units().get(0).contentType());
+    }
+
     // -----------------------------------------------------------------------
     // Validator tests
     // -----------------------------------------------------------------------
@@ -139,7 +230,7 @@ class KcpParserTest {
 
     @Test
     void missingKcpVersionProducesWarning() {
-        KnowledgeManifest m = KcpParser.fromMap(MINIMAL); // no kcp_version
+        KnowledgeManifest m = KcpParser.fromMap(MINIMAL);
         KcpValidator.ValidationResult result = KcpValidator.validate(m);
         assertTrue(result.isValid());
         assertTrue(result.warnings().stream().anyMatch(w -> w.contains("kcp_version")));
@@ -147,7 +238,15 @@ class KcpParserTest {
 
     @Test
     void knownKcpVersionNoWarning() {
-        KnowledgeManifest m = KcpParser.fromMap(minimalWith("kcp_version", "0.1"));
+        KnowledgeManifest m = KcpParser.fromMap(minimalWith("kcp_version", "0.3"));
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid());
+        assertTrue(result.warnings().stream().noneMatch(w -> w.contains("kcp_version")));
+    }
+
+    @Test
+    void v02KcpVersionAccepted() {
+        KnowledgeManifest m = KcpParser.fromMap(minimalWith("kcp_version", "0.2"));
         KcpValidator.ValidationResult result = KcpValidator.validate(m);
         assertTrue(result.isValid());
         assertTrue(result.warnings().stream().noneMatch(w -> w.contains("kcp_version")));
@@ -157,7 +256,7 @@ class KcpParserTest {
     void unknownKcpVersionProducesWarning() {
         KnowledgeManifest m = KcpParser.fromMap(minimalWith("kcp_version", "99.0"));
         KcpValidator.ValidationResult result = KcpValidator.validate(m);
-        assertTrue(result.isValid()); // warning, not error
+        assertTrue(result.isValid());
         assertTrue(result.warnings().stream().anyMatch(w -> w.contains("kcp_version") && w.contains("99.0")));
     }
 
@@ -250,7 +349,7 @@ class KcpParserTest {
         );
         KnowledgeManifest m = KcpParser.fromMap(data);
         KcpValidator.ValidationResult result = KcpValidator.validate(m);
-        assertTrue(result.isValid()); // warning, not error
+        assertTrue(result.isValid());
         assertTrue(result.warnings().stream().anyMatch(w -> w.contains("martian")));
     }
 
@@ -267,7 +366,7 @@ class KcpParserTest {
         );
         KnowledgeManifest m = KcpParser.fromMap(data);
         KcpValidator.ValidationResult result = KcpValidator.validate(m);
-        assertTrue(result.isValid()); // warning, not error
+        assertTrue(result.isValid());
         assertTrue(result.warnings().stream().anyMatch(w -> w.contains("ghost")));
     }
 
@@ -282,7 +381,7 @@ class KcpParserTest {
         );
         KnowledgeManifest m = KcpParser.fromMap(data);
         KcpValidator.ValidationResult result = KcpValidator.validate(m);
-        assertTrue(result.isValid()); // warning, not error
+        assertTrue(result.isValid());
         assertTrue(result.warnings().stream().anyMatch(w -> w.contains("ghost")));
     }
 
@@ -298,8 +397,128 @@ class KcpParserTest {
         );
         KnowledgeManifest m = KcpParser.fromMap(data);
         KcpValidator.ValidationResult result = KcpValidator.validate(m);
-        assertTrue(result.isValid()); // warning, not error
+        assertTrue(result.isValid());
         assertTrue(result.warnings().stream().anyMatch(w -> w.contains("type")));
+    }
+
+    // -----------------------------------------------------------------------
+    // v0.3 field validation tests
+    // -----------------------------------------------------------------------
+
+    @Test
+    void unknownKindProducesWarning() {
+        Map<String, Object> unitData = new HashMap<>(Map.of(
+                "id", "u1", "path", "f.md", "intent", "test", "scope", "global",
+                "audience", List.of("agent"), "kind", "imaginary"
+        ));
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
+                "units", List.of(unitData)
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid());
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("kind") && w.contains("imaginary")));
+    }
+
+    @Test
+    void validKindsProduceNoWarning() {
+        for (String kind : List.of("knowledge", "schema", "service", "policy", "executable")) {
+            Map<String, Object> unitData = new HashMap<>(Map.of(
+                    "id", "u1", "path", "f.md", "intent", "test", "scope", "global",
+                    "audience", List.of("agent"), "kind", kind
+            ));
+            Map<String, Object> data = Map.of(
+                    "project", "test", "version", "1.0.0", "kcp_version", "0.3",
+                    "units", List.of(unitData)
+            );
+            KnowledgeManifest m = KcpParser.fromMap(data);
+            KcpValidator.ValidationResult result = KcpValidator.validate(m);
+            assertTrue(result.warnings().stream().noneMatch(w -> w.contains("kind")),
+                    "kind '" + kind + "' should be valid");
+        }
+    }
+
+    @Test
+    void unknownFormatProducesWarning() {
+        Map<String, Object> unitData = new HashMap<>(Map.of(
+                "id", "u1", "path", "f.md", "intent", "test", "scope", "global",
+                "audience", List.of("agent"), "format", "docx"
+        ));
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
+                "units", List.of(unitData)
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid());
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("format") && w.contains("docx")));
+    }
+
+    @Test
+    void validFormatsProduceNoWarning() {
+        for (String fmt : List.of("markdown", "pdf", "openapi", "json-schema", "jupyter", "html", "text")) {
+            Map<String, Object> unitData = new HashMap<>(Map.of(
+                    "id", "u1", "path", "f.md", "intent", "test", "scope", "global",
+                    "audience", List.of("agent"), "format", fmt
+            ));
+            Map<String, Object> data = Map.of(
+                    "project", "test", "version", "1.0.0", "kcp_version", "0.3",
+                    "units", List.of(unitData)
+            );
+            KnowledgeManifest m = KcpParser.fromMap(data);
+            KcpValidator.ValidationResult result = KcpValidator.validate(m);
+            assertTrue(result.warnings().stream().noneMatch(w -> w.contains("format")),
+                    "format '" + fmt + "' should be valid");
+        }
+    }
+
+    @Test
+    void unknownUpdateFrequencyProducesWarning() {
+        Map<String, Object> unitData = new HashMap<>(Map.of(
+                "id", "u1", "path", "f.md", "intent", "test", "scope", "global",
+                "audience", List.of("agent"), "update_frequency", "biweekly"
+        ));
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
+                "units", List.of(unitData)
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid());
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("update_frequency") && w.contains("biweekly")));
+    }
+
+    @Test
+    void unknownIndexingShorthandProducesWarning() {
+        Map<String, Object> unitData = new HashMap<>(Map.of(
+                "id", "u1", "path", "f.md", "intent", "test", "scope", "global",
+                "audience", List.of("agent"), "indexing", "custom-unknown"
+        ));
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
+                "units", List.of(unitData)
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid());
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("indexing") && w.contains("custom-unknown")));
+    }
+
+    @Test
+    void indexingObjectNoWarning() {
+        Map<String, Object> indexingObj = Map.of("allow", List.of("read", "index"), "deny", List.of("train"));
+        Map<String, Object> unitData = new HashMap<>(Map.of(
+                "id", "u1", "path", "f.md", "intent", "test", "scope", "global",
+                "audience", List.of("agent"), "indexing", indexingObj
+        ));
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
+                "units", List.of(unitData)
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.warnings().stream().noneMatch(w -> w.contains("indexing")));
     }
 
     // -----------------------------------------------------------------------
@@ -309,7 +528,7 @@ class KcpParserTest {
     @Test
     void duplicateIdProducesWarning() {
         Map<String, Object> data = Map.of(
-                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
                 "units", List.of(
                         Map.of("id", "dup", "path", "a.md", "intent", "A", "scope", "global", "audience", List.of("agent")),
                         Map.of("id", "dup", "path", "b.md", "intent", "B", "scope", "global", "audience", List.of("agent"))
@@ -317,14 +536,14 @@ class KcpParserTest {
         );
         KnowledgeManifest m = KcpParser.fromMap(data);
         KcpValidator.ValidationResult result = KcpValidator.validate(m);
-        assertTrue(result.isValid()); // warning, not error
+        assertTrue(result.isValid());
         assertTrue(result.warnings().stream().anyMatch(w -> w.contains("duplicate")));
     }
 
     @Test
     void invalidIdFormatProducesWarning() {
         Map<String, Object> data = Map.of(
-                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
                 "units", List.of(
                         Map.of("id", "Has_Uppercase!", "path", "a.md", "intent", "A", "scope", "global", "audience", List.of("agent"))
                 )
@@ -338,7 +557,7 @@ class KcpParserTest {
     void validIdFormatsProduceNoWarning() {
         for (String validId : List.of("overview", "my-unit", "v2.0", "a.b-c.1")) {
             Map<String, Object> data = Map.of(
-                    "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                    "project", "test", "version", "1.0.0", "kcp_version", "0.3",
                     "units", List.of(
                             Map.of("id", validId, "path", "a.md", "intent", "A", "scope", "global", "audience", List.of("agent"))
                     )
@@ -354,7 +573,7 @@ class KcpParserTest {
     void triggerExceeding60CharsProducesWarning() {
         String longTrigger = "a".repeat(61);
         Map<String, Object> data = Map.of(
-                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
                 "units", List.of(
                         Map.of("id", "a", "path", "a.md", "intent", "A", "scope", "global",
                                 "audience", List.of("agent"), "triggers", List.of(longTrigger))
@@ -370,7 +589,7 @@ class KcpParserTest {
         List<String> triggers = new java.util.ArrayList<>();
         for (int i = 0; i < 25; i++) triggers.add("t" + i);
         Map<String, Object> data = Map.of(
-                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
                 "units", List.of(
                         Map.of("id", "a", "path", "a.md", "intent", "A", "scope", "global",
                                 "audience", List.of("agent"), "triggers", triggers)
@@ -388,7 +607,7 @@ class KcpParserTest {
     @Test
     void noCycleReturnsEmpty() {
         Map<String, Object> data = Map.of(
-                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
                 "units", List.of(
                         Map.of("id", "a", "path", "a.md", "intent", "A", "scope", "global", "audience", List.of("agent")),
                         Map.of("id", "b", "path", "b.md", "intent", "B", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("a")),
@@ -404,7 +623,7 @@ class KcpParserTest {
     @Test
     void simpleTwoNodeCycleDetected() {
         Map<String, Object> data = Map.of(
-                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
                 "units", List.of(
                         Map.of("id", "a", "path", "a.md", "intent", "A", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("b")),
                         Map.of("id", "b", "path", "b.md", "intent", "B", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("a"))
@@ -419,7 +638,7 @@ class KcpParserTest {
     @Test
     void threeNodeCycleDetected() {
         Map<String, Object> data = Map.of(
-                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
                 "units", List.of(
                         Map.of("id", "a", "path", "a.md", "intent", "A", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("b")),
                         Map.of("id", "b", "path", "b.md", "intent", "B", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("c")),
@@ -435,7 +654,7 @@ class KcpParserTest {
     @Test
     void selfCycleDetected() {
         Map<String, Object> data = Map.of(
-                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
                 "units", List.of(
                         Map.of("id", "a", "path", "a.md", "intent", "A", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("a"))
                 )
@@ -449,7 +668,7 @@ class KcpParserTest {
     @Test
     void cycleDoesNotCauseValidationError() {
         Map<String, Object> data = Map.of(
-                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
                 "units", List.of(
                         Map.of("id", "a", "path", "a.md", "intent", "A", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("b")),
                         Map.of("id", "b", "path", "b.md", "intent", "B", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("a"))
@@ -464,7 +683,7 @@ class KcpParserTest {
     @Test
     void cycleMixedWithNonCyclicUnitsValidates() {
         Map<String, Object> data = Map.of(
-                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
                 "units", List.of(
                         Map.of("id", "root", "path", "root.md", "intent", "Root", "scope", "global", "audience", List.of("agent")),
                         Map.of("id", "a", "path", "a.md", "intent", "A", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("root", "b")),
@@ -483,9 +702,8 @@ class KcpParserTest {
     @Test
     void existingPathNoWarning(@TempDir Path tmpDir) throws IOException {
         Files.writeString(tmpDir.resolve("README.md"), "# Test");
-
         Map<String, Object> data = Map.of(
-                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
                 "units", List.of(
                         Map.of("id", "overview", "path", "README.md", "intent", "What?",
                                 "scope", "global", "audience", List.of("agent"))
@@ -500,7 +718,7 @@ class KcpParserTest {
     @Test
     void missingPathProducesWarning(@TempDir Path tmpDir) {
         Map<String, Object> data = Map.of(
-                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
                 "units", List.of(
                         Map.of("id", "missing", "path", "nonexistent.md", "intent", "What?",
                                 "scope", "global", "audience", List.of("agent"))
@@ -508,14 +726,14 @@ class KcpParserTest {
         );
         KnowledgeManifest m = KcpParser.fromMap(data);
         KcpValidator.ValidationResult result = KcpValidator.validate(m, tmpDir);
-        assertTrue(result.isValid()); // warning, not error
+        assertTrue(result.isValid());
         assertTrue(result.warnings().stream().anyMatch(w -> w.contains("does not exist")));
     }
 
     @Test
     void missingNestedPathProducesWarning(@TempDir Path tmpDir) {
         Map<String, Object> data = Map.of(
-                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
                 "units", List.of(
                         Map.of("id", "guide", "path", "docs/guide.md", "intent", "How?",
                                 "scope", "global", "audience", List.of("agent"))
@@ -530,14 +748,14 @@ class KcpParserTest {
     @Test
     void noPathCheckWithoutManifestDir() {
         Map<String, Object> data = Map.of(
-                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
                 "units", List.of(
                         Map.of("id", "missing", "path", "definitely-gone.md", "intent", "What?",
                                 "scope", "global", "audience", List.of("agent"))
                 )
         );
         KnowledgeManifest m = KcpParser.fromMap(data);
-        KcpValidator.ValidationResult result = KcpValidator.validate(m); // no manifestDir
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
         assertTrue(result.isValid());
         assertTrue(result.warnings().stream().noneMatch(w -> w.contains("does not exist")));
     }
@@ -545,9 +763,8 @@ class KcpParserTest {
     @Test
     void mixedExistenceOnlyMissingGetsWarning(@TempDir Path tmpDir) throws IOException {
         Files.writeString(tmpDir.resolve("exists.md"), "# Exists");
-
         Map<String, Object> data = Map.of(
-                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "project", "test", "version", "1.0.0", "kcp_version", "0.3",
                 "units", List.of(
                         Map.of("id", "exists", "path", "exists.md", "intent", "A",
                                 "scope", "global", "audience", List.of("agent")),

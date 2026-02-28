@@ -83,7 +83,7 @@
   <section class="hero" id="hero">
     <div class="container">
       <div class="hero__badge">
-        <span>v0.2 Draft Spec</span>
+        <span>v0.3 Draft Spec</span>
         &middot;
         <span>Open Standard</span>
         &middot;
@@ -389,6 +389,48 @@ relationships:
           <span class="spec-card__required optional">Optional</span>
           <p>Keywords or task contexts for retrieval. An agent working on authentication finds relevant units via triggers, without scanning every unit.</p>
         </div>
+
+        <div class="spec-card reveal reveal-delay-1">
+          <span class="spec-card__field">kind</span>
+          <span class="spec-card__required optional">Optional</span>
+          <p>Type of artifact: <code>knowledge</code> (default), <code>schema</code>, <code>service</code>, <code>policy</code>, <code>executable</code>. Tells agents how to interact with the unit.</p>
+        </div>
+
+        <div class="spec-card reveal reveal-delay-2">
+          <span class="spec-card__field">format</span>
+          <span class="spec-card__required optional">Optional</span>
+          <p>Content format: <code>markdown</code>, <code>pdf</code>, <code>openapi</code>, <code>json-schema</code>, <code>jupyter</code>, <code>html</code>, and more. Agents may infer from extension if omitted.</p>
+        </div>
+
+        <div class="spec-card reveal reveal-delay-3">
+          <span class="spec-card__field">content_type</span>
+          <span class="spec-card__required optional">Optional</span>
+          <p>Full MIME type for precise format identification. Example: <code>application/vnd.oai.openapi+yaml;version=3.1</code>. Overrides <code>format</code> when both are present.</p>
+        </div>
+
+        <div class="spec-card reveal">
+          <span class="spec-card__field">language</span>
+          <span class="spec-card__required optional">Optional</span>
+          <p>BCP 47 language tag: <code>en</code>, <code>no</code>, <code>de</code>, <code>fr</code>, <code>ja</code>. Can be set at root level as a default for all units, and overridden per unit.</p>
+        </div>
+
+        <div class="spec-card reveal reveal-delay-1">
+          <span class="spec-card__field">license</span>
+          <span class="spec-card__required optional">Optional</span>
+          <p>SPDX identifier (e.g. <code>Apache-2.0</code>, <code>CC-BY-4.0</code>) or structured object with <code>spdx</code>, <code>url</code>, and <code>attribution_required</code>. Inheritable from root.</p>
+        </div>
+
+        <div class="spec-card reveal reveal-delay-2">
+          <span class="spec-card__field">update_frequency</span>
+          <span class="spec-card__required optional">Optional</span>
+          <p>How often this content changes: <code>hourly</code>, <code>daily</code>, <code>weekly</code>, <code>monthly</code>, <code>rarely</code>, <code>never</code>. Helps agents decide when to re-fetch.</p>
+        </div>
+
+        <div class="spec-card reveal reveal-delay-3">
+          <span class="spec-card__field">indexing</span>
+          <span class="spec-card__required optional">Optional</span>
+          <p>AI crawling permissions: <code>open</code>, <code>read-only</code>, <code>no-train</code>, <code>none</code>, or structured object with <code>allow</code>/<code>deny</code> lists. Inheritable from root.</p>
+        </div>
       </div>
 
       <div class="levels-grid reveal mt-8">
@@ -398,11 +440,11 @@ relationships:
         </div>
         <div class="level-card">
           <h4>Level 2 &mdash; Structured</h4>
-          <p>Adds <code>validated</code> and <code>depends_on</code>. Freshness-aware retrieval and dependency-ordered loading. Documentation drift becomes visible.</p>
+          <p>Adds <code>validated</code>, <code>depends_on</code>, <code>kind</code>, <code>format</code>, and <code>language</code>. Freshness-aware retrieval, dependency-ordered loading, and content-type awareness.</p>
         </div>
         <div class="level-card">
           <h4>Level 3 &mdash; Full</h4>
-          <p>Adds <code>triggers</code>, <code>supersedes</code>, and <code>relationships</code>. Task-based routing, knowledge graph navigation, and drift detection.</p>
+          <p>Adds <code>triggers</code>, <code>supersedes</code>, <code>relationships</code>, <code>license</code>, <code>update_frequency</code>, and <code>indexing</code>. Task-based routing, knowledge graph navigation, and governance.</p>
         </div>
       </div>
 
@@ -447,7 +489,7 @@ relationships:
               <pre><code id="ex-minimal" class="language-yaml"># Minimal KCP example — five minutes to add.
 # This is a valid knowledge.yaml at Level 1 conformance.
 
-kcp_version: "0.2"
+kcp_version: "0.3"
 project: my-project
 version: 1.0.0
 
@@ -475,10 +517,12 @@ units:
               <pre><code id="ex-personal" class="language-yaml"># Personal site / portfolio example
 # Shows: audience differentiation, freshness, depends_on
 
-kcp_version: "0.2"
+kcp_version: "0.3"
 project: wiki.example.org
 version: 1.0.0
 updated: "2026-02-28"
+language: en
+license: "CC-BY-4.0"
 
 units:
   - id: home
@@ -547,10 +591,13 @@ relationships:
 # Dependency chains across architecture layers
 # Freshness: archived (2022) vs active (2026) content
 
-kcp_version: "0.2"
+kcp_version: "0.3"
 project: community-wiki
 version: 1.0.0
 updated: "2026-02-28"
+language: en
+license: "Apache-2.0"
+indexing: open
 
 units:
   - id: home
@@ -798,7 +845,7 @@ result.warnings().forEach(System.out::println);</code></pre>
           </div>
           <div class="code-block__body">
             <pre><code id="adopt-code" class="language-yaml"># Drop this at the root of any project. Done.
-kcp_version: "0.2"
+kcp_version: "0.3"
 project: my-project
 version: 1.0.0
 

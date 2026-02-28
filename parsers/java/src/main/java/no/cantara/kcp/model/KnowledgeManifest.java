@@ -11,6 +11,9 @@ public record KnowledgeManifest(
         String project,
         String version,
         LocalDate updated,
+        String language,
+        Object license,
+        Object indexing,
         List<KnowledgeUnit> units,
         List<Relationship> relationships
 ) {
