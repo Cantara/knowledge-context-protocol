@@ -83,7 +83,7 @@
   <section class="hero" id="hero">
     <div class="container">
       <div class="hero__badge">
-        <span>v0.1 Draft Spec</span>
+        <span>v0.2 Draft Spec</span>
         &middot;
         <span>Open Standard</span>
         &middot;
@@ -222,7 +222,7 @@
             <div class="code-block__body">
               <pre><code id="what-code" class="language-yaml">project: wiki.example.org
 version: 1.0.0
-updated: 2026-02-25
+updated: "2026-02-28"
 
 units:
   - id: about
@@ -230,7 +230,7 @@ units:
     intent: "Who maintains this project?"
     scope: global
     audience: [human, agent]
-    validated: 2026-02-24
+    validated: "2026-02-24"
 
   - id: methodology
     path: methodology/overview.md
@@ -447,7 +447,7 @@ relationships:
               <pre><code id="ex-minimal" class="language-yaml"># Minimal KCP example — five minutes to add.
 # This is a valid knowledge.yaml at Level 1 conformance.
 
-kcp_version: "0.1"
+kcp_version: "0.2"
 project: my-project
 version: 1.0.0
 
@@ -475,10 +475,10 @@ units:
               <pre><code id="ex-personal" class="language-yaml"># Personal site / portfolio example
 # Shows: audience differentiation, freshness, depends_on
 
-kcp_version: "0.1"
+kcp_version: "0.2"
 project: wiki.example.org
 version: 1.0.0
-updated: 2026-02-25
+updated: "2026-02-28"
 
 units:
   - id: home
@@ -486,7 +486,7 @@ units:
     intent: "Who is this person and what is this site about?"
     scope: global
     audience: [human, agent]
-    validated: 2026-02-25
+    validated: "2026-02-25"
     triggers: [overview, about, biography, portfolio]
 
   - id: about
@@ -494,7 +494,7 @@ units:
     intent: "What has this person built and what are they doing now?"
     scope: global
     audience: [human, agent, architect]
-    validated: 2026-02-25
+    validated: "2026-02-25"
     depends_on: [home]
     triggers: [biography, background, current work]
 
@@ -503,7 +503,7 @@ units:
     intent: "What is this person's full professional history?"
     scope: project
     audience: [human, agent]
-    validated: 2026-02-25
+    validated: "2026-02-25"
     depends_on: [about]
     triggers: [cv, resume, employment, education]
 
@@ -512,14 +512,14 @@ units:
     intent: "What books has this person read?"
     scope: project
     audience: [human]         # human-only, not for agents
-    validated: 2026-02-25
+    validated: "2026-02-25"
 
   - id: llms-index
     path: llms.txt
     intent: "Machine-readable site index"
     scope: global
     audience: [agent]          # agent-only entry point
-    validated: 2026-02-25
+    validated: "2026-02-25"
 
 relationships:
   - from: about
@@ -547,10 +547,10 @@ relationships:
 # Dependency chains across architecture layers
 # Freshness: archived (2022) vs active (2026) content
 
-kcp_version: "0.1"
+kcp_version: "0.2"
 project: community-wiki
 version: 1.0.0
-updated: 2026-02-25
+updated: "2026-02-28"
 
 units:
   - id: home
@@ -699,7 +699,7 @@ if result.warnings:
               <pre><code id="java-install" class="language-xml">&lt;dependency&gt;
   &lt;groupId&gt;no.cantara.kcp&lt;/groupId&gt;
   &lt;artifactId&gt;kcp-parser&lt;/artifactId&gt;
-  &lt;version&gt;0.1.0&lt;/version&gt;
+  &lt;version&gt;0.2.0&lt;/version&gt;
 &lt;/dependency&gt;</code></pre>
             </div>
           </div>
@@ -736,7 +736,7 @@ result.warnings().forEach(System.out::println);</code></pre>
               </button>
             </div>
             <div class="code-block__body">
-              <pre><code id="java-cli" class="language-bash">java -jar kcp-parser-0.1.0.jar knowledge.yaml</code></pre>
+              <pre><code id="java-cli" class="language-bash">java -jar kcp-parser-0.2.0.jar knowledge.yaml</code></pre>
             </div>
           </div>
         </div>
@@ -798,7 +798,7 @@ result.warnings().forEach(System.out::println);</code></pre>
           </div>
           <div class="code-block__body">
             <pre><code id="adopt-code" class="language-yaml"># Drop this at the root of any project. Done.
-kcp_version: "0.1"
+kcp_version: "0.2"
 project: my-project
 version: 1.0.0
 
@@ -898,7 +898,7 @@ units:
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
           <div class="faq-answer">
-            <p>Place it at the root of each subproject that has its own documentation. Each manifest is independent (SPEC.md section 1.3). Cross-manifest references are out of scope for v0.1. Alternatively, place a single manifest at the monorepo root using relative paths to all subprojects.</p>
+            <p>Place it at the root of each subproject that has its own documentation. Each manifest is independent (SPEC.md section 1.3). Cross-manifest references are out of scope for v0.2. Alternatively, place a single manifest at the monorepo root using relative paths to all subprojects.</p>
           </div>
         </div>
 
