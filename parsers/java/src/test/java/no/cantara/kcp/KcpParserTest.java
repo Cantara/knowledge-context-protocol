@@ -376,4 +376,99 @@ class KcpParserTest {
         KcpValidator.ValidationResult result = KcpValidator.validate(m);
         assertTrue(result.warnings().stream().anyMatch(w -> w.contains("more than 20")));
     }
+
+    // -----------------------------------------------------------------------
+    // Cycle detection tests (§4.7)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void noCycleReturnsEmpty() {
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "units", List.of(
+                        Map.of("id", "a", "path", "a.md", "intent", "A", "scope", "global", "audience", List.of("agent")),
+                        Map.of("id", "b", "path", "b.md", "intent", "B", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("a")),
+                        Map.of("id", "c", "path", "c.md", "intent", "C", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("b"))
+                )
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        java.util.Set<String> unitIds = m.units().stream().map(KnowledgeUnit::id).collect(java.util.stream.Collectors.toSet());
+        java.util.Set<String> cycles = KcpValidator.detectCycles(m.units(), unitIds);
+        assertTrue(cycles.isEmpty());
+    }
+
+    @Test
+    void simpleTwoNodeCycleDetected() {
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "units", List.of(
+                        Map.of("id", "a", "path", "a.md", "intent", "A", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("b")),
+                        Map.of("id", "b", "path", "b.md", "intent", "B", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("a"))
+                )
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        java.util.Set<String> unitIds = m.units().stream().map(KnowledgeUnit::id).collect(java.util.stream.Collectors.toSet());
+        java.util.Set<String> cycles = KcpValidator.detectCycles(m.units(), unitIds);
+        assertEquals(1, cycles.size());
+    }
+
+    @Test
+    void threeNodeCycleDetected() {
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "units", List.of(
+                        Map.of("id", "a", "path", "a.md", "intent", "A", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("b")),
+                        Map.of("id", "b", "path", "b.md", "intent", "B", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("c")),
+                        Map.of("id", "c", "path", "c.md", "intent", "C", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("a"))
+                )
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        java.util.Set<String> unitIds = m.units().stream().map(KnowledgeUnit::id).collect(java.util.stream.Collectors.toSet());
+        java.util.Set<String> cycles = KcpValidator.detectCycles(m.units(), unitIds);
+        assertFalse(cycles.isEmpty());
+    }
+
+    @Test
+    void selfCycleDetected() {
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "units", List.of(
+                        Map.of("id", "a", "path", "a.md", "intent", "A", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("a"))
+                )
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        java.util.Set<String> unitIds = m.units().stream().map(KnowledgeUnit::id).collect(java.util.stream.Collectors.toSet());
+        java.util.Set<String> cycles = KcpValidator.detectCycles(m.units(), unitIds);
+        assertTrue(cycles.contains("a->a"));
+    }
+
+    @Test
+    void cycleDoesNotCauseValidationError() {
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "units", List.of(
+                        Map.of("id", "a", "path", "a.md", "intent", "A", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("b")),
+                        Map.of("id", "b", "path", "b.md", "intent", "B", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("a"))
+                )
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid());
+        assertTrue(result.errors().isEmpty());
+    }
+
+    @Test
+    void cycleMixedWithNonCyclicUnitsValidates() {
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "units", List.of(
+                        Map.of("id", "root", "path", "root.md", "intent", "Root", "scope", "global", "audience", List.of("agent")),
+                        Map.of("id", "a", "path", "a.md", "intent", "A", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("root", "b")),
+                        Map.of("id", "b", "path", "b.md", "intent", "B", "scope", "global", "audience", List.of("agent"), "depends_on", List.of("a"))
+                )
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid());
+    }
 }

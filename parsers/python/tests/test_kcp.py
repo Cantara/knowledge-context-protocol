@@ -3,6 +3,7 @@ from datetime import date
 from kcp import parse_dict, validate, ValidationResult
 from kcp.model import KnowledgeManifest, KnowledgeUnit, Relationship
 from kcp.parser import _validate_unit_path
+from kcp.validator import _detect_cycles
 
 
 MINIMAL = {
@@ -238,6 +239,77 @@ class TestValidator:
         m = parse_dict(data)
         result = validate(m)
         assert any("more than 20" in w for w in result.warnings)
+
+
+class TestCycleDetection:
+    """Tests for depends_on cycle detection (SPEC.md §4.7)."""
+
+    def test_no_cycle_returns_empty(self):
+        """A linear dependency chain has no cycles."""
+        units = [
+            KnowledgeUnit(id="a", path="a.md", intent="A", scope="global", audience=["agent"]),
+            KnowledgeUnit(id="b", path="b.md", intent="B", scope="global", audience=["agent"], depends_on=["a"]),
+            KnowledgeUnit(id="c", path="c.md", intent="C", scope="global", audience=["agent"], depends_on=["b"]),
+        ]
+        cycle_edges = _detect_cycles(units)
+        assert cycle_edges == set()
+
+    def test_simple_two_node_cycle(self):
+        """A depends on B, B depends on A — one cycle-closing edge detected."""
+        units = [
+            KnowledgeUnit(id="a", path="a.md", intent="A", scope="global", audience=["agent"], depends_on=["b"]),
+            KnowledgeUnit(id="b", path="b.md", intent="B", scope="global", audience=["agent"], depends_on=["a"]),
+        ]
+        cycle_edges = _detect_cycles(units)
+        assert len(cycle_edges) == 1
+
+    def test_three_node_cycle(self):
+        """A -> B -> C -> A — one cycle-closing edge detected."""
+        units = [
+            KnowledgeUnit(id="a", path="a.md", intent="A", scope="global", audience=["agent"], depends_on=["b"]),
+            KnowledgeUnit(id="b", path="b.md", intent="B", scope="global", audience=["agent"], depends_on=["c"]),
+            KnowledgeUnit(id="c", path="c.md", intent="C", scope="global", audience=["agent"], depends_on=["a"]),
+        ]
+        cycle_edges = _detect_cycles(units)
+        assert len(cycle_edges) >= 1
+
+    def test_self_cycle(self):
+        """A unit that depends on itself — self-cycle detected."""
+        units = [
+            KnowledgeUnit(id="a", path="a.md", intent="A", scope="global", audience=["agent"], depends_on=["a"]),
+        ]
+        cycle_edges = _detect_cycles(units)
+        assert ("a", "a") in cycle_edges
+
+    def test_cycle_does_not_cause_validation_error(self):
+        """Per §4.7, cycles are silently ignored — no error, no warning required."""
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.1",
+            "units": [
+                {"id": "a", "path": "a.md", "intent": "A", "scope": "global", "audience": ["agent"], "depends_on": ["b"]},
+                {"id": "b", "path": "b.md", "intent": "B", "scope": "global", "audience": ["agent"], "depends_on": ["a"]},
+            ],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert result.is_valid
+        assert result.errors == []
+
+    def test_cycle_with_non_cyclic_units_mixed(self):
+        """A graph with both cyclic and non-cyclic units validates correctly."""
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.1",
+            "units": [
+                {"id": "root", "path": "root.md", "intent": "Root", "scope": "global", "audience": ["agent"]},
+                {"id": "a", "path": "a.md", "intent": "A", "scope": "global", "audience": ["agent"], "depends_on": ["root", "b"]},
+                {"id": "b", "path": "b.md", "intent": "B", "scope": "global", "audience": ["agent"], "depends_on": ["a"]},
+            ],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert result.is_valid
 
 
 class TestPathTraversalValidation:

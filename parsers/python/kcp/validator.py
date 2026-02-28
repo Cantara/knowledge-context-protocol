@@ -1,5 +1,7 @@
+import os
 import re
-from typing import NamedTuple
+from pathlib import Path
+from typing import NamedTuple, Optional
 
 from .model import KnowledgeManifest
 
@@ -26,7 +28,42 @@ class ValidationResult(NamedTuple):
         return len(self.errors) == 0
 
 
-def validate(manifest: KnowledgeManifest) -> ValidationResult:
+def _detect_cycles(units: list) -> set[tuple[str, str]]:
+    """Detect cycles in the depends_on graph using DFS.
+
+    Returns the set of (from_id, to_id) edges that would close a cycle.
+    These edges should be silently ignored per SPEC.md section 4.7.
+    """
+    # Build adjacency list
+    adj: dict[str, list[str]] = {}
+    unit_ids = {u.id for u in units}
+    for unit in units:
+        adj[unit.id] = [dep for dep in unit.depends_on if dep in unit_ids]
+
+    cycle_edges: set[tuple[str, str]] = set()
+    # Track global visit state: 0 = unvisited, 1 = in current path, 2 = completed
+    state: dict[str, int] = {uid: 0 for uid in unit_ids}
+
+    def dfs(node: str, path_set: set[str]) -> None:
+        state[node] = 1
+        path_set.add(node)
+        for dep in adj.get(node, []):
+            if state[dep] == 1:
+                # dep is in the current DFS path — this edge closes a cycle
+                cycle_edges.add((node, dep))
+            elif state[dep] == 0:
+                dfs(dep, path_set)
+        path_set.discard(node)
+        state[node] = 2
+
+    for uid in unit_ids:
+        if state[uid] == 0:
+            dfs(uid, set())
+
+    return cycle_edges
+
+
+def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) -> ValidationResult:
     """Validate a parsed KnowledgeManifest.
 
     Returns a :class:`ValidationResult` with separate ``errors`` and ``warnings`` lists.
@@ -34,6 +71,11 @@ def validate(manifest: KnowledgeManifest) -> ValidationResult:
     errors: list[str] = []
     warnings: list[str] = []
     unit_ids = {u.id for u in manifest.units}
+
+    # Cycle detection (§4.7) — detect and silently ignore cycle-closing edges.
+    # No error or warning is required by the spec, but we run the detection
+    # so that traversal code can rely on it.
+    _detect_cycles(manifest.units)
 
     # kcp_version — RECOMMENDED; warn if missing or unknown
     if not manifest.kcp_version:

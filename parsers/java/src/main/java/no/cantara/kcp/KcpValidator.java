@@ -4,9 +4,13 @@ import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
 import no.cantara.kcp.model.Relationship;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -43,10 +47,30 @@ public class KcpValidator {
         public boolean hasWarnings() { return !warnings.isEmpty(); }
     }
 
+    /**
+     * Validate a manifest without path existence checking.
+     */
     public static ValidationResult validate(KnowledgeManifest manifest) {
+        return validate(manifest, null);
+    }
+
+    /**
+     * Validate a manifest, optionally checking that declared paths exist relative
+     * to {@code manifestDir}.
+     *
+     * @param manifest    The parsed manifest to validate.
+     * @param manifestDir The directory containing the manifest file, or {@code null}
+     *                    to skip path existence checks.
+     */
+    public static ValidationResult validate(KnowledgeManifest manifest, Path manifestDir) {
         List<String> errors = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
         Set<String> unitIds = manifest.units().stream().map(KnowledgeUnit::id).collect(Collectors.toSet());
+
+        // Cycle detection (§4.7) — detect and silently ignore cycle-closing edges.
+        // No error or warning is required by the spec, but we run the detection
+        // so that traversal code can rely on it.
+        detectCycles(manifest.units(), unitIds);
 
         // kcp_version — RECOMMENDED; warn if absent or unknown
         if (manifest.kcpVersion() == null || manifest.kcpVersion().isBlank()) {
@@ -87,6 +111,12 @@ public class KcpValidator {
 
             if (unit.path() == null || unit.path().isBlank()) {
                 errors.add(p + ": 'path' is required");
+            } else if (manifestDir != null) {
+                // Path existence check (§4.3 / §7: SHOULD warn if path does not exist)
+                Path resolved = manifestDir.resolve(unit.path());
+                if (!Files.exists(resolved)) {
+                    warnings.add(p + ": path '" + unit.path() + "' does not exist");
+                }
             }
             if (unit.intent() == null || unit.intent().isBlank()) {
                 errors.add(p + ": 'intent' is required");
@@ -137,6 +167,53 @@ public class KcpValidator {
         }
 
         return new ValidationResult(errors, warnings);
+    }
+
+    /**
+     * Detect cycles in the depends_on graph using DFS.
+     * Per SPEC.md §4.7, cycles are silently ignored (no error or warning).
+     *
+     * @return The set of edges (as "from-&gt;to" strings) that would close a cycle.
+     */
+    static Set<String> detectCycles(List<KnowledgeUnit> units, Set<String> unitIds) {
+        // Build adjacency list
+        Map<String, List<String>> adj = new HashMap<>();
+        for (KnowledgeUnit unit : units) {
+            List<String> deps = unit.dependsOn().stream()
+                    .filter(unitIds::contains)
+                    .toList();
+            adj.put(unit.id(), deps);
+        }
+
+        Set<String> cycleEdges = new HashSet<>();
+        // 0 = unvisited, 1 = in current path, 2 = completed
+        Map<String, Integer> state = new HashMap<>();
+        for (String id : unitIds) {
+            state.put(id, 0);
+        }
+
+        for (String id : unitIds) {
+            if (state.get(id) == 0) {
+                dfs(id, adj, state, cycleEdges);
+            }
+        }
+
+        return cycleEdges;
+    }
+
+    private static void dfs(String node, Map<String, List<String>> adj,
+                            Map<String, Integer> state, Set<String> cycleEdges) {
+        state.put(node, 1); // in current path
+        for (String dep : adj.getOrDefault(node, List.of())) {
+            int depState = state.getOrDefault(dep, 0);
+            if (depState == 1) {
+                // dep is in the current DFS path — this edge closes a cycle
+                cycleEdges.add(node + "->" + dep);
+            } else if (depState == 0) {
+                dfs(dep, adj, state, cycleEdges);
+            }
+        }
+        state.put(node, 2); // completed
     }
 
     private static List<String> sorted(Set<String> set) {
