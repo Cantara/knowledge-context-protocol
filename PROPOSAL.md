@@ -199,8 +199,8 @@ This is a draft proposal. We are asking for:
 4. **Adoption.** If you add a `knowledge.yaml` to a project and it works, that is evidence.
    If it does not work, that is more valuable evidence.
 
-The reference parser (Python) is forthcoming. `synthesis export --format kcp` is on the
-Synthesis roadmap. Both will be available before we consider this format stable.
+Reference parsers are available in both Python and Java — see the `parsers/` directory.
+`synthesis export --format kcp` generates a `knowledge.yaml` from an existing Synthesis index.
 
 ---
 

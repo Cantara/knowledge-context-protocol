@@ -42,10 +42,11 @@ public class KcpCli {
             System.exit(1);
         }
 
-        System.out.printf("✓ %s is valid — project '%s' v%s, %d unit(s), %d relationship(s)%n",
+        String versionStr = manifest.version() != null ? " v" + manifest.version() : "";
+        System.out.printf("✓ %s is valid — project '%s'%s, %d unit(s), %d relationship(s)%n",
                 path,
                 manifest.project(),
-                manifest.version(),
+                versionStr,
                 manifest.units().size(),
                 manifest.relationships().size());
     }
