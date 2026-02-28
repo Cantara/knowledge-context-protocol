@@ -88,15 +88,18 @@ relationships:
 
 ### Minimum Viable KCP
 
-Three fields are enough to start:
+Five fields per unit are enough to start:
 
 ```yaml
+kcp_version: "0.1"
 project: my-project
 version: 1.0.0
 units:
   - id: overview
     path: README.md
     intent: "What is this project and how do I get started?"
+    scope: global
+    audience: [human, agent]
 ```
 
 The standard allows complexity but does not demand it.

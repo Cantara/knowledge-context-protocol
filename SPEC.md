@@ -299,13 +299,14 @@ The following conditions MUST cause the parser to reject the manifest:
 Implementations are encouraged to adopt KCP incrementally. Three levels are defined:
 
 **Level 1 — Minimal**
-The manifest contains `project`, `units`, and for each unit: `id`, `path`, and `intent`. No
-other fields are required. A Level 1 manifest answers the question: "what knowledge exists and
-what does each piece answer?"
+The manifest contains `project`, `units`, and for each unit: `id`, `path`, `intent`, `scope`,
+and `audience`. A Level 1 manifest answers the question: "what knowledge exists, what does
+each piece answer, and who is it for?" Parsers SHOULD supply default values when `scope` or
+`audience` are absent (`scope` defaults to `global`; `audience` defaults to an empty list).
 
 **Level 2 — Structured**
-Extends Level 1 with `validated`, `depends_on`, `scope`, and `audience`. A Level 2 manifest
-supports freshness-aware retrieval and dependency-ordered loading.
+Extends Level 1 with `validated` and `depends_on`. A Level 2 manifest supports freshness-aware
+retrieval and dependency-ordered loading.
 
 **Level 3 — Full**
 Extends Level 2 with `triggers`, `supersedes`, and a `relationships` section. A Level 3

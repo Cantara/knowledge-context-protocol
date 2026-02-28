@@ -4,17 +4,20 @@ Three reference implementations showing the adoption gradient — from the minim
 
 ## [minimal/](./minimal/)
 
-**Three fields. Five minutes.**
+**Five minutes.**
 
 The smallest valid `knowledge.yaml`. Start here if you are not sure whether you need KCP yet.
 
 ```yaml
+kcp_version: "0.1"
 project: my-project
 version: 1.0.0
 units:
   - id: overview
     path: README.md
     intent: "What is this project and how do I get started?"
+    scope: global
+    audience: [human, agent]
 ```
 
 ---
@@ -51,7 +54,7 @@ Live reference: [cantara.github.io/wiki/knowledge.yaml](https://cantara.github.i
 
 | Stage | What you have | When to use it |
 |-------|--------------|----------------|
-| **Minimal** | `id`, `path`, `intent` | Any project. Start here. |
-| **Personal site** | + `audience`, `validated`, `depends_on` | Personal wikis, portfolios, small docs sites |
-| **Open source wiki** | + `scope`, `triggers`, `relationships` | Multi-section knowledge bases, community docs |
+| **Minimal** | `id`, `path`, `intent`, `scope`, `audience` | Any project. Start here. |
+| **Personal site** | + `validated`, `depends_on` | Personal wikis, portfolios, small docs sites |
+| **Open source wiki** | + `triggers`, `relationships` | Multi-section knowledge bases, community docs |
 | **Enterprise** | + full relationship graph, role-based audience, cross-repo units | Large orgs, multiple repositories, agent deployments |
