@@ -75,6 +75,15 @@ units:
     depends_on: [spec, rfc-0002]
     triggers: [payment, x402, rate limits, micropayment, subscription, metered, quota, 429, economics]
 
+  - id: rfc-0006
+    path: RFC-0006-Context-Window-Hints.md
+    intent: "How should KCP expose token estimates, load strategies, summary relationships, and chunk structure so agents can plan context usage before fetching content?"
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-02-28"
+    depends_on: [spec]
+    triggers: [context window, token estimate, hints, chunking, summary, load strategy, eager, lazy, context budget]
+
   - id: readme
     path: README.md
     intent: "What is KCP, how does it relate to MCP and llms.txt, and how do I get started?"

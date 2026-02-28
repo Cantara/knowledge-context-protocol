@@ -276,6 +276,8 @@ units:
 
 #### Proposal J — Context window hints ([Issue #9](https://github.com/Cantara/knowledge-context-protocol/issues/9))
 
+> **Superseded by [RFC-0006](./RFC-0006-Context-Window-Hints.md)** — The `hints` block (token estimates, load strategy, priority, density, summary relationships, chunking) is defined there.
+
 Agents with limited context budgets need cost estimates before loading.
 
 ```yaml
@@ -521,7 +523,7 @@ units:
 | G | Data residency and compliance | Governance | → [RFC-0004](./RFC-0004-Trust-and-Compliance.md) (`compliance` block) |
 | H | AI crawling permissions | Governance | ✅ Promoted to core in v0.3 (`indexing` field) |
 | I | Content format metadata | Navigation | ✅ Promoted to core in v0.3 (`format` + `content_type`) |
-| J | Context window hints | Navigation | [Issue #9](https://github.com/Cantara/knowledge-context-protocol/issues/9) — open |
+| J | Context window hints | Navigation | → [RFC-0006](./RFC-0006-Context-Window-Hints.md) (`hints` block) |
 | K | Caching and update frequency | Navigation | ✅ Promoted to core in v0.3 (`update_frequency` field) |
 | L | Multilingual and localisation | Navigation | ✅ Promoted to core in v0.3 (`language` field) |
 | M | Cross-manifest federation | Scale | → [RFC-0003](./RFC-0003-Federation.md) |
