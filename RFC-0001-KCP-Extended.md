@@ -168,6 +168,8 @@ rate_limits:
 
 #### Proposal E — Trust and audit metadata ([Issue #5](https://github.com/Cantara/knowledge-context-protocol/issues/5))
 
+> **Superseded by [RFC-0004](./RFC-0004-Trust-and-Compliance.md)** — The `trust` block (provenance, content_integrity, audit, agent_requirements) is defined there.
+
 ```yaml
 trust:
   provenance:
@@ -204,6 +206,8 @@ units:
 ```
 
 #### Proposal G — Data residency and compliance ([Issue #11](https://github.com/Cantara/knowledge-context-protocol/issues/11))
+
+> **Superseded by [RFC-0004](./RFC-0004-Trust-and-Compliance.md)** — The `compliance` block (data_residency, regulations, sensitivity, restrictions) is defined there.
 
 For enterprise and regulated industries: where may this knowledge be processed?
 
@@ -508,9 +512,9 @@ units:
 | B | Delegation constraints | Access | → [RFC-0002](./RFC-0002-Auth-and-Delegation.md) |
 | C | Payment metadata | Economics | [Issue #2](https://github.com/Cantara/knowledge-context-protocol/issues/2) — open |
 | D | Rate limit metadata | Economics | [Issue #4](https://github.com/Cantara/knowledge-context-protocol/issues/4) — open |
-| E | Trust and audit metadata | Governance | [Issue #5](https://github.com/Cantara/knowledge-context-protocol/issues/5) — open |
+| E | Trust and audit metadata | Governance | → [RFC-0004](./RFC-0004-Trust-and-Compliance.md) (`trust` block) |
 | F | License and usage rights | Governance | ✅ Promoted to core in v0.3 (`license` field) |
-| G | Data residency and compliance | Governance | [Issue #11](https://github.com/Cantara/knowledge-context-protocol/issues/11) — open |
+| G | Data residency and compliance | Governance | → [RFC-0004](./RFC-0004-Trust-and-Compliance.md) (`compliance` block) |
 | H | AI crawling permissions | Governance | ✅ Promoted to core in v0.3 (`indexing` field) |
 | I | Content format metadata | Navigation | ✅ Promoted to core in v0.3 (`format` + `content_type`) |
 | J | Context window hints | Navigation | [Issue #9](https://github.com/Cantara/knowledge-context-protocol/issues/9) — open |
