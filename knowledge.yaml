@@ -1,10 +1,10 @@
 # KCP eats its own dogfood.
 # This manifest describes the Knowledge Context Protocol repository itself.
 
-kcp_version: "0.1"
+kcp_version: "0.2"
 project: knowledge-context-protocol
-version: 0.1.0
-updated: 2026-02-28
+version: 0.2.0
+updated: "2026-02-28"
 
 units:
 
@@ -15,7 +15,7 @@ units:
     intent: "What are the normative rules for a knowledge.yaml manifest — field definitions, validation, conformance levels?"
     scope: global
     audience: [human, agent, developer, architect]
-    validated: 2026-02-27
+    validated: "2026-02-27"
     triggers: [spec, specification, fields, validation, conformance, yaml, format]
 
   - id: proposal
@@ -23,16 +23,16 @@ units:
     intent: "Why does KCP exist and what problem does it solve? The business case for a knowledge architecture standard."
     scope: global
     audience: [human, agent, architect]
-    validated: 2026-02-25
+    validated: "2026-02-25"
     depends_on: [spec]
     triggers: [proposal, motivation, problem, llms.txt, knowledge gap, business case]
 
   - id: rfc-0001
     path: RFC-0001-KCP-Extended.md
-    intent: "What extended capabilities are being considered for KCP v0.2 — auth, payments, compliance, federation?"
+    intent: "What extended capabilities are proposed beyond the core spec — auth, payments, compliance, federation, and kind taxonomy?"
     scope: global
     audience: [human, agent, architect, developer]
-    validated: 2026-02-26
+    validated: "2026-02-26"
     depends_on: [spec]
     triggers: [rfc, extensions, auth, payments, compliance, federation, v0.2, roadmap]
 
@@ -41,7 +41,7 @@ units:
     intent: "What is KCP, how does it relate to MCP and llms.txt, and how do I get started?"
     scope: global
     audience: [human, agent]
-    validated: 2026-02-27
+    validated: "2026-02-27"
     triggers: [overview, introduction, getting started, mcp, llms.txt]
 
   # -- Adoption guide -----------------------------------------------------------
@@ -51,7 +51,7 @@ units:
     intent: "How do I retrofit KCP onto an existing project with documentation, skill files, and agent definitions?"
     scope: global
     audience: [human, developer]
-    validated: 2026-02-28
+    validated: "2026-02-28"
     depends_on: [spec]
     triggers: [adoption, retrofit, existing project, migration, getting started, kind]
 
@@ -62,7 +62,7 @@ units:
     intent: "How do I validate a knowledge.yaml file against a machine-readable schema?"
     scope: global
     audience: [developer, agent]
-    validated: 2026-02-28
+    validated: "2026-02-28"
     depends_on: [spec]
     triggers: [json schema, validation, schema, editor support, ide, autocompletion]
 
@@ -73,7 +73,7 @@ units:
     intent: "What example knowledge.yaml files are available and what adoption level does each demonstrate?"
     scope: global
     audience: [human, agent, developer]
-    validated: 2026-02-27
+    validated: "2026-02-27"
     depends_on: [spec]
     triggers: [examples, samples, adoption gradient, level 1, level 2, level 3]
 
@@ -82,7 +82,7 @@ units:
     intent: "What does the smallest valid knowledge.yaml look like? (Level 1 conformance)"
     scope: module
     audience: [developer, agent]
-    validated: 2026-02-27
+    validated: "2026-02-27"
     depends_on: [examples-index]
     triggers: [minimal, five minutes, level 1, quickstart]
 
@@ -91,7 +91,7 @@ units:
     intent: "How do I structure a personal site or portfolio with audience differentiation and freshness dating?"
     scope: module
     audience: [developer, agent]
-    validated: 2026-02-27
+    validated: "2026-02-27"
     depends_on: [examples-index]
     triggers: [personal site, portfolio, wiki, audience, freshness]
 
@@ -100,7 +100,7 @@ units:
     intent: "How do I structure a large community wiki with topology, dependency chains, and role-based audience targeting?"
     scope: module
     audience: [developer, agent]
-    validated: 2026-02-27
+    validated: "2026-02-27"
     depends_on: [examples-index]
     triggers: [open source, wiki, community, topology, relationships, enterprise]
 
@@ -111,7 +111,7 @@ units:
     intent: "How do I install, use, and extend the Python reference parser for knowledge.yaml?"
     scope: module
     audience: [developer, agent]
-    validated: 2026-02-28
+    validated: "2026-02-28"
     depends_on: [spec]
     triggers: [python, parser, pip, validator, cli, pyyaml]
 
@@ -120,7 +120,7 @@ units:
     intent: "How do I build, use, and extend the Java reference parser for knowledge.yaml?"
     scope: module
     audience: [developer, agent]
-    validated: 2026-02-28
+    validated: "2026-02-28"
     depends_on: [spec]
     triggers: [java, parser, maven, snakeyaml, validator, cli]
 
@@ -131,7 +131,7 @@ units:
     intent: "Where is the public-facing documentation site for KCP hosted on GitHub Pages?"
     scope: global
     audience: [human, agent]
-    validated: 2026-02-28
+    validated: "2026-02-28"
     depends_on: [spec]
     triggers: [website, github pages, documentation site, landing page]
 
@@ -142,7 +142,7 @@ units:
     intent: "Under what license is the KCP specification and reference implementation released?"
     scope: global
     audience: [human, agent]
-    validated: 2026-02-25
+    validated: "2026-02-25"
     triggers: [license, apache, open source, terms]
 
 relationships:

@@ -1,8 +1,8 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.1
+**Version:** 0.2
 **Status:** Draft
-**Date:** 2026-02-25
+**Date:** 2026-02-28
 **Repository:** github.com/cantara/knowledge-context-protocol
 
 ---
@@ -79,10 +79,10 @@ version.
 ## 3. Root Manifest Structure
 
 ```yaml
-kcp_version: "0.1"          # RECOMMENDED
+kcp_version: "0.2"          # RECOMMENDED
 project: <string>            # REQUIRED
 version: <semver string>     # RECOMMENDED
-updated: <ISO date>          # RECOMMENDED
+updated: "<ISO date>"        # RECOMMENDED; quote the value (see §4.1.1)
 
 units:                       # REQUIRED; list of knowledge units
   - ...
@@ -95,7 +95,7 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
-| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.1"` for conformance with this document. |
+| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.2"` for conformance with this document. |
 | `project` | REQUIRED | string | Human-readable name of the project or documentation site. |
 | `version` | RECOMMENDED | string | Semver version of this manifest. Increment when units are added or removed. |
 | `updated` | RECOMMENDED | string | ISO 8601 date (`YYYY-MM-DD`) when this manifest was last modified. |
@@ -117,10 +117,27 @@ Each entry in `units` describes a self-contained piece of knowledge.
 | `intent` | REQUIRED | string | One sentence: what question does this unit answer? See §4.4. |
 | `scope` | REQUIRED | string | Breadth of applicability. One of: `global`, `project`, `module`. |
 | `audience` | REQUIRED | list of strings | Who this unit is for. See §4.6. |
-| `validated` | RECOMMENDED | string | ISO 8601 date when a human last confirmed the content was accurate. |
+| `validated` | RECOMMENDED | string | ISO 8601 date (quoted) when a human last confirmed the content was accurate. See §4.1.1. |
 | `depends_on` | OPTIONAL | list of strings | IDs of units that SHOULD be loaded before this one. See §4.7. |
 | `supersedes` | OPTIONAL | string | ID of the unit this replaces. See §4.8. |
 | `triggers` | OPTIONAL | list of strings | Keywords or task contexts that make this unit relevant. See §4.9. |
+
+#### 4.1.1 Date Fields
+
+The `validated` (unit) and `updated` (root) fields MUST contain an ISO 8601 date string
+in `YYYY-MM-DD` format.
+
+**YAML encoding:** Date values SHOULD be quoted in YAML to prevent YAML 1.1 parsers from
+coercing them to native date objects:
+
+```yaml
+validated: "2026-02-25"   # correct — stays a string
+validated: 2026-02-25     # may be parsed as a date object by some YAML libraries
+```
+
+Parsers SHOULD coerce native date objects to their ISO 8601 string representation when
+reading `validated` and `updated` fields, and MUST NOT reject a manifest solely because
+a date field was parsed as a native date type.
 
 ### 4.2 `id`
 
@@ -258,8 +275,10 @@ Unknown relationship types MUST be silently ignored.
 ### 6.1 Spec Version (`kcp_version`)
 
 `kcp_version` identifies which version of this specification the manifest conforms to. Current
-valid value: `"0.1"`. Parsers encountering an unknown `kcp_version` SHOULD process the manifest
-using the closest known version and SHOULD emit a warning.
+valid value: `"0.2"`. The value `"0.1"` refers to the prior draft (February 2026); parsers
+SHOULD treat a `"0.1"` manifest as conformant with this version. Parsers encountering an
+unknown `kcp_version` SHOULD process the manifest using the closest known version and SHOULD
+emit a warning.
 
 ### 6.2 Manifest Version (`version`)
 
@@ -456,7 +475,7 @@ MUST apply the following constraints:
 ## Appendix A: Minimal Example
 
 ```yaml
-kcp_version: "0.1"
+kcp_version: "0.2"
 project: my-project
 version: 1.0.0
 units:
@@ -472,10 +491,10 @@ units:
 ## Appendix B: Full Example
 
 ```yaml
-kcp_version: "0.1"
+kcp_version: "0.2"
 project: wiki.example.org
 version: 2.1.0
-updated: 2026-02-25
+updated: "2026-02-28"
 
 units:
   - id: about
@@ -483,14 +502,14 @@ units:
     intent: "Who maintains this project and what is it for?"
     scope: global
     audience: [human, agent]
-    validated: 2026-02-24
+    validated: "2026-02-24"
 
   - id: architecture-overview
     path: architecture/overview.md
     intent: "What is the high-level architecture and which components exist?"
     scope: global
     audience: [developer, architect, agent]
-    validated: 2026-01-15
+    validated: "2026-01-15"
     depends_on: [about]
     triggers: [architecture, components, system-design, overview]
 
@@ -499,7 +518,7 @@ units:
     intent: "How do I deploy version 3.x to production?"
     scope: project
     audience: [operator, developer, agent]
-    validated: 2026-02-20
+    validated: "2026-02-20"
     depends_on: [architecture-overview]
     supersedes: deployment-guide-v2
     triggers: [deployment, production, release, kubernetes, docker]
@@ -509,7 +528,7 @@ units:
     intent: "How do I authenticate API requests using OAuth 2.0?"
     scope: module
     audience: [developer, agent]
-    validated: 2026-02-18
+    validated: "2026-02-18"
     depends_on: [architecture-overview]
     triggers: [oauth2, authentication, bearer-token, jwt, api-security]
 
@@ -518,7 +537,7 @@ units:
     intent: "Legacy deployment procedure for version 2.x (superseded)."
     scope: project
     audience: [agent]
-    validated: 2025-09-01
+    validated: "2025-09-01"
 
 relationships:
   - from: architecture-overview

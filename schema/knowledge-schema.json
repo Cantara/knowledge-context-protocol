@@ -9,8 +9,8 @@
   "properties": {
     "kcp_version": {
       "type": "string",
-      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current valid value: \"0.1\".",
-      "enum": ["0.1"]
+      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.2\". The value \"0.1\" (prior draft) is also accepted for backward compatibility.",
+      "enum": ["0.1", "0.2"]
     },
     "project": {
       "type": "string",
@@ -24,8 +24,7 @@
     },
     "updated": {
       "type": "string",
-      "description": "ISO 8601 date (YYYY-MM-DD) when this manifest was last modified. RECOMMENDED.",
-      "format": "date",
+      "description": "ISO 8601 date (YYYY-MM-DD) when this manifest was last modified. RECOMMENDED. Quote the value in YAML (e.g. \"2026-02-25\") to prevent YAML 1.1 parsers from coercing it to a native date object.",
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
     },
     "units": {
@@ -81,8 +80,7 @@
         },
         "validated": {
           "type": "string",
-          "description": "ISO 8601 date when a human last confirmed the content was accurate. RECOMMENDED.",
-          "format": "date",
+          "description": "ISO 8601 date when a human last confirmed the content was accurate. RECOMMENDED. Quote the value in YAML (e.g. \"2026-02-25\") to prevent YAML 1.1 parsers from coercing it to a native date object.",
           "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
         },
         "depends_on": {
@@ -106,10 +104,6 @@
             "maxLength": 60
           },
           "maxItems": 20
-        },
-        "kind": {
-          "type": "string",
-          "description": "Type of artifact: knowledge (default), schema, service, executable, or policy. Extension field from RFC-0001."
         }
       }
     },
@@ -117,7 +111,7 @@
       "type": "object",
       "description": "An explicit directional relationship between two knowledge units.",
       "required": ["from", "to", "type"],
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "from": {
           "type": "string",
@@ -131,8 +125,7 @@
         },
         "type": {
           "type": "string",
-          "description": "The type of relationship: enables (from unlocks to), context (from provides context for to), supersedes (from replaces to), contradicts (from conflicts with to).",
-          "enum": ["enables", "context", "supersedes", "contradicts"]
+          "description": "The type of relationship. Defined values: enables (from unlocks to), context (from provides context for to), supersedes (from replaces to), contradicts (from conflicts with to). Unknown values MUST be silently ignored per SPEC.md §5."
         }
       }
     }

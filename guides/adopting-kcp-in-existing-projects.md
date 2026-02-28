@@ -25,31 +25,36 @@ The only new file is `knowledge.yaml`. Everything else is declared, not created.
 ## Mature project? Start with classification
 
 If your project already has 10+ artifacts — skill files, agent definitions, hooks, API specs,
-documentation — **classify them by `kind` before doing anything else.**
+documentation — **think about what kind of artifact each one is before writing intents.**
 
 The most disorienting part of retrofitting KCP onto a mature project is not knowing which
-artifacts belong in the manifest and in what form. The `kind` taxonomy answers this:
+artifacts belong in the manifest and in what form. The core question for each artifact is:
 
-| What you have | `kind` | How to think about it |
-|---------------|--------|----------------------|
-| README, guides, wiki pages | `knowledge` (default) | "What question does this answer?" |
-| OpenAPI / AsyncAPI / gRPC proto | `schema` | "What structure does this define?" |
-| Running API, MCP server, webhook | `service` | "What capability does this expose?" |
-| Skill files, behavioral instructions | `knowledge` | "What does this teach the agent to do?" |
-| Agent definitions, runnable workers | `executable` | "What does this do when invoked?" |
-| Pre-commit hooks, policy rules | `policy` | "What rule does this enforce?" |
+| What you have | How to think about it |
+|---------------|-----------------------|
+| README, guides, wiki pages | "What question does this answer?" |
+| OpenAPI / AsyncAPI / gRPC proto | "What structure does this define?" |
+| Skill files, behavioral instructions | "What does this teach the agent to do?" |
+| Agent definitions, runnable workers | "What does this do when invoked?" |
+| Pre-commit hooks, policy rules | "What rule does this enforce?" |
 
-**Why classification first:** The `kind` determines how you write the `intent`. A policy's
-intent ("What checks run before every commit?") is fundamentally different from a knowledge
-unit's intent ("How do I authenticate API requests?"). If you try to write intents before
-classifying, you will write documentation-style intents for everything — and the dispatch
-signal that agents need will be missing.
+**Why classification first:** The _kind_ of artifact determines how you write the `intent`. A
+policy's intent ("What checks run before every commit?") is fundamentally different from a
+knowledge unit's intent ("How do I authenticate API requests?"). If you try to write intents
+before classifying, you will write documentation-style intents for everything — and the
+dispatch signal that agents need will be missing.
+
+> **RFC-0001 note:** The proposed `kind` field (from
+> [RFC-0001](../RFC-0001-KCP-Extended.md)) gives these categories a formal name
+> (`knowledge`, `schema`, `service`, `executable`, `policy`). If your implementation
+> supports RFC-0001, see Step 4 for how to include it. The `kind` field is **not** part of
+> the v0.1 core spec — manifests without it are fully conformant.
 
 **The mature-project path through this guide:**
 
-1. Classify all artifacts by `kind` (this section — you just did it)
+1. Classify all artifacts by kind (this section — you just did it)
 2. Step 1: Audit with classification in hand (the questions now have context)
-3. Step 2: Write Level 1 entries — include `kind` from the start
+3. Step 2: Write Level 1 entries
 4. Steps 3-5: Add structure, triggers, and relationships as normal
 
 If you are starting a new project with mostly documentation, skip this section and go
@@ -81,7 +86,9 @@ For each one, ask:
 
 ## Step 2: Map to KCP units (Level 1 — minimum viable)
 
-Start with just `id`, `path`, and `intent`. Nothing else is required at Level 1.
+A Level 1 unit requires five fields: `id`, `path`, `intent`, `scope`, and `audience`.
+These five fields are enough for an agent to answer: "what knowledge exists, what does each
+piece answer, and who is it for?"
 
 ```yaml
 kcp_version: "0.1"
@@ -92,17 +99,30 @@ units:
   - id: overview
     path: README.md
     intent: "What is this project and how do I get started?"
+    scope: global
+    audience: [human, agent]
 
   - id: architecture
     path: docs/architecture.md
     intent: "What are the architectural decisions and why were they made?"
+    scope: global
+    audience: [developer, architect, agent]
 
   - id: auth-guide
     path: docs/api/authentication.md
     intent: "How do I authenticate API requests?"
+    scope: module
+    audience: [developer, agent]
 ```
 
 This is a valid, complete KCP manifest. Stop here if this is enough.
+
+**Quick reference for `scope`:** `global` — the whole project or system; `project` — a
+specific service or repo within a larger system; `module` — a specific component.
+
+**Quick reference for `audience`:** `human`, `agent`, `developer`, `architect`, `operator`.
+When unsure, start with `[human, agent]` for documentation and `[developer, agent]` for
+implementation guides.
 
 ---
 
@@ -127,11 +147,15 @@ as potentially stale.
 
 ---
 
-## Step 4: Verify `kind` for non-documentation artifacts
+## Step 4: Add `kind` for non-documentation artifacts (RFC-0001 extension)
 
-If you classified artifacts by `kind` earlier (see "Mature project? Start with
-classification"), verify your classifications against the table below. If you skipped
-classification, now is the time to add `kind` to any unit that is not narrative documentation.
+> **Note:** `kind` is a proposed extension from [RFC-0001](../RFC-0001-KCP-Extended.md),
+> not part of the v0.1 core spec. A manifest without `kind` is fully conformant.
+> Add it if your implementation supports RFC-0001 or if you want to signal artifact type
+> to tools that understand the extension.
+
+If your project has API specs, agent definitions, or policy hooks — not just documentation —
+the `kind` field helps agents and tools interact with them correctly:
 
 | What you have | `kind` | Default behavior |
 |---------------|--------|-----------------|
@@ -142,23 +166,25 @@ classification, now is the time to add `kind` to any unit that is not narrative 
 | Agent definitions, runnable workers | `executable` | Agent invokes on demand |
 | Pre-commit hooks, policy rules | `policy` | Agent evaluates as gate |
 
+Unknown `kind` values MUST be silently ignored by conformant parsers.
+
 ```yaml
   - id: payments-api-spec
-    kind: schema
+    kind: schema                   # RFC-0001 extension field
     path: openapi/payments.yaml
     intent: "What endpoints does the Payments API expose?"
     scope: module
     audience: [developer, agent]
 
   - id: health-check-agent
-    kind: executable
+    kind: executable               # RFC-0001 extension field
     path: .claude/agents/health-check.md
     intent: "How do I run a health check on this project's AI context setup?"
     scope: project
     audience: [agent]
 
   - id: pre-commit-gate
-    kind: policy
+    kind: policy                   # RFC-0001 extension field
     path: .husky/pre-commit
     intent: "What checks run automatically before every commit?"
     scope: project

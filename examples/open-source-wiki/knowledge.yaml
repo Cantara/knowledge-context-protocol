@@ -7,10 +7,10 @@
 # between archive content and actively maintained files, and audience targeting
 # for developer, operator, and architect roles.
 
-kcp_version: "0.1"
+kcp_version: "0.2"
 project: community-wiki
 version: 1.0.0
-updated: 2026-02-25
+updated: "2026-02-25"
 
 units:
 
@@ -21,7 +21,7 @@ units:
     intent: "What is this community and how is the wiki organised?"
     scope: global
     audience: [human, agent, developer, architect]
-    validated: 2022-12-01
+    validated: "2022-12-01"
     triggers: [overview, navigation, community, home]
 
   - id: projects-index
@@ -29,7 +29,7 @@ units:
     intent: "What open source projects does this community develop and maintain?"
     scope: global
     audience: [human, agent, developer]
-    validated: 2022-12-01
+    validated: "2022-12-01"
     depends_on: [home]
     triggers: [projects, open source, software, repositories]
 
@@ -38,7 +38,7 @@ units:
     intent: "Which knowledge base sections exist and what does each cover?"
     scope: global
     audience: [human, agent, developer, architect]
-    validated: 2022-12-01
+    validated: "2022-12-01"
     depends_on: [home]
     triggers: [knowledge base, sections, architecture, agile, soa, enterprise]
 
@@ -49,7 +49,7 @@ units:
     intent: "What does this wiki contain and where are the key sections? (machine-readable index)"
     scope: global
     audience: [agent]
-    validated: 2026-02-25
+    validated: "2026-02-25"
     triggers: [site map, machine readable, ai navigation, llms]
 
   - id: llms-full
@@ -57,7 +57,7 @@ units:
     intent: "What is the complete machine-readable content of this wiki?"
     scope: global
     audience: [agent]
-    validated: 2026-02-25
+    validated: "2026-02-25"
     depends_on: [llms-index]
     triggers: [full content, complete index]
 
@@ -68,7 +68,7 @@ units:
     intent: "How do I get started with this community's production IAM and SSO platform?"
     scope: module
     audience: [human, agent, developer, operator]
-    validated: 2022-12-01
+    validated: "2022-12-01"
     depends_on: [projects-index]
     triggers: [SSO, IAM, identity, authentication, OAuth2, OpenID Connect, LDAP, single sign-on]
 
@@ -77,7 +77,7 @@ units:
     intent: "How is the IAM platform architected and what are its core components?"
     scope: module
     audience: [human, agent, architect, developer]
-    validated: 2022-12-01
+    validated: "2022-12-01"
     depends_on: [iam-sso]
     triggers: [SSO architecture, Whydah components, SecurityTokenService, UserIdentityBackend]
 
@@ -86,7 +86,7 @@ units:
     intent: "How does runtime configuration management and zero-downtime auto-update work?"
     scope: module
     audience: [human, agent, developer, operator]
-    validated: 2022-12-01
+    validated: "2022-12-01"
     depends_on: [projects-index]
     triggers: [ConfigService, JAU, Java Auto-Update, runtime config, zero-downtime, upgrade]
 
@@ -95,7 +95,7 @@ units:
     intent: "How do I build reactive event-sourced microservices with this framework?"
     scope: module
     audience: [human, agent, developer, architect]
-    validated: 2022-12-01
+    validated: "2022-12-01"
     depends_on: [projects-index]
     triggers: [Xorcery, reactive, event sourcing, HK2, RxJava, microservices framework]
 
@@ -104,7 +104,7 @@ units:
     intent: "How do I decouple microservices from messaging infrastructure using the abstraction layer?"
     scope: module
     audience: [human, agent, developer]
-    validated: 2022-12-01
+    validated: "2022-12-01"
     depends_on: [reactive-framework]
     triggers: [Messi, messaging, AWS SQS, Kinesis, RabbitMQ, streaming, provider abstraction]
 
@@ -115,7 +115,7 @@ units:
     intent: "What architectural patterns, principles, and decision frameworks does this community recommend?"
     scope: module
     audience: [human, agent, architect, developer]
-    validated: 2022-12-01
+    validated: "2022-12-01"
     depends_on: [knowledge-hub]
     triggers: [DDD, microservices, CQRS, event sourcing, bounded context, architecture patterns]
 
@@ -124,7 +124,7 @@ units:
     intent: "How does enterprise architecture relate to software architecture in this community's practice?"
     scope: module
     audience: [human, agent, architect]
-    validated: 2022-12-01
+    validated: "2022-12-01"
     depends_on: [software-architecture]
     triggers: [TOGAF, Zachman, enterprise architecture, EA frameworks, canonical model]
 
@@ -133,7 +133,7 @@ units:
     intent: "What development practices, CI/CD patterns, and quality standards does this community follow?"
     scope: module
     audience: [human, agent, developer]
-    validated: 2022-12-01
+    validated: "2022-12-01"
     depends_on: [knowledge-hub]
     triggers: [CI/CD, testing, Maven, clean code, Docker, Spring, agile, continuous delivery]
 
@@ -142,7 +142,7 @@ units:
     intent: "How should services be categorised and REST APIs designed in a service-oriented architecture?"
     scope: module
     audience: [human, agent, architect, developer]
-    validated: 2022-12-01
+    validated: "2022-12-01"
     depends_on: [software-architecture]
     triggers: [SOA, REST, API design, enterprise integration patterns, SOAP, service categorisation]
 
@@ -151,7 +151,7 @@ units:
     intent: "What patterns exist for releasing software safely and continuously?"
     scope: module
     audience: [human, agent, developer, operator]
-    validated: 2022-12-01
+    validated: "2022-12-01"
     depends_on: [agile-development]
     triggers: [release, feature flags, canary, blue-green, zero-downtime, deployment patterns]
 
@@ -160,7 +160,7 @@ units:
     intent: "How should microservice security and threat modelling be approached?"
     scope: module
     audience: [human, agent, architect, developer]
-    validated: 2022-12-01
+    validated: "2022-12-01"
     depends_on: [software-architecture]
     triggers: [security, STRIDE, threat modelling, token-based security, OWASP]
 

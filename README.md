@@ -91,7 +91,7 @@ relationships:
 Five fields per unit are enough to start:
 
 ```yaml
-kcp_version: "0.1"
+kcp_version: "0.2"
 project: my-project
 version: 1.0.0
 units:
@@ -110,9 +110,10 @@ The standard allows complexity but does not demand it.
 
 ```yaml
 # knowledge.yaml
+kcp_version: "0.2"
 project: wiki.example.org
 version: 1.0.0
-updated: 2026-02-25
+updated: "2026-02-28"
 
 units:
   - id: about
@@ -120,7 +121,7 @@ units:
     intent: "Who maintains this project? Background, current work, contact."
     scope: global
     audience: [human, agent]
-    validated: 2026-02-24
+    validated: "2026-02-24"
 
   - id: methodology
     path: methodology/overview.md
@@ -128,7 +129,7 @@ units:
     scope: global
     audience: [developer, architect, agent]
     depends_on: [about]
-    validated: 2026-02-13
+    validated: "2026-02-13"
     triggers: ["methodology", "productivity", "workflow"]
 
   - id: knowledge-infrastructure
@@ -137,7 +138,7 @@ units:
     scope: global
     audience: [developer, devops, agent]
     depends_on: [methodology]
-    validated: 2026-02-25
+    validated: "2026-02-28"
     supersedes: knowledge-infra-v1
     triggers: ["knowledge infrastructure", "MCP", "code search", "indexing"]
 
