@@ -4,7 +4,7 @@
 
 **KCP is to knowledge what MCP is to tools.**
 
-→ [**Read the spec**](./SPEC.md) · [Read the proposal](./PROPOSAL.md)
+→ [**Website**](https://cantara.github.io/knowledge-context-protocol/) · [**Read the spec**](./SPEC.md) · [Read the proposal](./PROPOSAL.md)
 
 The [Model Context Protocol](https://modelcontextprotocol.io) defines how agents connect to tools.
 KCP defines how knowledge is structured so those tools can serve it effectively.
