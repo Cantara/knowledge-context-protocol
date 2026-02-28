@@ -1709,20 +1709,7 @@ relationships:
         </div>
       </div>
     </div>
-    <script>
-    (function () {
-      var tabs = document.querySelectorAll('.qs-tab');
-      tabs.forEach(function (tab) {
-        tab.addEventListener('click', function () {
-          tabs.forEach(function (t) { t.classList.remove('is-active'); t.setAttribute('aria-selected', 'false'); });
-          document.querySelectorAll('.qs-panel').forEach(function (p) { p.classList.remove('is-active'); });
-          tab.classList.add('is-active');
-          tab.setAttribute('aria-selected', 'true');
-          document.getElementById(tab.dataset.qs).classList.add('is-active');
-        });
-      });
-    })();
-    </script>
+    <!-- Quickstart tab logic handled by app.js -->
   </section>
 
 
@@ -1751,7 +1738,7 @@ relationships:
           </div>
           <textarea id="yaml-input" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
           <div class="playground__controls">
-            <button id="validate-btn" class="btn btn-primary">Validate</button>
+            <button id="validate-btn" class="btn btn--primary">Validate</button>
           </div>
         </div>
         <div class="playground__output">

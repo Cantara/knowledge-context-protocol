@@ -226,7 +226,7 @@
 
 
   // ──────────────────────────────────────────────
-  // Active Nav Link Tracking
+  // Active Nav Link Tracking (class-based, no inline styles)
   // ──────────────────────────────────────────────
 
   var sections = document.querySelectorAll('section[id]');
@@ -238,11 +238,7 @@
         if (entry.isIntersecting) {
           var id = entry.target.getAttribute('id');
           navAnchors.forEach(function (a) {
-            if (a.getAttribute('href') === '#' + id) {
-              a.style.color = 'var(--text-primary)';
-            } else {
-              a.style.color = '';
-            }
+            a.classList.toggle('is-active', a.getAttribute('href') === '#' + id);
           });
         }
       });
@@ -255,5 +251,27 @@
       sectionObserver.observe(section);
     });
   }
+
+
+  // ──────────────────────────────────────────────
+  // Quickstart Tabs (L1 / L2 / L3 templates)
+  // ──────────────────────────────────────────────
+
+  var qsTabs = document.querySelectorAll('.qs-tab');
+
+  qsTabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      qsTabs.forEach(function (t) {
+        t.classList.remove('is-active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      document.querySelectorAll('.qs-panel').forEach(function (p) {
+        p.classList.remove('is-active');
+      });
+      tab.classList.add('is-active');
+      tab.setAttribute('aria-selected', 'true');
+      document.getElementById(tab.dataset.qs).classList.add('is-active');
+    });
+  });
 
 })();

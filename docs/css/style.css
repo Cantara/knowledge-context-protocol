@@ -329,7 +329,8 @@ section:nth-child(even) {
   transition: color var(--duration-fast);
 }
 
-.nav__links a:hover {
+.nav__links a:hover,
+.nav__links a.is-active {
   color: var(--text-primary);
   text-decoration: none;
 }
@@ -664,9 +665,7 @@ section:nth-child(even) {
   transition: all var(--duration-normal) var(--ease-out);
 }
 
-.code-block:hover {
-  box-shadow: var(--shadow-md);
-}
+/* code-block hover shadow removed — suggests clickability where none exists */
 
 .code-block__header {
   display: flex;
@@ -1485,8 +1484,8 @@ section:nth-child(even) {
 }
 
 .compare-note {
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
   margin-top: var(--space-4);
   text-align: center;
   line-height: var(--lh-relaxed);

@@ -215,6 +215,13 @@
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') run();
   });
 
+  // Auto-validate with debounce (400ms after typing stops)
+  var debounceTimer;
+  textarea.addEventListener('input', function () {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(run, 400);
+  });
+
   if (exampleSel) {
     exampleSel.addEventListener('change', function () {
       var key = this.value;
