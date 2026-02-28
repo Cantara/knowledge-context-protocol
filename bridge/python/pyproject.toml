@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kcp-mcp"
+version = "0.1.0"
+description = "KCP MCP bridge — expose knowledge.yaml units as MCP resources"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+keywords = ["kcp", "mcp", "knowledge", "ai-agents"]
+dependencies = [
+    "kcp>=0.1.0",
+    "mcp>=1.0.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0", "pytest-asyncio>=0.21"]
+
+[project.scripts]
+kcp-mcp = "kcp_mcp.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["kcp_mcp"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
