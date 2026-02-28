@@ -7,7 +7,8 @@
 **Issues:** [#5 (trust/audit)](https://github.com/Cantara/knowledge-context-protocol/issues/5) · [#11 (compliance)](https://github.com/Cantara/knowledge-context-protocol/issues/11)
 **Discussion:** [GitHub Issues](https://github.com/Cantara/knowledge-context-protocol/issues)
 **Spec:** [SPEC.md](./SPEC.md) (current: v0.3)
-**Related:** [RFC-0002](./RFC-0002-Auth-and-Delegation.md) (auth and delegation) · [RFC-0003](./RFC-0003-Federation.md) (federation)
+**Related:** [RFC-0002](./RFC-0002-Auth-and-Delegation.md) (auth and delegation) · [RFC-0003](./RFC-0003-Federation.md) (federation) · [RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md) (payment — composes with `agent_requirements` for token-gated access patterns)
+**Contributions:** `attestation_url` / `attestation_jwks` mechanism proposed by [@douglasborthwick-crypto](https://github.com/douglasborthwick-crypto) in [#5](https://github.com/Cantara/knowledge-context-protocol/issues/5)
 
 ---
 
@@ -78,13 +79,25 @@ trust:                              # OPTIONAL root-level block
   # Agent requirements: what kind of agent is permitted to access this knowledge?
   agent_requirements:
     require_attestation: false
-    # If true: agent must present attestation (OIDC-A claims or equivalent)
-    # before accessing restricted units.
+    # If true: agent must present attestation before accessing restricted units.
+    # Satisfied by EITHER trusted_providers (identity-based) OR attestation_url
+    # (credential-based). If both are present, satisfying either is sufficient.
 
     trusted_providers: ["internal-agents.acme.com"]
-    # If set: only agents from these provider domains are accepted.
+    # Identity-based: only agents from these provider domains are accepted.
     # Matched against OIDC-A `agent_provider` claim or equivalent.
     # Unknown agents SHOULD be refused access to restricted units.
+
+    attestation_url: "https://acme.com/v1/attest"
+    # Credential-based: URL of an endpoint that verifies agent credentials.
+    # The verification mechanism (on-chain token check, W3C Verifiable Credential,
+    # OIDC claim, SPIFFE assertion) is outside KCP's scope.
+    # MUST use HTTPS. If present, `require_attestation` SHOULD be `true`.
+
+    attestation_jwks: "https://acme.com/.well-known/jwks.json"
+    # URL of a JWKS endpoint for verifying signed responses from `attestation_url`.
+    # If absent, agents MUST use the TLS certificate of `attestation_url` as
+    # the trust anchor.
 ```
 
 ### Per-unit `trust` overrides
@@ -106,7 +119,8 @@ units:
     trust:
       agent_requirements:
         require_attestation: true
-        trusted_providers: ["internal-agents.acme.com"]
+        trusted_providers: ["internal-agents.acme.com"]  # identity-based
+        attestation_url: "https://acme.com/v1/attest"    # credential-based (either satisfies)
       audit:
         agent_must_log: true
         require_trace_context: true
@@ -148,8 +162,10 @@ units:
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `require_attestation` | OPTIONAL | If `true`: agents MUST present attestation before accessing restricted units. Default: `false`. |
-| `trusted_providers` | OPTIONAL | List of trusted agent provider domain names. Agents not matching SHOULD be refused access to restricted units. |
+| `require_attestation` | OPTIONAL | If `true`: agents MUST present attestation before accessing restricted units. Satisfied by `trusted_providers` OR `attestation_url` — either is sufficient. Default: `false`. |
+| `trusted_providers` | OPTIONAL | List of trusted agent provider domain names (identity-based). Matched against OIDC-A `agent_provider` claim or equivalent. Agents not matching SHOULD be refused access to restricted units. |
+| `attestation_url` | OPTIONAL | URL of an endpoint that verifies agent credentials (credential-based). The verification mechanism — on-chain token check, W3C Verifiable Credential, OIDC claim, SPIFFE assertion — is outside KCP's scope. MUST use HTTPS. If present, `require_attestation` SHOULD be `true`. |
+| `attestation_jwks` | OPTIONAL | JWKS endpoint URL for verifying signed responses from `attestation_url`. If absent, agents MUST use the TLS certificate of `attestation_url` as the trust anchor. |
 
 ---
 
@@ -317,6 +333,29 @@ compliance:
 | `no-external-llm` | Advisory only; no technical mechanism in spec |
 | `no-logging` | Contradicts `trust.audit.agent_must_log`; unit-level `no-logging` SHOULD override root audit requirements |
 
+### Composability with RFC-0005 (Payment)
+
+`trust.agent_requirements` and the RFC-0005 `payment` block are independent axes that compose cleanly. A common pattern is **token-gated access**: agents that pass attestation get free access; agents that do not fall through to a paid method.
+
+```yaml
+trust:
+  agent_requirements:
+    require_attestation: true
+    attestation_url: "https://example.com/v1/attest"   # e.g. on-chain token check
+    attestation_jwks: "https://example.com/.well-known/jwks.json"
+
+payment:
+  default_tier: metered
+  methods:
+    - type: x402
+      currency: USDC
+      price_per_request: "0.001"
+      networks: [base]
+      wallet: "0x..."
+```
+
+Agent flow: call `attestation_url` first. Pass → access granted (free). Fail → fall through to `payment.methods` and pay via x402. This keeps token-gating in `trust` (access-by-proof) and payment in `payment` (access-by-transaction), avoiding semantic overlap between the two blocks.
+
 ---
 
 ## Relationship to SPEC.md §12.1 (Existing Trust Model)
@@ -462,8 +501,8 @@ Should the four sensitivity levels (`public`, `internal`, `confidential`, `restr
 **3. Content hash scope**
 The `manifest_hash` covers the full manifest YAML. Should there also be per-unit content hashes, so agents can verify individual files without rehashing the whole manifest? This would require either embedding hashes in each unit declaration or pointing to a separate hash manifest.
 
-**4. `trusted_providers` matching**
-How should `trusted_providers` be matched against actual agents? The proposal references OIDC-A `agent_provider` claim, but OIDC-A is not yet a ratified standard. What interim matching mechanism should be specified?
+**4. `trusted_providers` matching** ✅ *Resolved*
+`attestation_url` is now the specified interim mechanism (added based on community feedback from [@douglasborthwick-crypto](https://github.com/douglasborthwick-crypto)). Publishers who cannot rely on OIDC-A ratification can declare an `attestation_url` pointing to any verification endpoint — on-chain credential check, W3C VC presentation, or custom OIDC claim. KCP remains mechanism-agnostic: the manifest declares *where* to verify; the endpoint decides *how*. `trusted_providers` is retained for identity-based (static allowlist) matching when OIDC-A or a compatible standard is available.
 
 **5. Conflict resolution: `no-logging` vs `audit-required`**
 A unit might inherit `audit-required` from the root `compliance` block and also declare `no-logging`. These are contradictory. The proposal suggests unit-level `no-logging` overrides root audit requirements — but should there be explicit conflict resolution rules, or should this be left to implementations?
