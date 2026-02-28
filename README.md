@@ -253,6 +253,7 @@ requests are welcome.
 - **[RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md)** — Payment and rate-limit metadata proposal (`payment`, `rate_limits` blocks)
 - **[RFC-0006](./RFC-0006-Context-Window-Hints.md)** — Context window hints proposal (`hints` block: token estimates, load strategy, chunking, summary relationships)
 - **parsers/** — Reference implementations (Python, Java)
+- **bridge/** — MCP servers: expose any `knowledge.yaml` as MCP resources (TypeScript · Python · Java)
 
 ---
 
