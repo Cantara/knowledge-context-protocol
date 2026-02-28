@@ -1,3 +1,6 @@
+import os
+import tempfile
+
 import pytest
 from datetime import date
 from kcp import parse_dict, validate, ValidationResult
@@ -310,6 +313,88 @@ class TestCycleDetection:
         m = parse_dict(data)
         result = validate(m)
         assert result.is_valid
+
+
+class TestPathExistenceChecking:
+    """Tests for path existence warnings (SPEC.md §4.3 / §7)."""
+
+    def test_existing_path_no_warning(self):
+        """When path exists, no warning is produced."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create the file the unit references
+            readme = os.path.join(tmpdir, "README.md")
+            with open(readme, "w") as f:
+                f.write("# Test")
+
+            data = {
+                **MINIMAL,
+                "kcp_version": "0.1",
+                "units": [{**MINIMAL["units"][0], "path": "README.md"}],
+            }
+            m = parse_dict(data)
+            result = validate(m, manifest_dir=tmpdir)
+            assert result.is_valid
+            assert not any("does not exist" in w for w in result.warnings)
+
+    def test_missing_path_produces_warning(self):
+        """When path does not exist, a warning is produced."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data = {
+                **MINIMAL,
+                "kcp_version": "0.1",
+                "units": [{**MINIMAL["units"][0], "path": "nonexistent.md"}],
+            }
+            m = parse_dict(data)
+            result = validate(m, manifest_dir=tmpdir)
+            assert result.is_valid  # warning, not error
+            assert any("does not exist" in w for w in result.warnings)
+
+    def test_missing_nested_path_produces_warning(self):
+        """A nested path like docs/guide.md also produces a warning when missing."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data = {
+                **MINIMAL,
+                "kcp_version": "0.1",
+                "units": [{**MINIMAL["units"][0], "path": "docs/guide.md"}],
+            }
+            m = parse_dict(data)
+            result = validate(m, manifest_dir=tmpdir)
+            assert result.is_valid
+            assert any("does not exist" in w for w in result.warnings)
+
+    def test_no_path_check_without_manifest_dir(self):
+        """When manifest_dir is None, no path existence check is performed."""
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.1",
+            "units": [{**MINIMAL["units"][0], "path": "definitely-does-not-exist.md"}],
+        }
+        m = parse_dict(data)
+        result = validate(m)  # no manifest_dir
+        assert result.is_valid
+        assert not any("does not exist" in w for w in result.warnings)
+
+    def test_multiple_units_mixed_existence(self):
+        """One existing and one missing path: only the missing one gets a warning."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            readme = os.path.join(tmpdir, "exists.md")
+            with open(readme, "w") as f:
+                f.write("# Exists")
+
+            data = {
+                **MINIMAL,
+                "kcp_version": "0.1",
+                "units": [
+                    {**MINIMAL["units"][0], "id": "exists", "path": "exists.md"},
+                    {**MINIMAL["units"][0], "id": "missing", "path": "missing.md"},
+                ],
+            }
+            m = parse_dict(data)
+            result = validate(m, manifest_dir=tmpdir)
+            assert result.is_valid
+            path_warnings = [w for w in result.warnings if "does not exist" in w]
+            assert len(path_warnings) == 1
+            assert "missing.md" in path_warnings[0]
 
 
 class TestPathTraversalValidation:

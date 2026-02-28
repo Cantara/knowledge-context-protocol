@@ -32,7 +32,7 @@ public class KcpCli {
             return;
         }
 
-        KcpValidator.ValidationResult result = KcpValidator.validate(manifest);
+        KcpValidator.ValidationResult result = KcpValidator.validate(manifest, path.getParent());
         if (result.hasWarnings()) {
             result.warnings().forEach(w -> System.err.println("  ⚠ " + w));
         }

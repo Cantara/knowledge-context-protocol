@@ -20,7 +20,7 @@ def main() -> None:
         print(f"Parse error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    result = validate(manifest)
+    result = validate(manifest, manifest_dir=str(path.parent))
 
     if result.warnings:
         for w in result.warnings:

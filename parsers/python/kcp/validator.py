@@ -66,6 +66,12 @@ def _detect_cycles(units: list) -> set[tuple[str, str]]:
 def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) -> ValidationResult:
     """Validate a parsed KnowledgeManifest.
 
+    Args:
+        manifest: The parsed manifest to validate.
+        manifest_dir: Optional directory containing the manifest file. When provided,
+            the validator checks that declared unit paths exist on disk and emits
+            warnings for missing paths (SPEC.md section 4.3 / section 7).
+
     Returns a :class:`ValidationResult` with separate ``errors`` and ``warnings`` lists.
     """
     errors: list[str] = []
@@ -114,6 +120,11 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
 
         if not unit.path:
             errors.append(f"{p}: 'path' is required")
+        elif manifest_dir is not None:
+            # Path existence check (§4.3 / §7: SHOULD warn if path does not exist)
+            resolved = Path(manifest_dir) / unit.path
+            if not resolved.exists():
+                warnings.append(f"{p}: path '{unit.path}' does not exist")
         if not unit.intent:
             errors.append(f"{p}: 'intent' is required")
         if not unit.scope:

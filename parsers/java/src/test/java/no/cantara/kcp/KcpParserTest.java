@@ -3,7 +3,11 @@ package no.cantara.kcp;
 import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
@@ -470,5 +474,94 @@ class KcpParserTest {
         KnowledgeManifest m = KcpParser.fromMap(data);
         KcpValidator.ValidationResult result = KcpValidator.validate(m);
         assertTrue(result.isValid());
+    }
+
+    // -----------------------------------------------------------------------
+    // Path existence checking tests (§4.3 / §7)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void existingPathNoWarning(@TempDir Path tmpDir) throws IOException {
+        Files.writeString(tmpDir.resolve("README.md"), "# Test");
+
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "units", List.of(
+                        Map.of("id", "overview", "path", "README.md", "intent", "What?",
+                                "scope", "global", "audience", List.of("agent"))
+                )
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m, tmpDir);
+        assertTrue(result.isValid());
+        assertTrue(result.warnings().stream().noneMatch(w -> w.contains("does not exist")));
+    }
+
+    @Test
+    void missingPathProducesWarning(@TempDir Path tmpDir) {
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "units", List.of(
+                        Map.of("id", "missing", "path", "nonexistent.md", "intent", "What?",
+                                "scope", "global", "audience", List.of("agent"))
+                )
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m, tmpDir);
+        assertTrue(result.isValid()); // warning, not error
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("does not exist")));
+    }
+
+    @Test
+    void missingNestedPathProducesWarning(@TempDir Path tmpDir) {
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "units", List.of(
+                        Map.of("id", "guide", "path", "docs/guide.md", "intent", "How?",
+                                "scope", "global", "audience", List.of("agent"))
+                )
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m, tmpDir);
+        assertTrue(result.isValid());
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("does not exist")));
+    }
+
+    @Test
+    void noPathCheckWithoutManifestDir() {
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "units", List.of(
+                        Map.of("id", "missing", "path", "definitely-gone.md", "intent", "What?",
+                                "scope", "global", "audience", List.of("agent"))
+                )
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m); // no manifestDir
+        assertTrue(result.isValid());
+        assertTrue(result.warnings().stream().noneMatch(w -> w.contains("does not exist")));
+    }
+
+    @Test
+    void mixedExistenceOnlyMissingGetsWarning(@TempDir Path tmpDir) throws IOException {
+        Files.writeString(tmpDir.resolve("exists.md"), "# Exists");
+
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.1",
+                "units", List.of(
+                        Map.of("id", "exists", "path", "exists.md", "intent", "A",
+                                "scope", "global", "audience", List.of("agent")),
+                        Map.of("id", "missing", "path", "missing.md", "intent", "B",
+                                "scope", "global", "audience", List.of("agent"))
+                )
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m, tmpDir);
+        assertTrue(result.isValid());
+        List<String> pathWarnings = result.warnings().stream()
+                .filter(w -> w.contains("does not exist"))
+                .toList();
+        assertEquals(1, pathWarnings.size());
+        assertTrue(pathWarnings.get(0).contains("missing.md"));
     }
 }
