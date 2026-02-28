@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KCP - Knowledge Context Protocol</title>
+  <meta name="description" content="A structured metadata standard that makes knowledge navigable by AI agents. KCP is to knowledge what MCP is to tools.">
+  <meta name="theme-color" content="#2563eb">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="KCP - Knowledge Context Protocol">
+  <meta property="og:description" content="Give AI agents a map, not just files. A structured metadata standard for navigable knowledge.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://cantara.github.io/knowledge-context-protocol/">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Highlight.js -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" id="hljs-light">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-dark" disabled>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ============================================================
+       NAVIGATION
+       ============================================================ -->
+  <nav class="nav" role="navigation" aria-label="Main navigation">
+    <div class="nav__inner">
+      <a href="#" class="nav__brand" aria-label="KCP Home">
+        <svg class="nav__logo" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="8" cy="8" r="4" fill="currentColor"/>
+          <circle cx="24" cy="8" r="4" fill="currentColor"/>
+          <circle cx="16" cy="24" r="5" fill="currentColor"/>
+          <line x1="11" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="10" y1="11" x2="14" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="22" y1="11" x2="18" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="8" cy="8" r="1.5" fill="var(--bg-primary)"/>
+          <circle cx="24" cy="8" r="1.5" fill="var(--bg-primary)"/>
+          <circle cx="16" cy="24" r="2" fill="var(--bg-primary)"/>
+        </svg>
+        KCP
+      </a>
+
+      <ul class="nav__links" id="nav-links">
+        <li><a href="#problem">Problem</a></li>
+        <li><a href="#what">What is KCP</a></li>
+        <li><a href="#how">How it works</a></li>
+        <li><a href="#spec">Spec</a></li>
+        <li><a href="#examples">Examples</a></li>
+        <li><a href="#parsers">Parsers</a></li>
+        <li><a href="#adopt">Adopt</a></li>
+        <li><a href="#faq">FAQ</a></li>
+      </ul>
+
+      <div class="nav__actions">
+        <a href="https://github.com/Cantara/knowledge-context-protocol" class="btn btn--ghost" target="_blank" rel="noopener" aria-label="View on GitHub">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        </a>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="nav__mobile-toggle" id="mobile-toggle" aria-label="Toggle navigation menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+
+  <!-- ============================================================
+       HERO
+       ============================================================ -->
+  <section class="hero" id="hero">
+    <div class="container">
+      <div class="hero__badge">
+        <span>v0.1 Draft Spec</span>
+        &middot;
+        <span>Open Standard</span>
+        &middot;
+        <span>Apache 2.0</span>
+      </div>
+
+      <h1 class="hero__title">
+        Give AI agents a&nbsp;<span>map</span>,<br>not just files
+      </h1>
+
+      <p class="hero__subtitle">
+        KCP is a structured metadata standard that makes knowledge navigable by AI agents. A single YAML file that tells agents what exists, what it means, and how to traverse it.
+      </p>
+
+      <div class="hero__actions">
+        <a href="#adopt" class="btn btn--primary">
+          Get Started
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="8" x2="13" y2="8"/><polyline points="9 4 13 8 9 12"/></svg>
+        </a>
+        <a href="https://github.com/Cantara/knowledge-context-protocol" class="btn btn--secondary" target="_blank" rel="noopener">
+          <svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+        <a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/SPEC.md" class="btn btn--secondary" target="_blank" rel="noopener">
+          Read the Spec
+        </a>
+      </div>
+
+      <div class="hero__code-preview">
+        <div class="code-block">
+          <div class="code-block__header">
+            <div class="code-block__dots">
+              <span class="code-block__dot"></span>
+              <span class="code-block__dot"></span>
+              <span class="code-block__dot"></span>
+            </div>
+            <span class="code-block__filename">knowledge.yaml</span>
+            <button class="copy-btn" data-copy="hero-code" aria-label="Copy to clipboard">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+              <span>Copy</span>
+            </button>
+          </div>
+          <div class="code-block__body">
+            <pre><code id="hero-code" class="language-yaml"><span class="typing-line">project: my-project</span>
+<span class="typing-line">units:</span>
+<span class="typing-line">  - id: overview</span>
+<span class="typing-line">    path: README.md</span>
+<span class="typing-line">    intent: "What is this project and how do I get started?"</span>
+<span class="typing-line">    scope: global</span>
+<span class="typing-line">    audience: [human, agent]</span></code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       THE PROBLEM
+       ============================================================ -->
+  <section id="problem">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">The Problem</span>
+        <h2>AI agents are flying blind</h2>
+        <p>Models are powerful. Frameworks are mature. Tool connectivity is solved. But the knowledge layer is still a flat text file.</p>
+      </div>
+
+      <div class="problem-grid">
+        <div class="problem-card reveal reveal-delay-1">
+          <div class="problem-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <h3>Context stuffing fails at scale</h3>
+          <p>Loading everything into the system prompt works for 27 blog posts. It collapses at 8,934 files. There is no mechanism for selective loading or dependency ordering.</p>
+        </div>
+
+        <div class="problem-card reveal reveal-delay-2">
+          <div class="problem-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <h3>Stale knowledge looks authoritative</h3>
+          <p>Without freshness signals, agents give confident, fluent, wrong answers. Stale documentation that appears current is worse than no documentation at all.</p>
+        </div>
+
+        <div class="problem-card reveal reveal-delay-3">
+          <div class="problem-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+          </div>
+          <h3>No topology, no navigation</h3>
+          <p>Flat indexes list what exists. They cannot express that A depends on B, C supersedes D, or that unit E is only relevant for authentication tasks.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       WHAT IS KCP
+       ============================================================ -->
+  <section id="what">
+    <div class="container">
+      <div class="what-grid">
+        <div class="what-content reveal">
+          <span class="section-label">What is KCP</span>
+          <h2>A knowledge manifest for the AI age</h2>
+          <p>
+            KCP is a file format specification. A <code>knowledge.yaml</code> manifest you drop at the root of a project. It describes the knowledge units in your project &mdash; their intent, dependencies, freshness, and audience &mdash; so AI agents can navigate without loading everything at once.
+          </p>
+          <p>
+            <strong>KCP is to knowledge what MCP is to tools.</strong>
+          </p>
+          <ul class="feature-list">
+            <li><strong>Topology</strong> &mdash; what depends on what, what supersedes what</li>
+            <li><strong>Intent</strong> &mdash; what question each knowledge unit answers</li>
+            <li><strong>Freshness</strong> &mdash; when each unit was last validated by a human</li>
+            <li><strong>Selective loading</strong> &mdash; agents query by task, not by guessing URLs</li>
+            <li><strong>Audience targeting</strong> &mdash; which units are for humans, which for agents</li>
+          </ul>
+        </div>
+
+        <div class="what-code reveal reveal-delay-2">
+          <div class="code-block">
+            <div class="code-block__header">
+              <div class="code-block__dots">
+                <span class="code-block__dot"></span>
+                <span class="code-block__dot"></span>
+                <span class="code-block__dot"></span>
+              </div>
+              <span class="code-block__filename">knowledge.yaml</span>
+              <button class="copy-btn" data-copy="what-code" aria-label="Copy to clipboard">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div class="code-block__body">
+              <pre><code id="what-code" class="language-yaml">project: wiki.example.org
+version: 1.0.0
+updated: 2026-02-25
+
+units:
+  - id: about
+    path: about.md
+    intent: "Who maintains this project?"
+    scope: global
+    audience: [human, agent]
+    validated: 2026-02-24
+
+  - id: methodology
+    path: methodology/overview.md
+    intent: "What development methodology is used?"
+    scope: global
+    audience: [developer, architect, agent]
+    depends_on: [about]
+    triggers: [methodology, productivity]
+
+  - id: knowledge-infra
+    path: tools/knowledge-infra.md
+    intent: "How is knowledge infrastructure set up?"
+    scope: global
+    audience: [developer, devops, agent]
+    depends_on: [methodology]
+    supersedes: knowledge-infra-v1
+    triggers: [MCP, indexing, code search]
+
+relationships:
+  - from: methodology
+    to: knowledge-infra
+    type: enables
+  - from: about
+    to: methodology
+    type: context</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ecosystem reveal mt-12">
+        <div class="ecosystem__node">
+          <span>Static Index</span>
+          <span>llms.txt</span>
+        </div>
+        <div class="ecosystem__arrow">&rarr;</div>
+        <div class="ecosystem__node ecosystem__node--highlight">
+          <span>Structured Format</span>
+          <span>KCP</span>
+        </div>
+        <div class="ecosystem__arrow">&rarr;</div>
+        <div class="ecosystem__node">
+          <span>Runtime Engine</span>
+          <span>Synthesis</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       HOW IT WORKS
+       ============================================================ -->
+  <section id="how">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">How It Works</span>
+        <h2>Three steps to navigable knowledge</h2>
+        <p>No server required. No database. No running process. Just a YAML file.</p>
+      </div>
+
+      <div class="steps">
+        <div class="step reveal reveal-delay-1">
+          <div class="step__number">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          </div>
+          <p class="step__label">Step 1</p>
+          <h3>Write</h3>
+          <p>Create a <code>knowledge.yaml</code> at the root of your project. Declare each knowledge unit with an <code>id</code>, <code>path</code>, and <code>intent</code>.</p>
+        </div>
+
+        <div class="step reveal reveal-delay-2">
+          <div class="step__number">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </div>
+          <p class="step__label">Step 2</p>
+          <h3>Parse</h3>
+          <p>Use the Python or Java reference parser to validate your manifest. Or use any YAML parser &mdash; the format is simple, standard YAML 1.2.</p>
+        </div>
+
+        <div class="step reveal reveal-delay-3">
+          <div class="step__number">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </div>
+          <p class="step__label">Step 3</p>
+          <h3>Navigate</h3>
+          <p>AI agents load units by intent, traverse dependencies in order, check freshness, and skip irrelevant content. Knowledge becomes a graph, not a dump.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       SPEC HIGHLIGHTS
+       ============================================================ -->
+  <section id="spec">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">Specification</span>
+        <h2>The knowledge unit fields</h2>
+        <p>Each unit in a KCP manifest describes a self-contained piece of knowledge. Five fields are required; the rest add structure as you need it.</p>
+      </div>
+
+      <div class="spec-grid">
+        <div class="spec-card reveal">
+          <span class="spec-card__field">id</span>
+          <span class="spec-card__required">Required</span>
+          <p>Unique identifier within the manifest. Lowercase ASCII, digits, hyphens, and dots. Example: <code>api-authentication-guide</code></p>
+        </div>
+
+        <div class="spec-card reveal reveal-delay-1">
+          <span class="spec-card__field">path</span>
+          <span class="spec-card__required">Required</span>
+          <p>Relative path from the manifest to the content file. Forward slashes only. Example: <code>docs/api/auth.md</code></p>
+        </div>
+
+        <div class="spec-card reveal reveal-delay-2">
+          <span class="spec-card__field">intent</span>
+          <span class="spec-card__required">Required</span>
+          <p>One sentence: what question does this unit answer? The primary signal for agent task routing. Written as a question, not a title.</p>
+        </div>
+
+        <div class="spec-card reveal reveal-delay-3">
+          <span class="spec-card__field">scope</span>
+          <span class="spec-card__required">Required</span>
+          <p>Breadth of applicability: <code>global</code>, <code>project</code>, or <code>module</code>. Tells agents how broadly this knowledge applies.</p>
+        </div>
+
+        <div class="spec-card reveal">
+          <span class="spec-card__field">audience</span>
+          <span class="spec-card__required">Required</span>
+          <p>Who this unit is for: <code>human</code>, <code>agent</code>, <code>developer</code>, <code>architect</code>, <code>operator</code>. A unit can target multiple audiences.</p>
+        </div>
+
+        <div class="spec-card reveal reveal-delay-1">
+          <span class="spec-card__field">validated</span>
+          <span class="spec-card__required optional">Recommended</span>
+          <p>ISO 8601 date when a human last confirmed the content was accurate. Agents can refuse to act on knowledge that has not been revalidated.</p>
+        </div>
+
+        <div class="spec-card reveal reveal-delay-2">
+          <span class="spec-card__field">depends_on</span>
+          <span class="spec-card__required optional">Optional</span>
+          <p>Unit IDs that should be loaded before this one. Enables dependency-ordered context building. Cycles are detected and handled gracefully.</p>
+        </div>
+
+        <div class="spec-card reveal reveal-delay-3">
+          <span class="spec-card__field">supersedes</span>
+          <span class="spec-card__required optional">Optional</span>
+          <p>The unit ID this replaces. Agents prefer the superseding unit. The old unit can stay in the manifest for historical reference.</p>
+        </div>
+
+        <div class="spec-card reveal">
+          <span class="spec-card__field">triggers</span>
+          <span class="spec-card__required optional">Optional</span>
+          <p>Keywords or task contexts for retrieval. An agent working on authentication finds relevant units via triggers, without scanning every unit.</p>
+        </div>
+      </div>
+
+      <div class="levels-grid reveal mt-8">
+        <div class="level-card">
+          <h4>Level 1 &mdash; Minimal</h4>
+          <p><code>id</code> + <code>path</code> + <code>intent</code> + <code>scope</code> + <code>audience</code>. What knowledge exists, what it answers, who it is for. Five minutes to add.</p>
+        </div>
+        <div class="level-card">
+          <h4>Level 2 &mdash; Structured</h4>
+          <p>Adds <code>validated</code> and <code>depends_on</code>. Freshness-aware retrieval and dependency-ordered loading. Documentation drift becomes visible.</p>
+        </div>
+        <div class="level-card">
+          <h4>Level 3 &mdash; Full</h4>
+          <p>Adds <code>triggers</code>, <code>supersedes</code>, and <code>relationships</code>. Task-based routing, knowledge graph navigation, and drift detection.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       EXAMPLES
+       ============================================================ -->
+  <section id="examples">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">Examples</span>
+        <h2>From minimal to production</h2>
+        <p>Real <code>knowledge.yaml</code> files from the KCP repository, showing the adoption gradient from a single unit to a full knowledge graph.</p>
+      </div>
+
+      <div class="reveal">
+        <div class="tabs" role="tablist">
+          <button class="tab-btn active" role="tab" aria-selected="true" data-tab="minimal">Minimal</button>
+          <button class="tab-btn" role="tab" aria-selected="false" data-tab="personal">Personal Site</button>
+          <button class="tab-btn" role="tab" aria-selected="false" data-tab="wiki">Open Source Wiki</button>
+        </div>
+
+        <!-- Minimal -->
+        <div class="tab-panel active" id="tab-minimal" role="tabpanel">
+          <div class="code-block">
+            <div class="code-block__header">
+              <span class="code-block__filename">examples/minimal/knowledge.yaml</span>
+              <button class="copy-btn" data-copy="ex-minimal" aria-label="Copy to clipboard">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div class="code-block__body">
+              <pre><code id="ex-minimal" class="language-yaml"># Minimal KCP example — five minutes to add.
+# This is a valid knowledge.yaml at Level 1 conformance.
+
+kcp_version: "0.1"
+project: my-project
+version: 1.0.0
+
+units:
+  - id: overview
+    path: README.md
+    intent: "What is this project and how do I get started?"
+    scope: global
+    audience: [human, agent]</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Personal Site -->
+        <div class="tab-panel" id="tab-personal" role="tabpanel">
+          <div class="code-block">
+            <div class="code-block__header">
+              <span class="code-block__filename">examples/personal-site/knowledge.yaml</span>
+              <button class="copy-btn" data-copy="ex-personal" aria-label="Copy to clipboard">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div class="code-block__body">
+              <pre><code id="ex-personal" class="language-yaml"># Personal site / portfolio example
+# Shows: audience differentiation, freshness, depends_on
+
+kcp_version: "0.1"
+project: wiki.example.org
+version: 1.0.0
+updated: 2026-02-25
+
+units:
+  - id: home
+    path: index.md
+    intent: "Who is this person and what is this site about?"
+    scope: global
+    audience: [human, agent]
+    validated: 2026-02-25
+    triggers: [overview, about, biography, portfolio]
+
+  - id: about
+    path: about/index.md
+    intent: "What has this person built and what are they doing now?"
+    scope: global
+    audience: [human, agent, architect]
+    validated: 2026-02-25
+    depends_on: [home]
+    triggers: [biography, background, current work]
+
+  - id: cv
+    path: about/cv.md
+    intent: "What is this person's full professional history?"
+    scope: project
+    audience: [human, agent]
+    validated: 2026-02-25
+    depends_on: [about]
+    triggers: [cv, resume, employment, education]
+
+  - id: reading
+    path: interests/reading/index.md
+    intent: "What books has this person read?"
+    scope: project
+    audience: [human]         # human-only, not for agents
+    validated: 2026-02-25
+
+  - id: llms-index
+    path: llms.txt
+    intent: "Machine-readable site index"
+    scope: global
+    audience: [agent]          # agent-only entry point
+    validated: 2026-02-25
+
+relationships:
+  - from: about
+    to: home
+    type: context
+  - from: cv
+    to: about
+    type: context</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Open Source Wiki -->
+        <div class="tab-panel" id="tab-wiki" role="tabpanel">
+          <div class="code-block">
+            <div class="code-block__header">
+              <span class="code-block__filename">examples/open-source-wiki/knowledge.yaml</span>
+              <button class="copy-btn" data-copy="ex-wiki" aria-label="Copy to clipboard">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div class="code-block__body">
+              <pre><code id="ex-wiki" class="language-yaml"># Open source community wiki — 16 units, full topology
+# Dependency chains across architecture layers
+# Freshness: archived (2022) vs active (2026) content
+
+kcp_version: "0.1"
+project: community-wiki
+version: 1.0.0
+updated: 2026-02-25
+
+units:
+  - id: home
+    path: index.md
+    intent: "What is this community and how is the wiki organised?"
+    scope: global
+    audience: [human, agent, developer, architect]
+    validated: 2022-12-01
+    triggers: [overview, navigation, community]
+
+  - id: iam-sso
+    path: whydah/Getting-started.md
+    intent: "How do I get started with the IAM and SSO platform?"
+    scope: module
+    audience: [human, agent, developer, operator]
+    validated: 2022-12-01
+    depends_on: [projects-index]
+    triggers: [SSO, IAM, identity, OAuth2, OpenID Connect]
+
+  - id: iam-architecture
+    path: whydah/Architecture-Overview.md
+    intent: "How is the IAM platform architected?"
+    scope: module
+    audience: [human, agent, architect, developer]
+    validated: 2022-12-01
+    depends_on: [iam-sso]
+    triggers: [SSO architecture, SecurityTokenService]
+
+  - id: software-architecture
+    path: architecture/index.md
+    intent: "What architectural patterns does this community recommend?"
+    scope: module
+    audience: [human, agent, architect, developer]
+    validated: 2022-12-01
+    triggers: [DDD, microservices, CQRS, event sourcing]
+
+  - id: security
+    path: security/index.md
+    intent: "How should microservice security be approached?"
+    scope: module
+    audience: [human, agent, architect, developer]
+    validated: 2022-12-01
+    depends_on: [software-architecture]
+    triggers: [security, STRIDE, threat modelling, OWASP]
+
+relationships:
+  - from: software-architecture
+    to: iam-architecture
+    type: enables
+  - from: security
+    to: iam-sso
+    type: context</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       PARSERS
+       ============================================================ -->
+  <section id="parsers">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">Parsers</span>
+        <h2>Reference implementations</h2>
+        <p>Validate your <code>knowledge.yaml</code> with the official Python or Java parser. Both enforce the conformance rules in SPEC.md section 7.</p>
+      </div>
+
+      <div class="parsers-grid">
+        <!-- Python -->
+        <div class="parser-block reveal">
+          <h3>
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 2c-1.7 0-3.3.3-4.5.8C5.8 3.5 4.8 4.5 4.8 6v2.5c0 1.5 1.3 2.7 3 3.1.6.1 1.2.2 1.8.2h4.8c1.4 0 2.6 1.1 2.6 2.5v1.2H19c1.1-.5 2-1.3 2-2.5v-2.5c0-1.5-1.3-2.8-3.1-3.2-.7-.2-1.3-.2-2-.2H11c-1.4 0-2.6-1.1-2.6-2.5V3.2c0-1 .5-1.5 1.3-2C10.5 1 11.2 1 12 1" fill="#3776AB"/><path d="M12 22c1.7 0 3.3-.3 4.5-.8 1.7-.7 2.7-1.7 2.7-3.2v-2.5c0-1.5-1.3-2.7-3-3.1-.6-.1-1.2-.2-1.8-.2H9.6c-1.4 0-2.6-1.1-2.6-2.5v-1.2H5c-1.1.5-2 1.3-2 2.5v2.5c0 1.5 1.3 2.8 3.1 3.2.7.2 1.3.2 2 .2h4.9c1.4 0 2.6 1.1 2.6 2.5v1.3c0 1-.5 1.5-1.3 2-1 .2-1.6.3-2.3.3" fill="#FFD43B"/><circle cx="9" cy="5" r="1" fill="white"/><circle cx="15" cy="19" r="1" fill="white"/></svg>
+            Python
+          </h3>
+          <p>Requires Python 3.10+. Uses <code>pyyaml</code> with safe loading.</p>
+
+          <div class="code-block mb-4">
+            <div class="code-block__header">
+              <span class="code-block__filename">Install</span>
+              <button class="copy-btn" data-copy="py-install" aria-label="Copy to clipboard">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div class="code-block__body">
+              <pre><code id="py-install" class="language-bash">pip install kcp</code></pre>
+            </div>
+          </div>
+
+          <div class="code-block mb-4">
+            <div class="code-block__header">
+              <span class="code-block__filename">Usage</span>
+              <button class="copy-btn" data-copy="py-usage" aria-label="Copy to clipboard">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div class="code-block__body">
+              <pre><code id="py-usage" class="language-python">from kcp import parse, validate
+
+manifest = parse("knowledge.yaml")
+result = validate(manifest)
+
+if not result.is_valid:
+    print("Errors:", result.errors)
+if result.warnings:
+    print("Warnings:", result.warnings)</code></pre>
+            </div>
+          </div>
+
+          <div class="code-block">
+            <div class="code-block__header">
+              <span class="code-block__filename">CLI</span>
+              <button class="copy-btn" data-copy="py-cli" aria-label="Copy to clipboard">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div class="code-block__body">
+              <pre><code id="py-cli" class="language-bash">python -m kcp knowledge.yaml</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Java -->
+        <div class="parser-block reveal reveal-delay-2">
+          <h3>
+            <svg viewBox="0 0 24 24" fill="none"><path d="M8.851 18.56s-.917.534.653.714c1.902.218 2.874.187 4.969-.211 0 0 .552.346 1.321.646-4.699 2.013-10.633-.118-6.943-1.149M8.276 15.933s-1.028.762.542.924c2.032.209 3.636.227 6.413-.308 0 0 .384.389.987.602-5.679 1.661-12.007.13-7.942-.1218" fill="#5382A1"/><path d="M13.408 11.698c1.157 1.333-.304 2.533-.304 2.533s2.939-1.518 1.589-3.418c-1.261-1.772-2.228-2.652 3.007-5.688 0 0-8.216 2.051-4.292 6.573" fill="#E76F00"/><path d="M19.128 20.219s.679.559-.747.991c-2.712.822-11.288 1.069-13.669.033-.856-.373.75-.89 1.254-.998.527-.114.828-.093.828-.093-.953-.671-6.156 1.317-2.643 1.886 9.58 1.553 17.462-.7 14.977-1.819M9.292 13.21s-4.362 1.036-1.544 1.412c1.189.159 3.561.123 5.77-.062 1.804-.152 3.614-.477 3.614-.477s-.637.272-1.098.587c-4.429 1.165-12.986.623-10.522-.568 2.082-1.006 3.78-.892 3.78-.892M17.116 17.584c4.503-2.34 2.421-4.589.968-4.285-.356.075-.515.14-.515.14s.132-.207.385-.297c2.875-1.011 5.086 2.981-.929 4.562 0 0 .07-.062.091-.12" fill="#5382A1"/><path d="M14.401 0s2.494 2.494-2.365 6.33c-3.896 3.077-.889 4.832 0 6.836-2.274-2.053-3.943-3.858-2.824-5.54 1.644-2.469 6.197-3.665 5.189-7.626" fill="#E76F00"/><path d="M9.734 23.924c4.322.277 10.959-.154 11.116-2.198 0 0-.302.775-3.572 1.391-3.688.695-8.239.614-10.937.168 0 0 .553.457 3.393.639" fill="#5382A1"/></svg>
+            Java
+          </h3>
+          <p>Requires Java 17+. Uses SnakeYAML with <code>SafeConstructor</code> to prevent deserialization attacks.</p>
+
+          <div class="code-block mb-4">
+            <div class="code-block__header">
+              <span class="code-block__filename">Maven</span>
+              <button class="copy-btn" data-copy="java-install" aria-label="Copy to clipboard">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div class="code-block__body">
+              <pre><code id="java-install" class="language-xml">&lt;dependency&gt;
+  &lt;groupId&gt;no.cantara.kcp&lt;/groupId&gt;
+  &lt;artifactId&gt;kcp-parser&lt;/artifactId&gt;
+  &lt;version&gt;0.1.0&lt;/version&gt;
+&lt;/dependency&gt;</code></pre>
+            </div>
+          </div>
+
+          <div class="code-block mb-4">
+            <div class="code-block__header">
+              <span class="code-block__filename">Usage</span>
+              <button class="copy-btn" data-copy="java-usage" aria-label="Copy to clipboard">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div class="code-block__body">
+              <pre><code id="java-usage" class="language-java">import no.cantara.kcp.KcpParser;
+import no.cantara.kcp.KcpValidator;
+import no.cantara.kcp.model.KnowledgeManifest;
+
+var manifest = KcpParser.parse(Path.of("knowledge.yaml"));
+var result = KcpValidator.validate(manifest);
+
+if (!result.isValid()) {
+    result.errors().forEach(System.err::println);
+}
+result.warnings().forEach(System.out::println);</code></pre>
+            </div>
+          </div>
+
+          <div class="code-block">
+            <div class="code-block__header">
+              <span class="code-block__filename">CLI</span>
+              <button class="copy-btn" data-copy="java-cli" aria-label="Copy to clipboard">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div class="code-block__body">
+              <pre><code id="java-cli" class="language-bash">java -jar kcp-parser-0.1.0.jar knowledge.yaml</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       ADOPTION GUIDE
+       ============================================================ -->
+  <section id="adopt">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">Getting Started</span>
+        <h2>Four steps to adopt KCP</h2>
+        <p>KCP wraps your existing documentation with metadata. Your files stay where they are. The only new file is <code>knowledge.yaml</code>.</p>
+      </div>
+
+      <div class="adoption-steps">
+        <div class="adoption-step reveal reveal-delay-1">
+          <div class="adoption-step__number">1</div>
+          <h4>Audit</h4>
+          <p>Walk your project. List the key documents: README, architecture docs, API guides, agent definitions. For each, ask: what question does this answer?</p>
+        </div>
+
+        <div class="adoption-step reveal reveal-delay-2">
+          <div class="adoption-step__number">2</div>
+          <h4>Declare</h4>
+          <p>Create <code>knowledge.yaml</code> at the root. Add <code>id</code>, <code>path</code>, <code>intent</code>, <code>scope</code>, and <code>audience</code> for each unit. This is Level 1 &mdash; already useful.</p>
+        </div>
+
+        <div class="adoption-step reveal reveal-delay-3">
+          <div class="adoption-step__number">3</div>
+          <h4>Structure</h4>
+          <p>Add <code>validated</code> dates and <code>depends_on</code> relationships. Agents now understand reading order and can flag stale content. This is Level 2.</p>
+        </div>
+
+        <div class="adoption-step reveal reveal-delay-4">
+          <div class="adoption-step__number">4</div>
+          <h4>Navigate</h4>
+          <p>Add <code>triggers</code> and <code>relationships</code> for task-based retrieval. Agents find the right unit by context, not by scanning everything. This is Level 3.</p>
+        </div>
+      </div>
+
+      <div class="text-center mt-12 reveal">
+        <div class="code-block" style="max-width: 44rem; margin: 0 auto; text-align: left;">
+          <div class="code-block__header">
+            <div class="code-block__dots">
+              <span class="code-block__dot"></span>
+              <span class="code-block__dot"></span>
+              <span class="code-block__dot"></span>
+            </div>
+            <span class="code-block__filename">Start in five minutes</span>
+            <button class="copy-btn" data-copy="adopt-code" aria-label="Copy to clipboard">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 012 9.5v-7A1.5 1.5 0 013.5 1h7A1.5 1.5 0 0112 2.5V5"/></svg>
+              <span>Copy</span>
+            </button>
+          </div>
+          <div class="code-block__body">
+            <pre><code id="adopt-code" class="language-yaml"># Drop this at the root of any project. Done.
+kcp_version: "0.1"
+project: my-project
+version: 1.0.0
+
+units:
+  - id: overview
+    path: README.md
+    intent: "What is this project and how do I get started?"
+    scope: global
+    audience: [human, agent]
+
+  - id: architecture
+    path: docs/architecture.md
+    intent: "What are the architectural decisions and why?"
+    scope: global
+    audience: [developer, architect, agent]
+    depends_on: [overview]
+
+  - id: api-guide
+    path: docs/api/authentication.md
+    intent: "How do I authenticate API requests?"
+    scope: module
+    audience: [developer, agent]
+    depends_on: [architecture]
+    triggers: [authentication, oauth2, jwt, api-security]</code></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       FAQ
+       ============================================================ -->
+  <section id="faq">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">FAQ</span>
+        <h2>Common questions</h2>
+      </div>
+
+      <div class="faq-list reveal">
+
+        <div class="faq-item">
+          <button class="faq-question" aria-expanded="false">
+            How is KCP different from llms.txt?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <div class="faq-answer">
+            <p><code>llms.txt</code> answers "what does this site contain?" &mdash; it is a flat, human-readable index. KCP answers "how is this knowledge structured, how fresh is it, and how should an agent navigate it?" They are complementary. A project can maintain both. When both are present, KCP-aware agents prefer <code>knowledge.yaml</code> for navigation and fall back to <code>llms.txt</code> for tools that do not support KCP.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" aria-expanded="false">
+            Does KCP compete with MCP?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <div class="faq-answer">
+            <p>No. MCP defines how agents connect to tools. KCP defines how the knowledge those tools serve is structured. MCP is the transport layer; KCP is the metadata layer. A knowledge server can expose KCP-structured content via MCP. The relationship is the same as HTTP (transport) and HTML (content format).</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" aria-expanded="false">
+            Do I need Synthesis to use KCP?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <div class="faq-answer">
+            <p>No. KCP is a file format specification, not a runtime tool. It requires no server, no database, and no running process. A static site or git repository can be fully KCP-compliant. Synthesis is one tool that implements KCP natively, but any tool can parse <code>knowledge.yaml</code> &mdash; it is standard YAML.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" aria-expanded="false">
+            What is the minimum viable knowledge.yaml?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <div class="faq-answer">
+            <p>A <code>project</code> name and one unit with <code>id</code>, <code>path</code>, <code>intent</code>, <code>scope</code>, and <code>audience</code>. That is five fields per unit. Three minutes of work. The format allows complexity without demanding it.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" aria-expanded="false">
+            How do I keep the manifest in sync with documentation?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <div class="faq-answer">
+            <p>The <code>validated</code> field is your sync signal. Set it when you confirm content is accurate. When content changes, update the date. A unit with a <code>validated</code> date more than 90 days old is a candidate for review. Tooling can automate this &mdash; a pre-commit hook that warns when a changed doc does not update its <code>validated</code> date.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" aria-expanded="false">
+            Where does knowledge.yaml go in a monorepo?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <div class="faq-answer">
+            <p>Place it at the root of each subproject that has its own documentation. Each manifest is independent (SPEC.md section 1.3). Cross-manifest references are out of scope for v0.1. Alternatively, place a single manifest at the monorepo root using relative paths to all subprojects.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" aria-expanded="false">
+            I have 80+ documents. Do I need to declare all of them?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <div class="faq-answer">
+            <p>No. KCP is not exhaustive &mdash; it describes the knowledge that matters for navigation. Start with the 10-20 documents that agents and developers consult most. Add more as the value becomes clear. A project with 20 key documents can reach Level 2 KCP compliance in under two hours.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" aria-expanded="false">
+            What about authentication, compliance, and federation?
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <div class="faq-answer">
+            <p>These are covered in <a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0001-KCP-Extended.md" target="_blank" rel="noopener">RFC-0001</a>, which proposes 14 extended capabilities across six themes: access and identity, economics, trust and governance, enriched navigation, scale (federation), and service descriptions. Community feedback is open through March 2026.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       FOOTER
+       ============================================================ -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__inner">
+        <div class="footer__brand">
+          <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="8" cy="8" r="4" fill="currentColor"/>
+            <circle cx="24" cy="8" r="4" fill="currentColor"/>
+            <circle cx="16" cy="24" r="5" fill="currentColor"/>
+            <line x1="11" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="10" y1="11" x2="14" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="22" y1="11" x2="18" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="8" cy="8" r="1.5" fill="var(--bg-primary)"/>
+            <circle cx="24" cy="8" r="1.5" fill="var(--bg-primary)"/>
+            <circle cx="16" cy="24" r="2" fill="var(--bg-primary)"/>
+          </svg>
+          Knowledge Context Protocol
+        </div>
+
+        <ul class="footer__links">
+          <li><a href="https://github.com/Cantara/knowledge-context-protocol" target="_blank" rel="noopener">GitHub</a></li>
+          <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/SPEC.md" target="_blank" rel="noopener">Specification</a></li>
+          <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/PROPOSAL.md" target="_blank" rel="noopener">Proposal</a></li>
+          <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0001-KCP-Extended.md" target="_blank" rel="noopener">RFC-0001</a></li>
+          <li><a href="https://github.com/Cantara" target="_blank" rel="noopener">Cantara</a></li>
+          <li><a href="https://www.exoreaction.com" target="_blank" rel="noopener">eXOReaction</a></li>
+        </ul>
+      </div>
+
+      <div class="footer__meta">
+        <p>Apache License 2.0 &middot; Proposed by <a href="https://www.exoreaction.com" target="_blank" rel="noopener">eXOReaction AS</a>, Oslo, Norway &middot; Hosted under <a href="https://github.com/Cantara" target="_blank" rel="noopener">Cantara</a></p>
+      </div>
+    </div>
+  </footer>
+
+
+  <!-- ============================================================
+       SCRIPTS
+       ============================================================ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
