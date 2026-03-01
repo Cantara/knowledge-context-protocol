@@ -98,6 +98,25 @@ jobs:
           cd bridge/python
           python -m pytest tests/ -v
 
+      - name: Validate examples via CLI
+        run: |
+          cd bridge/python
+          for f in ../../examples/*/knowledge.yaml; do
+            python -m kcp_mcp "$f" --help > /dev/null
+          done
+
+      - name: Smoke-test sub-manifests
+        run: |
+          cd bridge/python
+          output=$(timeout 5s python -m kcp_mcp \
+            tests/fixtures/minimal/knowledge.yaml \
+            --sub-manifests tests/fixtures/sub/knowledge.yaml \
+            < /dev/null 2>&1 || true)
+          echo "$output"
+          echo "$output" | grep -q "loaded sub-manifest" \
+            && echo "sub-manifests: PASS" \
+            || { echo "sub-manifests: FAIL"; exit 1; }
+
   typescript-bridge-tests:
     runs-on: ubuntu-latest
     strategy:
@@ -132,3 +151,15 @@ jobs:
           for f in ../../examples/*/knowledge.yaml; do
             node dist/cli.js "$f" --help > /dev/null
           done
+
+      - name: Smoke-test sub-manifests
+        run: |
+          cd bridge/typescript
+          output=$(timeout 5s node dist/cli.js \
+            tests/fixtures/minimal/knowledge.yaml \
+            --sub-manifests ../sub/knowledge.yaml \
+            < /dev/null 2>&1 || true)
+          echo "$output"
+          echo "$output" | grep -q "loaded sub-manifest" \
+            && echo "sub-manifests: PASS" \
+            || { echo "sub-manifests: FAIL"; exit 1; }
