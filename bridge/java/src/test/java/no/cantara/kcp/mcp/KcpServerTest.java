@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -136,5 +138,49 @@ class KcpServerTest {
         KcpServer.ResourceSet rs = KcpServer.buildResources(fixture("minimal"), false);
         // No handler for unknown URI — map returns null (SDK would reject this)
         assertNull(rs.handlers().get("knowledge://my-project/nonexistent"));
+    }
+
+    // ── sub-manifests ─────────────────────────────────────────────────────────────
+
+    @Test void subManifestUnitsAreMerged() throws Exception {
+        KcpServer.ResourceSet rs = KcpServer.buildResources(
+            fixture("minimal"), false, List.of(fixture("sub")));
+        // manifest + 1 primary unit + 1 sub unit
+        assertEquals(3, rs.resources().size());
+        List<String> names = rs.resources().stream().map(McpSchema.Resource::name).toList();
+        assertTrue(names.contains("overview"));
+        assertTrue(names.contains("sub-unit-a"));
+    }
+
+    @Test void subManifestUnitIsReadable() throws Exception {
+        KcpServer.ResourceSet rs = KcpServer.buildResources(
+            fixture("minimal"), false, List.of(fixture("sub")));
+        McpSchema.Resource subRes = rs.resources().stream()
+            .filter(r -> r.name().equals("sub-unit-a"))
+            .findFirst().orElseThrow();
+        String uri = subRes.uri();
+        McpSchema.ReadResourceResult result = rs.handlers().get(uri).handle(uri);
+        McpSchema.TextResourceContents text = (McpSchema.TextResourceContents) result.contents().get(0);
+        assertTrue(text.text().contains("Sub-Unit A"));
+    }
+
+    @Test void primaryWinsOnDuplicateUnitId(@TempDir Path tmp) throws Exception {
+        Path subYaml = tmp.resolve("knowledge.yaml");
+        Files.writeString(subYaml,
+            "kcp_version: \"0.5\"\nproject: conflict\nversion: 1.0.0\n" +
+            "units:\n  - id: overview\n    path: extra.md\n    intent: \"x\"\n" +
+            "    scope: global\n    audience: [agent]\n");
+        Files.writeString(tmp.resolve("extra.md"), "extra");
+        KcpServer.ResourceSet rs = KcpServer.buildResources(
+            fixture("minimal"), false, List.of(subYaml));
+        // Duplicate id skipped — still 2: manifest + 1 primary unit
+        assertEquals(2, rs.resources().size());
+    }
+
+    @Test void missingSubManifestIsSkipped() throws Exception {
+        KcpServer.ResourceSet rs = KcpServer.buildResources(
+            fixture("minimal"), false, List.of(Path.of("/nonexistent/knowledge.yaml")));
+        // Warning emitted; primary still served
+        assertEquals(2, rs.resources().size());
     }
 }

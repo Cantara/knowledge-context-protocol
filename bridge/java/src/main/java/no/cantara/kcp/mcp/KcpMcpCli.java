@@ -5,6 +5,8 @@ import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 /**
@@ -12,19 +14,27 @@ import java.util.concurrent.CountDownLatch;
  *
  * <pre>
  * Usage: kcp-mcp [knowledge.yaml] [--agent-only] [--no-warnings]
+ *                [--sub-manifests path ...]
  * </pre>
  */
 public class KcpMcpCli {
 
     public static void main(String[] args) {
-        Path    manifestPath     = Path.of("knowledge.yaml");
-        boolean agentOnly        = false;
-        boolean warnOnValidation = true;
+        Path         manifestPath     = Path.of("knowledge.yaml");
+        boolean      agentOnly        = false;
+        boolean      warnOnValidation = true;
+        List<Path>   subManifests     = new ArrayList<>();
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
-                case "--agent-only"  -> agentOnly        = true;
-                case "--no-warnings" -> warnOnValidation = false;
+                case "--agent-only"    -> agentOnly        = true;
+                case "--no-warnings"   -> warnOnValidation = false;
+                case "--sub-manifests" -> {
+                    // Consume subsequent non-flag arguments as sub-manifest paths
+                    while (i + 1 < args.length && !args[i + 1].startsWith("-")) {
+                        subManifests.add(Path.of(args[++i]));
+                    }
+                }
                 default -> {
                     if (!args[i].startsWith("-")) {
                         manifestPath = Path.of(args[i]);
@@ -44,7 +54,7 @@ public class KcpMcpCli {
         McpSyncServer server;
         try {
             server = KcpServer.createServer(
-                manifestPath, transport, agentOnly, warnOnValidation);
+                manifestPath, transport, agentOnly, warnOnValidation, subManifests);
         } catch (Exception e) {
             System.err.println("[kcp-mcp] Startup error: " + e.getMessage());
             System.exit(1);

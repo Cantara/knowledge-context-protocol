@@ -15,6 +15,7 @@ from kcp_mcp.server import create_server
 
 MINIMAL_DIR = Path(__file__).parent / "fixtures" / "minimal"
 FULL_DIR = Path(__file__).parent / "fixtures" / "full"
+SUB_DIR = Path(__file__).parent / "fixtures" / "sub"
 
 
 def get_server(fixture_dir: Path, agent_only: bool = False) -> Server:
@@ -158,3 +159,65 @@ async def test_read_wrong_project_uri_raises():
     server = get_server(MINIMAL_DIR)
     with pytest.raises(Exception):
         await call_read_resource(server, "knowledge://other-project/spec")
+
+
+# ── sub-manifests ─────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_sub_manifest_units_are_merged():
+    server = create_server(
+        MINIMAL_DIR / "knowledge.yaml",
+        sub_manifests=[SUB_DIR / "knowledge.yaml"],
+        warn_on_validation=False,
+    )
+    resources = await call_list_resources(server)
+    # manifest + 1 primary unit + 1 sub unit
+    assert len(resources) == 3
+    names = [r.name for r in resources]
+    assert "overview" in names
+    assert "sub-unit-a" in names
+
+
+@pytest.mark.asyncio
+async def test_sub_manifest_unit_is_readable():
+    server = create_server(
+        MINIMAL_DIR / "knowledge.yaml",
+        sub_manifests=[SUB_DIR / "knowledge.yaml"],
+        warn_on_validation=False,
+    )
+    resources = await call_list_resources(server)
+    sub_res = next(r for r in resources if r.name == "sub-unit-a")
+    contents = await call_read_resource(server, str(sub_res.uri))
+    assert len(contents) == 1
+    assert "Sub-Unit A" in contents[0].text
+
+
+@pytest.mark.asyncio
+async def test_primary_wins_on_duplicate_unit_id(tmp_path):
+    sub_yaml = tmp_path / "knowledge.yaml"
+    sub_yaml.write_text(
+        'kcp_version: "0.5"\nproject: conflict\nversion: 1.0.0\n'
+        'units:\n  - id: overview\n    path: extra.md\n    intent: "x"\n'
+        '    scope: global\n    audience: [agent]\n'
+    )
+    (tmp_path / "extra.md").write_text("extra")
+    server = create_server(
+        MINIMAL_DIR / "knowledge.yaml",
+        sub_manifests=[sub_yaml],
+        warn_on_validation=False,
+    )
+    resources = await call_list_resources(server)
+    # Duplicate id skipped — still 2: manifest + 1 primary unit
+    assert len(resources) == 2
+
+
+@pytest.mark.asyncio
+async def test_missing_sub_manifest_is_skipped():
+    server = create_server(
+        MINIMAL_DIR / "knowledge.yaml",
+        sub_manifests=[Path("/nonexistent/knowledge.yaml")],
+        warn_on_validation=False,
+    )
+    resources = await call_list_resources(server)
+    # Warning emitted; primary still served
+    assert len(resources) == 2

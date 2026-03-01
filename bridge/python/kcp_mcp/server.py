@@ -50,6 +50,7 @@ def create_server(
     manifest_path: Path,
     agent_only: bool = False,
     warn_on_validation: bool = True,
+    sub_manifests: list[Path] | None = None,
 ) -> Server:
     """
     Parse knowledge.yaml and return a configured MCP Server.
@@ -58,28 +59,66 @@ def create_server(
         manifest_path:      Path to knowledge.yaml
         agent_only:         If True, only expose units with audience: [agent]
         warn_on_validation: Log validation warnings to stderr
+        sub_manifests:      Additional manifest paths whose units merge into the primary namespace
     """
+    if sub_manifests is None:
+        sub_manifests = []
+
     manifest: KnowledgeManifest = parse(manifest_path)
     manifest_dir = manifest_path.parent
     slug = project_slug(manifest.project)
     m_uri = manifest_uri(slug)
 
+    # Maps unit_id → (unit, unit_manifest_dir).  Primary manifest wins on duplicate id.
+    unit_context: dict[str, tuple] = {
+        u.id: (u, manifest_dir) for u in manifest.units
+    }
+
+    # Load sub-manifests and merge units
+    added_total = 0
+    for sub_path in sub_manifests:
+        sub_path = Path(sub_path).resolve()
+        sub_dir = sub_path.parent
+        try:
+            sub_manifest: KnowledgeManifest = parse(sub_path)
+        except Exception as e:
+            sys.stderr.write(
+                f"  [kcp-mcp] warning: could not load sub-manifest {sub_path}: {e}\n"
+            )
+            continue
+        added = 0
+        for unit in sub_manifest.units:
+            if unit.id in unit_context:
+                sys.stderr.write(
+                    f"  [kcp-mcp] warning: duplicate unit id '{unit.id}' in {sub_path} — skipping\n"
+                )
+                continue
+            unit_context[unit.id] = (unit, sub_dir)
+            added += 1
+        added_total += added
+        sys.stderr.write(
+            f"  [kcp-mcp] loaded sub-manifest {sub_path} — {added} unit(s)\n"
+        )
+
+    total_units = len(unit_context)
+
     # Build static resource list
     resource_list: list[Resource] = [
         _build_resource(manifest_resource_dict(slug, manifest))
     ]
-    for unit in manifest.units:
+    for unit, _ in unit_context.values():
         if agent_only and "agent" not in unit.audience:
             continue
         resource_list.append(_build_resource(unit_resource_dict(slug, unit)))
 
-    # Index units by id
-    unit_index = {u.id: u for u in manifest.units}
-
     # Log startup info
-    agent_note = " (agent-only filter active)" if agent_only else ""
+    agent_note = " [agent-only]" if agent_only else ""
+    sub_note = (
+        f" ({len(manifest.units)} primary + {added_total} from {len(sub_manifests)} sub-manifest(s))"
+        if sub_manifests else ""
+    )
     sys.stderr.write(
-        f"[kcp-mcp] Serving '{manifest.project}' — {len(manifest.units)} units{agent_note}\n"
+        f"[kcp-mcp] Serving '{manifest.project}' — {total_units} unit(s){sub_note}{agent_note}\n"
         f"[kcp-mcp] Start with: {m_uri}\n"
     )
 
@@ -106,13 +145,14 @@ def create_server(
             raise ValueError(f"Unknown resource URI: {uri_str}")
 
         unit_id = uri_str[len(prefix):]
-        unit = unit_index.get(unit_id)
-        if unit is None:
+        ctx = unit_context.get(unit_id)
+        if ctx is None:
             raise ValueError(f"No unit with id '{unit_id}'")
 
+        unit, unit_dir = ctx
         mime = resolve_mime(unit)
         try:
-            content, is_binary = read_resource_content(manifest_dir, unit.path, mime)
+            content, is_binary = read_resource_content(unit_dir, unit.path, mime)
         except ResourceNotFoundError as e:
             raise ValueError(str(e)) from e
         except PathTraversalError as e:

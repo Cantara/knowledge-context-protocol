@@ -3,9 +3,11 @@ KCP MCP Bridge CLI entry point.
 
 Usage:
     kcp-mcp [path/to/knowledge.yaml] [--agent-only] [--transport stdio|http] [--port N]
+            [--sub-manifests path ...]
 """
 import argparse
 import asyncio
+import glob as glob_module
 import sys
 from pathlib import Path
 
@@ -45,12 +47,28 @@ def main() -> None:
         default=False,
         help="Suppress KCP validation warnings",
     )
+    parser.add_argument(
+        "--sub-manifests",
+        nargs="*",
+        default=[],
+        metavar="PATH",
+        help="Additional knowledge.yaml paths to merge (supports glob wildcards)",
+    )
     args = parser.parse_args()
 
     manifest_path = Path(args.manifest)
     if not manifest_path.exists():
         sys.stderr.write(f"Error: manifest not found: {manifest_path}\n")
         sys.exit(1)
+
+    # Expand any glob patterns in --sub-manifests
+    sub_manifest_paths: list[Path] = []
+    for pattern in (args.sub_manifests or []):
+        matches = glob_module.glob(pattern, recursive=True)
+        if matches:
+            sub_manifest_paths.extend(Path(m) for m in sorted(matches))
+        else:
+            sub_manifest_paths.append(Path(pattern))
 
     from .server import create_server
 
@@ -59,6 +77,7 @@ def main() -> None:
             manifest_path,
             agent_only=args.agent_only,
             warn_on_validation=not args.no_warnings,
+            sub_manifests=sub_manifest_paths,
         )
     except Exception as e:
         sys.stderr.write(f"Error: {e}\n")

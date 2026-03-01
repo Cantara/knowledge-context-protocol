@@ -29,7 +29,8 @@ public final class KcpServer {
      */
     record ResourceSet(
         List<McpSchema.Resource> resources,
-        Map<String, ResourceHandler> handlers
+        Map<String, ResourceHandler> handlers,
+        int totalUnits
     ) {}
 
     @FunctionalInterface
@@ -39,17 +40,30 @@ public final class KcpServer {
 
     /**
      * Parses the manifest and builds all resources and their read handlers.
-     * Extracted for direct testing without a transport.
+     * Convenience overload — no sub-manifests.
      */
     static ResourceSet buildResources(Path manifestPath, boolean agentOnly) throws IOException {
+        return buildResources(manifestPath, agentOnly, List.of());
+    }
+
+    /**
+     * Parses the manifest and builds all resources and their read handlers.
+     * Units from subManifestPaths are merged; primary manifest wins on duplicate id.
+     * Extracted for direct testing without a transport.
+     */
+    static ResourceSet buildResources(
+            Path manifestPath,
+            boolean agentOnly,
+            List<Path> subManifestPaths) throws IOException {
+
         KnowledgeManifest manifest = KcpParser.parse(manifestPath);
         Path manifestDir = manifestPath.getParent();
         String slug  = KcpMapper.projectSlug(manifest.project());
         String mUri  = KcpMapper.manifestUri(slug);
         String mJson = KcpMapper.buildManifestJson(manifest, slug);
 
-        List<McpSchema.Resource>         resources = new ArrayList<>();
-        Map<String, ResourceHandler>     handlers  = new LinkedHashMap<>();
+        List<McpSchema.Resource>     resources = new ArrayList<>();
+        Map<String, ResourceHandler> handlers  = new LinkedHashMap<>();
 
         // ── manifest meta-resource ────────────────────────────────────────────────
         resources.add(KcpMapper.buildManifestResource(slug));
@@ -60,8 +74,44 @@ public final class KcpServer {
             )
         );
 
-        // ── unit resources ────────────────────────────────────────────────────────
+        // ── unit context: unit.id → [unit, manifestDir]  (primary wins on dup) ───
+        Map<String, Object[]> unitContext = new LinkedHashMap<>();
         for (KnowledgeUnit unit : manifest.units()) {
+            unitContext.put(unit.id(), new Object[]{unit, manifestDir});
+        }
+
+        // ── merge sub-manifests ───────────────────────────────────────────────────
+        for (Path subPath : subManifestPaths) {
+            Path resolvedSub = subPath.toAbsolutePath();
+            Path subDir = resolvedSub.getParent();
+            KnowledgeManifest subManifest;
+            try {
+                subManifest = KcpParser.parse(resolvedSub);
+            } catch (Exception e) {
+                System.err.printf("  [kcp-mcp] warning: could not load sub-manifest %s: %s%n",
+                    resolvedSub, e.getMessage());
+                continue;
+            }
+            int added = 0;
+            for (KnowledgeUnit unit : subManifest.units()) {
+                if (unitContext.containsKey(unit.id())) {
+                    System.err.printf(
+                        "  [kcp-mcp] warning: duplicate unit id '%s' in %s — skipping%n",
+                        unit.id(), resolvedSub);
+                    continue;
+                }
+                unitContext.put(unit.id(), new Object[]{unit, subDir});
+                added++;
+            }
+            System.err.printf("  [kcp-mcp] loaded sub-manifest %s — %d unit(s)%n",
+                resolvedSub, added);
+        }
+
+        // ── build unit resources from merged context ──────────────────────────────
+        for (Map.Entry<String, Object[]> entry : unitContext.entrySet()) {
+            KnowledgeUnit unit    = (KnowledgeUnit) entry.getValue()[0];
+            Path          unitDir = (Path)          entry.getValue()[1];
+
             if (agentOnly && !unit.audience().contains("agent")) continue;
 
             resources.add(KcpMapper.buildUnitResource(slug, unit));
@@ -69,10 +119,11 @@ public final class KcpServer {
             final String unitUri  = KcpMapper.unitUri(slug, unit.id());
             final String mime     = KcpMapper.resolveMime(unit);
             final String unitPath = unit.path();
+            final Path finalUnitDir = unitDir;
 
             handlers.put(unitUri, uri -> {
                 try {
-                    KcpContent.ContentResult content = KcpContent.read(manifestDir, unitPath, mime);
+                    KcpContent.ContentResult content = KcpContent.read(finalUnitDir, unitPath, mime);
                     if (content.binary()) {
                         return new McpSchema.ReadResourceResult(
                             List.of(new McpSchema.BlobResourceContents(uri, mime, content.text(), null)),
@@ -90,10 +141,23 @@ public final class KcpServer {
             });
         }
 
-        return new ResourceSet(resources, handlers);
+        return new ResourceSet(resources, handlers, unitContext.size());
     }
 
     // ── Public factory ────────────────────────────────────────────────────────────
+
+    /**
+     * Parses the KCP manifest at {@code manifestPath} and returns a configured
+     * MCP sync server ready to accept connections.
+     * Convenience overload — no sub-manifests.
+     */
+    public static McpSyncServer createServer(
+            Path manifestPath,
+            McpServerTransportProvider transport,
+            boolean agentOnly,
+            boolean warnOnValidation) throws IOException {
+        return createServer(manifestPath, transport, agentOnly, warnOnValidation, List.of());
+    }
 
     /**
      * Parses the KCP manifest at {@code manifestPath} and returns a configured
@@ -103,24 +167,34 @@ public final class KcpServer {
      * @param transport        MCP transport provider (e.g. StdioServerTransportProvider)
      * @param agentOnly        if true, expose only units with audience: [agent]
      * @param warnOnValidation if true, log validation warnings to stderr
+     * @param subManifestPaths additional manifest paths whose units are merged
      */
     public static McpSyncServer createServer(
             Path manifestPath,
-            io.modelcontextprotocol.spec.McpServerTransportProvider transport,
+            McpServerTransportProvider transport,
             boolean agentOnly,
-            boolean warnOnValidation) throws IOException {
+            boolean warnOnValidation,
+            List<Path> subManifestPaths) throws IOException {
 
         KnowledgeManifest manifest = KcpParser.parse(manifestPath);
-        ResourceSet rs = buildResources(manifestPath, agentOnly);
-        String slug    = KcpMapper.projectSlug(manifest.project());
+        ResourceSet rs = buildResources(manifestPath, agentOnly, subManifestPaths);
+        String slug = KcpMapper.projectSlug(manifest.project());
 
-        String agentNote = agentOnly ? " (agent-only filter active)" : "";
-        System.err.printf("[kcp-mcp] Serving '%s' — %d units%s%n",
-            manifest.project(), manifest.units().size(), agentNote);
+        int primaryUnits = manifest.units().size();
+        int totalUnits   = rs.totalUnits();
+        int subUnits     = totalUnits - primaryUnits;
+
+        String agentNote = agentOnly ? " [agent-only]" : "";
+        String subNote   = subManifestPaths.isEmpty() ? "" :
+            String.format(" (%d primary + %d from %d sub-manifest(s))",
+                primaryUnits, subUnits, subManifestPaths.size());
+
+        System.err.printf("[kcp-mcp] Serving '%s' — %d unit(s)%s%s%n",
+            manifest.project(), totalUnits, subNote, agentNote);
         System.err.printf("[kcp-mcp] Start with: %s%n", KcpMapper.manifestUri(slug));
 
         McpSyncServer server = McpServer.sync(transport)
-            .serverInfo("kcp-" + slug, "0.1.0")
+            .serverInfo("kcp-" + slug, "0.5.0")
             .capabilities(McpSchema.ServerCapabilities.builder()
                 .resources(null, null)
                 .build())
