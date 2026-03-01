@@ -9,8 +9,8 @@
   "properties": {
     "kcp_version": {
       "type": "string",
-      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.4\". Prior drafts \"0.1\", \"0.2\", and \"0.3\" are also accepted for backward compatibility.",
-      "enum": ["0.1", "0.2", "0.3", "0.4"]
+      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.5\". Prior drafts \"0.1\" through \"0.4\" are also accepted for backward compatibility.",
+      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5"]
     },
     "project": {
       "type": "string",
@@ -56,6 +56,15 @@
       ]
     },
     "hints": { "$ref": "#/definitions/root_hints" },
+    "trust": {
+      "type": "object",
+      "description": "Publisher provenance for this manifest. OPTIONAL. See SPEC.md §3.2.",
+      "additionalProperties": true,
+      "properties": {
+        "provenance": { "$ref": "#/definitions/trust_provenance" }
+      }
+    },
+    "payment": { "$ref": "#/definitions/payment_object" },
     "units": {
       "type": "array",
       "description": "Ordered list of knowledge unit declarations. REQUIRED. Must contain at least one unit.",
@@ -222,7 +231,23 @@
           },
           "maxItems": 20
         },
-        "hints": { "$ref": "#/definitions/unit_hints" }
+        "hints": { "$ref": "#/definitions/unit_hints" },
+        "access": {
+          "type": "string",
+          "description": "Who can fetch this unit's content. Advisory signal. Values: public (default), authenticated, restricted. See SPEC.md §4.11.",
+          "enum": ["public", "authenticated", "restricted"]
+        },
+        "sensitivity": {
+          "type": "string",
+          "description": "Information classification level. Values: public, internal, confidential, restricted. See SPEC.md §4.12.",
+          "enum": ["public", "internal", "confidential", "restricted"]
+        },
+        "deprecated": {
+          "type": "boolean",
+          "description": "If true, this unit is present but should not be used for new development. Agents SHOULD prefer non-deprecated alternatives. See SPEC.md §4.13.",
+          "default": false
+        },
+        "payment": { "$ref": "#/definitions/payment_object" }
       }
     },
     "unit_hints": {
@@ -336,6 +361,38 @@
         "has_chunks": {
           "type": "boolean",
           "description": "At least one unit in this manifest has chunked: true."
+        }
+      }
+    },
+    "trust_provenance": {
+      "type": "object",
+      "description": "Publisher identity fields within the trust block. All fields are optional and advisory. See SPEC.md §3.2.",
+      "additionalProperties": true,
+      "properties": {
+        "publisher": {
+          "type": "string",
+          "description": "Human-readable name of the publishing organisation or individual.",
+          "minLength": 1
+        },
+        "publisher_url": {
+          "type": "string",
+          "description": "URL of the publisher's web presence. MUST use HTTPS if present."
+        },
+        "contact": {
+          "type": "string",
+          "description": "Email address or URL for questions about this manifest's content."
+        }
+      }
+    },
+    "payment_object": {
+      "type": "object",
+      "description": "Monetisation tier declaration. Can appear at root level (as default for all units) or at unit level (as override). See SPEC.md §4.14.",
+      "additionalProperties": true,
+      "properties": {
+        "default_tier": {
+          "type": "string",
+          "description": "Monetisation tier. Values: free (default), metered (per-request billing), subscription (requires active plan).",
+          "enum": ["free", "metered", "subscription"]
         }
       }
     },

@@ -1,6 +1,6 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.4
+**Version:** 0.5
 **Status:** Draft
 **Date:** 2026-03-01
 **Repository:** github.com/cantara/knowledge-context-protocol
@@ -79,7 +79,7 @@ version.
 ## 3. Root Manifest Structure
 
 ```yaml
-kcp_version: "0.4"          # RECOMMENDED
+kcp_version: "0.5"          # RECOMMENDED
 project: <string>            # REQUIRED
 version: <semver string>     # RECOMMENDED
 updated: "<ISO date>"        # RECOMMENDED; quote the value (see §4.1.1)
@@ -87,6 +87,8 @@ language: <BCP 47 tag>       # OPTIONAL; default language for all units (see §4
 license: <string or object>  # OPTIONAL; default license for all units (see §4.6a)
 indexing: <string or object>  # OPTIONAL; default indexing permissions (see §4.6c)
 hints: <object>              # OPTIONAL; manifest-level aggregate hints (see §4.10)
+trust: <object>              # OPTIONAL; publisher provenance (see §3.2)
+payment: <object>            # OPTIONAL; default monetisation tier for all units (see §4.14)
 
 units:                       # REQUIRED; list of knowledge units
   - ...
@@ -99,7 +101,7 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
-| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.4"` for conformance with this document. |
+| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.5"` for conformance with this document. |
 | `project` | REQUIRED | string | Human-readable name of the project or documentation site. |
 | `version` | RECOMMENDED | string | Semver version of this manifest. Increment when units are added or removed. |
 | `updated` | RECOMMENDED | string | ISO 8601 date (`YYYY-MM-DD`) when this manifest was last modified. |
@@ -107,8 +109,39 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 | `license` | OPTIONAL | string or object | Default license for all units. See §4.6a. |
 | `indexing` | OPTIONAL | string or object | Default indexing permissions for all units. See §4.6c. |
 | `hints` | OPTIONAL | object | Manifest-level aggregate context hints. See §4.10. |
+| `trust` | OPTIONAL | object | Publisher provenance for this manifest. See §3.2. |
+| `payment` | OPTIONAL | object | Default monetisation tier for all units. See §4.14. |
 | `units` | REQUIRED | list | Ordered list of knowledge unit declarations. MUST contain at least one unit. |
 | `relationships` | OPTIONAL | list | Explicit cross-unit relationship declarations. See §5. |
+
+### 3.2 `trust`
+
+The root-level `trust` block declares the provenance of this manifest — who published it and
+how to contact them. It is advisory metadata: it carries no cryptographic weight unless
+combined with external signing infrastructure (see §13.1).
+
+```yaml
+trust:
+  provenance:
+    publisher: "Acme Corp"
+    publisher_url: "https://acme.com"
+    contact: "knowledge-team@acme.com"
+```
+
+#### `trust.provenance` sub-fields
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `publisher` | OPTIONAL | string | Human-readable name of the publishing organisation or individual. |
+| `publisher_url` | OPTIONAL | string | URL of the publisher's web presence. MUST use HTTPS if present. |
+| `contact` | OPTIONAL | string | Email address or URL for questions about this manifest's content. |
+
+All sub-fields are OPTIONAL. An empty `trust` block (no sub-fields) is valid and SHOULD be
+silently accepted. Unknown sub-fields MUST be silently ignored.
+
+The `trust` block in this version covers provenance only. Cryptographic content integrity,
+audit requirements, and agent attestation requirements are defined in RFC-0004 and may be
+promoted to the core spec in a future version.
 
 ---
 
@@ -137,6 +170,10 @@ Each entry in `units` describes a self-contained piece of knowledge.
 | `supersedes` | OPTIONAL | string | ID of the unit this replaces. See §4.8. |
 | `triggers` | OPTIONAL | list of strings | Keywords or task contexts that make this unit relevant. See §4.9. |
 | `hints` | OPTIONAL | object | Advisory context window hints: size, loading strategy, and summary relationships. See §4.10. |
+| `access` | OPTIONAL | string | Who can fetch this unit's content. One of: `public`, `authenticated`, `restricted`. Default: `public`. See §4.11. |
+| `sensitivity` | OPTIONAL | string | Information classification level. One of: `public`, `internal`, `confidential`, `restricted`. See §4.12. |
+| `deprecated` | OPTIONAL | boolean | If `true`, this unit is present but should not be used for new development. See §4.13. |
+| `payment` | OPTIONAL | object | Monetisation tier for this unit. Overrides root-level `payment` default. See §4.14. |
 
 #### 4.1.1 Date Fields
 
@@ -616,6 +653,153 @@ hints:
 `total_token_estimate` SHOULD be recomputed by tooling when unit estimates change. Publishers
 SHOULD NOT maintain it by hand; a stale value is worse than an absent value.
 
+### 4.11 `access`
+
+The `access` field is a lightweight advisory signal indicating what kind of credential, if any,
+is required to fetch the content of this unit.
+
+| Value | Meaning |
+|-------|---------|
+| `public` | No credential required. Freely accessible. Default when `access` is omitted. |
+| `authenticated` | Any valid credential for this knowledge source is sufficient. |
+| `restricted` | Explicit permission required. The specific credential type is declared elsewhere (e.g. in an `auth` block defined in RFC-0002). |
+
+```yaml
+units:
+  - id: public-overview
+    path: README.md
+    intent: "What is this project?"
+    scope: global
+    audience: [human, agent]
+    # access omitted = public
+
+  - id: internal-runbook
+    path: ops/runbook.md
+    intent: "How do I handle a production incident?"
+    scope: project
+    audience: [operator, agent]
+    access: authenticated
+
+  - id: executive-report
+    path: reports/exec-summary.md
+    intent: "What are the key business metrics this quarter?"
+    scope: module
+    audience: [agent]
+    access: restricted
+```
+
+`access` is an advisory declaration. It does not constitute an access control mechanism — a
+manifest declaring `access: restricted` does not prevent an agent from loading the content if
+no enforcement layer exists at the transport or storage level. See §13.1.
+
+Unknown `access` values MUST be silently ignored by parsers.
+
+### 4.12 `sensitivity`
+
+The `sensitivity` field classifies the information content of a unit using standard information
+security levels. It is an advisory signal to agents and orchestration layers about how carefully
+this content should be handled.
+
+| Value | Meaning |
+|-------|---------|
+| `public` | No restrictions. Freely shareable. |
+| `internal` | For internal use only. Not for external parties. |
+| `confidential` | Restricted to a need-to-know subset. |
+| `restricted` | Highest sensitivity. Strict handling required. |
+
+These levels align with common information classification frameworks (ISO 27001, many national
+standards). The gradient `public → internal → confidential → restricted` is intentional and
+ordered.
+
+```yaml
+units:
+  - id: security-runbook
+    path: ops/security-runbook.md
+    intent: "How do we respond to a security incident?"
+    scope: project
+    audience: [operator, agent]
+    sensitivity: confidential
+    access: restricted
+```
+
+`sensitivity` is omitted by default. When omitted, the sensitivity of the unit is undeclared —
+agents SHOULD treat this as unknown rather than assuming `public`.
+
+Unknown `sensitivity` values MUST be silently ignored by parsers.
+
+### 4.13 `deprecated`
+
+The `deprecated` field signals that a unit is still present in the manifest but should not be
+used for new development. It is equivalent to a deprecation annotation in code.
+
+```yaml
+units:
+  - id: old-api-guide
+    path: docs/api-v1.md
+    intent: "How do I use the v1 API?"
+    scope: module
+    audience: [developer, agent]
+    deprecated: true
+```
+
+When `deprecated: true`:
+
+- Agents SHOULD prefer non-deprecated alternatives when they exist.
+- If a `supersedes` field on another unit references this unit, that unit is the preferred
+  replacement.
+- A validator SHOULD warn when `deprecated: true` is declared but no other unit declares
+  `supersedes: <this-unit-id>`.
+
+`deprecated` is OPTIONAL. Default: `false`. When omitted or `false`, no deprecation is implied.
+
+### 4.14 `payment`
+
+The `payment` field declares the monetisation model for this unit. It is an advisory signal
+that allows agents to assess whether access will incur a cost before attempting to load content.
+
+In v0.5, only the `default_tier` sub-field is defined. Additional sub-fields (payment methods,
+x402 micropayment details, rate limits) are specified in RFC-0005 and may be promoted in a
+future version.
+
+**Unit-level form:**
+
+```yaml
+units:
+  - id: premium-research
+    path: reports/market-analysis.md
+    intent: "What does the market analysis show?"
+    scope: module
+    audience: [agent]
+    payment:
+      default_tier: metered
+```
+
+**Root-level default (overridable per unit):**
+
+```yaml
+payment:
+  default_tier: free   # applies to all units unless overridden
+```
+
+#### `payment` sub-fields
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `default_tier` | OPTIONAL | string | Monetisation tier. One of: `free`, `metered`, `subscription`. Default: `free`. |
+
+| Tier | Meaning |
+|------|---------|
+| `free` | No cost to access. Default when `payment` is omitted. |
+| `metered` | Per-request or per-token billing. Agent should check its budget before loading. |
+| `subscription` | Access requires an active subscription plan. |
+
+`payment` is OPTIONAL at both root and unit level. When omitted entirely, all units are assumed
+to be `free`.
+
+Unit-level `payment` overrides the root-level `payment` default for that unit.
+
+Unknown `payment` sub-fields MUST be silently ignored.
+
 ---
 
 ## 5. Relationships
@@ -649,9 +833,9 @@ Unknown relationship types MUST be silently ignored.
 ### 6.1 Spec Version (`kcp_version`)
 
 `kcp_version` identifies which version of this specification the manifest conforms to. Current
-valid value: `"0.4"`. The values `"0.1"`, `"0.2"`, and `"0.3"` refer to prior drafts
-(February 2026); parsers SHOULD treat these manifests as conformant with this version, as v0.4
-is a strict superset of v0.3 (new fields only, no removals or breaking changes). Parsers
+valid value: `"0.5"`. The values `"0.1"`, `"0.2"`, `"0.3"`, and `"0.4"` refer to prior drafts
+(February–March 2026); parsers SHOULD treat these manifests as conformant with this version, as
+v0.5 is a strict superset of v0.4 (new fields only, no removals or breaking changes). Parsers
 encountering an unknown `kcp_version` SHOULD process the manifest using the closest known
 version and SHOULD emit a warning.
 
@@ -696,10 +880,10 @@ The following conditions MUST cause the parser to reject the manifest:
 A JSON Schema (draft-07) for `knowledge.yaml` is available at
 [`schema/knowledge-schema.json`](./schema/knowledge-schema.json). It covers all fields defined in
 this specification: root fields (`kcp_version`, `project`, `version`, `updated`, `language`,
-`license`, `indexing`, `hints`), unit fields (`id`, `path`, `kind`, `intent`, `format`,
-`content_type`, `language`, `scope`, `audience`, `license`, `validated`, `update_frequency`,
-`indexing`, `depends_on`, `supersedes`, `triggers`, `hints`), and relationship fields
-(`from`, `to`, `type`).
+`license`, `indexing`, `hints`, `trust`, `payment`), unit fields (`id`, `path`, `kind`, `intent`,
+`format`, `content_type`, `language`, `scope`, `audience`, `license`, `validated`,
+`update_frequency`, `indexing`, `depends_on`, `supersedes`, `triggers`, `hints`, `access`,
+`sensitivity`, `deprecated`, `payment`), and relationship fields (`from`, `to`, `type`).
 
 The schema enforces required fields, value constraints (e.g. `id` pattern, `kind` enum,
 `format` enum, trigger `maxLength` and `maxItems`), and structural rules. It can be used with
@@ -719,11 +903,14 @@ each piece answer, and who is it for?" Parsers SHOULD supply default values when
 `audience` are absent (`scope` defaults to `global`; `audience` defaults to an empty list).
 
 **Level 2 — Structured**
-Extends Level 1 with `validated`, `depends_on`, `kind`, `format`, `language`, and the core
-`hints` fields: `token_estimate`, `load_strategy`, `summary_available`, `summary_unit`, and
-`summary_of`. A Level 2 manifest supports freshness-aware retrieval, dependency-ordered loading,
-artifact type classification, content format awareness, multilingual navigation, and basic
-context-budget planning (agents know unit sizes and can prefer summaries over full documents).
+Extends Level 1 with `validated`, `depends_on`, `kind`, `format`, `language`, the core
+`hints` fields (`token_estimate`, `load_strategy`, `summary_available`, `summary_unit`,
+`summary_of`), and the v0.5 access and classification fields: `access`, `sensitivity`,
+`deprecated`, `payment`, and the root-level `trust.provenance` block. A Level 2 manifest
+supports freshness-aware retrieval, dependency-ordered loading, artifact type classification,
+content format awareness, multilingual navigation, basic context-budget planning (agents know
+unit sizes and can prefer summaries over full documents), access-tier routing (agents skip
+units they cannot or should not load), and basic publisher attribution.
 
 **Level 3 — Full**
 Extends Level 2 with `triggers`, `supersedes`, `license`, `update_frequency`, `indexing`,
@@ -904,7 +1091,7 @@ MUST apply the following constraints:
 ## Appendix A: Minimal Example
 
 ```yaml
-kcp_version: "0.4"
+kcp_version: "0.5"
 project: my-project
 version: 1.0.0
 units:
@@ -920,9 +1107,9 @@ units:
 ## Appendix B: Full Example
 
 ```yaml
-kcp_version: "0.4"
+kcp_version: "0.5"
 project: wiki.example.org
-version: 2.2.0
+version: 2.3.0
 updated: "2026-03-01"
 language: en
 license: "Apache-2.0"
@@ -932,6 +1119,13 @@ hints:
   unit_count: 9
   recommended_entry_point: about
   has_summaries: true
+trust:
+  provenance:
+    publisher: "Example Corp"
+    publisher_url: "https://wiki.example.org"
+    contact: "docs@example.org"
+payment:
+  default_tier: free
 
 units:
   - id: about
@@ -1030,6 +1224,8 @@ units:
     scope: project
     audience: [developer, agent]
     validated: "2026-02-10"
+    access: authenticated
+    sensitivity: internal
     indexing: read-only
     hints:
       token_estimate: 200
@@ -1056,6 +1252,7 @@ units:
     scope: project
     audience: [agent]
     validated: "2025-09-01"
+    deprecated: true
     hints:
       load_strategy: never
       priority: reference

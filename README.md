@@ -61,6 +61,13 @@ hints:                             # optional — manifest-level aggregate hints
   total_token_estimate: <integer>
   recommended_entry_point: <unit-id>
   has_summaries: true | false
+trust:                             # optional — publisher provenance
+  provenance:
+    publisher: <string>
+    publisher_url: <string>
+    contact: <string>
+payment:                           # optional — default monetisation tier
+  default_tier: free | metered | subscription
 
 units:
   - id: <unique-identifier>
@@ -87,6 +94,11 @@ units:
       summary_available: true | false  # shorter version exists in this manifest
       summary_unit: <unit-id>          # id of the summary unit
       summary_of: <unit-id>            # id of the full unit this summarises
+    access: public | authenticated | restricted  # optional; default: public
+    sensitivity: public | internal | confidential | restricted  # optional
+    deprecated: true | false          # optional; default: false
+    payment:                           # optional — override root default
+      default_tier: free | metered | subscription
 
 relationships:
   - from: <unit-id>
@@ -115,13 +127,17 @@ relationships:
 | `supersedes` | optional | The unit-id this replaces |
 | `triggers` | optional | Task contexts or keywords that make this unit relevant |
 | `hints` | optional | Advisory context window hints: `token_estimate`, `load_strategy`, `priority`, `density`, `summary_available`, `summary_unit`, `summary_of` |
+| `access` | optional | Who can fetch this unit: `public` (default), `authenticated`, `restricted` |
+| `sensitivity` | optional | Information classification: `public`, `internal`, `confidential`, `restricted` |
+| `deprecated` | optional | If `true`, this unit is present but should not be used for new development |
+| `payment` | optional | Monetisation tier: `default_tier: free \| metered \| subscription` |
 
 ### Minimum Viable KCP
 
 Five fields per unit are enough to start:
 
 ```yaml
-kcp_version: "0.4"
+kcp_version: "0.5"
 project: my-project
 version: 1.0.0
 units:
@@ -140,7 +156,7 @@ The standard allows complexity but does not demand it.
 
 ```yaml
 # knowledge.yaml
-kcp_version: "0.4"
+kcp_version: "0.5"
 project: wiki.example.org
 version: 1.0.0
 updated: "2026-02-28"
