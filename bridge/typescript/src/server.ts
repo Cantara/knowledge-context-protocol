@@ -24,32 +24,47 @@ import type { KnowledgeManifest, KnowledgeUnit } from "./model.js";
 export interface KcpServerOptions {
   agentOnly?: boolean;
   warnOnValidation?: boolean;
+  /** Additional manifest file paths whose units are merged into the primary namespace. */
+  subManifests?: string[];
 }
 
 export interface KcpMcpServer {
   server: Server;
   manifest: KnowledgeManifest;
   projectSlug: string;
+  /** Total units served (primary + all sub-manifests). */
+  totalUnits: number;
+}
+
+/** Internal: tracks which directory a unit's paths resolve against. */
+interface UnitContext {
+  unit: KnowledgeUnit;
+  manifestDir: string;
 }
 
 /**
- * Create an MCP Server that exposes a knowledge.yaml as MCP resources.
+ * Create an MCP Server that exposes one or more knowledge.yaml manifests as MCP resources.
  *
- * @param manifestPath  Absolute or relative path to knowledge.yaml
- * @param options       agentOnly: filter to audience:agent units; warnOnValidation: log warnings
+ * Units from all manifests are merged into a single namespace under the primary manifest's
+ * project slug.  If two manifests define the same unit id, the primary manifest wins and a
+ * warning is emitted.
+ *
+ * @param manifestPath  Absolute or relative path to the primary knowledge.yaml
+ * @param options       agentOnly, warnOnValidation, subManifests (additional manifest paths)
  */
 export function createKcpServer(
   manifestPath: string,
   options: KcpServerOptions = {}
 ): KcpMcpServer {
-  const { agentOnly = false, warnOnValidation = true } = options;
+  const { agentOnly = false, warnOnValidation = true, subManifests = [] } =
+    options;
 
+  // ── Primary manifest ─────────────────────────────────────────────────────
   const resolvedPath = resolve(manifestPath);
-  const manifestDir = dirname(resolvedPath);
+  const primaryDir = dirname(resolvedPath);
 
-  // Parse and validate
   const manifest = parseFile(resolvedPath);
-  const result = validate(manifest, manifestDir);
+  const result = validate(manifest, primaryDir);
 
   if (warnOnValidation && result.warnings.length > 0) {
     for (const w of result.warnings) {
@@ -63,36 +78,85 @@ export function createKcpServer(
   }
 
   const projectSlug = toProjectSlug(manifest.project);
+  const manifestUri = buildManifestUri(projectSlug);
 
-  // Build static resource list
+  // ── Build merged unit context map ────────────────────────────────────────
+  // Maps unit.id → { unit, manifestDir }.  Primary manifest units take precedence.
+  const unitContextMap = new Map<string, UnitContext>(
+    manifest.units.map((u) => [u.id, { unit: u, manifestDir: primaryDir }])
+  );
+
+  // Load each sub-manifest and merge its units
+  for (const subPath of subManifests) {
+    const resolvedSub = resolve(subPath);
+    const subDir = dirname(resolvedSub);
+
+    let subManifest: KnowledgeManifest;
+    try {
+      subManifest = parseFile(resolvedSub);
+    } catch (e) {
+      process.stderr.write(
+        `  [kcp-mcp] warning: could not load sub-manifest ${resolvedSub}: ${e}\n`
+      );
+      continue;
+    }
+
+    const subResult = validate(subManifest, subDir);
+    if (warnOnValidation && subResult.warnings.length > 0) {
+      for (const w of subResult.warnings) {
+        process.stderr.write(`  [kcp-mcp] warning (${resolvedSub}): ${w}\n`);
+      }
+    }
+    if (!subResult.isValid) {
+      process.stderr.write(
+        `  [kcp-mcp] warning: skipping invalid sub-manifest ${resolvedSub}:\n` +
+          subResult.errors.map((e) => `    ${e}`).join("\n") +
+          "\n"
+      );
+      continue;
+    }
+
+    let added = 0;
+    for (const unit of subManifest.units) {
+      if (unitContextMap.has(unit.id)) {
+        process.stderr.write(
+          `  [kcp-mcp] warning: duplicate unit id '${unit.id}' in ${resolvedSub} — skipping\n`
+        );
+        continue;
+      }
+      unitContextMap.set(unit.id, { unit, manifestDir: subDir });
+      added++;
+    }
+    if (warnOnValidation || added > 0) {
+      process.stderr.write(
+        `  [kcp-mcp] loaded sub-manifest ${resolvedSub} — ${added} unit(s)\n`
+      );
+    }
+  }
+
+  // ── Build static resource list ────────────────────────────────────────────
   const resourceList: McpResourceMeta[] = [
     buildManifestResource(manifest, projectSlug),
   ];
-  for (const unit of manifest.units) {
+  for (const { unit } of unitContextMap.values()) {
     const r = buildUnitResource(unit, projectSlug, agentOnly);
     if (r !== null) resourceList.push(r);
   }
 
-  // Index units by id for fast lookup
-  const unitIndex = new Map<string, KnowledgeUnit>(
-    manifest.units.map((u) => [u.id, u])
-  );
+  const totalUnits = unitContextMap.size;
 
-  // Create MCP server
+  // ── Create MCP server ─────────────────────────────────────────────────────
   const server = new Server(
-    { name: `kcp-${projectSlug}`, version: "0.1.0" },
-    {
-      capabilities: {
-        resources: {},
-      },
-    }
+    { name: `kcp-${projectSlug}`, version: "0.5.0" },
+    { capabilities: { resources: {} } }
   );
 
-  // Server instructions (shown to the agent on connection)
-  const manifestUri = buildManifestUri(projectSlug);
   process.stderr.write(
-    `[kcp-mcp] Serving '${manifest.project}' — ${manifest.units.length} units` +
-      (agentOnly ? " (agent-only filter active)" : "") +
+    `[kcp-mcp] Serving '${manifest.project}' — ${totalUnits} unit(s)` +
+      (subManifests.length > 0
+        ? ` (${manifest.units.length} primary + ${totalUnits - manifest.units.length} from ${subManifests.length} sub-manifest(s))`
+        : "") +
+      (agentOnly ? " [agent-only]" : "") +
       `\n[kcp-mcp] Start with: ${manifestUri}\n`
   );
 
@@ -105,7 +169,7 @@ export function createKcpServer(
   server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     const uri = request.params.uri;
 
-    // Manifest meta-resource
+    // Manifest meta-resource (primary manifest JSON)
     if (uri === manifestUri) {
       return {
         contents: [
@@ -118,18 +182,18 @@ export function createKcpServer(
       };
     }
 
-    // Unit resource — parse unit id from URI
+    // Unit resource — resolve id from URI, look up context
     const prefix = `knowledge://${projectSlug}/`;
     if (!uri.startsWith(prefix)) {
       throw new Error(`Unknown resource URI: ${uri}`);
     }
     const unitId = uri.slice(prefix.length);
-    const unit = unitIndex.get(unitId);
-    if (!unit) {
+    const ctx = unitContextMap.get(unitId);
+    if (!ctx) {
       throw new Error(`No unit with id '${unitId}'`);
     }
 
-    const content = readUnitContent(manifestDir, unit, uri);
+    const content = readUnitContent(ctx.manifestDir, ctx.unit, uri);
 
     if (content.type === "text") {
       return {
@@ -146,5 +210,5 @@ export function createKcpServer(
     }
   });
 
-  return { server, manifest, projectSlug };
+  return { server, manifest, projectSlug, totalUnits };
 }

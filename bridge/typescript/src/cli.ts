@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 // KCP MCP Bridge CLI
 // Usage: kcp-mcp [knowledge.yaml] [--agent-only] [--transport stdio|http] [--port 8000]
+//                [--sub-manifests <glob>]
 
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
+import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createKcpServer } from "./server.js";
@@ -12,21 +14,59 @@ function printUsage(): void {
     `Usage: kcp-mcp [path/to/knowledge.yaml] [options]
 
 Options:
-  --agent-only        Only expose units with audience: [agent]
-  --transport <type>  Transport: stdio (default) or http
-  --port <number>     Port for HTTP transport (default: 8000)
-  --no-warnings       Suppress KCP validation warnings
-  --help, -h          Show this help
+  --agent-only              Only expose units with audience: [agent]
+  --sub-manifests <glob>    Additional manifests to merge (glob, relative to primary
+                            manifest dir).  Supports a single * as directory wildcard.
+                            Example: "fragments/*/knowledge.yaml"
+  --transport <type>        Transport: stdio (default) or http
+  --port <number>           Port for HTTP transport (default: 8000)
+  --no-warnings             Suppress KCP validation warnings
+  --help, -h                Show this help
 
 Examples:
-  kcp-mcp                              # serve ./knowledge.yaml via stdio
-  kcp-mcp knowledge.yaml --agent-only  # filter to agent-facing units
+  kcp-mcp                                           # serve ./knowledge.yaml
+  kcp-mcp knowledge.yaml --agent-only               # filter to agent-facing units
+  kcp-mcp knowledge.yaml --sub-manifests "fragments/*/knowledge.yaml"
   kcp-mcp knowledge.yaml --transport http --port 9000
 
-The server exposes each knowledge unit as an MCP resource.
+Units from all manifests are merged into the primary project namespace.
 Start by reading: knowledge://{project-slug}/manifest
 `
   );
+}
+
+/**
+ * Expand a glob pattern containing a single '*' directory wildcard.
+ * Relative patterns are resolved against baseDir.
+ *
+ * Supports only the common case: one '*' as an entire path component
+ * (e.g. a pattern where one path segment is exactly the asterisk character).
+ */
+function expandGlob(pattern: string, baseDir: string): string[] {
+  const fullPattern = isAbsolute(pattern) ? pattern : join(baseDir, pattern);
+
+  if (!fullPattern.includes("*")) {
+    return existsSync(fullPattern) ? [fullPattern] : [];
+  }
+
+  // Split by the separator and find the '*' component
+  const parts = fullPattern.split(sep);
+  const starIdx = parts.indexOf("*");
+  if (starIdx < 0) {
+    // '*' is embedded in a segment (e.g. "frag*"), not supported — treat as literal
+    return existsSync(fullPattern) ? [fullPattern] : [];
+  }
+
+  const parentDir = parts.slice(0, starIdx).join(sep) || sep;
+  const restParts = parts.slice(starIdx + 1);
+
+  if (!existsSync(parentDir)) return [];
+
+  return readdirSync(parentDir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => join(parentDir, d.name, ...restParts))
+    .filter(existsSync)
+    .sort(); // deterministic ordering
 }
 
 async function main(): Promise<void> {
@@ -34,6 +74,7 @@ async function main(): Promise<void> {
     args: process.argv.slice(2),
     options: {
       "agent-only": { type: "boolean", default: false },
+      "sub-manifests": { type: "string" },
       transport: { type: "string", default: "stdio" },
       port: { type: "string", default: "8000" },
       "no-warnings": { type: "boolean", default: false },
@@ -55,11 +96,25 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  // Resolve sub-manifests from glob (relative to primary manifest directory)
+  const primaryDir = dirname(resolve(manifestPath));
+  let subManifestPaths: string[] = [];
+  const subGlob = values["sub-manifests"] as string | undefined;
+  if (subGlob) {
+    subManifestPaths = expandGlob(subGlob, primaryDir);
+    if (subManifestPaths.length === 0) {
+      process.stderr.write(
+        `  [kcp-mcp] warning: --sub-manifests '${subGlob}' matched no files\n`
+      );
+    }
+  }
+
   let kcpServer;
   try {
     kcpServer = createKcpServer(manifestPath, {
       agentOnly: values["agent-only"] as boolean,
       warnOnValidation: !(values["no-warnings"] as boolean),
+      subManifests: subManifestPaths,
     });
   } catch (err) {
     process.stderr.write(

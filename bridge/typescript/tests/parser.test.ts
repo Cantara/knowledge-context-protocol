@@ -111,7 +111,7 @@ describe("parseFile", () => {
     const manifest = parseFile(join(MINIMAL_DIR, "knowledge.yaml"));
     expect(manifest.project).toBe("my-project");
     expect(manifest.version).toBe("1.0.0");
-    expect(manifest.kcp_version).toBe("0.3");
+    expect(manifest.kcp_version).toBe("0.5");
     expect(manifest.units).toHaveLength(1);
     expect(manifest.units[0].id).toBe("overview");
     expect(manifest.units[0].audience).toContain("agent");

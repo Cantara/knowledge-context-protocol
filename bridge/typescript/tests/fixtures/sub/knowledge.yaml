@@ -1,0 +1,10 @@
+kcp_version: "0.5"
+project: my-project-sub
+version: 1.0.0
+
+units:
+  - id: sub-unit-a
+    path: unit-a.md
+    intent: "Sub-manifest unit A — additional knowledge loaded from a sub-manifest."
+    scope: global
+    audience: [human, agent]
