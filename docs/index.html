@@ -97,7 +97,7 @@
   <section class="hero" id="hero">
     <div class="container">
       <div class="hero__badge">
-        <span>v0.3 Draft Spec</span>
+        <span>v0.5 Draft Spec</span>
         &middot;
         <span>Open Standard</span>
         &middot;
@@ -630,7 +630,7 @@ relationships:
               <pre><code id="ex-minimal" class="language-yaml"># Minimal KCP example — five minutes to add.
 # This is a valid knowledge.yaml at Level 1 conformance.
 
-kcp_version: "0.3"
+kcp_version: "0.5"
 project: my-project
 version: 1.0.0
 
@@ -658,7 +658,7 @@ units:
               <pre><code id="ex-personal" class="language-yaml"># Personal site / portfolio example
 # Shows: audience differentiation, freshness, depends_on
 
-kcp_version: "0.3"
+kcp_version: "0.5"
 project: wiki.example.org
 version: 1.0.0
 updated: "2026-02-28"
@@ -732,7 +732,7 @@ relationships:
 # Dependency chains across architecture layers
 # Freshness: archived (2022) vs active (2026) content
 
-kcp_version: "0.3"
+kcp_version: "0.5"
 project: community-wiki
 version: 1.0.0
 updated: "2026-02-28"
@@ -1516,7 +1516,7 @@ units:
               </button>
             </div>
             <div class="code-block__body">
-              <pre><code id="qs-code-l1" class="language-yaml">kcp_version: "0.3"
+              <pre><code id="qs-code-l1" class="language-yaml">kcp_version: "0.5"
 project: my-project
 version: 1.0.0
 
@@ -1553,7 +1553,7 @@ units:
               </button>
             </div>
             <div class="code-block__body">
-              <pre><code id="qs-code-l2" class="language-yaml">kcp_version: "0.3"
+              <pre><code id="qs-code-l2" class="language-yaml">kcp_version: "0.5"
 project: my-project
 version: 1.0.0
 updated: "2026-01-01"
@@ -1607,7 +1607,7 @@ units:
               </button>
             </div>
             <div class="code-block__body">
-              <pre><code id="qs-code-l3" class="language-yaml">kcp_version: "0.3"
+              <pre><code id="qs-code-l3" class="language-yaml">kcp_version: "0.5"
 project: my-project
 version: 1.0.0
 updated: "2026-01-01"
@@ -1717,7 +1717,7 @@ relationships:
       <div class="adopters-cta-box reveal">
         <h3>Add your project</h3>
         <p>Using KCP in a public repository? Open an issue and we'll add you to this list. You can also add a badge to your own README.</p>
-        <div class="adopter-snippet">[![KCP](https://img.shields.io/badge/KCP-v0.3-2563eb?style=flat-square&logo=yaml&logoColor=white)](https://cantara.github.io/knowledge-context-protocol/)</div>
+        <div class="adopter-snippet">[![KCP](https://img.shields.io/badge/KCP-v0.5-2563eb?style=flat-square&logo=yaml&logoColor=white)](https://cantara.github.io/knowledge-context-protocol/)</div>
         <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
           <a href="https://github.com/Cantara/knowledge-context-protocol/issues/new?title=Add+adopter:+[your+project]&body=Project+name:%0ARepository+URL:%0ABrief+description:" target="_blank" rel="noopener" class="btn btn--primary">Open issue to add your project</a>
           <a href="https://github.com/Cantara/knowledge-context-protocol" target="_blank" rel="noopener" class="btn btn--outline">View on GitHub</a>
@@ -1726,7 +1726,7 @@ relationships:
 
       <div class="adopters-badges reveal">
         <img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License: Apache 2.0" height="20">
-        <img src="https://img.shields.io/badge/KCP-v0.3-22c55e?style=flat-square&logo=yaml&logoColor=white" alt="KCP v0.3" height="20">
+        <img src="https://img.shields.io/badge/KCP-v0.5-22c55e?style=flat-square&logo=yaml&logoColor=white" alt="KCP v0.5" height="20">
         <img src="https://img.shields.io/badge/spec-stable-22c55e?style=flat-square" alt="Spec: Stable" height="20">
       </div>
 
@@ -1783,14 +1783,14 @@ relationships:
       <div class="section-header reveal">
         <span class="section-label">Roadmap</span>
         <h2>Where KCP is headed</h2>
-        <p>The v0.3 core is stable. Five RFC proposals extend it for enterprise use cases. All are open for community feedback through 2026.</p>
+        <p>v0.5 is the current draft. Fields are promoted from RFC proposals to core as they accumulate real-world validation. Remaining RFCs are open for community feedback through 2026.</p>
       </div>
 
       <div class="roadmap-core reveal">
         <div class="roadmap-core__info">
           <span class="roadmap-core__badge">v0.3 — Shipped</span>
           <h3>Core specification</h3>
-          <p>Required fields + 7 new optional fields promoted from RFC-0001.</p>
+          <p>Required fields + optional fields promoted from RFC-0001.</p>
         </div>
         <div class="roadmap-core__fields">
           <span class="roadmap-field-pill">id</span>
@@ -1813,6 +1813,41 @@ relationships:
         </div>
       </div>
 
+      <div class="roadmap-core reveal">
+        <div class="roadmap-core__info">
+          <span class="roadmap-core__badge">v0.4 — Shipped</span>
+          <h3>Context window hints</h3>
+          <p>RFC-0006 promoted to core. Agents can plan context budgets and prefer summaries over full documents.</p>
+        </div>
+        <div class="roadmap-core__fields">
+          <span class="roadmap-field-pill">hints.token_estimate</span>
+          <span class="roadmap-field-pill">hints.load_strategy</span>
+          <span class="roadmap-field-pill">hints.priority</span>
+          <span class="roadmap-field-pill">hints.density</span>
+          <span class="roadmap-field-pill">hints.summary_available</span>
+          <span class="roadmap-field-pill">hints.summary_unit</span>
+          <span class="roadmap-field-pill">hints.summary_of</span>
+          <span class="roadmap-field-pill">hints.chunked</span>
+          <span class="roadmap-field-pill">hints.chunk_count</span>
+          <span class="roadmap-field-pill">hints.chunk_of</span>
+        </div>
+      </div>
+
+      <div class="roadmap-core reveal">
+        <div class="roadmap-core__info">
+          <span class="roadmap-core__badge">v0.5 — Current</span>
+          <h3>Access, classification &amp; provenance</h3>
+          <p>Five fields promoted from RFC-0002, RFC-0004, and RFC-0005. Agents can skip units they cannot or should not load, and publishers can declare who they are.</p>
+        </div>
+        <div class="roadmap-core__fields">
+          <span class="roadmap-field-pill">access</span>
+          <span class="roadmap-field-pill">sensitivity</span>
+          <span class="roadmap-field-pill">deprecated</span>
+          <span class="roadmap-field-pill">payment.default_tier</span>
+          <span class="roadmap-field-pill">trust.provenance</span>
+        </div>
+      </div>
+
       <div class="roadmap-rfcs reveal">
 
         <div class="rfc-card">
@@ -1822,11 +1857,10 @@ relationships:
           </div>
           <h4>Auth &amp; Delegation</h4>
           <div class="rfc-card__blocks">
-            <span class="rfc-card__block">access</span>
             <span class="rfc-card__block">auth</span>
             <span class="rfc-card__block">delegation</span>
           </div>
-          <p>Authentication methods (OAuth 2.1, API key, SPIFFE, DID), per-unit access control, and multi-agent delegation chain constraints.</p>
+          <p>Authentication methods (OAuth 2.1, API key, SPIFFE, DID) and multi-agent delegation chain constraints. The <code>access</code> field was promoted to core in v0.5.</p>
           <div class="rfc-card__footer">
             <span class="rfc-card__status">Open for feedback</span>
             <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0002-Auth-and-Delegation.md" target="_blank" rel="noopener">Read RFC →</a>
@@ -1858,10 +1892,12 @@ relationships:
           </div>
           <h4>Trust &amp; Compliance</h4>
           <div class="rfc-card__blocks">
-            <span class="rfc-card__block">trust</span>
             <span class="rfc-card__block">compliance</span>
+            <span class="rfc-card__block">content_integrity</span>
+            <span class="rfc-card__block">audit</span>
+            <span class="rfc-card__block">agent_requirements</span>
           </div>
-          <p>Publisher provenance, content integrity, audit (W3C Trace Context), agent attestation (<code>attestation_url</code> for credential-based + <code>trusted_providers</code> for identity-based), data residency, regulation vocabulary (GDPR, NIS2, HIPAA, DORA&hellip;), and processing restrictions.</p>
+          <p>Data residency, regulation vocabulary (GDPR, NIS2, HIPAA, DORA&hellip;), processing restrictions, content integrity (JWS signing), and audit/attestation (W3C Trace Context, <code>attestation_url</code>, <code>trusted_providers</code>). <code>trust.provenance</code> and <code>sensitivity</code> were promoted to core in v0.5.</p>
           <div class="rfc-card__footer">
             <span class="rfc-card__status">Open for feedback</span>
             <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0004-Trust-and-Compliance.md" target="_blank" rel="noopener">Read RFC →</a>
@@ -1875,10 +1911,11 @@ relationships:
           </div>
           <h4>Payment &amp; Rate Limits</h4>
           <div class="rfc-card__blocks">
-            <span class="rfc-card__block">payment</span>
+            <span class="rfc-card__block">payment.methods</span>
+            <span class="rfc-card__block">payment.x402</span>
             <span class="rfc-card__block">rate_limits</span>
           </div>
-          <p>Free, metered, subscription, and x402 stablecoin micropayment methods. Per-tier rate limits with token-based quotas for LLM pipelines. Unit-level overrides for mixed-economics manifests.</p>
+          <p>x402 stablecoin micropayments, metered billing (Stripe, Google AP2), and per-tier rate limits with token-based quotas for LLM pipelines. <code>payment.default_tier</code> was promoted to core in v0.5.</p>
           <div class="rfc-card__footer">
             <span class="rfc-card__status">Open for feedback</span>
             <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0005-Payment-and-Rate-Limits.md" target="_blank" rel="noopener">Read RFC →</a>
@@ -1894,9 +1931,9 @@ relationships:
           <div class="rfc-card__blocks">
             <span class="rfc-card__block">hints</span>
           </div>
-          <p>Token estimates, eager/lazy/never load strategies, priority and density signals, summary relationships, and chunking for large documents — so agents plan context budget before fetching.</p>
+          <p>Token estimates, eager/lazy/never load strategies, priority and density signals, summary relationships, and chunking for large documents — so agents plan context budget before fetching. Fully promoted to core in v0.4.</p>
           <div class="rfc-card__footer">
-            <span class="rfc-card__status">Open for feedback</span>
+            <span class="rfc-card__status">Accepted — shipped in v0.4</span>
             <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0006-Context-Window-Hints.md" target="_blank" rel="noopener">Read RFC →</a>
           </div>
         </div>
