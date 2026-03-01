@@ -113,6 +113,8 @@ import anthropic, os, glob as glob_module, subprocess
 
 client = anthropic.Anthropic()
 
+REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+
 TOOLS = [
     {
         "name": "read_file",
@@ -158,7 +160,7 @@ def execute_tool(name, inp):
             return f"Error: {e}"
     elif name == "glob_files":
         pattern = inp["pattern"]
-        base = inp.get("base_dir", REPO_ROOT)
+        base = inp.get("base_dir", REPO_ROOT)  # REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
         if not pattern.startswith("/"):
             pattern = os.path.join(base, pattern)
         matches = glob_module.glob(pattern, recursive=True)
