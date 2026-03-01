@@ -48,7 +48,7 @@ reference implementations for others to learn from.
 A complete implementation includes:
 
 ```
-knowledge.yaml          ← the manifest (in the target repo, not here)
+knowledge.yaml          ← the manifest (v0.4, in the target repo, not here)
 docs/.../tldr-*.md      ← TL;DR summary files (in the target repo)
 BENCHMARK.md            ← benchmark results (in the target repo)
 ```

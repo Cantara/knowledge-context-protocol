@@ -9,8 +9,8 @@
   "properties": {
     "kcp_version": {
       "type": "string",
-      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.3\". The values \"0.1\" and \"0.2\" (prior drafts) are also accepted for backward compatibility.",
-      "enum": ["0.1", "0.2", "0.3"]
+      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.4\". Prior drafts \"0.1\", \"0.2\", and \"0.3\" are also accepted for backward compatibility.",
+      "enum": ["0.1", "0.2", "0.3", "0.4"]
     },
     "project": {
       "type": "string",
@@ -55,6 +55,7 @@
         { "$ref": "#/definitions/indexing_object" }
       ]
     },
+    "hints": { "$ref": "#/definitions/root_hints" },
     "units": {
       "type": "array",
       "description": "Ordered list of knowledge unit declarations. REQUIRED. Must contain at least one unit.",
@@ -220,6 +221,121 @@
             "maxLength": 60
           },
           "maxItems": 20
+        },
+        "hints": { "$ref": "#/definitions/unit_hints" }
+      }
+    },
+    "unit_hints": {
+      "type": "object",
+      "description": "Advisory context window hints for a knowledge unit. All fields are optional. Unknown fields MUST be silently ignored.",
+      "additionalProperties": true,
+      "properties": {
+        "token_estimate": {
+          "type": "integer",
+          "description": "Approximate token count for a typical LLM tokenizer. Advisory.",
+          "minimum": 0
+        },
+        "token_estimate_method": {
+          "type": "string",
+          "description": "How the estimate was produced: measured (actual tokenizer run) or estimated (heuristic). Default: estimated.",
+          "enum": ["measured", "estimated"]
+        },
+        "size_bytes": {
+          "type": "integer",
+          "description": "Raw file size in bytes. Model-agnostic.",
+          "minimum": 0
+        },
+        "load_strategy": {
+          "type": "string",
+          "description": "When to load this unit: eager (immediately), lazy (on demand, default), never (only if explicitly requested).",
+          "enum": ["eager", "lazy", "never"]
+        },
+        "priority": {
+          "type": "string",
+          "description": "Eviction priority when context budget is tight: critical (evict last), supplementary (default), reference (evict first).",
+          "enum": ["critical", "supplementary", "reference"]
+        },
+        "density": {
+          "type": "string",
+          "description": "Information-to-token ratio: dense (every sentence load-bearing), standard (default), verbose (summarisation worthwhile).",
+          "enum": ["dense", "standard", "verbose"]
+        },
+        "summary_available": {
+          "type": "boolean",
+          "description": "A shorter summary of this unit exists in this manifest. summary_unit SHOULD be declared when true."
+        },
+        "summary_unit": {
+          "type": "string",
+          "description": "Unit id of the shorter summary. Required when summary_available is true.",
+          "pattern": "^[a-z0-9.\\-]+$"
+        },
+        "summary_of": {
+          "type": "string",
+          "description": "Unit id that this unit summarises. Declared on the summary side of the relationship.",
+          "pattern": "^[a-z0-9.\\-]+$"
+        },
+        "partial_load_supported": {
+          "type": "boolean",
+          "description": "Whether the content source supports partial or range requests. Default: false."
+        },
+        "chunked": {
+          "type": "boolean",
+          "description": "This unit has been split into sequential chunks. chunk_count SHOULD be declared alongside."
+        },
+        "chunk_count": {
+          "type": "integer",
+          "description": "Total number of chunks this unit is split into.",
+          "minimum": 1
+        },
+        "chunk_of": {
+          "type": "string",
+          "description": "Unit id of the parent this chunk belongs to.",
+          "pattern": "^[a-z0-9.\\-]+$"
+        },
+        "chunk_index": {
+          "type": "integer",
+          "description": "1-based position of this chunk within the parent sequence.",
+          "minimum": 1
+        },
+        "total_chunks": {
+          "type": "integer",
+          "description": "Total chunks in the parent. Mirrors chunk_count on the parent.",
+          "minimum": 1
+        },
+        "chunk_topic": {
+          "type": "string",
+          "description": "Short phrase describing what this chunk covers.",
+          "maxLength": 120
+        }
+      }
+    },
+    "root_hints": {
+      "type": "object",
+      "description": "Manifest-level aggregate context hints. All fields are advisory. Unknown fields MUST be silently ignored.",
+      "additionalProperties": true,
+      "properties": {
+        "total_token_estimate": {
+          "type": "integer",
+          "description": "Advisory sum of all unit token_estimate values. Should be recomputed by tooling, not maintained by hand.",
+          "minimum": 0
+        },
+        "unit_count": {
+          "type": "integer",
+          "description": "Total number of units declared in this manifest.",
+          "minimum": 0
+        },
+        "recommended_entry_point": {
+          "type": "string",
+          "description": "Unit id the publisher recommends loading first.",
+          "pattern": "^[a-z0-9.\\-]+$"
+        },
+        "has_summaries": {
+          "type": "boolean",
+          "description": "At least one unit in this manifest has summary_available: true."
+        },
+        "has_chunks": {
+          "type": "boolean",
+          "description": "At least one unit in this manifest has chunked: true."
         }
       }
     },

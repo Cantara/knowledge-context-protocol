@@ -1,8 +1,8 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.3
+**Version:** 0.4
 **Status:** Draft
-**Date:** 2026-02-28
+**Date:** 2026-03-01
 **Repository:** github.com/cantara/knowledge-context-protocol
 
 ---
@@ -79,13 +79,14 @@ version.
 ## 3. Root Manifest Structure
 
 ```yaml
-kcp_version: "0.3"          # RECOMMENDED
+kcp_version: "0.4"          # RECOMMENDED
 project: <string>            # REQUIRED
 version: <semver string>     # RECOMMENDED
 updated: "<ISO date>"        # RECOMMENDED; quote the value (see §4.1.1)
 language: <BCP 47 tag>       # OPTIONAL; default language for all units (see §4.4c)
 license: <string or object>  # OPTIONAL; default license for all units (see §4.6a)
 indexing: <string or object>  # OPTIONAL; default indexing permissions (see §4.6c)
+hints: <object>              # OPTIONAL; manifest-level aggregate hints (see §4.10)
 
 units:                       # REQUIRED; list of knowledge units
   - ...
@@ -98,13 +99,14 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
-| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.3"` for conformance with this document. |
+| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.4"` for conformance with this document. |
 | `project` | REQUIRED | string | Human-readable name of the project or documentation site. |
 | `version` | RECOMMENDED | string | Semver version of this manifest. Increment when units are added or removed. |
 | `updated` | RECOMMENDED | string | ISO 8601 date (`YYYY-MM-DD`) when this manifest was last modified. |
 | `language` | OPTIONAL | string | BCP 47 language tag as default for all units. See §4.4c. |
 | `license` | OPTIONAL | string or object | Default license for all units. See §4.6a. |
 | `indexing` | OPTIONAL | string or object | Default indexing permissions for all units. See §4.6c. |
+| `hints` | OPTIONAL | object | Manifest-level aggregate context hints. See §4.10. |
 | `units` | REQUIRED | list | Ordered list of knowledge unit declarations. MUST contain at least one unit. |
 | `relationships` | OPTIONAL | list | Explicit cross-unit relationship declarations. See §5. |
 
@@ -134,6 +136,7 @@ Each entry in `units` describes a self-contained piece of knowledge.
 | `depends_on` | OPTIONAL | list of strings | IDs of units that SHOULD be loaded before this one. See §4.7. |
 | `supersedes` | OPTIONAL | string | ID of the unit this replaces. See §4.8. |
 | `triggers` | OPTIONAL | list of strings | Keywords or task contexts that make this unit relevant. See §4.9. |
+| `hints` | OPTIONAL | object | Advisory context window hints: size, loading strategy, and summary relationships. See §4.10. |
 
 #### 4.1.1 Date Fields
 
@@ -450,6 +453,169 @@ triggers: [oauth2, authentication, bearer-token, jwt]
 - Parsers SHOULD truncate triggers exceeding 60 characters rather than rejecting the manifest.
 - Parsers SHOULD silently ignore triggers beyond the 20th.
 
+### 4.10 `hints`
+
+The `hints` block contains advisory metadata about the size, cost, and loading characteristics
+of a knowledge unit. All fields are optional. Agents that do not support `hints` MUST silently
+ignore the block — it carries no normative weight and does not change whether a manifest is valid.
+
+```yaml
+hints:
+  token_estimate: 42000
+  token_estimate_method: measured
+  size_bytes: 168000
+  load_strategy: lazy
+  priority: supplementary
+  density: dense
+  summary_available: true
+  summary_unit: spec-summary
+  partial_load_supported: false
+```
+
+#### Hint fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `token_estimate` | integer | Approximate token count for a typical LLM tokenizer. Advisory — actual count varies by model. |
+| `token_estimate_method` | enum | How the estimate was produced: `measured` (actual tokenizer run) or `estimated` (rough heuristic). Default: `estimated`. |
+| `size_bytes` | integer | Raw file size in bytes. Model-agnostic; useful for non-text assets (PDFs, images, audio). |
+| `load_strategy` | enum | When to load this unit relative to manifest processing. See [Load strategy](#load-strategy) below. Default: `lazy`. |
+| `priority` | enum | Importance when the agent must evict units due to context budget pressure. See [Priority](#priority) below. Default: `supplementary`. |
+| `density` | enum | Information-to-token ratio of the content. See [Density](#density) below. Default: `standard`. |
+| `summary_available` | boolean | A shorter summary of this unit exists in this manifest. When `true`, `summary_unit` SHOULD be declared. |
+| `summary_unit` | string | Unit `id` of the shorter summary. Required when `summary_available: true`. |
+| `summary_of` | string | Unit `id` that this unit summarises. Declared on the summary side of the relationship. |
+| `partial_load_supported` | boolean | The content source supports partial or range requests (e.g. HTTP Range, PDF page ranges). Default: `false`. |
+| `chunked` | boolean | This unit has been split into sequential chunks loadable independently. `chunk_count` SHOULD be declared alongside. |
+| `chunk_count` | integer | Total number of chunks. Declared on the parent unit alongside `chunked: true`. |
+| `chunk_of` | string | Unit `id` of the parent this chunk belongs to. |
+| `chunk_index` | integer | 1-based position of this chunk within the parent sequence. |
+| `total_chunks` | integer | Total chunks in the parent. Mirrors `chunk_count` on the parent for local access. |
+| `chunk_topic` | string | Short phrase describing what this chunk covers. Helps agents select the right chunk without loading all of them. |
+
+All hint fields are OPTIONAL. Parsers MUST silently ignore unknown hint fields. This ensures
+forward compatibility as new hints are introduced in future spec versions.
+
+#### Load strategy
+
+`load_strategy` advises the agent on when to load a unit relative to manifest initialisation.
+
+| Value | Meaning |
+|-------|---------|
+| `eager` | Load immediately when the manifest is processed. This unit is nearly always needed. |
+| `lazy` | Load on demand when the agent determines the unit is relevant to the current task. Default. |
+| `never` | Do not load proactively. Load only if explicitly requested by id. Appropriate for large archives, raw data files, or units where the agent should read a summary instead. |
+
+#### Priority
+
+`priority` advises the agent on which units to retain when context must be cleared or truncated.
+
+| Value | Meaning |
+|-------|---------|
+| `critical` | Evict last. This unit contains essential facts the agent must retain to function correctly. |
+| `supplementary` | Standard priority. Load and use normally; may be evicted if budget is tight. Default. |
+| `reference` | Evict first. Reference material (API specs, full changelogs, raw data) used for spot lookups rather than sustained reasoning. |
+
+An agent managing its own context window SHOULD evict `reference` units before `supplementary`
+units, and `supplementary` before `critical`.
+
+#### Density
+
+`density` describes the information-to-token ratio of the content, helping agents decide whether
+to compress or summarise before placing in context.
+
+| Value | Meaning |
+|-------|---------|
+| `dense` | Nearly every sentence is load-bearing. Compression risks information loss. Full text is preferred. |
+| `standard` | Normal prose. Some compression acceptable. Default. |
+| `verbose` | High token count relative to information content (tutorials, narrative explanations). Summarisation before loading is likely worthwhile. |
+
+#### Summary relationships
+
+When a short summary of a large unit exists in the same manifest, both sides of the relationship
+SHOULD be declared:
+
+```yaml
+units:
+  - id: full-specification
+    path: SPEC.md
+    intent: "What are the normative rules for a knowledge.yaml manifest?"
+    hints:
+      token_estimate: 42000
+      load_strategy: lazy
+      summary_available: true
+      summary_unit: spec-summary      # → points to the summary
+
+  - id: spec-summary
+    path: SPEC-tldr.md
+    intent: "What are the key points of the spec in 500 words?"
+    hints:
+      token_estimate: 600
+      load_strategy: eager
+      priority: critical
+      summary_of: full-specification  # ← points back to the full unit
+```
+
+`summary_unit` on the full unit and `summary_of` on the summary unit are complementary. A
+validator SHOULD warn when `summary_available: true` has no matching `summary_unit`, or when
+`summary_of` references a unit that does not declare `summary_available: true`.
+
+#### Chunked units
+
+Large documents may be split into sequential chunks that can be loaded independently. This allows
+an agent to load only the relevant section of a large document:
+
+```yaml
+units:
+  - id: api-reference
+    path: api/reference.md
+    intent: "What endpoints does the API expose?"
+    hints:
+      token_estimate: 62000
+      load_strategy: never
+      chunked: true
+      chunk_count: 5
+
+  - id: api-ref-auth
+    path: api/reference-auth.md
+    intent: "What are the authentication endpoints and token schemas?"
+    hints:
+      token_estimate: 9400
+      load_strategy: lazy
+      chunk_of: api-reference
+      chunk_index: 1
+      total_chunks: 5
+      chunk_topic: "Authentication and token management"
+```
+
+`chunk_of` MUST reference a unit in the same manifest. A validator SHOULD warn when `chunk_of`
+references a non-existent unit, or when `chunk_index` exceeds `total_chunks`.
+
+#### Root-level `hints` block
+
+The root manifest MAY contain a `hints` block with aggregate information about the entire
+manifest. This allows an agent to assess total context cost before loading any unit.
+
+```yaml
+hints:
+  total_token_estimate: 840000
+  unit_count: 94
+  recommended_entry_point: overview
+  has_summaries: true
+  has_chunks: false
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `total_token_estimate` | integer | Advisory sum of all unit `token_estimate` values. |
+| `unit_count` | integer | Total number of units declared in this manifest. |
+| `recommended_entry_point` | string | Unit `id` the publisher recommends loading first. Typically an overview, index, or getting-started unit. |
+| `has_summaries` | boolean | At least one unit in this manifest has `summary_available: true`. |
+| `has_chunks` | boolean | At least one unit in this manifest has `chunked: true`. |
+
+`total_token_estimate` SHOULD be recomputed by tooling when unit estimates change. Publishers
+SHOULD NOT maintain it by hand; a stale value is worse than an absent value.
+
 ---
 
 ## 5. Relationships
@@ -483,8 +649,9 @@ Unknown relationship types MUST be silently ignored.
 ### 6.1 Spec Version (`kcp_version`)
 
 `kcp_version` identifies which version of this specification the manifest conforms to. Current
-valid value: `"0.3"`. The values `"0.1"` and `"0.2"` refer to prior drafts (February 2026);
-parsers SHOULD treat `"0.1"` and `"0.2"` manifests as conformant with this version. Parsers
+valid value: `"0.4"`. The values `"0.1"`, `"0.2"`, and `"0.3"` refer to prior drafts
+(February 2026); parsers SHOULD treat these manifests as conformant with this version, as v0.4
+is a strict superset of v0.3 (new fields only, no removals or breaking changes). Parsers
 encountering an unknown `kcp_version` SHOULD process the manifest using the closest known
 version and SHOULD emit a warning.
 
@@ -529,9 +696,10 @@ The following conditions MUST cause the parser to reject the manifest:
 A JSON Schema (draft-07) for `knowledge.yaml` is available at
 [`schema/knowledge-schema.json`](./schema/knowledge-schema.json). It covers all fields defined in
 this specification: root fields (`kcp_version`, `project`, `version`, `updated`, `language`,
-`license`, `indexing`), unit fields (`id`, `path`, `kind`, `intent`, `format`, `content_type`,
-`language`, `scope`, `audience`, `license`, `validated`, `update_frequency`, `indexing`,
-`depends_on`, `supersedes`, `triggers`), and relationship fields (`from`, `to`, `type`).
+`license`, `indexing`, `hints`), unit fields (`id`, `path`, `kind`, `intent`, `format`,
+`content_type`, `language`, `scope`, `audience`, `license`, `validated`, `update_frequency`,
+`indexing`, `depends_on`, `supersedes`, `triggers`, `hints`), and relationship fields
+(`from`, `to`, `type`).
 
 The schema enforces required fields, value constraints (e.g. `id` pattern, `kind` enum,
 `format` enum, trigger `maxLength` and `maxItems`), and structural rules. It can be used with
@@ -551,15 +719,18 @@ each piece answer, and who is it for?" Parsers SHOULD supply default values when
 `audience` are absent (`scope` defaults to `global`; `audience` defaults to an empty list).
 
 **Level 2 — Structured**
-Extends Level 1 with `validated`, `depends_on`, `kind`, `format`, and `language`. A Level 2
-manifest supports freshness-aware retrieval, dependency-ordered loading, artifact type
-classification, content format awareness, and multilingual navigation.
+Extends Level 1 with `validated`, `depends_on`, `kind`, `format`, `language`, and the core
+`hints` fields: `token_estimate`, `load_strategy`, `summary_available`, `summary_unit`, and
+`summary_of`. A Level 2 manifest supports freshness-aware retrieval, dependency-ordered loading,
+artifact type classification, content format awareness, multilingual navigation, and basic
+context-budget planning (agents know unit sizes and can prefer summaries over full documents).
 
 **Level 3 — Full**
 Extends Level 2 with `triggers`, `supersedes`, `license`, `update_frequency`, `indexing`,
-and a `relationships` section. A Level 3 manifest supports task-based routing, knowledge
-graph navigation, drift detection, usage rights declaration, cache management, and AI
-crawling permissions.
+advanced `hints` (`priority`, `density`, chunking fields), root-level `hints`, and a
+`relationships` section. A Level 3 manifest supports task-based routing, knowledge graph
+navigation, drift detection, usage rights declaration, cache management, AI crawling permissions,
+context eviction ordering, and large-document chunked access.
 
 All three levels are valid KCP. A tool MUST NOT reject a manifest for being below the
 level it was designed for — graceful degradation is required.
@@ -662,7 +833,7 @@ manifest size, unit count, and string field lengths to guard against resource ex
 **Trust:** A `knowledge.yaml` is as trustworthy as its source. Agents consuming KCP manifests
 from untrusted sources SHOULD treat the content as untrusted input.
 
-### 12.1 Trust Model
+### 13.1 Trust Model
 
 KCP is a declarative format. A manifest describes properties of knowledge units — their
 intended audience, freshness, access requirements, compliance scope, and dependencies. It does
@@ -703,7 +874,7 @@ The following specific cases apply:
 security or legal implications. An agent that silently treats advisory compliance metadata as
 enforced is creating hidden liability for its operator.
 
-### 12.2 YAML Safety
+### 13.2 YAML Safety
 
 Parsers MUST use a safe YAML constructor that disables arbitrary type instantiation. YAML
 documents containing type tags that instantiate non-primitive types (e.g.
@@ -712,7 +883,7 @@ documents containing type tags that instantiate non-primitive types (e.g.
 Parsers MUST NOT use YAML loaders that execute code embedded in the document. This requirement
 applies to all YAML content, including content fetched from remote sources.
 
-### 12.3 Remote Content
+### 13.3 Remote Content
 
 Parsers and agents that fetch remote manifests (e.g. via federation or external references)
 MUST apply the following constraints:
@@ -733,7 +904,7 @@ MUST apply the following constraints:
 ## Appendix A: Minimal Example
 
 ```yaml
-kcp_version: "0.3"
+kcp_version: "0.4"
 project: my-project
 version: 1.0.0
 units:
@@ -749,13 +920,18 @@ units:
 ## Appendix B: Full Example
 
 ```yaml
-kcp_version: "0.3"
+kcp_version: "0.4"
 project: wiki.example.org
-version: 2.1.0
-updated: "2026-02-28"
+version: 2.2.0
+updated: "2026-03-01"
 language: en
 license: "Apache-2.0"
 indexing: open
+hints:
+  total_token_estimate: 84000
+  unit_count: 9
+  recommended_entry_point: about
+  has_summaries: true
 
 units:
   - id: about
@@ -765,6 +941,10 @@ units:
     audience: [human, agent]
     validated: "2026-02-24"
     update_frequency: monthly
+    hints:
+      token_estimate: 800
+      load_strategy: eager
+      priority: critical
 
   - id: architecture-overview
     path: architecture/overview.md
@@ -776,6 +956,26 @@ units:
     update_frequency: monthly
     depends_on: [about]
     triggers: [architecture, components, system-design, overview]
+    hints:
+      token_estimate: 18000
+      load_strategy: lazy
+      priority: supplementary
+      density: dense
+      summary_available: true
+      summary_unit: architecture-tldr
+
+  - id: architecture-tldr
+    path: architecture/overview-tldr.md
+    intent: "What is the high-level architecture in 400 words?"
+    format: markdown
+    scope: global
+    audience: [developer, architect, agent]
+    depends_on: [about]
+    hints:
+      token_estimate: 500
+      load_strategy: eager
+      priority: critical
+      summary_of: architecture-overview
 
   - id: api-spec
     path: api/openapi.yaml
@@ -789,6 +989,11 @@ units:
     update_frequency: weekly
     depends_on: [architecture-overview]
     triggers: [api, endpoints, openapi, rest]
+    hints:
+      token_estimate: 12000
+      load_strategy: lazy
+      priority: reference
+      density: dense
 
   - id: deployment-guide
     path: ops/deployment.md
@@ -800,6 +1005,10 @@ units:
     depends_on: [architecture-overview]
     supersedes: deployment-guide-v2
     triggers: [deployment, production, release, kubernetes, docker]
+    hints:
+      token_estimate: 8000
+      load_strategy: lazy
+      priority: supplementary
 
   - id: authentication-api
     path: api/authentication.md
@@ -809,6 +1018,9 @@ units:
     validated: "2026-02-18"
     depends_on: [architecture-overview]
     triggers: [oauth2, authentication, bearer-token, jwt, api-security]
+    hints:
+      token_estimate: 4000
+      load_strategy: lazy
 
   - id: pre-commit-gate
     kind: policy
@@ -819,6 +1031,9 @@ units:
     audience: [developer, agent]
     validated: "2026-02-10"
     indexing: read-only
+    hints:
+      token_estimate: 200
+      load_strategy: lazy
 
   - id: methodology-no
     path: docs/methodology-no.md
@@ -831,6 +1046,9 @@ units:
       spdx: "CC-BY-4.0"
       url: "https://creativecommons.org/licenses/by/4.0/"
       attribution_required: true
+    hints:
+      token_estimate: 6000
+      load_strategy: lazy
 
   - id: deployment-guide-v2
     path: archive/deployment-v2.md
@@ -838,6 +1056,9 @@ units:
     scope: project
     audience: [agent]
     validated: "2025-09-01"
+    hints:
+      load_strategy: never
+      priority: reference
 
 relationships:
   - from: architecture-overview

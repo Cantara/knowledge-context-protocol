@@ -57,6 +57,10 @@ updated: <ISO date>
 language: <BCP 47 tag>             # optional — default for all units
 license: <SPDX identifier>        # optional — default for all units
 indexing: open | read-only | no-train | none  # optional — default for all units
+hints:                             # optional — manifest-level aggregate hints
+  total_token_estimate: <integer>
+  recommended_entry_point: <unit-id>
+  has_summaries: true | false
 
 units:
   - id: <unique-identifier>
@@ -75,6 +79,14 @@ units:
     depends_on: [<unit-id>, ...]       # optional
     supersedes: <unit-id>              # optional
     triggers: [<keyword>, ...]         # optional
+    hints:                             # optional — context window hints
+      token_estimate: <integer>        # approximate token count
+      load_strategy: eager | lazy | never  # when to load; default: lazy
+      priority: critical | supplementary | reference  # eviction order; default: supplementary
+      density: dense | standard | verbose  # information density; default: standard
+      summary_available: true | false  # shorter version exists in this manifest
+      summary_unit: <unit-id>          # id of the summary unit
+      summary_of: <unit-id>            # id of the full unit this summarises
 
 relationships:
   - from: <unit-id>
@@ -102,13 +114,14 @@ relationships:
 | `depends_on` | optional | Units that must be understood before this one |
 | `supersedes` | optional | The unit-id this replaces |
 | `triggers` | optional | Task contexts or keywords that make this unit relevant |
+| `hints` | optional | Advisory context window hints: `token_estimate`, `load_strategy`, `priority`, `density`, `summary_available`, `summary_unit`, `summary_of` |
 
 ### Minimum Viable KCP
 
 Five fields per unit are enough to start:
 
 ```yaml
-kcp_version: "0.3"
+kcp_version: "0.4"
 project: my-project
 version: 1.0.0
 units:
@@ -127,7 +140,7 @@ The standard allows complexity but does not demand it.
 
 ```yaml
 # knowledge.yaml
-kcp_version: "0.3"
+kcp_version: "0.4"
 project: wiki.example.org
 version: 1.0.0
 updated: "2026-02-28"
@@ -194,13 +207,16 @@ Drop a `knowledge.yaml` alongside your `llms.txt`. Add `id`, `path`, and `intent
 pages. Five minutes. Immediately navigable by agents.
 
 **Level 2 — Open source projects**
-Add `depends_on` and `validated` fields. Agents can now load documentation in dependency order
-and check freshness before acting on it.
+Add `depends_on`, `validated`, and `hints` (at minimum `token_estimate`, `load_strategy`, and
+the `summary_available` / `summary_unit` / `summary_of` trio). Agents can now load documentation
+in dependency order, check freshness before acting on it, and prefer short TL;DR files over full
+documents when answering common questions.
 
 **Level 3 — Enterprise documentation**
-Use the full field set including `triggers`, `audience`, and `relationships`. Build
-knowledge-graph-navigable documentation that supports multiple agent roles querying the same
-corpus with different task contexts.
+Use the full field set including `triggers`, `audience`, `relationships`, and advanced hints
+(`priority`, `density`, chunking). Build knowledge-graph-navigable documentation that supports
+multiple agent roles querying the same corpus with different task contexts and constrained
+context budgets.
 
 ---
 
@@ -239,19 +255,19 @@ Synthesis index automatically.
 
 ## Status
 
-**Current:** Draft specification — v0.3
+**Current:** Draft specification — v0.4
 
 This is an early proposal. The format is intentionally minimal. Feedback, use cases, and pull
 requests are welcome.
 
 - **[SPEC.md](./SPEC.md)** — Normative specification (field definitions, validation rules, conformance levels)
 - **[PROPOSAL.md](./PROPOSAL.md)** — The case for a knowledge architecture standard
-- **[RFC-0001](./RFC-0001-KCP-Extended.md)** — Extended capabilities (overview of all proposals; F/H/I/K/L/N promoted to v0.3 core)
+- **[RFC-0001](./RFC-0001-KCP-Extended.md)** — Extended capabilities (overview of all proposals; F/H/I/J/K/L/N promoted to v0.3–v0.4 core)
 - **[RFC-0002](./RFC-0002-Auth-and-Delegation.md)** — Auth and delegation metadata proposal (`access`, `auth`, `delegation`)
 - **[RFC-0003](./RFC-0003-Federation.md)** — Cross-manifest federation proposal (`manifests` block, `external_depends_on`, hub-and-spoke model)
 - **[RFC-0004](./RFC-0004-Trust-and-Compliance.md)** — Trust, provenance, and compliance metadata proposal (`trust`, `compliance` blocks)
 - **[RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md)** — Payment and rate-limit metadata proposal (`payment`, `rate_limits` blocks)
-- **[RFC-0006](./RFC-0006-Context-Window-Hints.md)** — Context window hints proposal (`hints` block: token estimates, load strategy, chunking, summary relationships)
+- **[RFC-0006](./RFC-0006-Context-Window-Hints.md)** — Context window hints (accepted; promoted to SPEC.md §4.10 in v0.4)
 - **parsers/** — Reference implementations (Python, Java)
 - **bridge/** — MCP servers: expose any `knowledge.yaml` as MCP resources (TypeScript · Python · Java)
 

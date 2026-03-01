@@ -1,12 +1,13 @@
 # RFC-0006: Context Window Hints
 
-**Status:** Request for Comments
+**Status:** Accepted — promoted to [SPEC.md](./SPEC.md) §4.10 in v0.4
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-02-28
+**Accepted:** 2026-03-01
 **Supersedes:** Proposal J in [RFC-0001](./RFC-0001-KCP-Extended.md)
 **Issues:** [#9 (context window hints)](https://github.com/Cantara/knowledge-context-protocol/issues/9)
 **Discussion:** [GitHub Issues](https://github.com/Cantara/knowledge-context-protocol/issues)
-**Spec:** [SPEC.md](./SPEC.md) (current: v0.3)
+**Spec:** [SPEC.md §4.10](./SPEC.md) (promoted in v0.4)
 
 ---
 

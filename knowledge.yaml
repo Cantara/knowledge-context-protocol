@@ -1,10 +1,10 @@
 # KCP eats its own dogfood.
 # This manifest describes the Knowledge Context Protocol repository itself.
 
-kcp_version: "0.3"
+kcp_version: "0.4"
 project: knowledge-context-protocol
-version: 0.3.0
-updated: "2026-02-28"
+version: 0.4.0
+updated: "2026-03-01"
 language: en
 license: "Apache-2.0"
 indexing: open
@@ -77,12 +77,12 @@ units:
 
   - id: rfc-0006
     path: RFC-0006-Context-Window-Hints.md
-    intent: "How should KCP expose token estimates, load strategies, summary relationships, and chunk structure so agents can plan context usage before fetching content?"
+    intent: "RFC-0006 (accepted): context window hints — token estimates, load strategies, summary relationships, and chunking — promoted to SPEC.md §4.10 in v0.4."
     scope: global
     audience: [human, agent, architect, developer]
-    validated: "2026-02-28"
+    validated: "2026-03-01"
     depends_on: [spec]
-    triggers: [context window, token estimate, hints, chunking, summary, load strategy, eager, lazy, context budget]
+    triggers: [context window, token estimate, hints, chunking, summary, load strategy, eager, lazy, context budget, rfc-0006]
 
   - id: readme
     path: README.md
