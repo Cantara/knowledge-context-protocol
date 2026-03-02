@@ -64,6 +64,49 @@ A project MAY contain multiple manifests (e.g. one per subdirectory). Each manif
 independent and MUST NOT reference units from other manifests by path. Cross-manifest
 relationships are out of scope for this version of the specification.
 
+### 1.4 Discovery via `/.well-known/kcp.json`
+
+An origin server MAY expose a well-known discovery document at `/.well-known/kcp.json`
+as defined by [RFC 8615](https://datatracker.ietf.org/doc/html/rfc8615). This enables
+agents and crawlers to locate KCP manifests on any HTTP origin without prior knowledge
+of the manifest path.
+
+A GET request to `/.well-known/kcp.json` SHOULD return a JSON document with
+`Content-Type: application/json`. The document MUST include:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `kcp_version` | string | The KCP specification version this manifest conforms to. |
+| `manifest` | string | Absolute URL or root-relative path to the `knowledge.yaml` manifest. |
+
+The document MAY include:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | string | Human-readable name of the project or knowledge base. |
+| `description` | string | Brief summary of the knowledge available. |
+| `spec` | string | URL of the KCP specification document. |
+
+Example:
+
+```json
+{
+  "kcp_version": "0.5",
+  "manifest": "/knowledge.yaml",
+  "title": "My Project Knowledge Base",
+  "description": "Architecture decisions, API reference, and onboarding guides.",
+  "spec": "https://github.com/Cantara/knowledge-context-protocol"
+}
+```
+
+Agents encountering `/.well-known/kcp.json` SHOULD fetch the `manifest` URL to retrieve
+the full KCP manifest. Agents that successfully retrieve a manifest via this mechanism
+MUST NOT require the manifest to also be present at the repository root.
+
+This discovery path complements §1.1 (root placement) and §1.2 (llms.txt declaration).
+An origin MAY support all three; agents SHOULD prefer `/.well-known/kcp.json` when
+performing HTTP-based discovery on a live site.
+
 ---
 
 ## 2. File Format
