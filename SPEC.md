@@ -1335,5 +1335,31 @@ header:
 
 ---
 
+## Appendix D: Reference Implementations
+
+The following open-source projects implement KCP concepts and serve as reference implementations.
+
+### Synthesis
+
+[github.com/exoreaction/synthesis](https://github.com/exoreaction/synthesis)
+
+A KCP-native knowledge infrastructure server. Synthesis indexes workspaces (code, documentation,
+configuration, PDFs) and exposes them via MCP with sub-second retrieval. It produces a
+`knowledge.yaml` from any indexed workspace via `synthesis export --format kcp`.
+
+### kcp-commands
+
+[github.com/cantara/kcp-commands](https://github.com/cantara/kcp-commands)
+
+A Claude Code hook that applies KCP at the Bash tool boundary. Each manifest is a
+`knowledge.yaml`-compatible description of a CLI command. The hook injects syntax context before
+execution (Phase A) and filters noisy output after execution (Phase B). Ships with 214 bundled
+manifests covering Git, Linux/macOS, Docker, Kubernetes, cloud CLIs, build tools, database
+clients, and more. Unknown commands auto-generate manifests from `--help` output.
+
+Measured impact: **67,352 tokens saved per session — 33.7% of a 200K context window recovered.**
+
+---
+
 *Knowledge Context Protocol — proposed by [eXOReaction AS](https://www.exoreaction.com), Oslo, Norway.*
 *Spec repository: [github.com/cantara/knowledge-context-protocol](https://github.com/cantara/knowledge-context-protocol)*
