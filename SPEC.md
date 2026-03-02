@@ -1353,7 +1353,7 @@ configuration, PDFs) and exposes them via MCP with sub-second retrieval. It prod
 
 A Claude Code hook that applies KCP at the Bash tool boundary. Each manifest is a
 `knowledge.yaml`-compatible description of a CLI command. The hook injects syntax context before
-execution (Phase A) and filters noisy output after execution (Phase B). Ships with 214 bundled
+execution (Phase A) and filters noisy output after execution (Phase B). Ships with 244 bundled
 manifests covering Git, Linux/macOS, Docker, Kubernetes, cloud CLIs, build tools, database
 clients, and more. Unknown commands auto-generate manifests from `--help` output.
 

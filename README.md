@@ -270,7 +270,7 @@ Synthesis index automatically.
 **[kcp-commands](https://github.com/Cantara/kcp-commands)** is a KCP-native Claude Code hook that
 applies the KCP principle at the Bash tool boundary. Each manifest is a `knowledge.yaml`-compatible
 description of a CLI command: syntax hints injected before execution (Phase A), noise-filtered
-output after execution (Phase B). 214 manifests bundled; unknown commands auto-generate manifests
+output after execution (Phase B). 244 manifests bundled; unknown commands auto-generate manifests
 from `--help` output. Measured saving: **67,352 tokens per session — 33.7% of a 200K context
 window recovered**.
 
