@@ -69,6 +69,6 @@ Full field definitions are in §1.4 of the specification.
 
 ## Status
 
-- [ ] Submitted to wellknown-uri-review@ietf.org
+- [x] Submitted to wellknown-uri-review@ietf.org (2026-03-02)
 - [ ] Expert review complete
 - [ ] Registered in IANA Well-Known URIs registry
