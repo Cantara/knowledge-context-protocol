@@ -1352,10 +1352,15 @@ configuration, PDFs) and exposes them via MCP with sub-second retrieval. It prod
 [github.com/cantara/kcp-commands](https://github.com/cantara/kcp-commands)
 
 A Claude Code hook that applies KCP at the Bash tool boundary. Each manifest is a
-`knowledge.yaml`-compatible description of a CLI command. The hook injects syntax context before
-execution (Phase A) and filters noisy output after execution (Phase B). Ships with 283 bundled
-manifests covering Git, Linux/macOS, Docker, Kubernetes, cloud CLIs, build tools, database
-clients, and more. Unknown commands auto-generate manifests from `--help` output.
+`knowledge.yaml`-compatible description of a CLI command. Three phases:
+
+- **Phase A** (PreToolUse): injects concise syntax context before execution — eliminates `--help` calls
+- **Phase B** (PostToolUse, via daemon `/filter/{key}`): strips noise patterns and truncates large outputs before they reach the model's context window
+- **Phase C** (v0.9.0, EventLogger): appends a JSON event to `~/.kcp/events.jsonl` on every Bash hook call — `{"ts":"...","session_id":"...","project_dir":"...","tool":"Bash","command":"...","manifest_key":"..."}` — consumed by kcp-memory for tool-level episodic memory
+
+Ships with 283 bundled manifests covering Git, Linux/macOS, Docker, Kubernetes, cloud CLIs,
+build tools, database clients, and more. Daemon on `localhost:7734` (virtual threads, ~12ms
+warm latency). Falls back to Node.js CLI if daemon not running.
 
 Measured impact: **67,352 tokens saved per session — 33.7% of a 200K context window recovered.**
 
@@ -1371,6 +1376,40 @@ prompt, and `tool.execute.after` to annotate glob/grep results with KCP intent s
 
 Install: `npm install opencode-kcp-plugin`. Configure: `"plugin": ["opencode-kcp-plugin"]` in
 `opencode.json`. Zero overhead when no `knowledge.yaml` is present.
+
+### kcp-memory
+
+[github.com/cantara/kcp-memory](https://github.com/Cantara/kcp-memory)
+
+The episodic memory layer for Claude Code. Indexes `~/.claude/projects/**/*.jsonl` session
+transcripts and `~/.kcp/events.jsonl` tool-call events (written by kcp-commands Phase C) into
+a local SQLite+FTS5 database, making past sessions and individual tool invocations searchable
+in milliseconds.
+
+Three-layer model this completes:
+
+| Layer | What it holds | Provided by |
+|-------|--------------|-------------|
+| **Working** | Current context window | Claude Code |
+| **Episodic** | What happened in past sessions | kcp-memory |
+| **Semantic** | What the workspace means | Synthesis |
+
+Available as a CLI, HTTP daemon (`localhost:7735`), and MCP server (6 tools):
+
+| MCP Tool | What it answers |
+|----------|----------------|
+| `kcp_memory_search` | FTS5 search over session transcripts |
+| `kcp_memory_events_search` | FTS5 search over tool-call events |
+| `kcp_memory_list` | Recent sessions, optionally by project |
+| `kcp_memory_stats` | Aggregate statistics |
+| `kcp_memory_session_detail` | Full content of a specific session |
+| `kcp_memory_project_context` | Auto-detect project from `PWD`, return last 5 sessions + 20 events |
+
+`kcp_memory_project_context` is designed for session-start invocation: it reads the current
+working directory from the process environment and surfaces recent history with no query required
+— closing the blank-slate problem structurally.
+
+Install: `curl -fsSL https://raw.githubusercontent.com/Cantara/kcp-memory/main/bin/install.sh | bash`
 
 ---
 
