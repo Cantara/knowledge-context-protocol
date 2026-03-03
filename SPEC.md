@@ -1353,11 +1353,24 @@ configuration, PDFs) and exposes them via MCP with sub-second retrieval. It prod
 
 A Claude Code hook that applies KCP at the Bash tool boundary. Each manifest is a
 `knowledge.yaml`-compatible description of a CLI command. The hook injects syntax context before
-execution (Phase A) and filters noisy output after execution (Phase B). Ships with 244 bundled
+execution (Phase A) and filters noisy output after execution (Phase B). Ships with 283 bundled
 manifests covering Git, Linux/macOS, Docker, Kubernetes, cloud CLIs, build tools, database
 clients, and more. Unknown commands auto-generate manifests from `--help` output.
 
 Measured impact: **67,352 tokens saved per session — 33.7% of a 200K context window recovered.**
+
+### opencode-kcp-plugin
+
+[npmjs.com/package/opencode-kcp-plugin](https://www.npmjs.com/package/opencode-kcp-plugin) ·
+[source](https://github.com/Cantara/knowledge-context-protocol/tree/main/plugins/opencode)
+
+A plugin for [OpenCode](https://github.com/anomalyco/opencode) that reduces explore-agent tool
+calls by 73–80% using a project's `knowledge.yaml` manifest. Uses two hooks:
+`experimental.chat.system.transform` to inject the full knowledge map into every session's system
+prompt, and `tool.execute.after` to annotate glob/grep results with KCP intent strings.
+
+Install: `npm install opencode-kcp-plugin`. Configure: `"plugin": ["opencode-kcp-plugin"]` in
+`opencode.json`. Zero overhead when no `knowledge.yaml` is present.
 
 ---
 

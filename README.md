@@ -274,6 +274,13 @@ output after execution (Phase B). 283 manifests bundled; unknown commands auto-g
 from `--help` output. Measured saving: **67,352 tokens per session — 33.7% of a 200K context
 window recovered**.
 
+**[opencode-kcp-plugin](https://www.npmjs.com/package/opencode-kcp-plugin)** is a KCP-native
+plugin for [OpenCode](https://github.com/anomalyco/opencode). It injects the `knowledge.yaml`
+knowledge map into every session's system prompt and annotates glob/grep results with KCP intent
+strings — reducing explore-agent tool calls by 73–80%. Install:
+`npm install opencode-kcp-plugin` and add `"plugin": ["opencode-kcp-plugin"]` to `opencode.json`.
+Source: [`plugins/opencode/`](./plugins/opencode/)
+
 ---
 
 ## Governance
@@ -301,6 +308,7 @@ requests are welcome.
 - **[RFC-0006](./RFC-0006-Context-Window-Hints.md)** — Context window hints (accepted; promoted to SPEC.md §4.10 in v0.4)
 - **parsers/** — Reference implementations (Python, Java)
 - **bridge/** — MCP servers: expose any `knowledge.yaml` as MCP resources (TypeScript · Python · Java)
+- **plugins/opencode/** — OpenCode plugin (`opencode-kcp-plugin` on npm)
 
 ---
 
