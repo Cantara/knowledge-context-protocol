@@ -1,0 +1,48 @@
+{
+  "name": "opencode-kcp-plugin",
+  "version": "0.1.0",
+  "description": "KCP (Knowledge Context Protocol) plugin for OpenCode — uses knowledge.yaml to reduce explore-agent tool calls by 73-80%",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": ">=0.0.1"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "latest",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.4.0"
+  },
+  "keywords": [
+    "opencode",
+    "kcp",
+    "knowledge-context-protocol",
+    "ai-agents",
+    "knowledge-map",
+    "plugin"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Cantara/knowledge-context-protocol"
+  },
+  "homepage": "https://github.com/Cantara/knowledge-context-protocol/tree/main/plugins/opencode"
+}
