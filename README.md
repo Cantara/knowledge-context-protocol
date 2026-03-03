@@ -282,10 +282,12 @@ strings — reducing explore-agent tool calls by 73–80%. Install:
 Source: [`plugins/opencode/`](./plugins/opencode/)
 
 **[kcp-memory](https://github.com/Cantara/kcp-memory)** is the episodic memory layer for Claude
-Code. It indexes `~/.claude/projects/**/*.jsonl` session transcripts into a local SQLite database
-with FTS5 full-text search, providing a three-layer memory model: working (context window) →
-episodic (kcp-memory) → semantic (Synthesis). Runs as a daemon on port 7735. CLI: `kcp-memory
-search`, `list`, `stats`. PostToolUse hook for near-real-time indexing.
+Code. Indexes `~/.claude/projects/**/*.jsonl` session transcripts and `~/.kcp/events.jsonl`
+tool-call events into a local SQLite+FTS5 database. Three-layer memory model: working (context
+window) → episodic (kcp-memory) → semantic (Synthesis). Runs as a daemon (port 7735), CLI, and
+MCP server (6 tools: `kcp_memory_search`, `kcp_memory_events_search`, `kcp_memory_list`,
+`kcp_memory_stats`, `kcp_memory_session_detail`, `kcp_memory_project_context`). PostToolUse hook
+for near-real-time indexing. v0.4.0 — proactive session-start context via `PWD` detection.
 Install: `curl -fsSL https://raw.githubusercontent.com/Cantara/kcp-memory/main/bin/install.sh | bash`
 
 ---
