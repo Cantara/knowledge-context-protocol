@@ -281,6 +281,13 @@ strings — reducing explore-agent tool calls by 73–80%. Install:
 `npm install opencode-kcp-plugin` and add `"plugin": ["opencode-kcp-plugin"]` to `opencode.json`.
 Source: [`plugins/opencode/`](./plugins/opencode/)
 
+**[kcp-memory](https://github.com/Cantara/kcp-memory)** is the episodic memory layer for Claude
+Code. It indexes `~/.claude/projects/**/*.jsonl` session transcripts into a local SQLite database
+with FTS5 full-text search, providing a three-layer memory model: working (context window) →
+episodic (kcp-memory) → semantic (Synthesis). Runs as a daemon on port 7735. CLI: `kcp-memory
+search`, `list`, `stats`. PostToolUse hook for near-real-time indexing.
+Install: `curl -fsSL https://raw.githubusercontent.com/Cantara/kcp-memory/main/bin/install.sh | bash`
+
 ---
 
 ## Governance
@@ -309,6 +316,7 @@ requests are welcome.
 - **parsers/** — Reference implementations (Python, Java)
 - **bridge/** — MCP servers: expose any `knowledge.yaml` as MCP resources (TypeScript · Python · Java)
 - **plugins/opencode/** — OpenCode plugin (`opencode-kcp-plugin` on npm)
+- **[kcp-memory](https://github.com/Cantara/kcp-memory)** — Episodic memory daemon for Claude Code (separate repo)
 
 ---
 
