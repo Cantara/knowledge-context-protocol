@@ -1,0 +1,42 @@
+# Knowledge Context Protocol (KCP)
+
+> A structured metadata standard that makes knowledge navigable by AI agents.
+> KCP is to knowledge what MCP is to tools.
+
+KCP defines how to add a `knowledge.yaml` manifest to any project or documentation site
+so AI agents can navigate it efficiently — without exploring by trial and error.
+
+Where llms.txt gives agents a flat list, KCP gives agents a map: intents, dependency
+chains, audience targeting, freshness dating, and selective loading — all in one YAML file.
+
+Validated benchmark: 53–80% fewer agent tool calls vs unguided exploration (5 frameworks).
+
+## Full Agent Navigation (KCP)
+
+This repository ships its own knowledge.yaml manifest:
+https://raw.githubusercontent.com/Cantara/knowledge-context-protocol/main/knowledge.yaml
+
+## Key Files
+
+- /SPEC.md — Normative specification: all fields, validation rules, conformance levels
+- /PROPOSAL.md — Why KCP exists and what problem it solves
+- /README.md — Overview, comparison with llms.txt and MCP, getting started
+- /guides/adopting-kcp-in-existing-projects.md — How to add KCP to your project in under 30 minutes
+- /examples/README.md — Example manifests at three adoption levels (minimal → full)
+- /RFC-0001-KCP-Extended.md — Extensions: payments, compliance, federation, context hints
+
+## How KCP Relates to llms.txt and MCP
+
+- **llms.txt** (Jeremy Howard): flat index of URLs. Useful for small sites. KCP extends this.
+- **MCP** (Anthropic): connects agents to tools. KCP structures the knowledge those tools serve.
+- They compose: a project can have llms.txt for broad compatibility, knowledge.yaml for agents that understand structure.
+
+## Real-World Adopters
+
+- wiki.totto.org — personal knowledge wiki (KCP v0.5, 77 posts indexed)
+- wiki.cantara.no — Cantara open source community wiki (KCP v0.5)
+- crewAI, microsoft/autogen, huggingface/smolagents, anomalyco/opencode — KCP manifests submitted (PRs open, March 2026)
+
+## License
+
+Apache-2.0 — specification and reference implementations
