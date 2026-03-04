@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# KCP manifest for AI agent navigation
+# https://cantara.github.io/knowledge-context-protocol/llms.txt

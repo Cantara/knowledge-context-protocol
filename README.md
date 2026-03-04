@@ -12,6 +12,30 @@ MCP solved the tool connectivity problem. KCP addresses the knowledge structure 
 
 ---
 
+## In 30 Seconds
+
+Drop a `knowledge.yaml` at the root of any project. Agents stop guessing and start navigating.
+
+```yaml
+kcp_version: "0.5"
+project: my-project
+version: 1.0.0
+units:
+  - id: overview
+    path: README.md
+    intent: "What is this project and how do I get started?"
+    scope: global
+    audience: [human, agent]
+    triggers: [overview, getting started, quickstart]
+```
+
+**Validated result:** 53–80% fewer agent tool calls vs unguided exploration
+(tested across 5 frameworks: crewAI, AutoGen, smolagents, LangChain, OpenCode).
+
+**Five minutes to Level 1.** See [adopting KCP in existing projects](./guides/adopting-kcp-in-existing-projects.md).
+
+---
+
 ## The Problem with llms.txt
 
 Jeremy Howard's [llms.txt](https://llmstxt.org) solved a real problem: it gives AI agents a
