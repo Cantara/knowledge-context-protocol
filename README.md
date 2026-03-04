@@ -316,6 +316,23 @@ Install: `curl -fsSL https://raw.githubusercontent.com/Cantara/kcp-memory/main/b
 
 ---
 
+## Blog series
+
+The full design rationale, benchmarks, and adoption walkthroughs are documented at
+[wiki.totto.org](https://wiki.totto.org) in the **Knowledge Context Protocol** series:
+
+| Post | Key content |
+|------|-------------|
+| [Beyond llms.txt: AI Agents Need Maps, Not Tables of Contents](https://wiki.totto.org/blog/2026/02/25/beyond-llms-txt-knowledge-context-protocol/) | Why llms.txt has six structural limits; KCP proposal |
+| [Add knowledge.yaml to Your Project in Five Minutes](https://wiki.totto.org/blog/2026/02/28/kcp-adoption-guide/) | Adoption gradient Level 1–3 with field reference |
+| [KCP on Two Repos, Two Days](https://wiki.totto.org/blog/2026/03/01/kcp-two-repos-two-days/) | 74% + 53% tool-call reduction, benchmark methodology |
+| [KCP on Three Agent Frameworks](https://wiki.totto.org/blog/2026/03/01/kcp-three-frameworks/) | AutoGen 80%, CrewAI 76%, smolagents 73% |
+| [kcp-commands: Save 33% of Context Window](https://wiki.totto.org/blog/2026/03/02/kcp-commands/) | Phase A/B/C design, 283 manifests, 67K tokens saved |
+| [KCP Comes to OpenCode](https://wiki.totto.org/blog/2026/03/03/opencode-kcp-plugin/) | opencode-kcp-plugin: system prompt injection + glob annotation |
+| [kcp-memory: Give Claude Code a Memory](https://wiki.totto.org/blog/2026/03/03/kcp-memory/) | Three-layer memory model, MCP server, 6 tools |
+
+---
+
 ## Governance
 
 KCP has been submitted to the **[Agentic AI Foundation](https://www.linuxfoundation.org/press/linux-foundation-announces-the-formation-of-the-agentic-ai-foundation)** (Linux Foundation, launched December 2025) for consideration as a neutral-governance project alongside MCP and AGENTS.md. The AAIF brings together 146 member organizations — including AWS, Anthropic, Google, Microsoft, and OpenAI — under neutral governance for agentic infrastructure standards.
