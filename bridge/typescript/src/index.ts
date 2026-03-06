@@ -14,6 +14,11 @@ export {
   resolveMimeType,
   manifestToJson,
 } from "./mapper.js";
+export {
+  loadCommandManifests,
+  formatSyntaxBlock,
+  lookupCommand,
+} from "./commands.js";
 export type {
   KnowledgeManifest,
   KnowledgeUnit,
@@ -24,3 +29,4 @@ export type {
 } from "./model.js";
 export type { KcpServerOptions, KcpMcpServer } from "./server.js";
 export type { McpResourceMeta } from "./mapper.js";
+export type { CommandManifest } from "./commands.js";

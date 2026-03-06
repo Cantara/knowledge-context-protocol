@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 // KCP MCP Bridge CLI
 // Usage: kcp-mcp [knowledge.yaml] [--agent-only] [--transport stdio|http] [--port 8000]
-//                [--sub-manifests <glob>]
+//                [--sub-manifests <glob>] [--commands-dir <path>]
 
 import { existsSync, readdirSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createKcpServer } from "./server.js";
+import { loadCommandManifests } from "./commands.js";
 
 function printUsage(): void {
   process.stderr.write(
@@ -18,6 +19,8 @@ Options:
   --sub-manifests <glob>    Additional manifests to merge (glob, relative to primary
                             manifest dir).  Supports a single * as directory wildcard.
                             Example: "fragments/*/knowledge.yaml"
+  --commands-dir <path>     Load kcp-commands YAML manifests from this directory.
+                            Enables the get_command_syntax tool.
   --transport <type>        Transport: stdio (default) or http
   --port <number>           Port for HTTP transport (default: 8000)
   --no-warnings             Suppress KCP validation warnings
@@ -27,6 +30,7 @@ Examples:
   kcp-mcp                                           # serve ./knowledge.yaml
   kcp-mcp knowledge.yaml --agent-only               # filter to agent-facing units
   kcp-mcp knowledge.yaml --sub-manifests "fragments/*/knowledge.yaml"
+  kcp-mcp knowledge.yaml --commands-dir ../kcp-commands/commands
   kcp-mcp knowledge.yaml --transport http --port 9000
 
 Units from all manifests are merged into the primary project namespace.
@@ -75,6 +79,7 @@ async function main(): Promise<void> {
     options: {
       "agent-only": { type: "boolean", default: false },
       "sub-manifests": { type: "string" },
+      "commands-dir": { type: "string" },
       transport: { type: "string", default: "stdio" },
       port: { type: "string", default: "8000" },
       "no-warnings": { type: "boolean", default: false },
@@ -109,12 +114,32 @@ async function main(): Promise<void> {
     }
   }
 
+  // Load command manifests if --commands-dir is provided
+  let commandManifests: Map<string, import("./commands.js").CommandManifest> | undefined;
+  const commandsDir = values["commands-dir"] as string | undefined;
+  if (commandsDir) {
+    const resolvedCmdsDir = resolve(commandsDir);
+    if (!existsSync(resolvedCmdsDir)) {
+      process.stderr.write(
+        `  [kcp-mcp] warning: --commands-dir '${resolvedCmdsDir}' does not exist\n`
+      );
+    } else {
+      commandManifests = loadCommandManifests(resolvedCmdsDir);
+      if (commandManifests.size === 0) {
+        process.stderr.write(
+          `  [kcp-mcp] warning: no command manifests found in ${resolvedCmdsDir}\n`
+        );
+      }
+    }
+  }
+
   let kcpServer;
   try {
     kcpServer = createKcpServer(manifestPath, {
       agentOnly: values["agent-only"] as boolean,
       warnOnValidation: !(values["no-warnings"] as boolean),
       subManifests: subManifestPaths,
+      commandManifests,
     });
   } catch (err) {
     process.stderr.write(
