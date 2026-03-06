@@ -15,6 +15,13 @@ export {
   manifestToJson,
 } from "./mapper.js";
 export {
+  generateInstructions,
+  formatInstructions,
+  generateAgentFile,
+  formatAgentFile,
+} from "./instructions.js";
+export { generateSplitInstructions } from "./split-instructions.js";
+export {
   loadCommandManifests,
   formatSyntaxBlock,
   lookupCommand,
@@ -30,3 +37,8 @@ export type {
 export type { KcpServerOptions, KcpMcpServer } from "./server.js";
 export type { McpResourceMeta } from "./mapper.js";
 export type { CommandManifest } from "./commands.js";
+export type {
+  GenerateInstructionsOptions,
+  GenerateAgentFileOptions,
+} from "./instructions.js";
+export type { SplitInstructionsOptions } from "./split-instructions.js";

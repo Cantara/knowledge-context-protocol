@@ -3,18 +3,20 @@
 // Usage: kcp-mcp [knowledge.yaml] [--agent-only] [--transport stdio|http] [--port 8000]
 //                [--sub-manifests <glob>] [--commands-dir <path>]
 
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createKcpServer } from "./server.js";
 import { loadCommandManifests } from "./commands.js";
+import { generateInstructions, generateAgentFile } from "./instructions.js";
+import { generateSplitInstructions } from "./split-instructions.js";
 
 function printUsage(): void {
   process.stderr.write(
     `Usage: kcp-mcp [path/to/knowledge.yaml] [options]
 
-Options:
+MCP Server Options:
   --agent-only              Only expose units with audience: [agent]
   --sub-manifests <glob>    Additional manifests to merge (glob, relative to primary
                             manifest dir).  Supports a single * as directory wildcard.
@@ -24,6 +26,17 @@ Options:
   --transport <type>        Transport: stdio (default) or http
   --port <number>           Port for HTTP transport (default: 8000)
   --no-warnings             Suppress KCP validation warnings
+
+Static Generation Options:
+  --generate-instructions   Generate copilot-instructions.md to stdout and exit
+  --generate-agent          Generate .agent.md to stdout and exit
+  --generate-all            Generate all three tiers to .github/ and exit
+  --audience <value>        Filter units by audience (e.g. "agent", "human")
+  --output-format <fmt>     Output format: full (default), compact, agent
+  --output-dir <path>       Write split instruction files to this directory
+  --split-by <strategy>     Split strategy: directory, scope, unit, none (default: directory)
+  --max-chars <number>      Max chars for agent file (drops lower-scope units to fit)
+
   --help, -h                Show this help
 
 Examples:
@@ -32,6 +45,11 @@ Examples:
   kcp-mcp knowledge.yaml --sub-manifests "fragments/*/knowledge.yaml"
   kcp-mcp knowledge.yaml --commands-dir ../kcp-commands/commands
   kcp-mcp knowledge.yaml --transport http --port 9000
+  kcp-mcp --generate-instructions knowledge.yaml    # generate instructions to stdout
+  kcp-mcp --generate-instructions knowledge.yaml --output-format compact
+  kcp-mcp --generate-instructions knowledge.yaml --output-dir .github/instructions --split-by directory
+  kcp-mcp --generate-agent knowledge.yaml           # generate agent file to stdout
+  kcp-mcp --generate-all knowledge.yaml             # generate all three tiers to .github/
 
 Units from all manifests are merged into the primary project namespace.
 Start by reading: knowledge://{project-slug}/manifest
@@ -83,6 +101,14 @@ async function main(): Promise<void> {
       transport: { type: "string", default: "stdio" },
       port: { type: "string", default: "8000" },
       "no-warnings": { type: "boolean", default: false },
+      "generate-instructions": { type: "boolean", default: false },
+      "generate-agent": { type: "boolean", default: false },
+      "generate-all": { type: "boolean", default: false },
+      audience: { type: "string" },
+      "output-format": { type: "string", default: "full" },
+      "output-dir": { type: "string" },
+      "split-by": { type: "string", default: "directory" },
+      "max-chars": { type: "string" },
       help: { type: "boolean", default: false, short: "h" },
     },
     allowPositionals: true,
@@ -99,6 +125,69 @@ async function main(): Promise<void> {
   if (!existsSync(manifestPath)) {
     process.stderr.write(`Error: manifest not found: ${manifestPath}\n`);
     process.exit(1);
+  }
+
+  // --- Static generation modes (no MCP server) ---
+
+  const isGenerateInstructions = values["generate-instructions"] as boolean;
+  const isGenerateAgent = values["generate-agent"] as boolean;
+  const isGenerateAll = values["generate-all"] as boolean;
+
+  if (isGenerateAll) {
+    const audience = values["audience"] as string | undefined;
+    const ghDir = resolve(".github");
+    const instrDir = join(ghDir, "instructions");
+    const agentsDir = join(ghDir, "agents");
+
+    mkdirSync(instrDir, { recursive: true });
+    mkdirSync(agentsDir, { recursive: true });
+
+    // Tier 1: .github/copilot-instructions.md (compact index)
+    const compactContent = generateInstructions(manifestPath, { audience, format: "compact" });
+    writeFileSync(join(ghDir, "copilot-instructions.md"), compactContent);
+    process.stderr.write(`  wrote ${join(ghDir, "copilot-instructions.md")}\n`);
+
+    // Tier 2: .github/instructions/*.instructions.md (split by directory)
+    generateSplitInstructions(manifestPath, instrDir, {
+      splitBy: "directory",
+      audience,
+    });
+    process.stderr.write(`  wrote split instructions to ${instrDir}/\n`);
+
+    // Tier 3: .github/agents/kcp-expert.agent.md
+    const agentContent = generateAgentFile(manifestPath, { audience });
+    writeFileSync(join(agentsDir, "kcp-expert.agent.md"), agentContent);
+    process.stderr.write(`  wrote ${join(agentsDir, "kcp-expert.agent.md")}\n`);
+
+    process.exit(0);
+  }
+
+  if (isGenerateAgent) {
+    const audience = values["audience"] as string | undefined;
+    const maxCharsStr = values["max-chars"] as string | undefined;
+    const maxChars = maxCharsStr ? parseInt(maxCharsStr, 10) : undefined;
+    const content = generateAgentFile(manifestPath, { audience, maxChars });
+    process.stdout.write(content);
+    process.exit(0);
+  }
+
+  if (isGenerateInstructions) {
+    const audience = values["audience"] as string | undefined;
+    const format = (values["output-format"] as string) as "full" | "compact" | "agent";
+    const outputDir = values["output-dir"] as string | undefined;
+
+    if (outputDir) {
+      // Split mode: write individual instruction files
+      const splitBy = (values["split-by"] as string) as "directory" | "scope" | "unit" | "none";
+      mkdirSync(outputDir, { recursive: true });
+      generateSplitInstructions(manifestPath, outputDir, { splitBy, audience });
+      process.stderr.write(`  wrote split instructions to ${outputDir}/\n`);
+    } else {
+      // Single file mode: write to stdout
+      const content = generateInstructions(manifestPath, { audience, format });
+      process.stdout.write(content);
+    }
+    process.exit(0);
   }
 
   // Resolve sub-manifests from glob (relative to primary manifest directory)

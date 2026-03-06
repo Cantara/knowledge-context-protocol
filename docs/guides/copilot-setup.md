@@ -121,6 +121,127 @@ Commit the file. Copilot automatically injects its contents into every chat in t
 
 ---
 
+## Option C — Three-tier static instructions (enterprise, no infrastructure)
+
+For enterprise environments that need path-specific context without running an MCP server. This approach generates three tiers of static files that Copilot loads automatically based on context.
+
+### The three tiers
+
+| Tier | File | What it does | When Copilot loads it |
+|------|------|--------------|-----------------------|
+| 1. Global index | `.github/copilot-instructions.md` | Compact table of all knowledge units | Every chat in the repository |
+| 2. Path-specific | `.github/instructions/*.instructions.md` | Scoped units with `applyTo` frontmatter | When editing files matching the patterns |
+| 3. Agent | `.github/agents/kcp-expert.agent.md` | Full knowledge navigator agent | When invoked with `@kcp-expert` |
+
+### Quick start: `--generate-all`
+
+```bash
+npx kcp-mcp --generate-all knowledge.yaml
+```
+
+This single command writes all three tiers:
+
+```
+.github/
+  copilot-instructions.md          # Tier 1: compact index (always loaded)
+  instructions/
+    docs.instructions.md           # Tier 2: path-specific (loaded when editing docs/**)
+    src.instructions.md            #         (loaded when editing src/**)
+    ...
+  agents/
+    kcp-expert.agent.md            # Tier 3: full agent (invoked with @kcp-expert)
+```
+
+Commit the `.github/` directory. No server needed — Copilot reads these files natively.
+
+### Splitting strategies (`--split-by`)
+
+Control how units are grouped into path-specific instruction files:
+
+| Strategy | Behavior | Best for |
+|----------|----------|----------|
+| `directory` (default) | Groups by the top-level directory of each unit's `path` | Most projects |
+| `scope` | Groups by scope (`global`, `project`, `module`) | Small manifests with clear scope boundaries |
+| `unit` | One file per unit | Maximum granularity |
+| `none` | Single file with all units | Simple projects |
+
+```bash
+# Custom split strategy
+npx kcp-mcp --generate-instructions knowledge.yaml --output-dir .github/instructions --split-by scope
+```
+
+### Output formats (`--output-format`)
+
+```bash
+# Full (default) — verbose headings per unit
+npx kcp-mcp --generate-instructions knowledge.yaml --output-format full
+
+# Compact — markdown table (used by --generate-all for Tier 1)
+npx kcp-mcp --generate-instructions knowledge.yaml --output-format compact
+
+# Agent — table with navigator instructions
+npx kcp-mcp --generate-instructions knowledge.yaml --output-format agent
+```
+
+### CI/CD: keep instructions in sync
+
+Add this GitHub Actions workflow to regenerate instruction files when your knowledge manifest or docs change:
+
+```yaml
+name: KCP Sync Instructions
+on:
+  push:
+    branches: [main]
+    paths: ['knowledge.yaml', 'docs/**']
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npx kcp-mcp --generate-all knowledge.yaml
+      - name: Commit if changed
+        run: |
+          git diff --quiet .github/ && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/
+          git commit -m "chore: sync KCP instruction artifacts"
+          git push
+```
+
+### VS Code setting
+
+Enable path-specific instruction loading in VS Code by adding to `.vscode/settings.json`:
+
+```json
+{
+  "chat.includeApplyingInstructions": true
+}
+```
+
+### Using the `@kcp-expert` agent
+
+Once Tier 3 is committed, invoke the agent in Copilot Chat:
+
+```
+@kcp-expert How does authentication work in this project?
+@kcp-expert What units are related to deployment?
+```
+
+The agent will scan the knowledge table, read the relevant files, and summarize with cross-references.
+
+---
+
 ## Using the tools in Copilot Chat
 
 Once the MCP server is connected, Copilot has three tools available. You can invoke them explicitly or let Copilot call them automatically when relevant.
@@ -212,20 +333,26 @@ Invoke in Copilot Chat: `@project-expert explain the authentication flow`
 
 ---
 
-## Comparison: Copilot vs Claude Code
+## Comparison: Copilot integration options
 
-Both get access to the same knowledge via MCP. The difference is in what happens at the tool layer:
+| Capability | MCP server (Option A) | Static single-file (Option B) | Static 3-tier (Option C) | Claude Code (hooks + MCP) |
+|---|---|---|---|---|
+| Knowledge search | ✅ `search_knowledge` tool | ❌ static text | ❌ static text | ✅ same as MCP |
+| Knowledge content | ✅ `get_unit` tool | ❌ all units loaded | ✅ path-scoped loading | ✅ same as MCP |
+| CLI syntax | ✅ `get_command_syntax` tool | ❌ not available | ❌ not available | ✅ Phase A hook |
+| CLI output filtering | ❌ not available | ❌ not available | ❌ not available | ✅ Phase B hook |
+| Path-specific context | ❌ all-or-nothing | ❌ all-or-nothing | ✅ `applyTo` frontmatter | ✅ automatic |
+| Custom agent | ✅ `.agent.md` + MCP | ❌ | ✅ `@kcp-expert` (static) | ✅ skills (automatic) |
+| Infrastructure required | Node.js | none | none | Node.js |
+| Works on GitHub.com | ❌ | ✅ | ✅ | ❌ |
+| CI/CD sync | not needed | manual | ✅ GitHub Actions | not needed |
+| Skill depth | 30K char limit per agent | full file | full file | unlimited |
 
-| Capability | Copilot (MCP) | Claude Code (hooks + MCP) |
-|---|---|---|
-| Knowledge search | ✅ `search_knowledge` tool | ✅ same |
-| Knowledge content | ✅ `get_unit` tool | ✅ same |
-| CLI syntax injection | ✅ `get_command_syntax` tool | ✅ Phase A hook (automatic, pre-execution) |
-| CLI output filtering | ❌ not available | ✅ Phase B hook (automatic, post-execution) |
-| SDD skill auto-loading | ❌ manual via `.agent.md` | ✅ automatic by project context |
-| Skill depth | 30K char limit per agent | unlimited |
-
-The MCP knowledge layer is identical. Claude Code adds automatic hook-based injection and deeper skill integration.
+**Recommendation:**
+- **Option A (MCP)** when you can run Node.js and want dynamic search + on-demand content
+- **Option B (single file)** for quick setup or GitHub.com-only use
+- **Option C (3-tier)** for enterprise teams that need path-specific context without infrastructure
+- **Claude Code** for maximum integration depth (hooks, skills, unlimited context)
 
 ---
 
