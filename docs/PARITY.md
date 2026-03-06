@@ -25,7 +25,7 @@ When adding any capability:
 | Feature | TypeScript | Java | Notes |
 |---------|-----------|------|-------|
 | MCP Resources (list + read) | ✅ | ✅ | |
-| `search_knowledge` tool | ✅ | ✅ | scoring: id=10, trigger=5, intent=3, path=1, top-5 |
+| `search_knowledge` tool | ✅ | ✅ | scoring: trigger=5, intent=3, id/path=1, top-5 |
 | `get_unit` tool | ✅ | ✅ | |
 | `get_command_syntax` tool | ✅ | ✅ | requires `--commands-dir` |
 | `sdd-review` prompt | ✅ | ✅ | focus: architecture/quality/security/performance |
@@ -62,3 +62,5 @@ When adding any capability:
 | 0.5.0 | 2026-02 | MCP Resources only |
 | 0.6.0 | 2026-03-06 | MCP tools, prompts, `--generate-instructions`, Java parity |
 | 0.10.0 | 2026-03-06 | Three-tier static integration, `--generate-all`, full parity |
+
+> **Note:** v0.7.0--v0.9.0 were internal development milestones that shipped combined as v0.10.0.

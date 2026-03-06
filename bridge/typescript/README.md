@@ -2,7 +2,9 @@
 
 Exposes a [`knowledge.yaml`](https://github.com/Cantara/knowledge-context-protocol) manifest as an MCP server. Every AI agent that speaks MCP — Claude Code, GitHub Copilot, Cursor, Windsurf — can navigate your knowledge, search units, and get CLI syntax guidance without loading everything at once.
 
-**v0.6.0:** Added MCP tools (`search_knowledge`, `get_unit`, `get_command_syntax`), MCP prompts, and `--generate-instructions` for zero-infra Copilot support.
+A `knowledge.yaml` file maps your project's documentation — what each file answers, its audience, and how docs relate to each other. See the [KCP specification](https://github.com/Cantara/knowledge-context-protocol) for the schema and a starter template.
+
+**v0.10.0:** Added MCP tools (`search_knowledge`, `get_unit`, `get_command_syntax`), MCP prompts, `--generate-instructions`, and three-tier static integration (`--generate-all`, `--output-dir`, `--split-by`, `--generate-agent`) for zero-infra Copilot support.
 
 ## Install
 
@@ -31,6 +33,22 @@ kcp-mcp --generate-instructions knowledge.yaml > .github/copilot-instructions.md
 # Agent-only units, HTTP transport
 kcp-mcp knowledge.yaml --agent-only --transport http --port 8000
 ```
+
+## Three-tier generation (enterprise / no MCP)
+
+Generate all three tiers of static Copilot integration in one command:
+
+```bash
+# All three tiers in one command
+npx kcp-mcp --generate-all knowledge.yaml
+
+# Fine-grained control
+npx kcp-mcp --generate-instructions knowledge.yaml --output-format compact > .github/copilot-instructions.md
+npx kcp-mcp --generate-instructions knowledge.yaml --output-dir .github/instructions/ --split-by directory
+npx kcp-mcp --generate-agent knowledge.yaml --max-chars 25000 > .github/agents/kcp-expert.agent.md
+```
+
+See [Copilot setup guide](../../docs/guides/copilot-setup.md) for details on each tier.
 
 ## Configure in Claude Code
 
@@ -115,7 +133,7 @@ A manifest meta-resource at `knowledge://{slug}/manifest` returns the full unit 
 | `annotations.priority` | `global=1.0`, `project=0.7`, `module=0.5` |
 | `annotations.audience` | `["assistant"]` if `agent` in audience |
 
-### Tools (v0.6.0)
+### Tools (v0.10.0)
 
 **`search_knowledge`** — Find units by keyword. Agents call this instead of loading the entire manifest.
 
@@ -152,7 +170,7 @@ Preferred:
   git commit -m 'Add feature X'  # Standard single-line commit
 ```
 
-### Prompts (v0.6.0)
+### Prompts (v0.10.0)
 
 **`sdd-review`** — Review code or architecture using SDD (Skill-Driven Development) methodology.
 Optional argument: `focus` (`architecture` | `quality` | `security` | `performance`).
@@ -194,8 +212,14 @@ Options:
   --agent-only              Only expose units with audience: [agent]
   --sub-manifests <glob>    Additional manifests to merge
   --commands-dir <path>     Load kcp-commands manifests (enables get_command_syntax tool)
-  --generate-instructions   Write copilot-instructions.md to stdout instead of starting server
-  --audience <value>        Filter units by audience (use with --generate-instructions)
+  --generate-instructions   Write copilot-instructions.md to stdout and exit
+  --audience <value>        Filter units by audience (use with --generate-instructions or --generate-agent)
+  --output-format <fmt>     Output format: full | compact | agent (default: full)
+  --output-dir <path>       Write to directory instead of stdout (enables split mode)
+  --split-by <strategy>     Split strategy: directory | scope | unit | none (default: directory, requires --output-dir)
+  --generate-agent          Write kcp-expert .agent.md to stdout and exit
+  --max-chars <n>           Truncate agent file to n characters, dropping module-scope units first (default: 0 = no limit)
+  --generate-all            Generate all three tiers to .github/ (copilot-instructions.md + instructions/ + agents/)
   --transport <type>        stdio (default) or http
   --port <number>           Port for HTTP transport (default: 8000)
   --no-warnings             Suppress KCP validation warnings
@@ -243,7 +267,7 @@ process.stdout.write(md);
 ```bash
 npm install
 npm run build   # TypeScript compile
-npm test        # 108 tests
+npm test        # 131 tests
 ```
 
 ## License

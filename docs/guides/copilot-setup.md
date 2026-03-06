@@ -4,12 +4,24 @@
 
 ## What you get
 
+A `knowledge.yaml` file maps your project's documentation — what each file answers, its audience, and how docs relate to each other. See the [KCP specification](https://github.com/Cantara/knowledge-context-protocol) for the schema and a starter template.
+
 Once connected, Copilot can:
 
 - **Search your knowledge** — call `search_knowledge("oauth")` to find relevant units without loading everything
 - **Read any unit** — call `get_unit("api-overview")` to fetch content on demand
 - **Get CLI syntax** — call `get_command_syntax("git rebase")` for instant flag reference (requires `--commands-dir`)
 - **Use structured prompts** — `/sdd-review` for architecture review, `/kcp-explore <topic>` to navigate knowledge
+
+## Which option should I use?
+
+| Situation | Option |
+|-----------|--------|
+| You can run Node.js or Java in your IDE | **Option A** — MCP server (full features: dynamic search, on-demand content, CLI syntax) |
+| Quick setup or GitHub.com Copilot chat | **Option B** — `--generate-instructions` (single static file, no runtime) |
+| Enterprise / MCP blocked / need path-scoped context | **Option C** — `--generate-all` (three-tier: compact index + path-split + agent, no runtime) |
+
+When in doubt, start with Option A if you can, Option C if you cannot.
 
 ---
 
@@ -27,7 +39,7 @@ Create `.vscode/mcp.json` in your project root:
     "project-knowledge": {
       "type": "stdio",
       "command": "npx",
-      "args": ["kcp-mcp@0.6.0", "knowledge.yaml"]
+      "args": ["kcp-mcp@0.10.0", "knowledge.yaml"]
     }
   }
 }
@@ -42,7 +54,7 @@ With kcp-commands (adds CLI syntax tool — 284 commands including git, mvn, doc
       "type": "stdio",
       "command": "npx",
       "args": [
-        "kcp-mcp@0.6.0",
+        "kcp-mcp@0.10.0",
         "knowledge.yaml",
         "--commands-dir",
         "${workspaceFolder}/node_modules/kcp-commands/commands"
@@ -69,7 +81,7 @@ Open **Settings → Tools → GitHub Copilot → MCP Servers** → Add server:
 | Name | `project-knowledge` |
 | Type | `stdio` |
 | Command | `npx` |
-| Arguments | `kcp-mcp@0.6.0 knowledge.yaml` |
+| Arguments | `kcp-mcp@0.10.0 knowledge.yaml` |
 
 Or add `mcp.json` to your project root (same format as VS Code).
 
@@ -83,7 +95,7 @@ Add to `~/.copilot/mcp-config.json`:
     "project-knowledge": {
       "type": "stdio",
       "command": "npx",
-      "args": ["kcp-mcp@0.6.0", "knowledge.yaml"]
+      "args": ["kcp-mcp@0.10.0", "knowledge.yaml"]
     }
   }
 }
@@ -314,7 +326,7 @@ mcp-servers:
   project-knowledge:
     type: stdio
     command: npx
-    args: ["kcp-mcp@0.6.0", "knowledge.yaml"]
+    args: ["kcp-mcp@0.10.0", "knowledge.yaml"]
 ---
 
 You are an expert in this project. When answering questions:

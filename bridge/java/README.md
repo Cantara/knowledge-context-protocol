@@ -2,7 +2,9 @@
 
 Exposes a [`knowledge.yaml`](https://github.com/Cantara/knowledge-context-protocol) manifest as an MCP server. Every AI agent that speaks MCP — Claude Code, GitHub Copilot, Cursor, Windsurf — can navigate your knowledge, search units, and get CLI syntax guidance without loading everything at once.
 
-**v0.6.0:** Added MCP tools (`search_knowledge`, `get_unit`, `get_command_syntax`), MCP prompts (`sdd-review`, `kcp-explore`), and `--generate-instructions` for zero-infra Copilot support.
+A `knowledge.yaml` file maps your project's documentation — what each file answers, its audience, and how docs relate to each other. See the [KCP specification](https://github.com/Cantara/knowledge-context-protocol) for the schema and a starter template.
+
+**v0.10.0:** Added MCP tools (`search_knowledge`, `get_unit`, `get_command_syntax`), MCP prompts (`sdd-review`, `kcp-explore`), `--generate-instructions`, and three-tier static integration (`--generate-all`, `--output-dir`, `--split-by`, `--generate-agent`) for zero-infra Copilot support.
 
 ## Install
 
@@ -10,26 +12,42 @@ Exposes a [`knowledge.yaml`](https://github.com/Cantara/knowledge-context-protoc
 # Build a fat jar from source
 cd bridge/java
 mvn package -DskipTests
-# Produces target/kcp-mcp-0.6.0-jar-with-dependencies.jar
+# Produces target/kcp-mcp-0.10.0-jar-with-dependencies.jar
 ```
 
 ## Quick start
 
 ```bash
 # Serve ./knowledge.yaml via stdio
-java -jar kcp-mcp-0.6.0-jar-with-dependencies.jar
+java -jar kcp-mcp-0.10.0-jar-with-dependencies.jar
 
 # Serve with kcp-commands syntax guidance
-java -jar kcp-mcp-0.6.0-jar-with-dependencies.jar knowledge.yaml \
+java -jar kcp-mcp-0.10.0-jar-with-dependencies.jar knowledge.yaml \
   --commands-dir /path/to/kcp-commands/commands
 
 # Generate .github/copilot-instructions.md (no server needed)
-java -jar kcp-mcp-0.6.0-jar-with-dependencies.jar \
+java -jar kcp-mcp-0.10.0-jar-with-dependencies.jar \
   --generate-instructions knowledge.yaml > .github/copilot-instructions.md
 
 # Agent-only units
-java -jar kcp-mcp-0.6.0-jar-with-dependencies.jar knowledge.yaml --agent-only
+java -jar kcp-mcp-0.10.0-jar-with-dependencies.jar knowledge.yaml --agent-only
 ```
+
+## Three-tier generation (enterprise / no MCP)
+
+Generate all three tiers of static Copilot integration in one command:
+
+```bash
+# All three tiers in one command
+java -jar kcp-mcp-0.10.0-jar-with-dependencies.jar --generate-all knowledge.yaml
+
+# Fine-grained control
+java -jar kcp-mcp-0.10.0-jar-with-dependencies.jar --generate-instructions knowledge.yaml --output-format compact > .github/copilot-instructions.md
+java -jar kcp-mcp-0.10.0-jar-with-dependencies.jar --generate-instructions knowledge.yaml --output-dir .github/instructions/ --split-by directory
+java -jar kcp-mcp-0.10.0-jar-with-dependencies.jar --generate-agent knowledge.yaml --max-chars 25000 > .github/agents/kcp-expert.agent.md
+```
+
+See [Copilot setup guide](../../docs/guides/copilot-setup.md) for details on each tier.
 
 ## Configure in Claude Code
 
@@ -40,7 +58,7 @@ Add to `.mcp.json` in your project root or `~/.claude/mcp.json`:
   "mcpServers": {
     "project-knowledge": {
       "command": "java",
-      "args": ["-jar", "/path/to/kcp-mcp-0.6.0-jar-with-dependencies.jar", "knowledge.yaml"]
+      "args": ["-jar", "/path/to/kcp-mcp-0.10.0-jar-with-dependencies.jar", "knowledge.yaml"]
     }
   }
 }
@@ -54,7 +72,7 @@ With kcp-commands syntax injection:
     "project-knowledge": {
       "command": "java",
       "args": [
-        "-jar", "/path/to/kcp-mcp-0.6.0-jar-with-dependencies.jar",
+        "-jar", "/path/to/kcp-mcp-0.10.0-jar-with-dependencies.jar",
         "knowledge.yaml",
         "--commands-dir", "/path/to/kcp-commands/commands"
       ]
@@ -73,7 +91,7 @@ Add `.vscode/mcp.json` to your project:
     "project-knowledge": {
       "type": "stdio",
       "command": "java",
-      "args": ["-jar", "/path/to/kcp-mcp-0.6.0-jar-with-dependencies.jar", "knowledge.yaml"]
+      "args": ["-jar", "/path/to/kcp-mcp-0.10.0-jar-with-dependencies.jar", "knowledge.yaml"]
     }
   }
 }
@@ -98,7 +116,7 @@ A manifest meta-resource at `knowledge://{slug}/manifest` returns the full unit 
 | `annotations.priority` | `global=1.0`, `project=0.7`, `module=0.5` |
 | `annotations.audience` | `[assistant]` if `agent` in audience |
 
-### Tools (v0.6.0)
+### Tools (v0.10.0)
 
 **`search_knowledge`** — Find units by keyword. Agents call this instead of loading the entire manifest.
 
@@ -134,7 +152,7 @@ Preferred:
   git commit -m 'Add feature X'  # Standard single-line commit
 ```
 
-### Prompts (v0.6.0)
+### Prompts (v0.10.0)
 
 **`sdd-review`** — Review code or architecture using SDD (Skill-Driven Development) methodology.
 Optional argument: `focus` (`architecture` | `quality` | `security` | `performance`).
@@ -148,11 +166,11 @@ For teams that cannot run MCP servers (locked-down enterprise environments, GitH
 
 ```bash
 # Generate .github/copilot-instructions.md
-java -jar kcp-mcp-0.6.0-jar-with-dependencies.jar \
+java -jar kcp-mcp-0.10.0-jar-with-dependencies.jar \
   --generate-instructions knowledge.yaml > .github/copilot-instructions.md
 
 # Agent-facing units only
-java -jar kcp-mcp-0.6.0-jar-with-dependencies.jar \
+java -jar kcp-mcp-0.10.0-jar-with-dependencies.jar \
   --generate-instructions knowledge.yaml --audience agent > .github/copilot-instructions.md
 ```
 
@@ -163,7 +181,7 @@ The output is a static markdown file that Copilot injects into every chat intera
 Merge multiple `knowledge.yaml` files into a single MCP namespace. Units from sub-manifests are merged under the primary project slug; the primary manifest wins on duplicate ids.
 
 ```bash
-java -jar kcp-mcp-0.6.0-jar-with-dependencies.jar knowledge.yaml \
+java -jar kcp-mcp-0.10.0-jar-with-dependencies.jar knowledge.yaml \
   --sub-manifests path/to/sub1/knowledge.yaml path/to/sub2/knowledge.yaml
 ```
 
@@ -177,7 +195,13 @@ Options:
   --sub-manifests path ...  Additional manifests to merge
   --commands-dir <path>     Load kcp-commands manifests (enables get_command_syntax tool)
   --generate-instructions   Write copilot-instructions.md to stdout and exit
-  --audience <value>        Filter units by audience (with --generate-instructions)
+  --audience <value>        Filter units by audience (use with --generate-instructions or --generate-agent)
+  --output-format <fmt>     Output format: full | compact | agent (default: full)
+  --output-dir <path>       Write to directory instead of stdout (enables split mode)
+  --split-by <strategy>     Split strategy: directory | scope | unit | none (default: directory, requires --output-dir)
+  --generate-agent          Write kcp-expert .agent.md to stdout and exit
+  --max-chars <n>           Truncate agent file to n characters, dropping module-scope units first (default: 0 = no limit)
+  --generate-all            Generate all three tiers to .github/ (copilot-instructions.md + instructions/ + agents/)
   --no-warnings             Suppress KCP validation warnings
   --help, -h                Show help
 ```
