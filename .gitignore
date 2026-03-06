@@ -26,3 +26,12 @@ target/
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# npm auth tokens — never commit
+.npmrc
+
+# Synthesis index files
+.synthesis.md
+
+# Generated media
+docs/media/
