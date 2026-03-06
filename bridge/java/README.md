@@ -1,6 +1,8 @@
 # kcp-mcp — Java MCP Bridge for KCP
 
-Exposes a [`knowledge.yaml`](https://github.com/Cantara/knowledge-context-protocol) manifest as [MCP resources](https://modelcontextprotocol.io/specification/draft/server/resources). Every AI agent that speaks MCP can navigate your knowledge without loading everything at once.
+Exposes a [`knowledge.yaml`](https://github.com/Cantara/knowledge-context-protocol) manifest as an MCP server. Every AI agent that speaks MCP — Claude Code, GitHub Copilot, Cursor, Windsurf — can navigate your knowledge, search units, and get CLI syntax guidance without loading everything at once.
+
+**v0.6.0:** Added MCP tools (`search_knowledge`, `get_unit`, `get_command_syntax`), MCP prompts (`sdd-review`, `kcp-explore`), and `--generate-instructions` for zero-infra Copilot support.
 
 ## Install
 
@@ -8,43 +10,83 @@ Exposes a [`knowledge.yaml`](https://github.com/Cantara/knowledge-context-protoc
 # Build a fat jar from source
 cd bridge/java
 mvn package -DskipTests
-# Produces target/kcp-mcp-0.1.0-jar-with-dependencies.jar
+# Produces target/kcp-mcp-0.6.0-jar-with-dependencies.jar
 ```
 
-## Usage
+## Quick start
 
 ```bash
-# Serve ./knowledge.yaml via stdio (default)
-java -jar kcp-mcp-0.1.0-jar-with-dependencies.jar
+# Serve ./knowledge.yaml via stdio
+java -jar kcp-mcp-0.6.0-jar-with-dependencies.jar
 
-# Specify a path
-java -jar kcp-mcp-0.1.0-jar-with-dependencies.jar path/to/knowledge.yaml
+# Serve with kcp-commands syntax guidance
+java -jar kcp-mcp-0.6.0-jar-with-dependencies.jar knowledge.yaml \
+  --commands-dir /path/to/kcp-commands/commands
 
-# Only expose units with audience: [agent]
-java -jar kcp-mcp-0.1.0-jar-with-dependencies.jar knowledge.yaml --agent-only
+# Generate .github/copilot-instructions.md (no server needed)
+java -jar kcp-mcp-0.6.0-jar-with-dependencies.jar \
+  --generate-instructions knowledge.yaml > .github/copilot-instructions.md
 
-# Suppress validation warnings
-java -jar kcp-mcp-0.1.0-jar-with-dependencies.jar knowledge.yaml --no-warnings
+# Agent-only units
+java -jar kcp-mcp-0.6.0-jar-with-dependencies.jar knowledge.yaml --agent-only
 ```
 
 ## Configure in Claude Code
 
-Add to your project's `.mcp.json` or `~/.claude/mcp.json`:
+Add to `.mcp.json` in your project root or `~/.claude/mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "project-knowledge": {
       "command": "java",
-      "args": ["-jar", "/path/to/kcp-mcp-0.1.0-jar-with-dependencies.jar", "knowledge.yaml"]
+      "args": ["-jar", "/path/to/kcp-mcp-0.6.0-jar-with-dependencies.jar", "knowledge.yaml"]
     }
   }
 }
 ```
 
-## What the agent sees
+With kcp-commands syntax injection:
 
-On connection, the agent calls `resources/list` to see all knowledge units. Each unit is an MCP resource:
+```json
+{
+  "mcpServers": {
+    "project-knowledge": {
+      "command": "java",
+      "args": [
+        "-jar", "/path/to/kcp-mcp-0.6.0-jar-with-dependencies.jar",
+        "knowledge.yaml",
+        "--commands-dir", "/path/to/kcp-commands/commands"
+      ]
+    }
+  }
+}
+```
+
+## Configure in GitHub Copilot (VS Code / JetBrains / CLI)
+
+Add `.vscode/mcp.json` to your project:
+
+```json
+{
+  "servers": {
+    "project-knowledge": {
+      "type": "stdio",
+      "command": "java",
+      "args": ["-jar", "/path/to/kcp-mcp-0.6.0-jar-with-dependencies.jar", "knowledge.yaml"]
+    }
+  }
+}
+```
+
+See [Copilot setup guide](../../docs/guides/copilot-setup.md) for detailed instructions per IDE.
+
+## MCP capabilities
+
+### Resources
+
+Every knowledge unit becomes an MCP resource at `knowledge://{project-slug}/{unit.id}`.
+A manifest meta-resource at `knowledge://{slug}/manifest` returns the full unit index as JSON — the recommended entry point for agents.
 
 | MCP field | Source |
 |-----------|--------|
@@ -52,11 +94,93 @@ On connection, the agent calls `resources/list` to see all knowledge units. Each
 | `name` | `unit.id` |
 | `title` | `unit.intent` |
 | `description` | intent + triggers + depends_on |
-| `mimeType` | resolved from `content_type` → `format` → file extension |
+| `mimeType` | resolved from `content_type` -> `format` -> file extension |
 | `annotations.priority` | `global=1.0`, `project=0.7`, `module=0.5` |
 | `annotations.audience` | `[assistant]` if `agent` in audience |
 
-A synthetic **manifest resource** at `knowledge://{slug}/manifest` returns the full unit index as JSON — the recommended entry point for agents.
+### Tools (v0.6.0)
+
+**`search_knowledge`** — Find units by keyword. Agents call this instead of loading the entire manifest.
+
+```
+Input:  { query: string, audience?: string, scope?: string }
+Output: JSON array of top-5 matching units with id, intent, path, uri, score
+```
+
+Scoring: trigger match = 5 pts, intent match = 3 pts, id/path match = 1 pt.
+
+**`get_unit`** — Fetch the content of a specific unit by id.
+
+```
+Input:  { unit_id: string }
+Output: Full text content of the unit file
+```
+
+**`get_command_syntax`** — Get CLI syntax guidance from kcp-commands manifests.
+Only available when `--commands-dir` is set.
+
+```
+Input:  { command: string }   e.g. "git commit", "mvn", "docker build"
+Output: Compact syntax block with usage, key flags, and preferred invocations
+```
+
+Example output:
+```
+[kcp] git commit: Record staged changes to the repository
+Usage: git commit [<options>]
+Key flags:
+  -m '<message>': Commit message inline  -> Simple one-line commits
+Preferred:
+  git commit -m 'Add feature X'  # Standard single-line commit
+```
+
+### Prompts (v0.6.0)
+
+**`sdd-review`** — Review code or architecture using SDD (Skill-Driven Development) methodology.
+Optional argument: `focus` (`architecture` | `quality` | `security` | `performance`).
+
+**`kcp-explore`** — Explore available knowledge units for a topic.
+Required argument: `topic`.
+
+## Zero-infra option: `--generate-instructions`
+
+For teams that cannot run MCP servers (locked-down enterprise environments, GitHub.com Copilot):
+
+```bash
+# Generate .github/copilot-instructions.md
+java -jar kcp-mcp-0.6.0-jar-with-dependencies.jar \
+  --generate-instructions knowledge.yaml > .github/copilot-instructions.md
+
+# Agent-facing units only
+java -jar kcp-mcp-0.6.0-jar-with-dependencies.jar \
+  --generate-instructions knowledge.yaml --audience agent > .github/copilot-instructions.md
+```
+
+The output is a static markdown file that Copilot injects into every chat interaction in the repository. No server, no runtime, no configuration beyond committing the file.
+
+## Sub-manifests
+
+Merge multiple `knowledge.yaml` files into a single MCP namespace. Units from sub-manifests are merged under the primary project slug; the primary manifest wins on duplicate ids.
+
+```bash
+java -jar kcp-mcp-0.6.0-jar-with-dependencies.jar knowledge.yaml \
+  --sub-manifests path/to/sub1/knowledge.yaml path/to/sub2/knowledge.yaml
+```
+
+## CLI reference
+
+```
+kcp-mcp [path/to/knowledge.yaml] [options]
+
+Options:
+  --agent-only              Only expose units with audience: [agent]
+  --sub-manifests path ...  Additional manifests to merge
+  --commands-dir <path>     Load kcp-commands manifests (enables get_command_syntax tool)
+  --generate-instructions   Write copilot-instructions.md to stdout and exit
+  --audience <value>        Filter units by audience (with --generate-instructions)
+  --no-warnings             Suppress KCP validation warnings
+  --help, -h                Show help
+```
 
 ## Use as a library
 
@@ -64,16 +188,36 @@ A synthetic **manifest resource** at `knowledge://{slug}/manifest` returns the f
 import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.StdioServerTransportProvider;
+import no.cantara.kcp.mcp.KcpCommands;
 import no.cantara.kcp.mcp.KcpServer;
 
 import java.nio.file.Path;
+import java.util.Map;
 
-// Create the server
+// Basic server
 StdioServerTransportProvider transport =
     new StdioServerTransportProvider(McpJsonDefaults.getMapper());
 
 McpSyncServer server = KcpServer.createServer(
     Path.of("knowledge.yaml"), transport, false, true);
+
+// With command syntax tools
+Map<String, KcpCommands.CommandManifest> commands =
+    KcpCommands.loadCommandManifests(Path.of("/path/to/kcp-commands/commands"));
+
+McpSyncServer serverWithCommands = KcpServer.createServer(
+    Path.of("knowledge.yaml"), transport, false, true,
+    java.util.List.of(), commands);
+```
+
+Instructions generator:
+
+```java
+import no.cantara.kcp.mcp.KcpInstructions;
+
+String md = KcpInstructions.generateInstructions(
+    Path.of("knowledge.yaml"), "agent");
+System.out.print(md);
 ```
 
 ## Development

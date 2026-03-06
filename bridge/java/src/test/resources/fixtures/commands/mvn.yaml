@@ -1,0 +1,12 @@
+command: mvn
+platform: all
+description: Apache Maven build tool
+syntax:
+  usage: mvn [<options>] [<goals>]
+  key_flags:
+    - flag: "-DskipTests"
+      description: Skip running tests
+      use_when: Quick builds without test execution
+  preferred_invocations:
+    - invocation: "mvn clean install"
+      use_when: Full rebuild
