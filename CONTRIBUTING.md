@@ -277,6 +277,25 @@ Ineffective TL;DR files:
 
 ---
 
+## Spec version release checklist
+
+When merging a PR that bumps the spec version (e.g. v0.5 → v0.6):
+
+1. **SPEC.md** — bump `kcp_version` enum, add new fields, update conformance levels
+2. **schema/knowledge-schema.json** — add new fields/definitions, bump version enum
+3. **Parsers** — update Java, Python, TypeScript parsers and validators; all tests must pass
+4. **Bridges** — update TypeScript and Java MCP bridges (parity rule applies)
+5. **RFCs** — add promotion history tables to any RFC that contributed fields
+6. **Docs and examples** — update README, guides, examples, llms.txt, test fixtures
+7. **`docs/index.html`** — bump hero badge, roadmap intro, mark old version Shipped, add new version block with promoted fields, update RFC cards and adopter badge snippets
+8. **`docs/knowledge.yaml`** — bump `updated` date
+9. **`knowledge.yaml`** (repo root) — bump `kcp_version` and `updated`
+10. **Push `docs/` changes to `main`** — GitHub Pages deploys from `main`; changes not on `main` will not appear on the site
+
+The most commonly missed step is **#7 and #10**: the site lives in `docs/` on `main` and must be updated separately from any feature branch.
+
+---
+
 ## Code of conduct
 
 This project follows the [Contributor Covenant](https://www.contributor-covenant.org/).
