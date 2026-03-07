@@ -146,9 +146,11 @@ Warnings are printed to stderr:
 
 ### Model classes
 
-- `KnowledgeManifest` -- root manifest: `kcpVersion`, `project`, `version`, `updated`, `units`, `relationships`
-- `KnowledgeUnit` -- a knowledge unit: `id`, `path`, `intent`, `scope`, `audience`, `validated`, `dependsOn`, `supersedes`, `triggers`
+- `KnowledgeManifest` -- root manifest: `kcpVersion`, `project`, `version`, `updated`, `language`, `license`, `indexing`, `hints`, `trust`, `auth`, `payment`, `units`, `relationships`
+- `KnowledgeUnit` -- a knowledge unit: `id`, `path`, `kind`, `intent`, `format`, `contentType`, `language`, `scope`, `audience`, `license`, `validated`, `updateFrequency`, `indexing`, `dependsOn`, `supersedes`, `triggers`, `hints`, `access`, `authScope`, `sensitivity`, `deprecated`, `payment`
 - `Relationship` -- a directed relationship: `fromId`, `toId`, `type`
+- `Trust` -- trust metadata: `provenance` (publisher, publisherUrl, contact), `audit` (agentMustLog, requireTraceContext)
+- `Auth` -- authentication: `methods` (list of `AuthMethod`: type, issuer, scopes, header, registrationUrl)
 
 All model classes are Java records with immutable fields.
 

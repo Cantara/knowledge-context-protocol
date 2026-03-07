@@ -4,9 +4,14 @@
 import { readFileSync } from "node:fs";
 import yaml from "js-yaml";
 import type {
+  Auth,
+  AuthMethod,
   KnowledgeManifest,
   KnowledgeUnit,
   Relationship,
+  Trust,
+  TrustAudit,
+  TrustProvenance,
   LicenseValue,
   IndexingValue,
 } from "./model.js";
@@ -94,6 +99,22 @@ function parseUnit(raw: RawMap): KnowledgeUnit {
     supersedes:
       raw["supersedes"] !== undefined ? String(raw["supersedes"]) : undefined,
     triggers: asStringArray(raw["triggers"]),
+    hints:
+      raw["hints"] !== undefined && typeof raw["hints"] === "object" && !Array.isArray(raw["hints"])
+        ? (raw["hints"] as Record<string, unknown>)
+        : undefined,
+    access:
+      raw["access"] !== undefined ? String(raw["access"]) : undefined,
+    auth_scope:
+      raw["auth_scope"] !== undefined ? String(raw["auth_scope"]) : undefined,
+    sensitivity:
+      raw["sensitivity"] !== undefined ? String(raw["sensitivity"]) : undefined,
+    deprecated:
+      raw["deprecated"] !== undefined ? Boolean(raw["deprecated"]) : undefined,
+    payment:
+      raw["payment"] !== undefined && typeof raw["payment"] === "object" && !Array.isArray(raw["payment"])
+        ? (raw["payment"] as Record<string, unknown>)
+        : undefined,
   };
 }
 
@@ -105,6 +126,48 @@ function parseRelationship(raw: RawMap): Relationship {
     to_id: String(raw["to"] ?? ""),
     type: String(raw["type"] ?? "context"),
   };
+}
+
+// --- Trust and Auth parsing ---
+
+function parseTrust(raw: unknown): Trust | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const data = raw as RawMap;
+
+  let provenance: TrustProvenance | undefined;
+  const provData = data["provenance"] as RawMap | undefined;
+  if (provData && typeof provData === "object") {
+    provenance = {
+      publisher: provData["publisher"] !== undefined ? String(provData["publisher"]) : undefined,
+      publisher_url: provData["publisher_url"] !== undefined ? String(provData["publisher_url"]) : undefined,
+      contact: provData["contact"] !== undefined ? String(provData["contact"]) : undefined,
+    };
+  }
+
+  let audit: TrustAudit | undefined;
+  const auditData = data["audit"] as RawMap | undefined;
+  if (auditData && typeof auditData === "object") {
+    audit = {
+      agent_must_log: auditData["agent_must_log"] !== undefined ? Boolean(auditData["agent_must_log"]) : undefined,
+      require_trace_context: auditData["require_trace_context"] !== undefined ? Boolean(auditData["require_trace_context"]) : undefined,
+    };
+  }
+
+  return { provenance, audit };
+}
+
+function parseAuth(raw: unknown): Auth | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const data = raw as RawMap;
+  const rawMethods = (data["methods"] as RawMap[]) ?? [];
+  const methods: AuthMethod[] = rawMethods.map((m) => ({
+    type: String(m["type"] ?? ""),
+    issuer: m["issuer"] !== undefined ? String(m["issuer"]) : undefined,
+    scopes: asStringArray(m["scopes"]),
+    header: m["header"] !== undefined ? String(m["header"]) : undefined,
+    registration_url: m["registration_url"] !== undefined ? String(m["registration_url"]) : undefined,
+  }));
+  return { methods };
 }
 
 // --- Public API ---
@@ -129,6 +192,16 @@ export function parseDict(data: RawMap): KnowledgeManifest {
       data["language"] !== undefined ? String(data["language"]) : undefined,
     license: asLicenseOrIndexing(data["license"]),
     indexing: asLicenseOrIndexing(data["indexing"]),
+    hints:
+      data["hints"] !== undefined && typeof data["hints"] === "object" && !Array.isArray(data["hints"])
+        ? (data["hints"] as Record<string, unknown>)
+        : undefined,
+    trust: parseTrust(data["trust"]),
+    auth: parseAuth(data["auth"]),
+    payment:
+      data["payment"] !== undefined && typeof data["payment"] === "object" && !Array.isArray(data["payment"])
+        ? (data["payment"] as Record<string, unknown>)
+        : undefined,
     units: rawUnits.map(parseUnit),
     relationships: rawRels.map(parseRelationship),
   };

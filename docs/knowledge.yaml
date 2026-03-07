@@ -3,9 +3,9 @@
 # KCP eats its own dogfood.
 # This manifest describes the Knowledge Context Protocol repository itself.
 
-kcp_version: "0.5"
+kcp_version: "0.6"
 project: knowledge-context-protocol
-version: 0.5.0
+version: 0.6.0
 updated: "2026-03-01"
 language: en
 license: "Apache-2.0"
@@ -43,7 +43,7 @@ units:
 
   - id: rfc-0002
     path: RFC-0002-Auth-and-Delegation.md
-    intent: "How should KCP manifest auth requirements and multi-agent delegation constraints? The `access` field was promoted to SPEC.md §4.11 in v0.5; the auth block and delegation block remain RFC."
+    intent: "How should KCP manifest auth requirements and multi-agent delegation constraints? `access` promoted in v0.5; `auth_scope` and `auth` block promoted in v0.6; delegation block remains RFC."
     scope: global
     audience: [human, agent, architect, developer]
     validated: "2026-02-28"
@@ -61,7 +61,7 @@ units:
 
   - id: rfc-0004
     path: RFC-0004-Trust-and-Compliance.md
-    intent: "How should KCP express trust, provenance, content integrity, audit requirements, and compliance constraints for regulated enterprise deployments? The `trust.provenance` block and `sensitivity` field were promoted to SPEC.md in v0.5; the compliance block, content integrity, and audit sub-blocks remain RFC."
+    intent: "How should KCP express trust, provenance, content integrity, audit requirements, and compliance constraints for regulated enterprise deployments? `trust.provenance` and `sensitivity` promoted in v0.5; `trust.audit` promoted in v0.6; compliance block and content integrity remain RFC."
     scope: global
     audience: [human, agent, architect, developer]
     validated: "2026-02-28"

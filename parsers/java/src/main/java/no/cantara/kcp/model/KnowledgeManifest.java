@@ -14,6 +14,10 @@ public record KnowledgeManifest(
         String language,
         Object license,
         Object indexing,
+        Object hints,
+        Trust trust,
+        Auth auth,
+        Object payment,
         List<KnowledgeUnit> units,
         List<Relationship> relationships
 ) {

@@ -111,11 +111,15 @@ export function buildDescription(unit: KnowledgeUnit): string {
   parts.push(`Scope: ${unit.scope}`);
   parts.push(`Kind: ${unit.kind ?? "knowledge"}`);
   if (unit.validated) parts.push(`Validated: ${unit.validated}`);
+  if (unit.access && unit.access !== "public") parts.push(`Access: ${unit.access}`);
+  if (unit.sensitivity && unit.sensitivity !== "public")
+    parts.push(`Sensitivity: ${unit.sensitivity}`);
   if (unit.depends_on.length > 0)
     parts.push(`Depends on: ${unit.depends_on.join(", ")}`);
   if (unit.triggers.length > 0)
     parts.push(`Triggers: ${unit.triggers.join(", ")}`);
   if (unit.supersedes) parts.push(`Supersedes: ${unit.supersedes}`);
+  if (unit.deprecated) parts.push(`Deprecated: true`);
   return parts.join("\n");
 }
 
@@ -216,6 +220,12 @@ export function manifestToJson(
       if (u.depends_on.length > 0) entry["depends_on"] = u.depends_on;
       if (u.supersedes) entry["supersedes"] = u.supersedes;
       if (u.triggers.length > 0) entry["triggers"] = u.triggers;
+      if (u.hints) entry["hints"] = u.hints;
+      if (u.access) entry["access"] = u.access;
+      if (u.auth_scope) entry["auth_scope"] = u.auth_scope;
+      if (u.sensitivity) entry["sensitivity"] = u.sensitivity;
+      if (u.deprecated) entry["deprecated"] = u.deprecated;
+      if (u.payment) entry["payment"] = u.payment;
       return entry;
     }),
     relationships: manifest.relationships.map((r) => ({
@@ -223,6 +233,10 @@ export function manifestToJson(
       to: r.to_id,
       type: r.type,
     })),
+    ...(manifest.hints ? { hints: manifest.hints } : {}),
+    ...(manifest.trust ? { trust: manifest.trust } : {}),
+    ...(manifest.auth ? { auth: manifest.auth } : {}),
+    ...(manifest.payment ? { payment: manifest.payment } : {}),
   };
   return JSON.stringify(payload, null, 2);
 }

@@ -1,8 +1,13 @@
 package no.cantara.kcp;
 
+import no.cantara.kcp.model.Auth;
+import no.cantara.kcp.model.AuthMethod;
 import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
 import no.cantara.kcp.model.Relationship;
+import no.cantara.kcp.model.Trust;
+import no.cantara.kcp.model.TrustAudit;
+import no.cantara.kcp.model.TrustProvenance;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
@@ -46,6 +51,10 @@ public class KcpParser {
         String language = (String) data.get("language");
         Object license = data.get("license");
         Object indexing = data.get("indexing");
+        Object hints = data.get("hints");
+        Trust trust = parseTrust((Map<String, Object>) data.get("trust"));
+        Auth auth = parseAuth((Map<String, Object>) data.get("auth"));
+        Object payment = data.get("payment");
 
         List<Map<String, Object>> unitMaps = (List<Map<String, Object>>) data.getOrDefault("units", List.of());
         List<KnowledgeUnit> units = unitMaps.stream().map(KcpParser::parseUnit).toList();
@@ -53,7 +62,7 @@ public class KcpParser {
         List<Map<String, Object>> relMaps = (List<Map<String, Object>>) data.getOrDefault("relationships", List.of());
         List<Relationship> relationships = relMaps.stream().map(KcpParser::parseRelationship).toList();
 
-        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, units, relationships);
+        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, payment, units, relationships);
     }
 
     /**
@@ -96,7 +105,13 @@ public class KcpParser {
                 u.get("indexing"),
                 (List<String>) u.getOrDefault("depends_on", List.of()),
                 (String) u.get("supersedes"),
-                (List<String>) u.getOrDefault("triggers", List.of())
+                (List<String>) u.getOrDefault("triggers", List.of()),
+                u.get("hints"),
+                (String) u.get("access"),
+                (String) u.get("auth_scope"),
+                (String) u.get("sensitivity"),
+                (Boolean) u.get("deprecated"),
+                u.get("payment")
         );
     }
 
@@ -105,6 +120,51 @@ public class KcpParser {
                 (String) r.get("from"),
                 (String) r.get("to"),
                 (String) r.get("type")
+        );
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Trust parseTrust(Map<String, Object> t) {
+        if (t == null) return null;
+        TrustProvenance provenance = null;
+        TrustAudit audit = null;
+
+        Map<String, Object> provMap = (Map<String, Object>) t.get("provenance");
+        if (provMap != null) {
+            provenance = new TrustProvenance(
+                    (String) provMap.get("publisher"),
+                    (String) provMap.get("publisher_url"),
+                    (String) provMap.get("contact")
+            );
+        }
+
+        Map<String, Object> auditMap = (Map<String, Object>) t.get("audit");
+        if (auditMap != null) {
+            audit = new TrustAudit(
+                    (Boolean) auditMap.get("agent_must_log"),
+                    (Boolean) auditMap.get("require_trace_context")
+            );
+        }
+
+        return new Trust(provenance, audit);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Auth parseAuth(Map<String, Object> a) {
+        if (a == null) return null;
+        List<Map<String, Object>> methodMaps = (List<Map<String, Object>>) a.getOrDefault("methods", List.of());
+        List<AuthMethod> methods = methodMaps.stream().map(KcpParser::parseAuthMethod).toList();
+        return new Auth(methods);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static AuthMethod parseAuthMethod(Map<String, Object> m) {
+        return new AuthMethod(
+                (String) m.get("type"),
+                (String) m.get("issuer"),
+                (List<String>) m.getOrDefault("scopes", List.of()),
+                (String) m.get("header"),
+                (String) m.get("registration_url")
         );
     }
 

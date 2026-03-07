@@ -17,7 +17,7 @@ MCP solved the tool connectivity problem. KCP addresses the knowledge structure 
 Drop a `knowledge.yaml` at the root of any project. Agents stop guessing and start navigating.
 
 ```yaml
-kcp_version: "0.5"
+kcp_version: "0.6"
 project: my-project
 version: 1.0.0
 units:
@@ -85,11 +85,17 @@ hints:                             # optional — manifest-level aggregate hints
   total_token_estimate: <integer>
   recommended_entry_point: <unit-id>
   has_summaries: true | false
-trust:                             # optional — publisher provenance
+trust:                             # optional — publisher provenance and audit
   provenance:
     publisher: <string>
     publisher_url: <string>
     contact: <string>
+  audit:                           # optional — agent audit requirements
+    agent_must_log: true | false
+    require_trace_context: true | false
+auth:                              # optional — authentication methods
+  methods:
+    - type: none | oauth2 | api_key
 payment:                           # optional — default monetisation tier
   default_tier: free | metered | subscription
 
@@ -119,6 +125,7 @@ units:
       summary_unit: <unit-id>          # id of the summary unit
       summary_of: <unit-id>            # id of the full unit this summarises
     access: public | authenticated | restricted  # optional; default: public
+    auth_scope: <string>               # optional — opaque scope token for restricted units
     sensitivity: public | internal | confidential | restricted  # optional
     deprecated: true | false          # optional; default: false
     payment:                           # optional — override root default
@@ -152,6 +159,7 @@ relationships:
 | `triggers` | optional | Task contexts or keywords that make this unit relevant |
 | `hints` | optional | Advisory context window hints: `token_estimate`, `load_strategy`, `priority`, `density`, `summary_available`, `summary_unit`, `summary_of` |
 | `access` | optional | Who can fetch this unit: `public` (default), `authenticated`, `restricted` |
+| `auth_scope` | optional | Opaque scope token indicating which credential scope is needed (meaningful when `access` is `restricted`) |
 | `sensitivity` | optional | Information classification: `public`, `internal`, `confidential`, `restricted` |
 | `deprecated` | optional | If `true`, this unit is present but should not be used for new development |
 | `payment` | optional | Monetisation tier: `default_tier: free \| metered \| subscription` |
@@ -161,7 +169,7 @@ relationships:
 Five fields per unit are enough to start:
 
 ```yaml
-kcp_version: "0.5"
+kcp_version: "0.6"
 project: my-project
 version: 1.0.0
 units:
@@ -180,7 +188,7 @@ The standard allows complexity but does not demand it.
 
 ```yaml
 # knowledge.yaml
-kcp_version: "0.5"
+kcp_version: "0.6"
 project: wiki.example.org
 version: 1.0.0
 updated: "2026-02-28"
@@ -343,7 +351,7 @@ Until formal acceptance, KCP remains an Apache 2.0 open specification proposed b
 
 ## Status
 
-**Current:** Draft specification — v0.5
+**Current:** Draft specification — v0.6
 
 This is an early proposal. The format is intentionally minimal. Feedback, use cases, and pull
 requests are welcome.
@@ -351,9 +359,9 @@ requests are welcome.
 - **[SPEC.md](./SPEC.md)** — Normative specification (field definitions, validation rules, conformance levels)
 - **[PROPOSAL.md](./PROPOSAL.md)** — The case for a knowledge architecture standard
 - **[RFC-0001](./RFC-0001-KCP-Extended.md)** — Extended capabilities (overview of all proposals; F/H/I/J/K/L/N promoted to v0.3–v0.4 core)
-- **[RFC-0002](./RFC-0002-Auth-and-Delegation.md)** — Auth and delegation metadata proposal (`access`, `auth`, `delegation`)
+- **[RFC-0002](./RFC-0002-Auth-and-Delegation.md)** — Auth and delegation metadata (`access`, `auth_scope`, `auth` promoted to core in v0.5–v0.6; `delegation` remains RFC)
 - **[RFC-0003](./RFC-0003-Federation.md)** — Cross-manifest federation proposal (`manifests` block, `external_depends_on`, hub-and-spoke model)
-- **[RFC-0004](./RFC-0004-Trust-and-Compliance.md)** — Trust, provenance, and compliance metadata proposal (`trust`, `compliance` blocks)
+- **[RFC-0004](./RFC-0004-Trust-and-Compliance.md)** — Trust, provenance, and compliance metadata (`trust.provenance`, `sensitivity` promoted in v0.5; `trust.audit` promoted in v0.6; `compliance` remains RFC)
 - **[RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md)** — Payment and rate-limit metadata proposal (`payment`, `rate_limits` blocks)
 - **[RFC-0006](./RFC-0006-Context-Window-Hints.md)** — Context window hints (accepted; promoted to SPEC.md §4.10 in v0.4)
 - **parsers/** — Reference implementations (Python, Java)

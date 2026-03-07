@@ -1,8 +1,8 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.5
+**Version:** 0.6
 **Status:** Draft
-**Date:** 2026-03-01
+**Date:** 2026-03-07
 **Repository:** github.com/cantara/knowledge-context-protocol
 
 ---
@@ -91,7 +91,7 @@ Example:
 
 ```json
 {
-  "kcp_version": "0.5",
+  "kcp_version": "0.6",
   "manifest": "/knowledge.yaml",
   "title": "My Project Knowledge Base",
   "description": "Architecture decisions, API reference, and onboarding guides.",
@@ -122,7 +122,7 @@ version.
 ## 3. Root Manifest Structure
 
 ```yaml
-kcp_version: "0.5"          # RECOMMENDED
+kcp_version: "0.6"          # RECOMMENDED
 project: <string>            # REQUIRED
 version: <semver string>     # RECOMMENDED
 updated: "<ISO date>"        # RECOMMENDED; quote the value (see §4.1.1)
@@ -130,7 +130,8 @@ language: <BCP 47 tag>       # OPTIONAL; default language for all units (see §4
 license: <string or object>  # OPTIONAL; default license for all units (see §4.6a)
 indexing: <string or object>  # OPTIONAL; default indexing permissions (see §4.6c)
 hints: <object>              # OPTIONAL; manifest-level aggregate hints (see §4.10)
-trust: <object>              # OPTIONAL; publisher provenance (see §3.2)
+trust: <object>              # OPTIONAL; publisher provenance and audit requirements (see §3.2)
+auth: <object>               # OPTIONAL; authentication methods for this knowledge source (see §3.3)
 payment: <object>            # OPTIONAL; default monetisation tier for all units (see §4.14)
 
 units:                       # REQUIRED; list of knowledge units
@@ -144,7 +145,7 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
-| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.5"` for conformance with this document. |
+| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.6"` for conformance with this document. |
 | `project` | REQUIRED | string | Human-readable name of the project or documentation site. |
 | `version` | RECOMMENDED | string | Semver version of this manifest. Increment when units are added or removed. |
 | `updated` | RECOMMENDED | string | ISO 8601 date (`YYYY-MM-DD`) when this manifest was last modified. |
@@ -152,7 +153,8 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 | `license` | OPTIONAL | string or object | Default license for all units. See §4.6a. |
 | `indexing` | OPTIONAL | string or object | Default indexing permissions for all units. See §4.6c. |
 | `hints` | OPTIONAL | object | Manifest-level aggregate context hints. See §4.10. |
-| `trust` | OPTIONAL | object | Publisher provenance for this manifest. See §3.2. |
+| `trust` | OPTIONAL | object | Publisher provenance and audit requirements for this manifest. See §3.2. |
+| `auth` | OPTIONAL | object | Authentication methods for this knowledge source. See §3.3. |
 | `payment` | OPTIONAL | object | Default monetisation tier for all units. See §4.14. |
 | `units` | REQUIRED | list | Ordered list of knowledge unit declarations. MUST contain at least one unit. |
 | `relationships` | OPTIONAL | list | Explicit cross-unit relationship declarations. See §5. |
@@ -160,8 +162,9 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 ### 3.2 `trust`
 
 The root-level `trust` block declares the provenance of this manifest — who published it and
-how to contact them. It is advisory metadata: it carries no cryptographic weight unless
-combined with external signing infrastructure (see §13.1).
+how to contact them — and what audit behaviour is expected from agents that access it. It is
+advisory metadata: it carries no cryptographic weight unless combined with external signing
+infrastructure (see §13.1).
 
 ```yaml
 trust:
@@ -169,6 +172,9 @@ trust:
     publisher: "Acme Corp"
     publisher_url: "https://acme.com"
     contact: "knowledge-team@acme.com"
+  audit:
+    agent_must_log: true
+    require_trace_context: true
 ```
 
 #### `trust.provenance` sub-fields
@@ -179,12 +185,126 @@ trust:
 | `publisher_url` | OPTIONAL | string | URL of the publisher's web presence. MUST use HTTPS if present. |
 | `contact` | OPTIONAL | string | Email address or URL for questions about this manifest's content. |
 
-All sub-fields are OPTIONAL. An empty `trust` block (no sub-fields) is valid and SHOULD be
-silently accepted. Unknown sub-fields MUST be silently ignored.
+#### `trust.audit` sub-fields
 
-The `trust` block in this version covers provenance only. Cryptographic content integrity,
-audit requirements, and agent attestation requirements are defined in RFC-0004 and may be
-promoted to the core spec in a future version.
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `agent_must_log` | OPTIONAL | boolean | Advisory: agents SHOULD record access to this manifest's units in their own audit trail. Default: `false`. |
+| `require_trace_context` | OPTIONAL | boolean | If `true`: agents MUST include [W3C Trace Context](https://www.w3.org/TR/trace-context/) headers (`traceparent`, `tracestate`) when fetching content via HTTP, so the full access chain can be reconstructed. Compatible with [OpenTelemetry](https://opentelemetry.io/). Default: `false`. |
+
+**`require_trace_context` and local file access:** KCP manifests are frequently consumed from
+local file systems or git repositories where no HTTP request occurs. When content is accessed
+locally rather than via HTTP, the `traceparent`/`tracestate` header semantics do not apply.
+In this case, agents SHOULD generate a `traceparent` value conforming to the W3C Trace Context
+specification and record it alongside the access event in their own audit trail. The intent
+is the same — a reconstructable trace of which agent accessed which unit and when — regardless
+of whether the access occurred over HTTP or via the local file system.
+
+All sub-fields of `trust` are OPTIONAL. An empty `trust` block (no sub-fields) is valid and
+SHOULD be silently accepted. Unknown sub-fields MUST be silently ignored.
+
+Cryptographic content integrity, access receipts, and agent attestation requirements are
+defined in [RFC-0004](./RFC-0004-Trust-and-Compliance.md) and may be promoted to the core spec
+in a future version.
+
+### 3.3 `auth`
+
+The root-level `auth` block describes how to authenticate to the knowledge source. It is
+relevant when the manifest is served via a KCP-aware MCP server, an HTTP endpoint, or a
+federated discovery registry. For manifests served from public git repositories or static
+sites with no access control, the `auth` block MAY be omitted entirely.
+
+```yaml
+auth:
+  methods:
+    - type: oauth2
+      flow: client_credentials
+      token_endpoint: "https://auth.example.com/token"
+      scopes: ["read:knowledge"]
+
+    - type: api_key
+      header: "X-API-Key"
+      registration_url: "https://example.com/register"
+
+    - type: none
+```
+
+#### How agents use the `auth` block
+
+1. Agent discovers a manifest and inspects units for `access` values (see §4.11).
+2. Any unit with `access: authenticated` or `access: restricted` triggers credential
+   acquisition.
+3. Agent reads `auth.methods` to determine how to acquire credentials.
+4. Agent selects the first method it supports and proceeds.
+5. If no supported method exists, the agent SHOULD surface this to its operator rather than
+   silently failing.
+
+#### `auth.methods`
+
+The `methods` list declares one or more authentication schemes supported by this knowledge
+source, in preference order. Agents try methods in list order until one succeeds. This enables
+graceful degradation across environments (e.g. prefer OAuth 2.1 but accept API key).
+
+Each entry MUST have a `type` field. The following types are defined in this version of the
+specification:
+
+| Type | Description | Sub-fields |
+|------|-------------|------------|
+| `none` | No credentials required. | None. |
+| `oauth2` | OAuth 2.1 authentication. | `flow`, `token_endpoint`, `authorization_endpoint`, `scopes`, `resource` |
+| `api_key` | API key passed in a named HTTP header. | `header`, `registration_url` |
+
+Unknown `type` values MUST be silently ignored by parsers. This enables forward compatibility
+with additional auth types defined in [RFC-0002](./RFC-0002-Auth-and-Delegation.md) (e.g.
+`spiffe`, `did`, `bearer_token`, `http_signature`) without requiring core spec changes.
+
+##### `type: none`
+
+Declares that the knowledge source accepts unauthenticated access. When `none` appears in a
+list alongside other methods, it serves as a fallback — agents that cannot satisfy any other
+method may access content without credentials.
+
+**Interaction with `access`:** Units with `access: public` are implicitly accessible via
+`type: none`. Units with `access: authenticated` or `access: restricted` require a
+non-`none` method; the presence of `type: none` in the methods list does not satisfy their
+access requirement. In practice, manifests with mixed access levels (some public, some
+restricted) will typically list `type: none` as the last method to signal that the public
+units are freely accessible.
+
+##### `type: oauth2`
+
+Declares that the knowledge source supports [OAuth 2.1](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1-12)
+authentication. This is the baseline auth mechanism — consistent with
+[MCP's authorization specification](https://modelcontextprotocol.io/specification/draft/basic/authorization),
+which also requires OAuth 2.1.
+
+| Sub-field | Required | Description |
+|-----------|----------|-------------|
+| `flow` | RECOMMENDED | OAuth flow: `client_credentials`, `authorization_code`, or `device_code`. Default: `client_credentials`. |
+| `token_endpoint` | REQUIRED | URL of the OAuth token endpoint. MUST use HTTPS. |
+| `authorization_endpoint` | OPTIONAL | URL of the authorization endpoint. Required for `authorization_code` and `device_code` flows. |
+| `scopes` | OPTIONAL | List of OAuth scopes to request. |
+| `resource` | OPTIONAL | [RFC 8707](https://datatracker.ietf.org/doc/html/rfc8707) resource indicator for scoping tokens to this knowledge source. |
+
+##### `type: api_key`
+
+Declares that the knowledge source accepts an API key passed in a named HTTP header. This is
+a simpler alternative to OAuth for knowledge sources that do not require delegated
+authorization.
+
+| Sub-field | Required | Description |
+|-----------|----------|-------------|
+| `header` | REQUIRED | Name of the HTTP header that carries the API key (e.g. `"X-API-Key"`, `"Authorization"`). |
+| `registration_url` | OPTIONAL | URL where agents or operators can register for an API key. |
+
+#### `auth` block conformance
+
+- `auth` is OPTIONAL. Omitting it means no authentication metadata is declared.
+- Parsers MUST NOT reject a manifest because `auth` is absent, even if units declare
+  `access: authenticated` or `access: restricted`.
+- When `auth` is present but no method in `auth.methods` is recognised by the parser, the
+  parser SHOULD emit a warning and MUST NOT reject the manifest.
+- Unknown sub-fields within any method entry MUST be silently ignored.
 
 ---
 
@@ -214,6 +334,7 @@ Each entry in `units` describes a self-contained piece of knowledge.
 | `triggers` | OPTIONAL | list of strings | Keywords or task contexts that make this unit relevant. See §4.9. |
 | `hints` | OPTIONAL | object | Advisory context window hints: size, loading strategy, and summary relationships. See §4.10. |
 | `access` | OPTIONAL | string | Who can fetch this unit's content. One of: `public`, `authenticated`, `restricted`. Default: `public`. See §4.11. |
+| `auth_scope` | OPTIONAL | string | Named scope, role, or group required when `access` is `restricted`. See §4.11. |
 | `sensitivity` | OPTIONAL | string | Information classification level. One of: `public`, `internal`, `confidential`, `restricted`. See §4.12. |
 | `deprecated` | OPTIONAL | boolean | If `true`, this unit is present but should not be used for new development. See §4.13. |
 | `payment` | OPTIONAL | object | Monetisation tier for this unit. Overrides root-level `payment` default. See §4.14. |
@@ -696,7 +817,7 @@ hints:
 `total_token_estimate` SHOULD be recomputed by tooling when unit estimates change. Publishers
 SHOULD NOT maintain it by hand; a stale value is worse than an absent value.
 
-### 4.11 `access`
+### 4.11 `access` and `auth_scope`
 
 The `access` field is a lightweight advisory signal indicating what kind of credential, if any,
 is required to fetch the content of this unit.
@@ -704,8 +825,18 @@ is required to fetch the content of this unit.
 | Value | Meaning |
 |-------|---------|
 | `public` | No credential required. Freely accessible. Default when `access` is omitted. |
-| `authenticated` | Any valid credential for this knowledge source is sufficient. |
-| `restricted` | Explicit permission required. The specific credential type is declared elsewhere (e.g. in an `auth` block defined in RFC-0002). |
+| `authenticated` | Any valid credential for this knowledge source is sufficient. The root-level `auth` block (§3.3) describes how to acquire one. |
+| `restricted` | A specific scope or role is required. Declare it in `auth_scope`. The root-level `auth` block (§3.3) describes how to authenticate. |
+
+The `auth_scope` field is an optional companion to `access: restricted`. It is a free-form
+string naming the scope, role, or group required to access the unit. Examples: `"ops-team"`,
+`"read:internal"`, `"cn=data-analysts"`. Parsers treat it as an opaque advisory string — no
+validation of the value itself is performed.
+
+When both `auth_scope` and `auth.methods` (§3.3) are present, the scope value in `auth_scope`
+SHOULD correspond to a scope or role supported by the declared auth method. For OAuth 2.1,
+the `auth_scope` value typically matches one of the `scopes` declared in the `auth.methods`
+entry. This correspondence is advisory; parsers MUST NOT validate it.
 
 ```yaml
 units:
@@ -729,6 +860,7 @@ units:
     scope: module
     audience: [agent]
     access: restricted
+    auth_scope: executive-team
 ```
 
 `access` is an advisory declaration. It does not constitute an access control mechanism — a
@@ -736,6 +868,10 @@ manifest declaring `access: restricted` does not prevent an agent from loading t
 no enforcement layer exists at the transport or storage level. See §13.1.
 
 Unknown `access` values MUST be silently ignored by parsers.
+
+`auth_scope` is OPTIONAL. Parsers MUST NOT reject a manifest because `auth_scope` is absent
+on a unit with `access: restricted`. A validator SHOULD warn when `auth_scope` is present on
+a unit whose `access` is not `restricted`, as the scope has no effect without the access gate.
 
 ### 4.12 `sensitivity`
 
@@ -800,9 +936,9 @@ When `deprecated: true`:
 The `payment` field declares the monetisation model for this unit. It is an advisory signal
 that allows agents to assess whether access will incur a cost before attempting to load content.
 
-In v0.5, only the `default_tier` sub-field is defined. Additional sub-fields (payment methods,
-x402 micropayment details, rate limits) are specified in RFC-0005 and may be promoted in a
-future version.
+In this version, only the `default_tier` sub-field is defined. Additional sub-fields (payment
+methods, x402 micropayment details, rate limits) are specified in RFC-0005 and may be promoted
+in a future version.
 
 **Unit-level form:**
 
@@ -876,9 +1012,9 @@ Unknown relationship types MUST be silently ignored.
 ### 6.1 Spec Version (`kcp_version`)
 
 `kcp_version` identifies which version of this specification the manifest conforms to. Current
-valid value: `"0.5"`. The values `"0.1"`, `"0.2"`, `"0.3"`, and `"0.4"` refer to prior drafts
-(February–March 2026); parsers SHOULD treat these manifests as conformant with this version, as
-v0.5 is a strict superset of v0.4 (new fields only, no removals or breaking changes). Parsers
+valid value: `"0.6"`. The values `"0.1"` through `"0.5"` refer to prior drafts (February–March
+2026); parsers SHOULD treat these manifests as conformant with this version, as v0.6 is a
+strict superset of v0.5 (new fields only, no removals or breaking changes). Parsers
 encountering an unknown `kcp_version` SHOULD process the manifest using the closest known
 version and SHOULD emit a warning.
 
@@ -907,6 +1043,8 @@ manifest:
 - An unknown relationship `type`
 - A `kcp_version` the parser does not recognise
 - Duplicate `id` values (parsers SHOULD use the first occurrence)
+- `auth_scope` present on a unit whose `access` is not `restricted`
+- `auth.methods` containing no recognised `type` values
 
 The following conditions MUST cause the parser to reject the manifest:
 
@@ -923,10 +1061,11 @@ The following conditions MUST cause the parser to reject the manifest:
 A JSON Schema (draft-07) for `knowledge.yaml` is available at
 [`schema/knowledge-schema.json`](./schema/knowledge-schema.json). It covers all fields defined in
 this specification: root fields (`kcp_version`, `project`, `version`, `updated`, `language`,
-`license`, `indexing`, `hints`, `trust`, `payment`), unit fields (`id`, `path`, `kind`, `intent`,
-`format`, `content_type`, `language`, `scope`, `audience`, `license`, `validated`,
+`license`, `indexing`, `hints`, `trust`, `auth`, `payment`), unit fields (`id`, `path`, `kind`,
+`intent`, `format`, `content_type`, `language`, `scope`, `audience`, `license`, `validated`,
 `update_frequency`, `indexing`, `depends_on`, `supersedes`, `triggers`, `hints`, `access`,
-`sensitivity`, `deprecated`, `payment`), and relationship fields (`from`, `to`, `type`).
+`auth_scope`, `sensitivity`, `deprecated`, `payment`), and relationship fields (`from`, `to`,
+`type`).
 
 The schema enforces required fields, value constraints (e.g. `id` pattern, `kind` enum,
 `format` enum, trigger `maxLength` and `maxItems`), and structural rules. It can be used with
@@ -948,19 +1087,23 @@ each piece answer, and who is it for?" Parsers SHOULD supply default values when
 **Level 2 — Structured**
 Extends Level 1 with `validated`, `depends_on`, `kind`, `format`, `language`, the core
 `hints` fields (`token_estimate`, `load_strategy`, `summary_available`, `summary_unit`,
-`summary_of`), and the v0.5 access and classification fields: `access`, `sensitivity`,
-`deprecated`, `payment`, and the root-level `trust.provenance` block. A Level 2 manifest
+`summary_of`), the access and classification fields (`access`, `auth_scope`, `sensitivity`,
+`deprecated`, `payment`), and the root-level `trust.provenance` block. A Level 2 manifest
 supports freshness-aware retrieval, dependency-ordered loading, artifact type classification,
 content format awareness, multilingual navigation, basic context-budget planning (agents know
 unit sizes and can prefer summaries over full documents), access-tier routing (agents skip
-units they cannot or should not load), and basic publisher attribution.
+units they cannot or should not load), scope-based access qualification, and basic publisher
+attribution.
 
 **Level 3 — Full**
 Extends Level 2 with `triggers`, `supersedes`, `license`, `update_frequency`, `indexing`,
-advanced `hints` (`priority`, `density`, chunking fields), root-level `hints`, and a
-`relationships` section. A Level 3 manifest supports task-based routing, knowledge graph
-navigation, drift detection, usage rights declaration, cache management, AI crawling permissions,
-context eviction ordering, and large-document chunked access.
+advanced `hints` (`priority`, `density`, chunking fields), root-level `hints`, a
+`relationships` section, the root-level `auth` block (§3.3) with authentication method
+descriptions, and the `trust.audit` sub-block (§3.2) with access logging and trace context
+requirements. A Level 3 manifest supports task-based routing, knowledge graph navigation,
+drift detection, usage rights declaration, cache management, AI crawling permissions, context
+eviction ordering, large-document chunked access, authentication discovery, and auditable
+knowledge access.
 
 All three levels are valid KCP. A tool MUST NOT reject a manifest for being below the
 level it was designed for — graceful degradation is required.
@@ -1127,14 +1270,14 @@ MUST apply the following constraints:
   resolved manifest URLs MUST be maintained across the fetch chain. A manifest URL that
   appears in its own transitive fetch chain MUST be silently ignored.
 - Parsers SHOULD enforce a maximum remote fetch depth. The RECOMMENDED default is 5.
-- The YAML safety requirements of §12.2 apply to all remotely fetched manifests.
+- The YAML safety requirements of §13.2 apply to all remotely fetched manifests.
 
 ---
 
 ## Appendix A: Minimal Example
 
 ```yaml
-kcp_version: "0.5"
+kcp_version: "0.6"
 project: my-project
 version: 1.0.0
 units:
@@ -1150,10 +1293,10 @@ units:
 ## Appendix B: Full Example
 
 ```yaml
-kcp_version: "0.5"
+kcp_version: "0.6"
 project: wiki.example.org
 version: 2.3.0
-updated: "2026-03-01"
+updated: "2026-03-07"
 language: en
 license: "Apache-2.0"
 indexing: open
@@ -1167,6 +1310,16 @@ trust:
     publisher: "Example Corp"
     publisher_url: "https://wiki.example.org"
     contact: "docs@example.org"
+  audit:
+    agent_must_log: true
+    require_trace_context: false
+auth:
+  methods:
+    - type: oauth2
+      flow: client_credentials
+      token_endpoint: "https://auth.example.org/token"
+      scopes: ["read:docs"]
+    - type: none
 payment:
   default_tier: free
 
@@ -1267,7 +1420,8 @@ units:
     scope: project
     audience: [developer, agent]
     validated: "2026-02-10"
-    access: authenticated
+    access: restricted
+    auth_scope: dev-team
     sensitivity: internal
     indexing: read-only
     hints:

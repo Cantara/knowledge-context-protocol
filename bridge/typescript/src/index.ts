@@ -33,6 +33,11 @@ export type {
   ValidationResult,
   LicenseValue,
   IndexingValue,
+  Auth,
+  AuthMethod,
+  Trust,
+  TrustProvenance,
+  TrustAudit,
 } from "./model.js";
 export type { KcpServerOptions, KcpMcpServer } from "./server.js";
 export type { McpResourceMeta } from "./mapper.js";
