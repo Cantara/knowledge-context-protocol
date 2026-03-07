@@ -100,7 +100,7 @@
   <section class="hero" id="hero">
     <div class="container">
       <div class="hero__badge">
-        <span>v0.5 Draft Spec</span>
+        <span>v0.6 Draft Spec</span>
         &middot;
         <span>Open Standard</span>
         &middot;
@@ -1720,7 +1720,7 @@ relationships:
       <div class="adopters-cta-box reveal">
         <h3>Add your project</h3>
         <p>Using KCP in a public repository? Open an issue and we'll add you to this list. You can also add a badge to your own README.</p>
-        <div class="adopter-snippet">[![KCP](https://img.shields.io/badge/KCP-v0.5-2563eb?style=flat-square&logo=yaml&logoColor=white)](https://cantara.github.io/knowledge-context-protocol/)</div>
+        <div class="adopter-snippet">[![KCP](https://img.shields.io/badge/KCP-v0.6-2563eb?style=flat-square&logo=yaml&logoColor=white)](https://cantara.github.io/knowledge-context-protocol/)</div>
         <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
           <a href="https://github.com/Cantara/knowledge-context-protocol/issues/new?title=Add+adopter:+[your+project]&body=Project+name:%0ARepository+URL:%0ABrief+description:" target="_blank" rel="noopener" class="btn btn--primary">Open issue to add your project</a>
           <a href="https://github.com/Cantara/knowledge-context-protocol" target="_blank" rel="noopener" class="btn btn--outline">View on GitHub</a>
@@ -1729,7 +1729,7 @@ relationships:
 
       <div class="adopters-badges reveal">
         <img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License: Apache 2.0" height="20">
-        <img src="https://img.shields.io/badge/KCP-v0.5-22c55e?style=flat-square&logo=yaml&logoColor=white" alt="KCP v0.5" height="20">
+        <img src="https://img.shields.io/badge/KCP-v0.6-22c55e?style=flat-square&logo=yaml&logoColor=white" alt="KCP v0.6" height="20">
         <img src="https://img.shields.io/badge/spec-stable-22c55e?style=flat-square" alt="Spec: Stable" height="20">
       </div>
 
@@ -1786,7 +1786,7 @@ relationships:
       <div class="section-header reveal">
         <span class="section-label">Roadmap</span>
         <h2>Where KCP is headed</h2>
-        <p>v0.5 is the current draft. Fields are promoted from RFC proposals to core as they accumulate real-world validation. Remaining RFCs are open for community feedback through 2026.</p>
+        <p>v0.6 is the current draft. Fields are promoted from RFC proposals to core as they accumulate real-world validation. Remaining RFCs are open for community feedback through 2026.</p>
       </div>
 
       <div class="roadmap-core reveal">
@@ -1838,7 +1838,7 @@ relationships:
 
       <div class="roadmap-core reveal">
         <div class="roadmap-core__info">
-          <span class="roadmap-core__badge">v0.5 — Current</span>
+          <span class="roadmap-core__badge">v0.5 — Shipped</span>
           <h3>Access, classification &amp; provenance</h3>
           <p>Five fields promoted from RFC-0002, RFC-0004, and RFC-0005. Agents can skip units they cannot or should not load, and publishers can declare who they are.</p>
         </div>
@@ -1848,6 +1848,19 @@ relationships:
           <span class="roadmap-field-pill">deprecated</span>
           <span class="roadmap-field-pill">payment.default_tier</span>
           <span class="roadmap-field-pill">trust.provenance</span>
+        </div>
+      </div>
+
+      <div class="roadmap-core reveal">
+        <div class="roadmap-core__info">
+          <span class="roadmap-core__badge">v0.6 — Current</span>
+          <h3>Authorization &amp; audit</h3>
+          <p>Three fields promoted from RFC-0002 and RFC-0004. Publishers can name required auth scopes, declare supported auth methods (OAuth 2.0, API key, or none), and require agents to produce audit trails with W3C Trace Context.</p>
+        </div>
+        <div class="roadmap-core__fields">
+          <span class="roadmap-field-pill">auth_scope</span>
+          <span class="roadmap-field-pill">auth.methods</span>
+          <span class="roadmap-field-pill">trust.audit</span>
         </div>
       </div>
 
@@ -1863,7 +1876,7 @@ relationships:
             <span class="rfc-card__block">auth</span>
             <span class="rfc-card__block">delegation</span>
           </div>
-          <p>Authentication methods (OAuth 2.1, API key, SPIFFE, DID) and multi-agent delegation chain constraints. The <code>access</code> field was promoted to core in v0.5.</p>
+          <p>Authentication methods (OAuth 2.1, API key, SPIFFE, DID) and multi-agent delegation chain constraints. The <code>access</code> field was promoted to core in v0.5; <code>auth_scope</code> and <code>auth.methods</code> were promoted to core in v0.6.</p>
           <div class="rfc-card__footer">
             <span class="rfc-card__status">Open for feedback</span>
             <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0002-Auth-and-Delegation.md" target="_blank" rel="noopener">Read RFC →</a>
@@ -1900,7 +1913,7 @@ relationships:
             <span class="rfc-card__block">audit</span>
             <span class="rfc-card__block">agent_requirements</span>
           </div>
-          <p>Data residency, regulation vocabulary (GDPR, NIS2, HIPAA, DORA&hellip;), processing restrictions, content integrity (JWS signing), and audit/attestation (W3C Trace Context, <code>attestation_url</code>, <code>trusted_providers</code>). <code>trust.provenance</code> and <code>sensitivity</code> were promoted to core in v0.5.</p>
+          <p>Data residency, regulation vocabulary (GDPR, NIS2, HIPAA, DORA&hellip;), processing restrictions, content integrity (JWS signing), and audit/attestation (W3C Trace Context, <code>attestation_url</code>, <code>trusted_providers</code>). <code>trust.provenance</code> and <code>sensitivity</code> were promoted to core in v0.5; <code>trust.audit</code> was promoted to core in v0.6.</p>
           <div class="rfc-card__footer">
             <span class="rfc-card__status">Open for feedback</span>
             <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0004-Trust-and-Compliance.md" target="_blank" rel="noopener">Read RFC →</a>
