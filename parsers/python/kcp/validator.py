@@ -15,7 +15,9 @@ VALID_FORMATS = {
 }
 VALID_UPDATE_FREQUENCIES = {"hourly", "daily", "weekly", "monthly", "rarely", "never"}
 VALID_INDEXING_SHORTHANDS = {"open", "read-only", "no-train", "none"}
-KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3"}
+VALID_ACCESS_VALUES = {"public", "authenticated", "restricted"}
+VALID_SENSITIVITY_VALUES = {"public", "internal", "confidential", "restricted"}
+KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6"}
 _ID_PATTERN = re.compile(r"^[a-z0-9.\-]+$")
 _MAX_TRIGGER_LENGTH = 60
 _MAX_TRIGGERS_PER_UNIT = 20
@@ -92,7 +94,7 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
 
     # kcp_version — RECOMMENDED; warn if missing or unknown
     if not manifest.kcp_version:
-        warnings.append("manifest: 'kcp_version' not declared; assuming 0.3")
+        warnings.append("manifest: 'kcp_version' not declared; assuming 0.6")
     elif manifest.kcp_version not in KNOWN_KCP_VERSIONS:
         warnings.append(
             f"manifest: unknown kcp_version '{manifest.kcp_version}'; "
@@ -186,6 +188,34 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
                 warnings.append(
                     f"{p}: trigger '{trigger[:30]}...' exceeds {_MAX_TRIGGER_LENGTH} characters"
                 )
+
+        # access validation (§4.11)
+        if unit.access is not None and unit.access not in VALID_ACCESS_VALUES:
+            warnings.append(
+                f"{p}: unknown 'access' value '{unit.access}'; treating as 'restricted'"
+            )
+
+        # auth_scope validation (§4.11)
+        if unit.auth_scope is not None and unit.access != "restricted":
+            warnings.append(
+                f"{p}: 'auth_scope' is only meaningful when access is 'restricted'"
+            )
+
+        # sensitivity validation (§4.12)
+        if unit.sensitivity is not None and unit.sensitivity not in VALID_SENSITIVITY_VALUES:
+            warnings.append(
+                f"{p}: unknown 'sensitivity' value '{unit.sensitivity}'"
+            )
+
+    # Warn if any unit requires auth but no root-level auth block is present (§7)
+    has_protected = any(
+        u.access in ("authenticated", "restricted") for u in manifest.units
+    )
+    if has_protected and (manifest.auth is None or not manifest.auth.methods):
+        warnings.append(
+            "manifest: units with access 'authenticated' or 'restricted' exist "
+            "but no 'auth' block is declared"
+        )
 
     for rel in manifest.relationships:
         p = f"relationship '{rel.from_id}' -> '{rel.to_id}'"

@@ -37,7 +37,7 @@ That's it. The plugin is a no-op if no `knowledge.yaml` is present.
 Minimum viable manifest (five fields per unit):
 
 ```yaml
-kcp_version: "0.5"
+kcp_version: "0.6"
 project: my-project
 version: 1.0.0
 units:
@@ -99,6 +99,6 @@ lookup instead of 4–8 grep/glob/read calls.
 
 ## Spec
 
-[Knowledge Context Protocol v0.5](https://github.com/Cantara/knowledge-context-protocol) —
+[Knowledge Context Protocol v0.6](https://github.com/Cantara/knowledge-context-protocol) —
 Apache 2.0. Submitted to the Agentic AI Foundation (Linux Foundation) for neutral governance
 alongside MCP and AGENTS.md.

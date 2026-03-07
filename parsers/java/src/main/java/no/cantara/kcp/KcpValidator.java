@@ -32,7 +32,9 @@ public class KcpValidator {
             "html", "asciidoc", "rst", "vtt", "yaml", "json", "csv", "text");
     private static final Set<String> VALID_UPDATE_FREQUENCIES = Set.of("hourly", "daily", "weekly", "monthly", "rarely", "never");
     private static final Set<String> VALID_INDEXING_SHORTHANDS = Set.of("open", "read-only", "no-train", "none");
-    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3");
+    private static final Set<String> VALID_ACCESS_VALUES = Set.of("public", "authenticated", "restricted");
+    private static final Set<String> VALID_SENSITIVITY_VALUES = Set.of("public", "internal", "confidential", "restricted");
+    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6");
     private static final Pattern ID_PATTERN = Pattern.compile("^[a-z0-9.\\-]+$");
     private static final int MAX_TRIGGER_LENGTH = 60;
     private static final int MAX_TRIGGERS_PER_UNIT = 20;
@@ -78,10 +80,10 @@ public class KcpValidator {
 
         // kcp_version — RECOMMENDED; warn if absent or unknown
         if (manifest.kcpVersion() == null || manifest.kcpVersion().isBlank()) {
-            warnings.add("manifest: 'kcp_version' not declared; assuming 0.3");
+            warnings.add("manifest: 'kcp_version' not declared; assuming 0.6");
         } else if (!KNOWN_KCP_VERSIONS.contains(manifest.kcpVersion())) {
             warnings.add("manifest: unknown kcp_version '" + manifest.kcpVersion() +
-                    "'; processing as " + KNOWN_KCP_VERSIONS.stream().max(String::compareTo).orElse("0.3"));
+                    "'; processing as " + KNOWN_KCP_VERSIONS.stream().max(String::compareTo).orElse("0.6"));
         }
 
         // Required root fields
@@ -174,6 +176,28 @@ public class KcpValidator {
                             "...' exceeds " + MAX_TRIGGER_LENGTH + " characters");
                 }
             }
+
+            // access validation (§4.11)
+            if (unit.access() != null && !VALID_ACCESS_VALUES.contains(unit.access())) {
+                warnings.add(p + ": unknown 'access' value '" + unit.access() + "'; treating as 'restricted'");
+            }
+
+            // auth_scope validation (§4.11)
+            if (unit.authScope() != null && !"restricted".equals(unit.access())) {
+                warnings.add(p + ": 'auth_scope' is only meaningful when access is 'restricted'");
+            }
+
+            // sensitivity validation (§4.12)
+            if (unit.sensitivity() != null && !VALID_SENSITIVITY_VALUES.contains(unit.sensitivity())) {
+                warnings.add(p + ": unknown 'sensitivity' value '" + unit.sensitivity() + "'");
+            }
+        }
+
+        // Warn if any unit requires auth but no root-level auth block is present (§7)
+        boolean hasProtectedUnits = manifest.units().stream()
+                .anyMatch(u -> "authenticated".equals(u.access()) || "restricted".equals(u.access()));
+        if (hasProtectedUnits && (manifest.auth() == null || manifest.auth().methods().isEmpty())) {
+            warnings.add("manifest: units with access 'authenticated' or 'restricted' exist but no 'auth' block is declared");
         }
 
         for (Relationship rel : manifest.relationships()) {

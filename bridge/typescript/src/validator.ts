@@ -19,6 +19,13 @@ const VALID_REL_TYPES = new Set([
   "supersedes",
   "contradicts",
 ]);
+const VALID_ACCESS_VALUES = new Set(["public", "authenticated", "restricted"]);
+const VALID_SENSITIVITY_VALUES = new Set([
+  "public",
+  "internal",
+  "confidential",
+  "restricted",
+]);
 
 export function validate(
   manifest: KnowledgeManifest,
@@ -61,6 +68,25 @@ export function validate(
       warnings.push(`${ctx}: unknown kind '${unit.kind}'`);
     }
 
+    // access validation (§4.11)
+    if (unit.access && !VALID_ACCESS_VALUES.has(unit.access)) {
+      warnings.push(
+        `${ctx}: unknown 'access' value '${unit.access}'; treating as 'restricted'`
+      );
+    }
+
+    // auth_scope validation (§4.11)
+    if (unit.auth_scope && unit.access !== "restricted") {
+      warnings.push(
+        `${ctx}: 'auth_scope' is only meaningful when access is 'restricted'`
+      );
+    }
+
+    // sensitivity validation (§4.12)
+    if (unit.sensitivity && !VALID_SENSITIVITY_VALUES.has(unit.sensitivity)) {
+      warnings.push(`${ctx}: unknown 'sensitivity' value '${unit.sensitivity}'`);
+    }
+
     // File existence check (only if manifestDir is provided)
     if (manifestDir && unit.path) {
       const resolved = resolve(join(manifestDir, unit.path));
@@ -96,6 +122,16 @@ export function validate(
         );
       }
     }
+  }
+
+  // Warn if any unit requires auth but no root-level auth block is present (§7)
+  const hasProtected = manifest.units.some(
+    (u) => u.access === "authenticated" || u.access === "restricted"
+  );
+  if (hasProtected && (!manifest.auth || !manifest.auth.methods.length)) {
+    warnings.push(
+      "manifest: units with access 'authenticated' or 'restricted' exist but no 'auth' block is declared"
+    );
   }
 
   return { errors, warnings, isValid: errors.length === 0 };

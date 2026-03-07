@@ -9,7 +9,7 @@ Three reference implementations showing the adoption gradient — from the minim
 The smallest valid `knowledge.yaml`. Start here if you are not sure whether you need KCP yet.
 
 ```yaml
-kcp_version: "0.3"
+kcp_version: "0.6"
 project: my-project
 version: 1.0.0
 units:

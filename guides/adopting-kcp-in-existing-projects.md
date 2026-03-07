@@ -44,7 +44,7 @@ knowledge unit's intent ("How do I authenticate API requests?"). If you try to w
 before classifying, you will write documentation-style intents for everything — and the
 dispatch signal that agents need will be missing.
 
-> **v0.3 note:** The `kind` field gives these categories a formal name
+> **Note:** The `kind` field (added in v0.3) gives these categories a formal name
 > (`knowledge`, `schema`, `service`, `executable`, `policy`). See Step 4 for how to
 > include it. The `kind` field defaults to `knowledge` if omitted — manifests without it
 > are fully conformant.
@@ -90,7 +90,7 @@ These five fields are enough for an agent to answer: "what knowledge exists, wha
 piece answer, and who is it for?"
 
 ```yaml
-kcp_version: "0.3"
+kcp_version: "0.6"
 project: my-project
 version: 1.0.0
 
@@ -148,7 +148,7 @@ as potentially stale.
 
 ## Step 4: Add `kind` for non-documentation artifacts
 
-> **Note:** `kind` is part of the v0.3 core spec. A manifest without `kind` is fully
+> **Note:** `kind` is part of the core spec (since v0.3). A manifest without `kind` is fully
 > conformant — when omitted, parsers treat the unit as `kind: knowledge` (the default).
 > Add it when your project has non-documentation artifacts like API specs, agent
 > definitions, or policy hooks.
@@ -217,9 +217,9 @@ relationships:
 
 ---
 
-## Step 6: Add v0.3 metadata where useful
+## Step 6: Add optional metadata fields
 
-v0.3 adds several metadata fields that you can add incrementally:
+The spec provides several optional metadata fields that you can add incrementally:
 
 ### `format` — what type of content file is it?
 
@@ -285,8 +285,8 @@ with explicit `allow` and `deny` lists.
 ### "Where does `knowledge.yaml` go in a monorepo?"
 
 Place it at the root of each subproject that has its own documentation. Each manifest
-is independent (SPEC.md §1.3). Cross-manifest references are not supported in v0.3 —
-see issue #12 for the federation proposal.
+is independent (SPEC.md §1.3). Cross-manifest references are not yet in the core spec —
+see [RFC-0003](../RFC-0003-Federation.md) for the federation proposal.
 
 Alternatively, place a single manifest at the monorepo root covering all subprojects,
 using relative paths: `path: services/payments/docs/auth.md`.

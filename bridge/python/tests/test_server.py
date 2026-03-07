@@ -196,7 +196,7 @@ async def test_sub_manifest_unit_is_readable():
 async def test_primary_wins_on_duplicate_unit_id(tmp_path):
     sub_yaml = tmp_path / "knowledge.yaml"
     sub_yaml.write_text(
-        'kcp_version: "0.5"\nproject: conflict\nversion: 1.0.0\n'
+        'kcp_version: "0.6"\nproject: conflict\nversion: 1.0.0\n'
         'units:\n  - id: overview\n    path: extra.md\n    intent: "x"\n'
         '    scope: global\n    audience: [agent]\n'
     )

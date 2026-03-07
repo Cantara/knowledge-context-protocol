@@ -9,8 +9,8 @@
   "properties": {
     "kcp_version": {
       "type": "string",
-      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.5\". Prior drafts \"0.1\" through \"0.4\" are also accepted for backward compatibility.",
-      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5"]
+      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.6\". Prior drafts \"0.1\" through \"0.5\" are also accepted for backward compatibility.",
+      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6"]
     },
     "project": {
       "type": "string",
@@ -58,12 +58,14 @@
     "hints": { "$ref": "#/definitions/root_hints" },
     "trust": {
       "type": "object",
-      "description": "Publisher provenance for this manifest. OPTIONAL. See SPEC.md §3.2.",
+      "description": "Publisher provenance and audit requirements for this manifest. OPTIONAL. See SPEC.md §3.2.",
       "additionalProperties": true,
       "properties": {
-        "provenance": { "$ref": "#/definitions/trust_provenance" }
+        "provenance": { "$ref": "#/definitions/trust_provenance" },
+        "audit": { "$ref": "#/definitions/trust_audit" }
       }
     },
+    "auth": { "$ref": "#/definitions/auth_object" },
     "payment": { "$ref": "#/definitions/payment_object" },
     "units": {
       "type": "array",
@@ -237,6 +239,11 @@
           "description": "Who can fetch this unit's content. Advisory signal. Values: public (default), authenticated, restricted. See SPEC.md §4.11.",
           "enum": ["public", "authenticated", "restricted"]
         },
+        "auth_scope": {
+          "type": "string",
+          "description": "Opaque scope token required to access this unit. Interpretation is defined by the publisher, not by KCP. Only meaningful when access is authenticated or restricted. See SPEC.md §4.11.",
+          "minLength": 1
+        },
         "sensitivity": {
           "type": "string",
           "description": "Information classification level. Values: public, internal, confidential, restricted. See SPEC.md §4.12.",
@@ -381,6 +388,63 @@
         "contact": {
           "type": "string",
           "description": "Email address or URL for questions about this manifest's content."
+        }
+      }
+    },
+    "trust_audit": {
+      "type": "object",
+      "description": "Audit requirements within the trust block. All fields are optional and advisory. See SPEC.md §3.2.",
+      "additionalProperties": true,
+      "properties": {
+        "agent_must_log": {
+          "type": "boolean",
+          "description": "Whether agents SHOULD log every access to this manifest's units. Default: false."
+        },
+        "require_trace_context": {
+          "type": "boolean",
+          "description": "Whether agents SHOULD attach W3C Trace Context (traceparent/tracestate) headers when fetching unit content. For local file access, agents SHOULD generate a traceparent value and record it in local logs. Default: false."
+        }
+      }
+    },
+    "auth_object": {
+      "type": "object",
+      "description": "Root-level authentication methods available for accessing protected units. OPTIONAL. See SPEC.md §3.3.",
+      "additionalProperties": true,
+      "properties": {
+        "methods": {
+          "type": "array",
+          "description": "Ordered list of authentication methods supported by the publisher. Agents pick the first method they can satisfy.",
+          "items": { "$ref": "#/definitions/auth_method" },
+          "minItems": 1
+        }
+      }
+    },
+    "auth_method": {
+      "type": "object",
+      "description": "A single authentication method declaration. The type field determines which sub-fields are relevant.",
+      "required": ["type"],
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Authentication method type. Core values: none (no authentication needed), oauth2 (OAuth 2.1 flow), api_key (static API key). Units with access: authenticated or access: restricted require a non-none method."
+        },
+        "issuer": {
+          "type": "string",
+          "description": "OAuth 2.1 issuer URL. Required when type is oauth2."
+        },
+        "scopes": {
+          "type": "array",
+          "description": "OAuth 2.1 scopes available. Relevant when type is oauth2.",
+          "items": { "type": "string" }
+        },
+        "header": {
+          "type": "string",
+          "description": "HTTP header name for the API key. Default: X-API-Key. Relevant when type is api_key."
+        },
+        "registration_url": {
+          "type": "string",
+          "description": "URL where agents or users can obtain credentials."
         }
       }
     },

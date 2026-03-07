@@ -22,7 +22,13 @@ public record KnowledgeUnit(
         Object indexing,
         List<String> dependsOn,
         String supersedes,
-        List<String> triggers
+        List<String> triggers,
+        Object hints,
+        String access,
+        String authScope,
+        String sensitivity,
+        Boolean deprecated,
+        Object payment
 ) {
     public KnowledgeUnit {
         audience = audience != null ? List.copyOf(audience) : List.of();

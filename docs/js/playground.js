@@ -11,7 +11,7 @@
   // ── Example manifests ────────────────────────────────────────────────────────
   var EXAMPLES = {
     level1: [
-      'kcp_version: "0.3"',
+      'kcp_version: "0.6"',
       'project: my-project',
       'version: 1.0.0',
       '',
@@ -24,7 +24,7 @@
     ].join('\n'),
 
     level2: [
-      'kcp_version: "0.3"',
+      'kcp_version: "0.6"',
       'project: my-project',
       'version: 1.0.0',
       'updated: "2026-02-28"',
@@ -50,7 +50,7 @@
     ].join('\n'),
 
     level3: [
-      'kcp_version: "0.3"',
+      'kcp_version: "0.6"',
       'project: enterprise-wiki',
       'version: 2.0.0',
       'updated: "2026-02-28"',
@@ -85,7 +85,7 @@
     ].join('\n'),
 
     invalid: [
-      'kcp_version: "0.3"',
+      'kcp_version: "0.6"',
       'project: broken-manifest',
       '',
       'units:',

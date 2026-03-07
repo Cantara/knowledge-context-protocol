@@ -126,11 +126,20 @@ public final class KcpMapper {
 
     public static String buildDescription(KnowledgeUnit unit) {
         StringBuilder sb = new StringBuilder(unit.intent() != null ? unit.intent() : "");
+        if (unit.access() != null && !"public".equals(unit.access())) {
+            sb.append("\nAccess: ").append(unit.access());
+        }
+        if (unit.sensitivity() != null && !"public".equals(unit.sensitivity())) {
+            sb.append("\nSensitivity: ").append(unit.sensitivity());
+        }
         if (unit.triggers() != null && !unit.triggers().isEmpty()) {
             sb.append("\nTriggers: ").append(String.join(", ", unit.triggers()));
         }
         if (unit.dependsOn() != null && !unit.dependsOn().isEmpty()) {
             sb.append("\nDepends on: ").append(String.join(", ", unit.dependsOn()));
+        }
+        if (unit.deprecated() != null && unit.deprecated()) {
+            sb.append("\nDeprecated: true");
         }
         return sb.toString();
     }
@@ -200,6 +209,18 @@ public final class KcpMapper {
             if (u.validated() != null) {
                 sb.append(",\"lastModified\":").append(
                     quoted(u.validated().format(DateTimeFormatter.ISO_LOCAL_DATE)));
+            }
+            if (u.access() != null) {
+                sb.append(",\"access\":").append(quoted(u.access()));
+            }
+            if (u.authScope() != null) {
+                sb.append(",\"auth_scope\":").append(quoted(u.authScope()));
+            }
+            if (u.sensitivity() != null) {
+                sb.append(",\"sensitivity\":").append(quoted(u.sensitivity()));
+            }
+            if (u.deprecated() != null && u.deprecated()) {
+                sb.append(",\"deprecated\":true");
             }
             sb.append("}");
         }

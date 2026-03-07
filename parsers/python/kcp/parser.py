@@ -4,7 +4,10 @@ from typing import Optional, Union
 
 import yaml
 
-from .model import KnowledgeManifest, KnowledgeUnit, Relationship
+from .model import (
+    Auth, AuthMethod, KnowledgeManifest, KnowledgeUnit, Relationship,
+    Trust, TrustAudit, TrustProvenance,
+)
 
 
 def _to_date(value) -> Optional[date]:
@@ -40,6 +43,45 @@ def parse(path: Union[str, Path]) -> KnowledgeManifest:
     return parse_dict(data)
 
 
+def _parse_trust(data: Optional[dict]) -> Optional[Trust]:
+    """Parse the root-level trust block."""
+    if data is None:
+        return None
+    provenance = None
+    prov_data = data.get("provenance")
+    if prov_data is not None:
+        provenance = TrustProvenance(
+            publisher=prov_data.get("publisher"),
+            publisher_url=prov_data.get("publisher_url"),
+            contact=prov_data.get("contact"),
+        )
+    audit = None
+    audit_data = data.get("audit")
+    if audit_data is not None:
+        audit = TrustAudit(
+            agent_must_log=audit_data.get("agent_must_log"),
+            require_trace_context=audit_data.get("require_trace_context"),
+        )
+    return Trust(provenance=provenance, audit=audit)
+
+
+def _parse_auth(data: Optional[dict]) -> Optional[Auth]:
+    """Parse the root-level auth block."""
+    if data is None:
+        return None
+    methods = [
+        AuthMethod(
+            type=m["type"],
+            issuer=m.get("issuer"),
+            scopes=m.get("scopes", []),
+            header=m.get("header"),
+            registration_url=m.get("registration_url"),
+        )
+        for m in data.get("methods", [])
+    ]
+    return Auth(methods=methods)
+
+
 def parse_dict(data: dict) -> KnowledgeManifest:
     """Parse a knowledge manifest from a pre-loaded dict."""
     units = [
@@ -60,6 +102,12 @@ def parse_dict(data: dict) -> KnowledgeManifest:
             depends_on=u.get("depends_on", []),
             supersedes=u.get("supersedes"),
             triggers=u.get("triggers", []),
+            hints=u.get("hints"),
+            access=u.get("access"),
+            auth_scope=u.get("auth_scope"),
+            sensitivity=u.get("sensitivity"),
+            deprecated=u.get("deprecated"),
+            payment=u.get("payment"),
         )
         for u in data.get("units", [])
     ]
@@ -75,6 +123,10 @@ def parse_dict(data: dict) -> KnowledgeManifest:
         language=data.get("language"),
         license=data.get("license"),
         indexing=data.get("indexing"),
+        hints=data.get("hints"),
+        trust=_parse_trust(data.get("trust")),
+        auth=_parse_auth(data.get("auth")),
+        payment=data.get("payment"),
         units=units,
         relationships=relationships,
     )
