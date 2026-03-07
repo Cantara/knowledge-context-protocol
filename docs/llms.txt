@@ -16,6 +16,12 @@ Validated benchmark: 53–80% fewer agent tool calls vs unguided exploration (5 
 This repository ships its own knowledge.yaml manifest:
 https://raw.githubusercontent.com/Cantara/knowledge-context-protocol/main/knowledge.yaml
 
+To use it: fetch the manifest → parse YAML → match your query against each unit's `triggers`
+(keyword list) and `intent` (natural language) → fetch the `path` of the best match.
+Use `relationships` to navigate related content (types: enables, context, depends_on).
+
+Example: "How do I validate a knowledge.yaml file?" → trigger `validation, schema` → unit `json-schema` → fetch schema/knowledge-schema.json
+
 ## Key Files
 
 - /SPEC.md — Normative specification: all fields, validation rules, conformance levels
@@ -33,7 +39,7 @@ https://raw.githubusercontent.com/Cantara/knowledge-context-protocol/main/knowle
 
 ## Real-World Adopters
 
-- wiki.totto.org — personal knowledge wiki (KCP v0.6, 77 posts indexed)
+- wiki.totto.org — personal knowledge wiki (KCP v0.6, 83 posts indexed)
 - wiki.cantara.no — Cantara open source community wiki (KCP v0.6)
 - crewAI, microsoft/autogen, huggingface/smolagents, anomalyco/opencode — KCP manifests submitted (PRs open, March 2026)
 
