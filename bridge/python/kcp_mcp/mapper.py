@@ -122,6 +122,13 @@ def unit_resource_dict(slug: str, unit: KnowledgeUnit) -> dict:
             description += f"\nData residency: {', '.join(unit.compliance.data_residency)}"
         if unit.compliance.regulations:
             description += f"\nRegulations: {', '.join(unit.compliance.regulations)}"
+    if unit.delegation is not None:
+        if unit.delegation.max_depth is not None:
+            description += f"\nDelegation max depth: {unit.delegation.max_depth}"
+        if unit.delegation.human_in_the_loop is not None:
+            description += f"\nHuman in the loop: {unit.delegation.human_in_the_loop}"
+        if unit.delegation.audit_chain is not None:
+            description += f"\nDelegation audit chain: {unit.delegation.audit_chain}"
 
     last_modified: Optional[str] = None
     if unit.validated:

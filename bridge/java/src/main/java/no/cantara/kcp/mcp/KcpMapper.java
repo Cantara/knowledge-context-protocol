@@ -149,6 +149,17 @@ public final class KcpMapper {
                 sb.append("\nRegulations: ").append(String.join(", ", unit.compliance().regulations()));
             }
         }
+        if (unit.delegation() != null) {
+            if (unit.delegation().maxDepth() != null) {
+                sb.append("\nDelegation max depth: ").append(unit.delegation().maxDepth());
+            }
+            if (unit.delegation().humanInTheLoop() != null) {
+                sb.append("\nHuman in the loop: ").append(unit.delegation().humanInTheLoop());
+            }
+            if (unit.delegation().auditChain() != null) {
+                sb.append("\nDelegation audit chain: ").append(unit.delegation().auditChain());
+            }
+        }
         return sb.toString();
     }
 

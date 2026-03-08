@@ -124,6 +124,12 @@ export function buildDescription(unit: KnowledgeUnit): string {
     parts.push(`Data residency: ${unit.compliance.data_residency.join(", ")}`);
   if (unit.compliance?.regulations?.length)
     parts.push(`Regulations: ${unit.compliance.regulations.join(", ")}`);
+  if (unit.delegation?.max_depth !== undefined)
+    parts.push(`Delegation max depth: ${unit.delegation.max_depth}`);
+  if (unit.delegation?.human_in_the_loop)
+    parts.push(`Human in the loop: ${unit.delegation.human_in_the_loop}`);
+  if (unit.delegation?.audit_chain !== undefined)
+    parts.push(`Delegation audit chain: ${unit.delegation.audit_chain}`);
   return parts.join("\n");
 }
 
