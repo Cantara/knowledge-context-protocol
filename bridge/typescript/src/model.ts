@@ -26,6 +26,8 @@ export interface KnowledgeUnit {
   sensitivity?: string;    // "public" | "internal" | "confidential" | "restricted"
   deprecated?: boolean;
   payment?: Record<string, unknown>;
+  delegation?: Delegation;
+  compliance?: Compliance;
 }
 
 export interface Relationship {
@@ -67,6 +69,22 @@ export interface Trust {
   audit?: TrustAudit;
 }
 
+/** Delegation constraints block — root-level and per-unit override. See SPEC.md §3.4. */
+export interface Delegation {
+  max_depth?: number;
+  require_capability_attenuation?: boolean;
+  audit_chain?: boolean;
+  human_in_the_loop?: string;
+}
+
+/** Compliance metadata block — root-level and per-unit override. See SPEC.md §3.5. */
+export interface Compliance {
+  data_residency?: string[];
+  sensitivity?: string;
+  regulations?: string[];
+  restrictions?: string[];
+}
+
 export interface KnowledgeManifest {
   project: string;
   version: string;
@@ -79,6 +97,8 @@ export interface KnowledgeManifest {
   hints?: Record<string, unknown>;
   trust?: Trust;
   auth?: Auth;
+  delegation?: Delegation;
+  compliance?: Compliance;
   payment?: Record<string, unknown>;
   relationships: Relationship[];  // defaults to []
 }

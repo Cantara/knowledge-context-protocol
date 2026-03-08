@@ -5,8 +5,8 @@ from typing import Optional, Union
 import yaml
 
 from .model import (
-    Auth, AuthMethod, KnowledgeManifest, KnowledgeUnit, Relationship,
-    Trust, TrustAudit, TrustProvenance,
+    Auth, AuthMethod, Compliance, Delegation, KnowledgeManifest, KnowledgeUnit,
+    Relationship, Trust, TrustAudit, TrustProvenance,
 )
 
 
@@ -82,6 +82,30 @@ def _parse_auth(data: Optional[dict]) -> Optional[Auth]:
     return Auth(methods=methods)
 
 
+def _parse_delegation(data: Optional[dict]) -> Optional[Delegation]:
+    """Parse a delegation block (root-level or per-unit)."""
+    if data is None:
+        return None
+    return Delegation(
+        max_depth=data.get("max_depth"),
+        require_capability_attenuation=data.get("require_capability_attenuation"),
+        audit_chain=data.get("audit_chain"),
+        human_in_the_loop=data.get("human_in_the_loop"),
+    )
+
+
+def _parse_compliance(data: Optional[dict]) -> Optional[Compliance]:
+    """Parse a compliance block (root-level or per-unit)."""
+    if data is None:
+        return None
+    return Compliance(
+        data_residency=data.get("data_residency", []),
+        sensitivity=data.get("sensitivity"),
+        regulations=data.get("regulations", []),
+        restrictions=data.get("restrictions", []),
+    )
+
+
 def parse_dict(data: dict) -> KnowledgeManifest:
     """Parse a knowledge manifest from a pre-loaded dict."""
     units = [
@@ -108,6 +132,8 @@ def parse_dict(data: dict) -> KnowledgeManifest:
             sensitivity=u.get("sensitivity"),
             deprecated=u.get("deprecated"),
             payment=u.get("payment"),
+            delegation=_parse_delegation(u.get("delegation")),
+            compliance=_parse_compliance(u.get("compliance")),
         )
         for u in data.get("units", [])
     ]
@@ -126,6 +152,8 @@ def parse_dict(data: dict) -> KnowledgeManifest:
         hints=data.get("hints"),
         trust=_parse_trust(data.get("trust")),
         auth=_parse_auth(data.get("auth")),
+        delegation=_parse_delegation(data.get("delegation")),
+        compliance=_parse_compliance(data.get("compliance")),
         payment=data.get("payment"),
         units=units,
         relationships=relationships,

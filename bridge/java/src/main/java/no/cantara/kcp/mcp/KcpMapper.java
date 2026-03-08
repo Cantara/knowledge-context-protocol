@@ -141,6 +141,14 @@ public final class KcpMapper {
         if (unit.deprecated() != null && unit.deprecated()) {
             sb.append("\nDeprecated: true");
         }
+        if (unit.compliance() != null) {
+            if (!unit.compliance().dataResidency().isEmpty()) {
+                sb.append("\nData residency: ").append(String.join(", ", unit.compliance().dataResidency()));
+            }
+            if (!unit.compliance().regulations().isEmpty()) {
+                sb.append("\nRegulations: ").append(String.join(", ", unit.compliance().regulations()));
+            }
+        }
         return sb.toString();
     }
 
@@ -221,6 +229,42 @@ public final class KcpMapper {
             }
             if (u.deprecated() != null && u.deprecated()) {
                 sb.append(",\"deprecated\":true");
+            }
+            if (u.delegation() != null) {
+                sb.append(",\"delegation\":{");
+                boolean first = true;
+                if (u.delegation().maxDepth() != null) {
+                    sb.append("\"max_depth\":").append(u.delegation().maxDepth());
+                    first = false;
+                }
+                if (u.delegation().humanInTheLoop() != null) {
+                    if (!first) sb.append(",");
+                    sb.append("\"human_in_the_loop\":").append(quoted(u.delegation().humanInTheLoop()));
+                }
+                sb.append("}");
+            }
+            if (u.compliance() != null) {
+                sb.append(",\"compliance\":{");
+                boolean first = true;
+                if (!u.compliance().dataResidency().isEmpty()) {
+                    sb.append("\"data_residency\":").append(jsonArray(u.compliance().dataResidency()));
+                    first = false;
+                }
+                if (u.compliance().sensitivity() != null) {
+                    if (!first) sb.append(",");
+                    sb.append("\"sensitivity\":").append(quoted(u.compliance().sensitivity()));
+                    first = false;
+                }
+                if (!u.compliance().regulations().isEmpty()) {
+                    if (!first) sb.append(",");
+                    sb.append("\"regulations\":").append(jsonArray(u.compliance().regulations()));
+                    first = false;
+                }
+                if (!u.compliance().restrictions().isEmpty()) {
+                    if (!first) sb.append(",");
+                    sb.append("\"restrictions\":").append(jsonArray(u.compliance().restrictions()));
+                }
+                sb.append("}");
             }
             sb.append("}");
         }

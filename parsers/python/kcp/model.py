@@ -4,6 +4,24 @@ from typing import Optional, Union
 
 
 @dataclass
+class Delegation:
+    """Delegation constraints block — root-level and per-unit override. See SPEC.md §3.4."""
+    max_depth: Optional[int] = None
+    require_capability_attenuation: Optional[bool] = None
+    audit_chain: Optional[bool] = None
+    human_in_the_loop: Optional[str] = None
+
+
+@dataclass
+class Compliance:
+    """Compliance metadata block — root-level and per-unit override. See SPEC.md §3.5."""
+    data_residency: list[str] = field(default_factory=list)
+    sensitivity: Optional[str] = None
+    regulations: list[str] = field(default_factory=list)
+    restrictions: list[str] = field(default_factory=list)
+
+
+@dataclass
 class KnowledgeUnit:
     id: str
     path: str
@@ -27,6 +45,8 @@ class KnowledgeUnit:
     sensitivity: Optional[str] = None
     deprecated: Optional[bool] = None
     payment: Optional[dict] = None
+    delegation: Optional[Delegation] = None
+    compliance: Optional[Compliance] = None
 
 
 @dataclass
@@ -87,5 +107,7 @@ class KnowledgeManifest:
     hints: Optional[dict] = None
     trust: Optional[Trust] = None
     auth: Optional[Auth] = None
+    delegation: Optional[Delegation] = None
+    compliance: Optional[Compliance] = None
     payment: Optional[dict] = None
     relationships: list[Relationship] = field(default_factory=list)

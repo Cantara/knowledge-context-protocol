@@ -17,6 +17,8 @@ public record KnowledgeManifest(
         Object hints,
         Trust trust,
         Auth auth,
+        Delegation delegation,
+        Compliance compliance,
         Object payment,
         List<KnowledgeUnit> units,
         List<Relationship> relationships

@@ -28,7 +28,9 @@ public record KnowledgeUnit(
         String authScope,
         String sensitivity,
         Boolean deprecated,
-        Object payment
+        Object payment,
+        Delegation delegation,
+        Compliance compliance
 ) {
     public KnowledgeUnit {
         audience = audience != null ? List.copyOf(audience) : List.of();

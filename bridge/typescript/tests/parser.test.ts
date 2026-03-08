@@ -106,6 +106,121 @@ describe("parseDict", () => {
   });
 });
 
+describe("parseDelegation", () => {
+  it("parses root-level delegation block", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      delegation: {
+        max_depth: 2,
+        require_capability_attenuation: true,
+        audit_chain: false,
+        human_in_the_loop: "required",
+      },
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    expect(manifest.delegation).toBeDefined();
+    expect(manifest.delegation?.max_depth).toBe(2);
+    expect(manifest.delegation?.require_capability_attenuation).toBe(true);
+    expect(manifest.delegation?.audit_chain).toBe(false);
+    expect(manifest.delegation?.human_in_the_loop).toBe("required");
+  });
+
+  it("parses per-unit delegation override", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      units: [{
+        id: "u",
+        path: "f.md",
+        intent: "i",
+        scope: "global",
+        audience: ["agent"],
+        delegation: { max_depth: 0, human_in_the_loop: "recommended" },
+      }],
+    });
+    const u = manifest.units[0];
+    expect(u.delegation).toBeDefined();
+    expect(u.delegation?.max_depth).toBe(0);
+    expect(u.delegation?.human_in_the_loop).toBe("recommended");
+    expect(u.delegation?.require_capability_attenuation).toBeUndefined();
+  });
+
+  it("absent delegation is undefined", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    expect(manifest.delegation).toBeUndefined();
+    expect(manifest.units[0].delegation).toBeUndefined();
+  });
+});
+
+describe("parseCompliance", () => {
+  it("parses root-level compliance block", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      compliance: {
+        data_residency: ["EU", "NO"],
+        sensitivity: "confidential",
+        regulations: ["GDPR", "NIS2"],
+        restrictions: ["no_ai_training", "no_cross_border"],
+      },
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    expect(manifest.compliance).toBeDefined();
+    expect(manifest.compliance?.data_residency).toEqual(["EU", "NO"]);
+    expect(manifest.compliance?.sensitivity).toBe("confidential");
+    expect(manifest.compliance?.regulations).toEqual(["GDPR", "NIS2"]);
+    expect(manifest.compliance?.restrictions).toEqual(["no_ai_training", "no_cross_border"]);
+  });
+
+  it("parses per-unit compliance override", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      units: [{
+        id: "u",
+        path: "f.md",
+        intent: "i",
+        scope: "global",
+        audience: ["agent"],
+        compliance: { sensitivity: "restricted", regulations: ["AML5D"] },
+      }],
+    });
+    const u = manifest.units[0];
+    expect(u.compliance).toBeDefined();
+    expect(u.compliance?.sensitivity).toBe("restricted");
+    expect(u.compliance?.regulations).toEqual(["AML5D"]);
+    expect(u.compliance?.data_residency).toBeUndefined();
+  });
+
+  it("absent compliance is undefined", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    expect(manifest.compliance).toBeUndefined();
+    expect(manifest.units[0].compliance).toBeUndefined();
+  });
+
+  it("compliance with only sensitivity leaves other fields undefined", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      compliance: { sensitivity: "internal" },
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    expect(manifest.compliance?.sensitivity).toBe("internal");
+    expect(manifest.compliance?.data_residency).toBeUndefined();
+    expect(manifest.compliance?.regulations).toBeUndefined();
+    expect(manifest.compliance?.restrictions).toBeUndefined();
+  });
+});
+
 describe("parseFile", () => {
   it("parses the minimal fixture", () => {
     const manifest = parseFile(join(MINIMAL_DIR, "knowledge.yaml"));
