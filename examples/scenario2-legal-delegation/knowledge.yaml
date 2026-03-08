@@ -1,0 +1,143 @@
+# Legal Research Agent — KCP manifest
+# Companion to agent-card.json (A2A Agent Card).
+#
+# Demonstrates a 3-hop delegation chain with:
+#   - CaseOrchestratorAgent (depth=0 caller, depth=1 delegatee)
+#   - LegalResearchAgent (resource owner, depth=0)
+#   - ExternalCaseLawAgent (depth=2 delegatee)
+#
+# Key behaviours:
+#   - max_depth: 0 on sealed-records = absolute no-delegation
+#   - Capability attenuation enforcement on case-briefs delegation
+#   - Delegation depth counting (owner=0, first delegatee=1)
+#   - HITL at depth=2 for client-communications
+
+kcp_version: "0.6"
+project: legal-research-agent
+version: 1.0.0
+updated: "2026-03-08"
+language: en
+license: "proprietary"
+
+trust:
+  provenance:
+    publisher: "Example Law LLP"
+    publisher_url: "https://legal.example.com"
+    contact: "knowledge-team@legal.example.com"
+  audit:
+    agent_must_log: true
+    require_trace_context: true
+
+auth:
+  methods:
+    - type: oauth2
+      flow: client_credentials
+      token_endpoint: "https://auth.legal.example.com/oauth2/token"
+      scopes: ["read:precedents", "read:case", "attorney", "court-officer"]
+    - type: none
+
+# Root-level delegation constraints (RFC-0002 Proposal 3).
+delegation:
+  max_depth: 3
+  require_capability_attenuation: true
+  audit_chain: true
+
+units:
+
+  # -- Published court decisions (public) --------------------------------------
+
+  - id: public-precedents
+    path: precedents/published-decisions.md
+    intent: "What are the relevant published court decisions and legal precedents?"
+    scope: global
+    audience: [human, agent, researcher]
+    validated: "2026-03-01"
+    access: public
+    sensitivity: public
+    triggers:
+      - "court decision"
+      - "precedent"
+      - "case law"
+      - "legal citation"
+      - "holding"
+
+  # -- Internal case briefs (authenticated) ------------------------------------
+
+  - id: case-briefs
+    path: cases/internal-briefs.md
+    intent: "What are the internal case files, arguments, strategy documents, and analysis?"
+    scope: project
+    audience: [human, agent]
+    validated: "2026-03-01"
+    access: authenticated
+    auth_scope: read:case
+    sensitivity: internal
+    depends_on: [public-precedents]
+    triggers:
+      - "case brief"
+      - "case file"
+      - "legal strategy"
+      - "arguments"
+      - "discovery"
+
+  # -- Privileged client communications (restricted, HITL, delegatable) --------
+
+  - id: client-communications
+    path: privilege/client-comms.md
+    intent: "What are the privileged attorney-client communications and legal advice?"
+    scope: module
+    audience: [agent]
+    validated: "2026-03-01"
+    access: restricted
+    auth_scope: attorney
+    sensitivity: confidential
+    depends_on: [case-briefs]
+    triggers:
+      - "client communication"
+      - "attorney-client"
+      - "privilege"
+      - "legal advice"
+      - "confidential"
+    delegation:
+      max_depth: 2
+      human_in_the_loop:
+        required: true
+        approval_mechanism: manual
+
+  # -- Sealed court records (restricted, NO delegation) ------------------------
+
+  - id: sealed-records
+    path: sealed/court-orders.md
+    intent: "What are the sealed court records and restricted judicial orders?"
+    scope: module
+    audience: [agent]
+    validated: "2026-03-01"
+    access: restricted
+    auth_scope: court-officer
+    sensitivity: restricted
+    depends_on: [case-briefs]
+    triggers:
+      - "sealed record"
+      - "court order"
+      - "judicial seal"
+      - "restricted filing"
+    delegation:
+      max_depth: 0
+
+relationships:
+
+  - from: public-precedents
+    to: case-briefs
+    type: context
+
+  - from: case-briefs
+    to: client-communications
+    type: enables
+
+  - from: case-briefs
+    to: sealed-records
+    type: enables
+
+  - from: public-precedents
+    to: client-communications
+    type: context

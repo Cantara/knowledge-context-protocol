@@ -1,0 +1,139 @@
+# Energy Metering Agent — KCP manifest
+# Companion to agent-card.json (A2A Agent Card).
+#
+# Demonstrates escalating access levels across 4 units:
+#   1. Public tariffs (no auth)
+#   2. Authenticated meter readings
+#   3. Authenticated billing history
+#   4. Restricted raw smart meter data (HITL required)
+
+kcp_version: "0.6"
+project: energy-metering-agent
+version: 1.0.0
+updated: "2026-03-08"
+language: en
+license: "proprietary"
+
+trust:
+  provenance:
+    publisher: "Example Grid Utilities"
+    publisher_url: "https://grid.example.com"
+    contact: "data-team@grid.example.com"
+  audit:
+    agent_must_log: true
+    require_trace_context: true
+
+auth:
+  methods:
+    - type: oauth2
+      flow: client_credentials
+      token_endpoint: "https://auth.grid.example.com/oauth2/token"
+      scopes: ["read:tariff", "read:meter", "read:billing", "grid-engineer"]
+    - type: none
+
+# Root-level delegation constraints (RFC-0002 Proposal 3).
+delegation:
+  max_depth: 2
+  require_capability_attenuation: true
+  audit_chain: true
+
+units:
+
+  # -- Public tariff schedule (no authentication required) ---------------------
+
+  - id: tariff-schedule
+    path: tariffs/current-schedule.md
+    intent: "What are the current electricity tariff rates, peak/off-peak pricing, and seasonal adjustments?"
+    scope: global
+    audience: [human, agent, consumer]
+    validated: "2026-03-01"
+    access: public
+    sensitivity: public
+    triggers:
+      - "tariff"
+      - "electricity rate"
+      - "peak pricing"
+      - "off-peak"
+      - "seasonal rate"
+      - "kWh price"
+
+  # -- Meter readings (authenticated) ------------------------------------------
+
+  - id: meter-readings
+    path: meters/household-readings.md
+    intent: "What are the household energy consumption readings and usage patterns?"
+    scope: project
+    audience: [human, agent]
+    validated: "2026-03-01"
+    access: authenticated
+    auth_scope: read:meter
+    sensitivity: internal
+    depends_on: [tariff-schedule]
+    triggers:
+      - "meter reading"
+      - "consumption"
+      - "energy usage"
+      - "kWh consumed"
+      - "household usage"
+
+  # -- Billing history (authenticated) -----------------------------------------
+
+  - id: billing-history
+    path: billing/invoice-records.md
+    intent: "What are the customer billing records, invoice history, and payment status?"
+    scope: project
+    audience: [human, agent]
+    validated: "2026-03-01"
+    access: authenticated
+    auth_scope: read:billing
+    sensitivity: internal
+    depends_on: [meter-readings]
+    triggers:
+      - "billing"
+      - "invoice"
+      - "payment"
+      - "bill history"
+      - "charges"
+
+  # -- Raw smart meter data (restricted, PII-adjacent, HITL) -------------------
+
+  - id: smart-meter-raw
+    path: meters/raw-telemetry.md
+    intent: "What is the raw 15-second granularity smart meter telemetry data for grid diagnostics?"
+    scope: module
+    audience: [agent]
+    validated: "2026-03-01"
+    access: restricted
+    auth_scope: grid-engineer
+    sensitivity: restricted
+    depends_on: [meter-readings]
+    triggers:
+      - "raw meter"
+      - "telemetry"
+      - "15-second"
+      - "smart meter"
+      - "grid diagnostics"
+      - "voltage"
+    delegation:
+      max_depth: 1
+      human_in_the_loop:
+        required: true
+        approval_mechanism: oauth_consent
+
+relationships:
+
+  - from: tariff-schedule
+    to: meter-readings
+    type: context
+
+  - from: meter-readings
+    to: billing-history
+    type: enables
+
+  - from: meter-readings
+    to: smart-meter-raw
+    type: enables
+
+  - from: tariff-schedule
+    to: billing-history
+    type: context

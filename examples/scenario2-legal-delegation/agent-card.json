@@ -1,0 +1,62 @@
+{
+  "name": "Legal Research Agent",
+  "description": "Provides access to legal precedents, case briefs, client communications, and sealed court records for law firm document review pipelines.",
+  "url": "https://legal.example.com/agent",
+  "version": "1.0.0",
+  "documentationUrl": "https://legal.example.com/docs",
+  "provider": {
+    "organization": "Example Law LLP",
+    "url": "https://legal.example.com"
+  },
+  "securitySchemes": {
+    "oauth2": {
+      "type": "oauth2",
+      "flows": {
+        "clientCredentials": {
+          "tokenUrl": "https://auth.legal.example.com/oauth2/token",
+          "scopes": {
+            "read:precedents": "Read published court decisions and legal precedents",
+            "read:case": "Read internal case briefs and files",
+            "attorney": "Access privileged client communications (attorney-client privilege)",
+            "court-officer": "Access sealed court records (judicial authorisation required)"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "oauth2": ["read:precedents"]
+    }
+  ],
+  "skills": [
+    {
+      "id": "precedent-search",
+      "name": "Precedent Search",
+      "description": "Search published court decisions for relevant legal precedents, citations, and holdings.",
+      "tags": ["precedents", "case-law", "citations", "court-decisions"],
+      "examples": [
+        "Find precedents for data breach liability in EU jurisdictions",
+        "What is the leading case on force majeure in Norwegian contract law?"
+      ]
+    },
+    {
+      "id": "case-analysis",
+      "name": "Case Analysis",
+      "description": "Analyse internal case files, briefs, and client communications for document review and discovery.",
+      "tags": ["case-briefs", "discovery", "privilege", "document-review"],
+      "examples": [
+        "Summarise the key arguments in case 2025-CV-0042",
+        "Review privilege status for all documents tagged 'merger-review'"
+      ]
+    }
+  ],
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "defaultInputModes": ["application/json", "text/plain"],
+  "defaultOutputModes": ["application/json", "text/plain"],
+  "knowledgeManifest": "/.well-known/kcp.json"
+}

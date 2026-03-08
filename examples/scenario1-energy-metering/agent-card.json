@@ -1,0 +1,72 @@
+{
+  "name": "Energy Metering Agent",
+  "description": "Provides access to electricity tariffs, meter readings, billing history, and raw smart meter data for utility grid operations.",
+  "url": "https://grid.example.com/agent",
+  "version": "1.0.0",
+  "documentationUrl": "https://grid.example.com/docs",
+  "provider": {
+    "organization": "Example Grid Utilities",
+    "url": "https://grid.example.com"
+  },
+  "securitySchemes": {
+    "oauth2": {
+      "type": "oauth2",
+      "flows": {
+        "clientCredentials": {
+          "tokenUrl": "https://auth.grid.example.com/oauth2/token",
+          "scopes": {
+            "read:tariff": "Read current electricity tariff schedules",
+            "read:meter": "Read household consumption meter readings",
+            "read:billing": "Read customer billing history and invoices",
+            "grid-engineer": "Access raw smart meter telemetry (restricted)"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "oauth2": ["read:tariff"]
+    }
+  ],
+  "skills": [
+    {
+      "id": "tariff-lookup",
+      "name": "Tariff Lookup",
+      "description": "Retrieve current and historical electricity tariff schedules, peak/off-peak rates, and seasonal adjustments.",
+      "tags": ["tariff", "pricing", "electricity", "rates"],
+      "examples": [
+        "What is the current peak-hour tariff?",
+        "Show the winter season rate schedule"
+      ]
+    },
+    {
+      "id": "consumption-analysis",
+      "name": "Consumption Analysis",
+      "description": "Analyse household energy consumption patterns from meter readings and billing records.",
+      "tags": ["consumption", "meter", "billing", "energy"],
+      "examples": [
+        "Show my electricity usage for January",
+        "Compare this month's consumption to last year"
+      ]
+    },
+    {
+      "id": "grid-diagnostics",
+      "name": "Grid Diagnostics",
+      "description": "Access raw smart meter telemetry at 15-second granularity for grid diagnostics and fault analysis. Requires grid-engineer authorisation and human approval.",
+      "tags": ["smart-meter", "telemetry", "diagnostics", "grid"],
+      "examples": [
+        "Show raw voltage readings for transformer T-4401",
+        "Analyse power quality events in sector 7"
+      ]
+    }
+  ],
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "defaultInputModes": ["application/json", "text/plain"],
+  "defaultOutputModes": ["application/json", "text/plain"],
+  "knowledgeManifest": "/.well-known/kcp.json"
+}

@@ -1,0 +1,181 @@
+# Transaction Intelligence Agent — KCP manifest
+# Companion to agent-card.json (A2A Agent Card).
+#
+# Demonstrates adversarial multi-agent AML compliance orchestration:
+#   - 5 agents (ComplianceOrchestrator, TransactionIntelligence, SanctionsScreening,
+#     MLRiskScoring, RogueAgent)
+#   - 5 knowledge units with escalating access and compliance constraints
+#   - 7 phases including 4 adversarial attack attempts
+#
+# Compliance fields (RFC-0004, not in v0.6 core):
+#   - regulations, data_residency, restrictions are parsed from raw YAML
+#   - Enforcement is application-defined until RFC-0004 promotes to core
+
+kcp_version: "0.6"
+project: transaction-intelligence-agent
+version: 1.0.0
+updated: "2026-03-08"
+language: en
+license: "proprietary"
+
+trust:
+  provenance:
+    publisher: "Example Bank Compliance"
+    publisher_url: "https://aml.example.com"
+    contact: "compliance-team@aml.example.com"
+  audit:
+    agent_must_log: true
+    require_trace_context: true
+
+auth:
+  methods:
+    - type: oauth2
+      flow: client_credentials
+      token_endpoint: "https://auth.aml.example.com/oauth2/token"
+      scopes: ["read:sanctions", "read:transactions", "aml-analyst", "compliance-officer"]
+    - type: none
+
+# Root-level delegation constraints (RFC-0002 Proposal 3).
+delegation:
+  max_depth: 3
+  require_capability_attenuation: true
+  audit_chain: true
+
+units:
+
+  # -- OFAC/EU sanctions list metadata (public) --------------------------------
+
+  - id: sanctions-lists
+    path: sanctions/ofac-eu-metadata.md
+    intent: "What entities appear on OFAC, EU, and UN sanctions lists?"
+    scope: global
+    audience: [human, agent, analyst]
+    validated: "2026-03-01"
+    access: public
+    sensitivity: public
+    triggers:
+      - "sanctions"
+      - "OFAC"
+      - "SDN list"
+      - "EU sanctions"
+      - "sanctioned entity"
+
+  # -- Aggregated transaction patterns (authenticated) -------------------------
+
+  - id: transaction-patterns
+    path: transactions/aggregated-patterns.md
+    intent: "What are the aggregated transaction patterns, volume statistics, and anomaly indicators?"
+    scope: project
+    audience: [human, agent, analyst]
+    validated: "2026-03-01"
+    access: authenticated
+    auth_scope: read:transactions
+    sensitivity: internal
+    depends_on: [sanctions-lists]
+    triggers:
+      - "transaction pattern"
+      - "volume"
+      - "anomaly"
+      - "structuring"
+      - "layering"
+
+  # -- Customer profiles (restricted, PII, GDPR, delegatable to depth=2) ------
+
+  - id: customer-profiles
+    path: customers/profiles.md
+    intent: "What are the customer profiles, KYC data, risk ratings, and account ownership structures?"
+    scope: module
+    audience: [agent, analyst]
+    validated: "2026-03-01"
+    access: restricted
+    auth_scope: aml-analyst
+    sensitivity: confidential
+    depends_on: [transaction-patterns]
+    triggers:
+      - "customer profile"
+      - "KYC"
+      - "risk rating"
+      - "beneficial owner"
+      - "PEP"
+    delegation:
+      max_depth: 2
+      human_in_the_loop:
+        required: true
+        approval_mechanism: oauth_consent
+    # RFC-0004 compliance fields (not in v0.6 core, parsed from raw YAML)
+    compliance:
+      regulations: [GDPR, AML5D]
+      data_residency:
+        regions: [EU]
+
+  # -- SAR drafts (restricted, compliance-officer only, depth=1) ---------------
+
+  - id: sar-drafts
+    path: sar/draft-reports.md
+    intent: "What are the draft Suspicious Activity Reports and their supporting evidence?"
+    scope: module
+    audience: [agent]
+    validated: "2026-03-01"
+    access: restricted
+    auth_scope: compliance-officer
+    sensitivity: restricted
+    depends_on: [customer-profiles, transaction-patterns]
+    triggers:
+      - "SAR"
+      - "suspicious activity"
+      - "draft report"
+      - "filing"
+    delegation:
+      max_depth: 1
+      human_in_the_loop:
+        required: true
+        approval_mechanism: manual
+    compliance:
+      regulations: [AML5D, FATF]
+
+  # -- Raw wire transfers (restricted, NO delegation, max compliance) ----------
+
+  - id: raw-wire-transfers
+    path: transfers/raw-wire-data.md
+    intent: "What are the raw wire transfer records including sender, receiver, amounts, and routing?"
+    scope: module
+    audience: [agent]
+    validated: "2026-03-01"
+    access: restricted
+    auth_scope: compliance-officer
+    sensitivity: restricted
+    depends_on: [transaction-patterns]
+    triggers:
+      - "wire transfer"
+      - "SWIFT"
+      - "raw transfer"
+      - "routing"
+    delegation:
+      max_depth: 0
+    compliance:
+      regulations: [GDPR, AML5D, NIS2]
+      data_residency:
+        regions: [EU]
+      restrictions: [no_ai_training, no_cross_border]
+
+relationships:
+
+  - from: sanctions-lists
+    to: transaction-patterns
+    type: context
+
+  - from: transaction-patterns
+    to: customer-profiles
+    type: enables
+
+  - from: transaction-patterns
+    to: sar-drafts
+    type: enables
+
+  - from: customer-profiles
+    to: sar-drafts
+    type: enables
+
+  - from: transaction-patterns
+    to: raw-wire-transfers
+    type: enables
