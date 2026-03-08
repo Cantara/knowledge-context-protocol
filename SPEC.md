@@ -91,7 +91,7 @@ Example:
 
 ```json
 {
-  "kcp_version": "0.6",
+  "kcp_version": "0.7",
   "manifest": "/knowledge.yaml",
   "title": "My Project Knowledge Base",
   "description": "Architecture decisions, API reference, and onboarding guides.",
@@ -122,7 +122,7 @@ version.
 ## 3. Root Manifest Structure
 
 ```yaml
-kcp_version: "0.6"          # RECOMMENDED
+kcp_version: "0.7"          # RECOMMENDED
 project: <string>            # REQUIRED
 version: <semver string>     # RECOMMENDED
 updated: "<ISO date>"        # RECOMMENDED; quote the value (see §4.1.1)
@@ -147,7 +147,7 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
-| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.6"` for conformance with this document. |
+| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.7"` for conformance with this document. |
 | `project` | REQUIRED | string | Human-readable name of the project or documentation site. |
 | `version` | RECOMMENDED | string | Semver version of this manifest. Increment when units are added or removed. |
 | `updated` | RECOMMENDED | string | ISO 8601 date (`YYYY-MM-DD`) when this manifest was last modified. |
@@ -396,7 +396,7 @@ is not specified in this version (see RFC-0002).
 - Parsers MUST NOT reject a manifest because `delegation` is absent.
 - Parsers MUST silently ignore unrecognised sub-fields.
 - When a per-unit `max_depth` is present, it MUST be ≤ the root `max_depth` if a root value is set.
-- `kcp_version: "0.6"` manifests MUST NOT fail validation if `delegation` is present; parsers
+- `kcp_version: "0.7"` manifests MUST NOT fail validation if `delegation` is present; parsers
   that do not recognise `delegation` MUST silently ignore it.
 
 ---
@@ -413,9 +413,7 @@ that unit and SHOULD surface the constraint to their operator.
 
 ```yaml
 compliance:
-  data_residency:
-    regions: [EEA]             # geographic processing constraint (see region vocabulary)
-    hard_requirement: false    # if true: legally mandatory, not advisory
+  data_residency: [EEA]        # permitted geographic regions (ISO 3166-1 alpha-2 or region identifiers)
   regulations: [GDPR, NIS2]   # applicable regulations (see regulation vocabulary)
   sensitivity: internal        # public | internal | confidential | restricted
   restrictions:                # processing restrictions (see restriction vocabulary)
@@ -427,9 +425,7 @@ compliance:
 
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
-| `data_residency` | OPTIONAL | object | Geographic constraints on where this knowledge may be stored and processed. |
-| `data_residency.regions` | OPTIONAL | list | Permitted geographic regions. See region vocabulary. |
-| `data_residency.hard_requirement` | OPTIONAL | boolean | If `true`, the residency constraint is legally mandatory. Default: `false`. |
+| `data_residency` | OPTIONAL | list | Permitted geographic regions for data storage and processing. ISO 3166-1 alpha-2 codes or region identifiers (e.g. `EEA`, `US`, `CH`). See region vocabulary. |
 | `regulations` | OPTIONAL | list | Named regulations that apply to this knowledge. Unknown values MUST be silently ignored. |
 | `sensitivity` | OPTIONAL | string | Information sensitivity level. Overrides `sensitivity` declared at the unit level (§4.11) when used in a root compliance block; at unit level they are equivalent. |
 | `restrictions` | OPTIONAL | list | Processing restrictions. Unknown values MUST be silently ignored. |
@@ -489,9 +485,7 @@ units:
   - id: customer-data
     path: data/customers.md
     compliance:
-      data_residency:
-        regions: [EEA]
-        hard_requirement: true
+      data_residency: [EEA]
       regulations: [GDPR, ePrivacy]
       sensitivity: confidential
       restrictions:
@@ -522,7 +516,7 @@ process in compliance.
 - Parsers MUST NOT reject a manifest because `compliance` is absent.
 - Parsers MUST silently ignore unrecognised sub-fields and unknown list values.
 - Per-unit `compliance` values override root `compliance` for that unit only.
-- `kcp_version: "0.6"` manifests MUST NOT fail validation if `compliance` is present; parsers
+- `kcp_version: "0.7"` manifests MUST NOT fail validation if `compliance` is present; parsers
   that do not recognise `compliance` MUST silently ignore it.
 
 ---
@@ -1231,9 +1225,9 @@ Unknown relationship types MUST be silently ignored.
 ### 6.1 Spec Version (`kcp_version`)
 
 `kcp_version` identifies which version of this specification the manifest conforms to. Current
-valid value: `"0.6"`. The values `"0.1"` through `"0.5"` refer to prior drafts (February–March
-2026); parsers SHOULD treat these manifests as conformant with this version, as v0.6 is a
-strict superset of v0.5 (new fields only, no removals or breaking changes). Parsers
+valid value: `"0.7"`. The values `"0.1"` through `"0.6"` refer to prior drafts (February–March
+2026); parsers SHOULD treat these manifests as conformant with this version, as v0.7 is a
+strict superset of v0.6 (new fields only, no removals or breaking changes). Parsers
 encountering an unknown `kcp_version` SHOULD process the manifest using the closest known
 version and SHOULD emit a warning.
 
@@ -1571,7 +1565,7 @@ MUST apply the following constraints:
 ## Appendix A: Minimal Example
 
 ```yaml
-kcp_version: "0.6"
+kcp_version: "0.7"
 project: my-project
 version: 1.0.0
 units:
@@ -1587,7 +1581,7 @@ units:
 ## Appendix B: Full Example
 
 ```yaml
-kcp_version: "0.6"
+kcp_version: "0.7"
 project: wiki.example.org
 version: 2.3.0
 updated: "2026-03-07"

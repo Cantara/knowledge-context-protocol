@@ -9,8 +9,8 @@
   "properties": {
     "kcp_version": {
       "type": "string",
-      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.6\". Prior drafts \"0.1\" through \"0.5\" are also accepted for backward compatibility.",
-      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6"]
+      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.7\". Prior drafts \"0.1\" through \"0.6\" are also accepted for backward compatibility.",
+      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7"]
     },
     "project": {
       "type": "string",
@@ -66,6 +66,8 @@
       }
     },
     "auth": { "$ref": "#/definitions/auth_object" },
+    "delegation": { "$ref": "#/definitions/delegation_object" },
+    "compliance": { "$ref": "#/definitions/compliance_object" },
     "payment": { "$ref": "#/definitions/payment_object" },
     "units": {
       "type": "array",
@@ -254,6 +256,8 @@
           "description": "If true, this unit is present but should not be used for new development. Agents SHOULD prefer non-deprecated alternatives. See SPEC.md §4.13.",
           "default": false
         },
+        "delegation": { "$ref": "#/definitions/delegation_object" },
+        "compliance": { "$ref": "#/definitions/compliance_object" },
         "payment": { "$ref": "#/definitions/payment_object" }
       }
     },
@@ -445,6 +449,58 @@
         "registration_url": {
           "type": "string",
           "description": "URL where agents or users can obtain credentials."
+        }
+      }
+    },
+    "delegation_object": {
+      "type": "object",
+      "description": "Delegation chain constraints for multi-agent access. Can appear at root level (as default for all units) or at unit level (as override). See SPEC.md §3.4.",
+      "additionalProperties": true,
+      "properties": {
+        "max_depth": {
+          "type": "integer",
+          "description": "Maximum delegation chain depth. 0 = no delegation permitted. Omit for no constraint.",
+          "minimum": 0
+        },
+        "require_capability_attenuation": {
+          "type": "boolean",
+          "description": "If true, each hop in the delegation chain MUST present narrower permissions than the delegating agent held."
+        },
+        "audit_chain": {
+          "type": "boolean",
+          "description": "If true, agents MUST include W3C Trace Context headers on all access requests."
+        },
+        "human_in_the_loop": {
+          "type": "string",
+          "description": "Human approval requirement. Values: always (human MUST approve every access), on-sensitive (human MUST approve access to units with sensitivity confidential or restricted), never (no human approval required).",
+          "enum": ["always", "on-sensitive", "never"]
+        }
+      }
+    },
+    "compliance_object": {
+      "type": "object",
+      "description": "Compliance classification and processing restrictions. Can appear at root level (as default for all units) or at unit level (as override). See SPEC.md §3.5.",
+      "additionalProperties": true,
+      "properties": {
+        "data_residency": {
+          "type": "array",
+          "description": "Permitted geographic regions for data storage and processing. ISO 3166-1 alpha-2 codes or region identifiers (e.g. EEA, US, CH).",
+          "items": { "type": "string" }
+        },
+        "sensitivity": {
+          "type": "string",
+          "description": "Information sensitivity level. Values: public, internal, confidential, restricted.",
+          "enum": ["public", "internal", "confidential", "restricted"]
+        },
+        "regulations": {
+          "type": "array",
+          "description": "Named regulations that apply to this knowledge. Unknown values MUST be silently ignored.",
+          "items": { "type": "string" }
+        },
+        "restrictions": {
+          "type": "array",
+          "description": "Processing restrictions. Unknown values MUST be silently ignored.",
+          "items": { "type": "string" }
         }
       }
     },
