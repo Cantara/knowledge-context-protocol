@@ -17,7 +17,7 @@ VALID_UPDATE_FREQUENCIES = {"hourly", "daily", "weekly", "monthly", "rarely", "n
 VALID_INDEXING_SHORTHANDS = {"open", "read-only", "no-train", "none"}
 VALID_ACCESS_VALUES = {"public", "authenticated", "restricted"}
 VALID_SENSITIVITY_VALUES = {"public", "internal", "confidential", "restricted"}
-KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6"}
+KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7"}
 _ID_PATTERN = re.compile(r"^[a-z0-9.\-]+$")
 _MAX_TRIGGER_LENGTH = 60
 _MAX_TRIGGERS_PER_UNIT = 20
@@ -94,7 +94,7 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
 
     # kcp_version — RECOMMENDED; warn if missing or unknown
     if not manifest.kcp_version:
-        warnings.append("manifest: 'kcp_version' not declared; assuming 0.6")
+        warnings.append("manifest: 'kcp_version' not declared; assuming 0.7")
     elif manifest.kcp_version not in KNOWN_KCP_VERSIONS:
         warnings.append(
             f"manifest: unknown kcp_version '{manifest.kcp_version}'; "

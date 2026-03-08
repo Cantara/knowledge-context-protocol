@@ -34,7 +34,7 @@ public class KcpValidator {
     private static final Set<String> VALID_INDEXING_SHORTHANDS = Set.of("open", "read-only", "no-train", "none");
     private static final Set<String> VALID_ACCESS_VALUES = Set.of("public", "authenticated", "restricted");
     private static final Set<String> VALID_SENSITIVITY_VALUES = Set.of("public", "internal", "confidential", "restricted");
-    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6");
+    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7");
     private static final Pattern ID_PATTERN = Pattern.compile("^[a-z0-9.\\-]+$");
     private static final int MAX_TRIGGER_LENGTH = 60;
     private static final int MAX_TRIGGERS_PER_UNIT = 20;
@@ -80,7 +80,7 @@ public class KcpValidator {
 
         // kcp_version — RECOMMENDED; warn if absent or unknown
         if (manifest.kcpVersion() == null || manifest.kcpVersion().isBlank()) {
-            warnings.add("manifest: 'kcp_version' not declared; assuming 0.6");
+            warnings.add("manifest: 'kcp_version' not declared; assuming 0.7");
         } else if (!KNOWN_KCP_VERSIONS.contains(manifest.kcpVersion())) {
             warnings.add("manifest: unknown kcp_version '" + manifest.kcpVersion() +
                     "'; processing as " + KNOWN_KCP_VERSIONS.stream().max(String::compareTo).orElse("0.6"));
