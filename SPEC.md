@@ -164,7 +164,7 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 The root-level `trust` block declares the provenance of this manifest — who published it and
 how to contact them — and what audit behaviour is expected from agents that access it. It is
 advisory metadata: it carries no cryptographic weight unless combined with external signing
-infrastructure (see §13.1).
+infrastructure (see §14.1).
 
 ```yaml
 trust:
@@ -865,7 +865,7 @@ units:
 
 `access` is an advisory declaration. It does not constitute an access control mechanism — a
 manifest declaring `access: restricted` does not prevent an agent from loading the content if
-no enforcement layer exists at the transport or storage level. See §13.1.
+no enforcement layer exists at the transport or storage level. See §14.1.
 
 Unknown `access` values MUST be silently ignored by parsers.
 
@@ -1183,7 +1183,82 @@ arise specifically when the consumer is an AI agent rather than an API client.
 
 ---
 
-## 12. Extension Fields
+## 12. Relationship to A2A
+
+Google's [Agent-to-Agent (A2A) protocol](https://google.github.io/A2A/) defines how AI agents
+discover and invoke each other. An A2A Agent Card, published at `/.well-known/agent.json`,
+describes an agent's identity, skills, capabilities, and how to authenticate when calling it.
+
+KCP and A2A address adjacent but distinct concerns and are designed to compose:
+
+- **A2A** answers: *"Who is this agent, what can it do, and how do I call it?"*
+- **KCP** answers: *"What knowledge does this agent have access to, and what does each piece require to read?"*
+
+Neither protocol can express what the other expresses.
+
+### The two-layer model
+
+| Concern | A2A Agent Card | KCP Manifest |
+|---------|---------------|--------------|
+| **Describes** | The agent (service) | The knowledge (content units) |
+| **Published at** | `/.well-known/agent.json` | `knowledge.yaml` (project root) |
+| **Format** | JSON | YAML |
+| **Auth granularity** | Per-agent (transport layer) | Per-knowledge-unit (access layer) |
+| **Sensitivity labels** | Not in scope | `public`, `internal`, `confidential`, `restricted` |
+| **Delegation controls** | Not in scope | `max_depth`, capability attenuation, audit chain (§3.4) |
+| **Human-in-the-loop** | Not in scope | Per-unit, with approval mechanism (§3.4) |
+| **Compliance metadata** | Not in scope | `regulations`, `data_residency`, `restrictions` (§3.5) |
+| **Discovery** | Agent skills, I/O modes, capabilities | Knowledge units, intents, triggers, freshness |
+
+### Authentication — two layers, not competing
+
+Both protocols reference OAuth2. This is where a superficial reading might suggest redundancy.
+It is not.
+
+**A2A auth** operates at the transport layer. It defines how a calling agent authenticates
+*to* the target agent — the question is: "Are you allowed to talk to this agent at all?"
+
+**KCP auth** (§3.3) operates at the knowledge-access layer. It defines what credentials are
+needed to access a *specific knowledge unit* within the agent. The question is: "Now that you
+are connected, are you allowed to read this particular file?"
+
+An agent that holds a valid A2A transport token may still be denied access to a specific KCP
+unit because it lacks the required `auth_scope`, has exceeded the unit's `max_depth` delegation
+limit, or because the unit requires human-in-the-loop approval before an agent may read it.
+
+### How they compose
+
+An A2A Agent Card MAY reference a KCP manifest using the `knowledgeManifest` field (a proposed
+convention — not part of the A2A specification):
+
+```json
+{
+  "name": "Research Agent",
+  "url": "https://research.example.com/agent",
+  "knowledgeManifest": "/.well-known/kcp.json"
+}
+```
+
+This enables a calling agent to read both documents before deciding how to interact:
+
+1. **A2A Card** — discover endpoint, authenticate (transport), identify skills
+2. **KCP manifest** — inspect knowledge units, evaluate per-unit access requirements,
+   determine which units to load and which require additional credentials or human approval
+
+A2A without KCP gives you a well-described front door with no access control inside. KCP
+without A2A gives you fine-grained knowledge access control with no standard way for agents to
+find or call the agent hosting it. Together, they form a complete two-layer stack.
+
+### Working example
+
+[`examples/a2a-agent-card/`](./examples/a2a-agent-card/) contains a complete worked example:
+an A2A Agent Card and KCP manifest for the same clinical research agent, with a runnable Java
+simulator (`examples/a2a-agent-card/simulator/`) that executes all four composition phases
+and verifies each access decision with 30 tests.
+
+---
+
+## 13. Extension Fields
 
 Implementations MAY add custom fields to the root manifest or to individual units. Custom fields
 SHOULD use a namespaced prefix to avoid collisions with future spec fields (e.g.
@@ -1194,7 +1269,7 @@ implementations. This is required for forward compatibility.
 
 ---
 
-## 13. Security Considerations
+## 14. Security Considerations
 
 **Path traversal:** Parsers MUST NOT resolve `path` values that traverse outside the manifest's
 root directory (i.e. paths containing `..` that escape the root). Such paths SHOULD be rejected
@@ -1270,7 +1345,7 @@ MUST apply the following constraints:
   resolved manifest URLs MUST be maintained across the fetch chain. A manifest URL that
   appears in its own transitive fetch chain MUST be silently ignored.
 - Parsers SHOULD enforce a maximum remote fetch depth. The RECOMMENDED default is 5.
-- The YAML safety requirements of §13.2 apply to all remotely fetched manifests.
+- The YAML safety requirements of §14.2 apply to all remotely fetched manifests.
 
 ---
 
