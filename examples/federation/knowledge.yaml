@@ -1,0 +1,56 @@
+# Example: Federation Hub Manifest
+# Demonstrates the hub-and-spoke federation model from RFC-0003.
+#
+# NOTE: The `manifests` block is defined in RFC-0003 and has NOT yet been
+# promoted to the core specification. This example shows the proposed syntax
+# for cross-manifest federation.
+
+kcp_version: "0.7"
+project: acme-knowledge-hub
+version: 1.0.0
+updated: "2026-03-08"
+language: en
+
+# --- Federation: hub-and-spoke model (RFC-0003) ------------------------------
+# The hub manifest aggregates knowledge from multiple sub-manifests.
+# Agents discover the hub, then selectively fetch sub-manifests based on
+# unit intents and triggers.
+
+manifests:
+  - url: https://docs.acme.com/platform/knowledge.yaml
+    project: acme-platform
+    description: "Core platform architecture, API reference, deployment guides."
+    trust_level: internal
+
+  - url: https://docs.acme.com/ml-ops/knowledge.yaml
+    project: acme-ml-ops
+    description: "ML pipeline documentation, model registry, training infrastructure."
+    trust_level: internal
+
+  - url: https://github.com/acme/open-source-lib/raw/main/knowledge.yaml
+    project: acme-oss-lib
+    description: "Open-source utility library — public documentation."
+    trust_level: public
+
+# --- Hub-level units ----------------------------------------------------------
+# The hub can also declare its own units (e.g. cross-cutting documentation).
+
+units:
+  - id: onboarding
+    path: docs/onboarding.md
+    intent: "How do new engineers get started across all Acme projects?"
+    scope: global
+    audience: [human, developer]
+    triggers: [onboarding, getting started, new hire, setup]
+
+  - id: architecture-principles
+    path: docs/architecture-principles.md
+    intent: "What are the cross-project architecture principles at Acme?"
+    scope: global
+    audience: [developer, architect, agent]
+    triggers: [architecture, principles, standards, guidelines]
+
+relationships:
+  - from: onboarding
+    to: architecture-principles
+    type: context

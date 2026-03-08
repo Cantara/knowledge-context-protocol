@@ -1439,9 +1439,7 @@ units:
     access: restricted
     delegation:
       max_depth: 1
-      human_in_the_loop:
-        required: true
-        approval_mechanism: oauth_consent
+      human_in_the_loop: always
     trust:
       agent_requirements:
         require_attestation: true
@@ -1653,7 +1651,7 @@ units:
 relationships:
   - from: readme
     to: architecture
-    type: introduces
+    type: enables
   - from: architecture
     to: api-reference
     type: enables</code></pre>

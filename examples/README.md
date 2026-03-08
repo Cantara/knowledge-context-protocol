@@ -9,7 +9,7 @@ Reference implementations and runnable simulation scenarios — from the minimum
 The smallest valid `knowledge.yaml`. Start here if you are not sure whether you need KCP yet.
 
 ```yaml
-kcp_version: "0.6"
+kcp_version: "0.7"
 project: my-project
 version: 1.0.0
 units:
