@@ -594,6 +594,118 @@ class TestPathExistenceChecking:
             assert "missing.md" in path_warnings[0]
 
 
+class TestDelegationParsing:
+    """Tests for v0.7 delegation block parsing."""
+
+    def test_parses_root_delegation(self):
+        data = {
+            **MINIMAL,
+            "delegation": {
+                "max_depth": 2,
+                "require_capability_attenuation": True,
+                "audit_chain": False,
+                "human_in_the_loop": "required",
+            },
+        }
+        m = parse_dict(data)
+        assert m.delegation is not None
+        assert m.delegation.max_depth == 2
+        assert m.delegation.require_capability_attenuation is True
+        assert m.delegation.audit_chain is False
+        assert m.delegation.human_in_the_loop == "required"
+
+    def test_parses_unit_delegation_override(self):
+        data = {
+            **MINIMAL,
+            "units": [{
+                **MINIMAL["units"][0],
+                "delegation": {
+                    "max_depth": 0,
+                    "human_in_the_loop": "recommended",
+                },
+            }],
+        }
+        m = parse_dict(data)
+        u = m.units[0]
+        assert u.delegation is not None
+        assert u.delegation.max_depth == 0
+        assert u.delegation.human_in_the_loop == "recommended"
+        assert u.delegation.require_capability_attenuation is None
+
+    def test_absent_delegation_is_none(self):
+        m = parse_dict(MINIMAL)
+        assert m.delegation is None
+        assert m.units[0].delegation is None
+
+    def test_delegation_max_depth_zero_no_delegation(self):
+        """max_depth=0 means no delegation is allowed — parsed correctly as integer 0."""
+        data = {
+            **MINIMAL,
+            "delegation": {"max_depth": 0},
+        }
+        m = parse_dict(data)
+        assert m.delegation is not None
+        assert m.delegation.max_depth == 0
+
+
+class TestComplianceParsing:
+    """Tests for v0.7 compliance block parsing."""
+
+    def test_parses_root_compliance(self):
+        data = {
+            **MINIMAL,
+            "compliance": {
+                "data_residency": ["EU", "NO"],
+                "sensitivity": "confidential",
+                "regulations": ["GDPR", "NIS2"],
+                "restrictions": ["no_ai_training", "no_cross_border"],
+            },
+        }
+        m = parse_dict(data)
+        assert m.compliance is not None
+        assert m.compliance.data_residency == ["EU", "NO"]
+        assert m.compliance.sensitivity == "confidential"
+        assert m.compliance.regulations == ["GDPR", "NIS2"]
+        assert m.compliance.restrictions == ["no_ai_training", "no_cross_border"]
+
+    def test_parses_unit_compliance_override(self):
+        data = {
+            **MINIMAL,
+            "units": [{
+                **MINIMAL["units"][0],
+                "compliance": {
+                    "sensitivity": "restricted",
+                    "regulations": ["AML5D"],
+                },
+            }],
+        }
+        m = parse_dict(data)
+        u = m.units[0]
+        assert u.compliance is not None
+        assert u.compliance.sensitivity == "restricted"
+        assert u.compliance.regulations == ["AML5D"]
+        assert u.compliance.data_residency == []
+        assert u.compliance.restrictions == []
+
+    def test_absent_compliance_is_none(self):
+        m = parse_dict(MINIMAL)
+        assert m.compliance is None
+        assert m.units[0].compliance is None
+
+    def test_compliance_empty_lists_default(self):
+        """Compliance with only sensitivity — other lists default to empty."""
+        data = {
+            **MINIMAL,
+            "compliance": {"sensitivity": "internal"},
+        }
+        m = parse_dict(data)
+        assert m.compliance is not None
+        assert m.compliance.sensitivity == "internal"
+        assert m.compliance.data_residency == []
+        assert m.compliance.regulations == []
+        assert m.compliance.restrictions == []
+
+
 class TestPathTraversalValidation:
     def test_safe_relative_path(self):
         assert _validate_unit_path("docs/guide.md") == "docs/guide.md"

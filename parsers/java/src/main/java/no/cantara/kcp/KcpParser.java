@@ -2,6 +2,8 @@ package no.cantara.kcp;
 
 import no.cantara.kcp.model.Auth;
 import no.cantara.kcp.model.AuthMethod;
+import no.cantara.kcp.model.Compliance;
+import no.cantara.kcp.model.Delegation;
 import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
 import no.cantara.kcp.model.Relationship;
@@ -54,6 +56,8 @@ public class KcpParser {
         Object hints = data.get("hints");
         Trust trust = parseTrust((Map<String, Object>) data.get("trust"));
         Auth auth = parseAuth((Map<String, Object>) data.get("auth"));
+        Delegation delegation = parseDelegation((Map<String, Object>) data.get("delegation"));
+        Compliance compliance = parseCompliance((Map<String, Object>) data.get("compliance"));
         Object payment = data.get("payment");
 
         List<Map<String, Object>> unitMaps = (List<Map<String, Object>>) data.getOrDefault("units", List.of());
@@ -62,7 +66,7 @@ public class KcpParser {
         List<Map<String, Object>> relMaps = (List<Map<String, Object>>) data.getOrDefault("relationships", List.of());
         List<Relationship> relationships = relMaps.stream().map(KcpParser::parseRelationship).toList();
 
-        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, payment, units, relationships);
+        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, units, relationships);
     }
 
     /**
@@ -111,7 +115,9 @@ public class KcpParser {
                 (String) u.get("auth_scope"),
                 (String) u.get("sensitivity"),
                 (Boolean) u.get("deprecated"),
-                u.get("payment")
+                u.get("payment"),
+                parseDelegation((Map<String, Object>) u.get("delegation")),
+                parseCompliance((Map<String, Object>) u.get("compliance"))
         );
     }
 
@@ -165,6 +171,28 @@ public class KcpParser {
                 (List<String>) m.getOrDefault("scopes", List.of()),
                 (String) m.get("header"),
                 (String) m.get("registration_url")
+        );
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Delegation parseDelegation(Map<String, Object> d) {
+        if (d == null) return null;
+        return new Delegation(
+                (Integer) d.get("max_depth"),
+                (Boolean) d.get("require_capability_attenuation"),
+                (Boolean) d.get("audit_chain"),
+                (String) d.get("human_in_the_loop")
+        );
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Compliance parseCompliance(Map<String, Object> c) {
+        if (c == null) return null;
+        return new Compliance(
+                (List<String>) c.get("data_residency"),
+                (String) c.get("sensitivity"),
+                (List<String>) c.get("regulations"),
+                (List<String>) c.get("restrictions")
         );
     }
 

@@ -781,4 +781,107 @@ class KcpParserTest {
         assertEquals(1, pathWarnings.size());
         assertTrue(pathWarnings.get(0).contains("missing.md"));
     }
+
+    // -----------------------------------------------------------------------
+    // v0.7 Delegation parsing tests
+    // -----------------------------------------------------------------------
+
+    @Test
+    void parsesRootDelegation() {
+        Map<String, Object> delegationMap = new HashMap<>(Map.of(
+                "max_depth", 2,
+                "require_capability_attenuation", true,
+                "audit_chain", false,
+                "human_in_the_loop", "required"
+        ));
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("delegation", delegationMap);
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        assertNotNull(m.delegation());
+        assertEquals(2, m.delegation().maxDepth());
+        assertTrue(m.delegation().requireCapabilityAttenuation());
+        assertFalse(m.delegation().auditChain());
+        assertEquals("required", m.delegation().humanInTheLoop());
+    }
+
+    @Test
+    void parsesUnitDelegationOverride() {
+        Map<String, Object> unitDelegation = new HashMap<>(Map.of(
+                "max_depth", 0,
+                "human_in_the_loop", "recommended"
+        ));
+        Map<String, Object> unitData = new HashMap<>(Map.of(
+                "id", "u1", "path", "f.md", "intent", "test", "scope", "global",
+                "audience", List.of("agent"), "delegation", unitDelegation
+        ));
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.7",
+                "units", List.of(unitData)
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KnowledgeUnit u = m.units().get(0);
+        assertNotNull(u.delegation());
+        assertEquals(0, u.delegation().maxDepth());
+        assertEquals("recommended", u.delegation().humanInTheLoop());
+        assertNull(u.delegation().requireCapabilityAttenuation());
+    }
+
+    @Test
+    void absentDelegationIsNull() {
+        KnowledgeManifest m = KcpParser.fromMap(MINIMAL);
+        assertNull(m.delegation());
+        assertNull(m.units().get(0).delegation());
+    }
+
+    // -----------------------------------------------------------------------
+    // v0.7 Compliance parsing tests
+    // -----------------------------------------------------------------------
+
+    @Test
+    void parsesRootCompliance() {
+        Map<String, Object> complianceMap = new HashMap<>(Map.of(
+                "data_residency", List.of("EU", "NO"),
+                "sensitivity", "confidential",
+                "regulations", List.of("GDPR", "NIS2"),
+                "restrictions", List.of("no_ai_training", "no_cross_border")
+        ));
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("compliance", complianceMap);
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        assertNotNull(m.compliance());
+        assertEquals(List.of("EU", "NO"), m.compliance().dataResidency());
+        assertEquals("confidential", m.compliance().sensitivity());
+        assertEquals(List.of("GDPR", "NIS2"), m.compliance().regulations());
+        assertEquals(List.of("no_ai_training", "no_cross_border"), m.compliance().restrictions());
+    }
+
+    @Test
+    void parsesUnitComplianceOverride() {
+        Map<String, Object> unitCompliance = new HashMap<>(Map.of(
+                "sensitivity", "restricted",
+                "regulations", List.of("AML5D")
+        ));
+        Map<String, Object> unitData = new HashMap<>(Map.of(
+                "id", "u1", "path", "f.md", "intent", "test", "scope", "global",
+                "audience", List.of("agent"), "compliance", unitCompliance
+        ));
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.7",
+                "units", List.of(unitData)
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KnowledgeUnit u = m.units().get(0);
+        assertNotNull(u.compliance());
+        assertEquals("restricted", u.compliance().sensitivity());
+        assertEquals(List.of("AML5D"), u.compliance().regulations());
+        assertTrue(u.compliance().dataResidency().isEmpty());
+        assertTrue(u.compliance().restrictions().isEmpty());
+    }
+
+    @Test
+    void absentComplianceIsNull() {
+        KnowledgeManifest m = KcpParser.fromMap(MINIMAL);
+        assertNull(m.compliance());
+        assertNull(m.units().get(0).compliance());
+    }
 }

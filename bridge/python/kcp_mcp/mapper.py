@@ -117,6 +117,11 @@ def unit_resource_dict(slug: str, unit: KnowledgeUnit) -> dict:
         description += f"\nTriggers: {', '.join(unit.triggers)}"
     if unit.depends_on:
         description += f"\nDepends on: {', '.join(unit.depends_on)}"
+    if unit.compliance:
+        if unit.compliance.data_residency:
+            description += f"\nData residency: {', '.join(unit.compliance.data_residency)}"
+        if unit.compliance.regulations:
+            description += f"\nRegulations: {', '.join(unit.compliance.regulations)}"
 
     last_modified: Optional[str] = None
     if unit.validated:
@@ -180,6 +185,26 @@ def build_manifest_json(manifest: KnowledgeManifest, slug: str) -> str:
             entry["update_frequency"] = u.update_frequency
         if u.supersedes:
             entry["supersedes"] = u.supersedes
+        if u.delegation is not None:
+            delegation_entry: dict = {}
+            if u.delegation.max_depth is not None:
+                delegation_entry["max_depth"] = u.delegation.max_depth
+            if u.delegation.human_in_the_loop is not None:
+                delegation_entry["human_in_the_loop"] = u.delegation.human_in_the_loop
+            if delegation_entry:
+                entry["delegation"] = delegation_entry
+        if u.compliance is not None:
+            compliance_entry: dict = {}
+            if u.compliance.data_residency:
+                compliance_entry["data_residency"] = u.compliance.data_residency
+            if u.compliance.sensitivity is not None:
+                compliance_entry["sensitivity"] = u.compliance.sensitivity
+            if u.compliance.regulations:
+                compliance_entry["regulations"] = u.compliance.regulations
+            if u.compliance.restrictions:
+                compliance_entry["restrictions"] = u.compliance.restrictions
+            if compliance_entry:
+                entry["compliance"] = compliance_entry
         units_data.append(entry)
 
     doc = {

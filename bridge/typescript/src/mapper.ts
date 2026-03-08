@@ -120,6 +120,10 @@ export function buildDescription(unit: KnowledgeUnit): string {
     parts.push(`Triggers: ${unit.triggers.join(", ")}`);
   if (unit.supersedes) parts.push(`Supersedes: ${unit.supersedes}`);
   if (unit.deprecated) parts.push(`Deprecated: true`);
+  if (unit.compliance?.data_residency?.length)
+    parts.push(`Data residency: ${unit.compliance.data_residency.join(", ")}`);
+  if (unit.compliance?.regulations?.length)
+    parts.push(`Regulations: ${unit.compliance.regulations.join(", ")}`);
   return parts.join("\n");
 }
 
@@ -226,6 +230,22 @@ export function manifestToJson(
       if (u.sensitivity) entry["sensitivity"] = u.sensitivity;
       if (u.deprecated) entry["deprecated"] = u.deprecated;
       if (u.payment) entry["payment"] = u.payment;
+      if (u.delegation) {
+        const d: Record<string, unknown> = {};
+        if (u.delegation.max_depth !== undefined) d["max_depth"] = u.delegation.max_depth;
+        if (u.delegation.human_in_the_loop !== undefined) d["human_in_the_loop"] = u.delegation.human_in_the_loop;
+        if (u.delegation.require_capability_attenuation !== undefined) d["require_capability_attenuation"] = u.delegation.require_capability_attenuation;
+        if (u.delegation.audit_chain !== undefined) d["audit_chain"] = u.delegation.audit_chain;
+        if (Object.keys(d).length > 0) entry["delegation"] = d;
+      }
+      if (u.compliance) {
+        const c: Record<string, unknown> = {};
+        if (u.compliance.data_residency?.length) c["data_residency"] = u.compliance.data_residency;
+        if (u.compliance.sensitivity) c["sensitivity"] = u.compliance.sensitivity;
+        if (u.compliance.regulations?.length) c["regulations"] = u.compliance.regulations;
+        if (u.compliance.restrictions?.length) c["restrictions"] = u.compliance.restrictions;
+        if (Object.keys(c).length > 0) entry["compliance"] = c;
+      }
       return entry;
     }),
     relationships: manifest.relationships.map((r) => ({
@@ -236,6 +256,8 @@ export function manifestToJson(
     ...(manifest.hints ? { hints: manifest.hints } : {}),
     ...(manifest.trust ? { trust: manifest.trust } : {}),
     ...(manifest.auth ? { auth: manifest.auth } : {}),
+    ...(manifest.delegation ? { delegation: manifest.delegation } : {}),
+    ...(manifest.compliance ? { compliance: manifest.compliance } : {}),
     ...(manifest.payment ? { payment: manifest.payment } : {}),
   };
   return JSON.stringify(payload, null, 2);

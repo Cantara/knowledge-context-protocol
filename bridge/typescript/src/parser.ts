@@ -6,6 +6,8 @@ import yaml from "js-yaml";
 import type {
   Auth,
   AuthMethod,
+  Compliance,
+  Delegation,
   KnowledgeManifest,
   KnowledgeUnit,
   Relationship,
@@ -115,6 +117,8 @@ function parseUnit(raw: RawMap): KnowledgeUnit {
       raw["payment"] !== undefined && typeof raw["payment"] === "object" && !Array.isArray(raw["payment"])
         ? (raw["payment"] as Record<string, unknown>)
         : undefined,
+    delegation: parseDelegation(raw["delegation"]),
+    compliance: parseCompliance(raw["compliance"]),
   };
 }
 
@@ -170,6 +174,45 @@ function parseAuth(raw: unknown): Auth | undefined {
   return { methods };
 }
 
+function parseDelegation(raw: unknown): Delegation | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const data = raw as RawMap;
+  return {
+    max_depth: data["max_depth"] !== undefined ? Number(data["max_depth"]) : undefined,
+    require_capability_attenuation:
+      data["require_capability_attenuation"] !== undefined
+        ? Boolean(data["require_capability_attenuation"])
+        : undefined,
+    audit_chain:
+      data["audit_chain"] !== undefined ? Boolean(data["audit_chain"]) : undefined,
+    human_in_the_loop:
+      data["human_in_the_loop"] !== undefined
+        ? String(data["human_in_the_loop"])
+        : undefined,
+  };
+}
+
+function parseCompliance(raw: unknown): Compliance | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const data = raw as RawMap;
+  return {
+    data_residency:
+      data["data_residency"] !== undefined
+        ? asStringArray(data["data_residency"])
+        : undefined,
+    sensitivity:
+      data["sensitivity"] !== undefined ? String(data["sensitivity"]) : undefined,
+    regulations:
+      data["regulations"] !== undefined
+        ? asStringArray(data["regulations"])
+        : undefined,
+    restrictions:
+      data["restrictions"] !== undefined
+        ? asStringArray(data["restrictions"])
+        : undefined,
+  };
+}
+
 // --- Public API ---
 
 /**
@@ -198,6 +241,8 @@ export function parseDict(data: RawMap): KnowledgeManifest {
         : undefined,
     trust: parseTrust(data["trust"]),
     auth: parseAuth(data["auth"]),
+    delegation: parseDelegation(data["delegation"]),
+    compliance: parseCompliance(data["compliance"]),
     payment:
       data["payment"] !== undefined && typeof data["payment"] === "object" && !Array.isArray(data["payment"])
         ? (data["payment"] as Record<string, unknown>)
