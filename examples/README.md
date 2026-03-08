@@ -1,6 +1,6 @@
 # KCP Examples
 
-Three reference implementations showing the adoption gradient — from the minimum viable three-field configuration to a full enterprise knowledge graph.
+Four reference implementations showing the adoption gradient — from the minimum viable configuration to multi-agent coordination with A2A.
 
 ## [minimal/](./minimal/)
 
@@ -50,6 +50,21 @@ Live reference: [cantara.github.io/wiki/knowledge.yaml](https://cantara.github.i
 
 ---
 
+## [a2a-agent-card/](./a2a-agent-card/)
+
+**Level 4 — Multi-Agent Coordination (A2A + KCP)**
+
+An A2A Agent Card paired with a KCP manifest for a clinical research agent. Shows:
+- How `/.well-known/agent.json` (A2A) and `/.well-known/kcp.json` (KCP) compose as complementary layers
+- Escalating access control: `public` -> `authenticated` -> `restricted` with PII sensitivity
+- Root-level `auth`, `trust.audit`, and `delegation` blocks
+- Per-unit delegation override with `human_in_the_loop: required` on patient data
+- The `knowledgeManifest` field in the Agent Card linking to the KCP manifest
+
+Blog post: [The Front Door and the Filing Cabinet](https://wiki.totto.org/blog/2026/03/08/the-front-door-and-the-filing-cabinet-a2a-agent-cards-meet-kcp/)
+
+---
+
 ## The adoption gradient
 
 | Stage | What you have | When to use it |
@@ -58,3 +73,4 @@ Live reference: [cantara.github.io/wiki/knowledge.yaml](https://cantara.github.i
 | **Personal site** | + `validated`, `depends_on` | Personal wikis, portfolios, small docs sites |
 | **Open source wiki** | + `triggers`, `relationships` | Multi-section knowledge bases, community docs |
 | **Enterprise** | + full relationship graph, role-based audience, cross-repo units | Large orgs, multiple repositories, agent deployments |
+| **Multi-agent** | + A2A Agent Card, `auth`, `delegation`, `trust.audit`, per-unit PII | Multi-agent systems, regulated domains, delegation chains |

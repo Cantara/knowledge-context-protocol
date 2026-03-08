@@ -52,6 +52,10 @@ knowledge of the site's directory structure.
 These are complementary: A2A answers "what can this agent do?"; KCP answers "what knowledge
 can this agent access, under what conditions, and how fresh is it?"
 
+For a worked example showing how `/.well-known/agent.json` and `/.well-known/kcp.json` compose
+in a multi-agent system (clinical research domain with escalating access, PII, and
+human-in-the-loop), see [`examples/a2a-agent-card/`](./examples/a2a-agent-card/).
+
 **Response format:**
 
 A GET to `/.well-known/kcp.json` returns `application/json` with at minimum:

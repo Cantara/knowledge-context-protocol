@@ -1,0 +1,61 @@
+{
+  "name": "Clinical Research Agent",
+  "description": "Assists researchers with protocol lookup, guideline retrieval, and patient cohort analysis for active clinical trials.",
+  "url": "https://research.example.com/agent",
+  "version": "1.0.0",
+  "documentationUrl": "https://research.example.com/docs",
+  "provider": {
+    "organization": "Example Health Research",
+    "url": "https://research.example.com"
+  },
+  "securitySchemes": {
+    "oauth2": {
+      "type": "oauth2",
+      "flows": {
+        "clientCredentials": {
+          "tokenUrl": "https://auth.research.example.com/oauth2/token",
+          "scopes": {
+            "read:guidelines": "Read publicly available research guidelines",
+            "read:protocols": "Read active trial protocols",
+            "read:cohort": "Read patient cohort data (requires human approval)"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "oauth2": ["read:guidelines"]
+    }
+  ],
+  "skills": [
+    {
+      "id": "protocol-lookup",
+      "name": "Protocol Lookup",
+      "description": "Retrieve and summarise active clinical trial protocols, inclusion/exclusion criteria, and study design parameters.",
+      "tags": ["clinical-trials", "protocols", "research"],
+      "examples": [
+        "Find the inclusion criteria for trial NCT-2026-0042",
+        "What phase is the BEACON-3 study in?"
+      ]
+    },
+    {
+      "id": "cohort-analysis",
+      "name": "Cohort Analysis",
+      "description": "Analyse patient cohort demographics, enrollment figures, and outcome summaries. Requires clinical-staff authorisation and human approval for patient-level data.",
+      "tags": ["patients", "cohort", "demographics", "outcomes"],
+      "examples": [
+        "Summarise enrollment demographics for BEACON-3",
+        "Compare adverse event rates across treatment arms"
+      ]
+    }
+  ],
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "defaultInputModes": ["application/json", "text/plain"],
+  "defaultOutputModes": ["application/json", "text/plain"],
+  "knowledgeManifest": "/.well-known/kcp.json"
+}

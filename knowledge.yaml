@@ -152,6 +152,23 @@ units:
     depends_on: [examples-index]
     triggers: [open source, wiki, community, topology, relationships, enterprise]
 
+  - id: example-a2a-agent-card
+    path: examples/a2a-agent-card/README.md
+    intent: "How do A2A Agent Cards and KCP manifests work together in a multi-agent system?"
+    scope: global
+    audience: [agent, developer, architect]
+    validated: "2026-03-08"
+    depends_on: [examples-index]
+    triggers:
+      - "a2a"
+      - "agent card"
+      - "multi-agent"
+      - "agent discovery"
+      - "invocation layer"
+      - "front door"
+      - "delegation"
+      - "human in the loop"
+
   # -- Parsers -------------------------------------------------------------------
 
   - id: parser-python
@@ -221,6 +238,15 @@ relationships:
   - from: example-open-source-wiki
     to: examples-index
     type: context
+  - from: example-a2a-agent-card
+    to: examples-index
+    type: context
+  - from: example-a2a-agent-card
+    to: spec
+    type: depends_on
+  - from: example-a2a-agent-card
+    to: rfc-0002
+    type: depends_on
 
   # Parsers implement the spec
   - from: parser-python

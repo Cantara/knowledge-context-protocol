@@ -1,0 +1,124 @@
+# Clinical Research Agent — KCP manifest
+# Companion to agent-card.json (A2A Agent Card).
+#
+# The Agent Card declares what this agent CAN DO and how to call it.
+# This manifest declares what knowledge the agent HAS ACCESS TO, at per-unit
+# granularity: access level, sensitivity classification, delegation constraints,
+# and audit requirements.
+#
+# Together they form two complementary layers:
+#   A2A  = front door  (capabilities, authentication to the agent)
+#   KCP  = filing cabinet (knowledge inventory, per-unit access controls)
+
+kcp_version: "0.6"
+project: clinical-research-agent
+version: 1.0.0
+updated: "2026-03-08"
+language: en
+license: "proprietary"
+
+trust:
+  provenance:
+    publisher: "Example Health Research"
+    publisher_url: "https://research.example.com"
+    contact: "knowledge-team@research.example.com"
+  audit:
+    agent_must_log: true
+    require_trace_context: true
+
+auth:
+  methods:
+    - type: oauth2
+      flow: client_credentials
+      token_endpoint: "https://auth.research.example.com/oauth2/token"
+      scopes: ["read:guidelines", "read:protocols", "read:cohort"]
+    - type: none
+
+# Root-level delegation constraints (RFC-0002 Proposal 3).
+# These apply to all units unless overridden at unit level.
+delegation:
+  max_depth: 2
+  require_capability_attenuation: true
+  audit_chain: true
+
+units:
+
+  # ── Public research guidelines ─────────────────────────────────────────────
+
+  - id: public-guidelines
+    path: guidelines/index.md
+    intent: "What are the current research guidelines, ethical standards, and regulatory requirements for clinical trials?"
+    scope: global
+    audience: [human, agent, researcher]
+    validated: "2026-03-01"
+    access: public
+    sensitivity: public
+    triggers:
+      - "research guidelines"
+      - "ethical standards"
+      - "regulatory requirements"
+      - "good clinical practice"
+      - "GCP"
+      - "ICH"
+
+  # ── Trial protocols (authenticated access) ─────────────────────────────────
+
+  - id: trial-protocols
+    path: protocols/active-trials.md
+    intent: "What are the active clinical trial protocols, their study designs, and inclusion/exclusion criteria?"
+    scope: project
+    audience: [human, agent, researcher]
+    validated: "2026-03-01"
+    access: authenticated
+    sensitivity: internal
+    depends_on: [public-guidelines]
+    triggers:
+      - "trial protocol"
+      - "study design"
+      - "inclusion criteria"
+      - "exclusion criteria"
+      - "active trials"
+      - "phase"
+
+  # ── Patient cohort data (restricted, PII, human-in-the-loop) ───────────────
+
+  - id: patient-cohort
+    path: cohort/patient-data.md
+    intent: "What are the patient cohort demographics, enrollment figures, and outcome summaries for active trials?"
+    scope: module
+    audience: [agent, researcher]
+    validated: "2026-03-01"
+    access: restricted
+    auth_scope: clinical-staff
+    sensitivity: restricted
+    depends_on: [trial-protocols]
+    triggers:
+      - "patient data"
+      - "cohort demographics"
+      - "enrollment"
+      - "adverse events"
+      - "outcomes"
+      - "PII"
+    # Per-unit delegation override: tighter than the root block.
+    delegation:
+      max_depth: 1
+      human_in_the_loop:
+        required: true
+        approval_mechanism: oauth_consent
+
+relationships:
+
+  # Guidelines are prerequisite context for understanding protocols
+  - from: public-guidelines
+    to: trial-protocols
+    type: enables
+
+  # Protocol knowledge is required before accessing patient data
+  - from: trial-protocols
+    to: patient-cohort
+    type: enables
+
+  # Guidelines provide background context for cohort interpretation
+  - from: public-guidelines
+    to: patient-cohort
+    type: context
