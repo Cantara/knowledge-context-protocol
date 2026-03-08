@@ -1,0 +1,7 @@
+{
+  "kcp_version": "0.7",
+  "manifest": "/knowledge.yaml",
+  "title": "Example Knowledge Base",
+  "description": "Architecture decisions, API reference, and onboarding guides.",
+  "spec": "https://github.com/Cantara/knowledge-context-protocol"
+}

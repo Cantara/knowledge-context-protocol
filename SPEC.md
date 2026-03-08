@@ -222,8 +222,7 @@ sites with no access control, the `auth` block MAY be omitted entirely.
 auth:
   methods:
     - type: oauth2
-      flow: client_credentials
-      token_endpoint: "https://auth.example.com/token"
+      issuer: "https://auth.example.com"
       scopes: ["read:knowledge"]
 
     - type: api_key
@@ -255,7 +254,7 @@ specification:
 | Type | Description | Sub-fields |
 |------|-------------|------------|
 | `none` | No credentials required. | None. |
-| `oauth2` | OAuth 2.1 authentication. | `flow`, `token_endpoint`, `authorization_endpoint`, `scopes`, `resource` |
+| `oauth2` | OAuth 2.1 authentication. | `issuer`, `scopes`, `registration_url` |
 | `api_key` | API key passed in a named HTTP header. | `header`, `registration_url` |
 
 Unknown `type` values MUST be silently ignored by parsers. This enables forward compatibility
@@ -284,11 +283,9 @@ which also requires OAuth 2.1.
 
 | Sub-field | Required | Description |
 |-----------|----------|-------------|
-| `flow` | RECOMMENDED | OAuth flow: `client_credentials`, `authorization_code`, or `device_code`. Default: `client_credentials`. |
-| `token_endpoint` | REQUIRED | URL of the OAuth token endpoint. MUST use HTTPS. |
-| `authorization_endpoint` | OPTIONAL | URL of the authorization endpoint. Required for `authorization_code` and `device_code` flows. |
+| `issuer` | REQUIRED | OAuth 2.1 issuer URL. Agents can discover endpoints via `{issuer}/.well-known/oauth-authorization-server` ([RFC 8414](https://datatracker.ietf.org/doc/html/rfc8414)). MUST use HTTPS. |
 | `scopes` | OPTIONAL | List of OAuth scopes to request. |
-| `resource` | OPTIONAL | [RFC 8707](https://datatracker.ietf.org/doc/html/rfc8707) resource indicator for scoping tokens to this knowledge source. |
+| `registration_url` | OPTIONAL | URL where agents or operators can register for credentials. |
 
 ##### `type: api_key`
 
@@ -1604,8 +1601,7 @@ trust:
 auth:
   methods:
     - type: oauth2
-      flow: client_credentials
-      token_endpoint: "https://auth.example.org/token"
+      issuer: "https://auth.example.org"
       scopes: ["read:docs"]
     - type: none
 payment:

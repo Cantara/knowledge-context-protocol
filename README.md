@@ -389,8 +389,8 @@ requests are welcome.
 - **[RFC-0004](./RFC-0004-Trust-and-Compliance.md)** — Trust, provenance, and compliance metadata (`trust.provenance`, `sensitivity` promoted in v0.5; `trust.audit` promoted in v0.6; `compliance` promoted to core in v0.7)
 - **[RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md)** — Payment and rate-limit metadata proposal (`payment`, `rate_limits` blocks)
 - **[RFC-0006](./RFC-0006-Context-Window-Hints.md)** — Context window hints (accepted; promoted to SPEC.md §4.10 in v0.4)
-- **parsers/** — Reference implementations (Python, Java, TypeScript) — 401 tests passing
-- **bridge/** — MCP servers: expose any `knowledge.yaml` as MCP resources (TypeScript · Python · Java)
+- **parsers/** — Reference parser/validator implementations (Python, Java) — 401 tests passing
+- **bridge/** — MCP servers: expose any `knowledge.yaml` as MCP resources (TypeScript · Python · Java). The TypeScript parser, validator, and mapper live in `bridge/typescript/src/` (parser.ts, validator.ts, mapper.ts).
 - **plugins/opencode/** — OpenCode plugin (`opencode-kcp-plugin` on npm)
 - **examples/** — Reference manifests at four adoption levels plus 4 simulation scenarios (150 adversarial tests: A2A+KCP clinical research, energy metering HITL, legal delegation chains, financial AML)
 - **[kcp-memory](https://github.com/Cantara/kcp-memory)** — Episodic memory daemon for Claude Code (separate repo)

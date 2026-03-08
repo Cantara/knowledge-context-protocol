@@ -189,6 +189,15 @@ units:
     depends_on: [spec]
     triggers: [java, parser, maven, snakeyaml, validator, cli]
 
+  - id: bridge-typescript
+    path: bridge/typescript/src/parser.ts
+    intent: "Where is the TypeScript KCP parser, validator, and MCP mapper? How do I parse, validate, and serve knowledge.yaml from TypeScript?"
+    scope: module
+    audience: [developer, agent]
+    validated: "2026-03-08"
+    depends_on: [spec]
+    triggers: [typescript, ts, parser, validator, mapper, mcp, bridge, npm]
+
   # -- GitHub Pages site ---------------------------------------------------------
 
   - id: site
@@ -243,16 +252,19 @@ relationships:
     type: context
   - from: example-a2a-agent-card
     to: spec
-    type: depends_on
+    type: context
   - from: example-a2a-agent-card
     to: rfc-0002
-    type: depends_on
+    type: context
 
   # Parsers implement the spec
   - from: parser-python
     to: spec
     type: context
   - from: parser-java
+    to: spec
+    type: context
+  - from: bridge-typescript
     to: spec
     type: context
 
