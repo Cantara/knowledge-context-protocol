@@ -1,8 +1,8 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.6
+**Version:** 0.7
 **Status:** Draft
-**Date:** 2026-03-07
+**Date:** 2026-03-08
 **Repository:** github.com/cantara/knowledge-context-protocol
 
 ---
@@ -132,6 +132,8 @@ indexing: <string or object>  # OPTIONAL; default indexing permissions (see §4.
 hints: <object>              # OPTIONAL; manifest-level aggregate hints (see §4.10)
 trust: <object>              # OPTIONAL; publisher provenance and audit requirements (see §3.2)
 auth: <object>               # OPTIONAL; authentication methods for this knowledge source (see §3.3)
+delegation: <object>         # OPTIONAL; delegation chain constraints for multi-agent access (see §3.4)
+compliance: <object>         # OPTIONAL; compliance classification and processing restrictions (see §3.5)
 payment: <object>            # OPTIONAL; default monetisation tier for all units (see §4.14)
 
 units:                       # REQUIRED; list of knowledge units
@@ -155,6 +157,8 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 | `hints` | OPTIONAL | object | Manifest-level aggregate context hints. See §4.10. |
 | `trust` | OPTIONAL | object | Publisher provenance and audit requirements for this manifest. See §3.2. |
 | `auth` | OPTIONAL | object | Authentication methods for this knowledge source. See §3.3. |
+| `delegation` | OPTIONAL | object | Delegation chain constraints for multi-agent access. See §3.4. |
+| `compliance` | OPTIONAL | object | Compliance classification, data residency, and processing restrictions. See §3.5. |
 | `payment` | OPTIONAL | object | Default monetisation tier for all units. See §4.14. |
 | `units` | REQUIRED | list | Ordered list of knowledge unit declarations. MUST contain at least one unit. |
 | `relationships` | OPTIONAL | list | Explicit cross-unit relationship declarations. See §5. |
@@ -305,6 +309,221 @@ authorization.
 - When `auth` is present but no method in `auth.methods` is recognised by the parser, the
   parser SHOULD emit a warning and MUST NOT reject the manifest.
 - Unknown sub-fields within any method entry MUST be silently ignored.
+
+---
+
+### 3.4 `delegation`
+
+The root-level `delegation` block declares constraints on how knowledge units in this manifest
+may be accessed through agent delegation chains. Multi-agent systems commonly involve a human
+authorising an orchestrator, which delegates to sub-agents, which may further delegate. This
+block limits how far that chain may extend and what conditions it must satisfy.
+
+```yaml
+delegation:
+  max_depth: 3                         # OPTIONAL; maximum hops from resource owner to accessing agent
+  require_capability_attenuation: true # OPTIONAL; each hop MUST narrow permissions, not expand them
+  require_delegation_proof: false      # OPTIONAL; agent MUST present a verifiable chain
+  audit_chain: true                    # OPTIONAL; W3C Trace Context required on all access requests
+  human_in_the_loop:                   # OPTIONAL; root-level human approval default
+    required: false
+    approval_mechanism: oauth_consent  # uma | oauth_consent | custom
+    docs_url: "https://..."            # required when approval_mechanism is "custom"
+```
+
+#### `delegation` field reference
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `max_depth` | OPTIONAL | integer | Maximum delegation chain depth. **The resource owner operates at depth 0.** The first agent to which access is delegated operates at depth 1. `max_depth: 0` means no delegation is permitted — only the resource owner may access the unit directly. Omit for no constraint. |
+| `require_capability_attenuation` | OPTIONAL | boolean | If `true`, each hop in the delegation chain MUST present narrower permissions than the delegating agent held. Agents SHOULD reject delegation tokens that grant equal or greater scope than the parent token. |
+| `require_delegation_proof` | OPTIONAL | boolean | If `true`, agents MUST present a verifiable delegation chain when accessing restricted units. Agents that cannot present proof MUST NOT access the unit. |
+| `audit_chain` | OPTIONAL | boolean | If `true`, agents MUST include W3C Trace Context `traceparent`/`tracestate` headers on all access requests, enabling full delegation chain reconstruction from access logs. Compatible with OpenTelemetry. |
+| `human_in_the_loop` | OPTIONAL | object | Root-level human approval requirement. May be overridden at unit level. |
+
+#### `delegation.human_in_the_loop` sub-fields
+
+| Sub-field | Required | Description |
+|-----------|----------|-------------|
+| `required` | OPTIONAL | If `true`, a human MUST approve agent access before the unit may be loaded. Default: `false`. |
+| `approval_mechanism` | OPTIONAL | How human approval is obtained: `oauth_consent` (OAuth 2.1 authorization code flow with user present), `uma` (UMA 2.0 asynchronous resource owner policy), or `custom` (described at `docs_url`). |
+| `docs_url` | OPTIONAL | URL describing the approval flow. REQUIRED when `approval_mechanism` is `custom`. |
+
+#### Per-unit `delegation` overrides
+
+Individual units MAY declare a `delegation` block to tighten constraints beyond the root
+defaults. A per-unit `delegation` block MUST NOT relax root constraints (e.g. `max_depth` at
+unit level MUST NOT exceed `max_depth` at root level).
+
+```yaml
+units:
+  - id: patient-records
+    path: data/patients.md
+    access: restricted
+    auth_scope: clinical-staff
+    delegation:
+      max_depth: 1
+      human_in_the_loop:
+        required: true
+        approval_mechanism: oauth_consent
+```
+
+#### Security properties
+
+| Attack class | Mitigation |
+|--------------|-----------|
+| Agent session smuggling | `max_depth` limits the delegation chain length |
+| Cross-agent privilege escalation | `require_capability_attenuation` |
+| Unauthorised autonomous access | `human_in_the_loop.required: true` |
+| Audit evasion | `audit_chain` + W3C Trace Context |
+
+#### Known limitations (v0.7)
+
+**Capability attenuation is declarative.** `require_capability_attenuation: true` declares
+that scope narrowing MUST occur but does not define a scope comparison function. Implementations
+SHOULD treat OAuth scope strings as a hierarchy where a more specific scope (e.g.
+`read:case:external-summary`) is a narrowing of its prefix (e.g. `read:case`). A formal scope
+comparison specification is planned for a future version.
+
+**Delegation chain integrity requires signed tokens.** Without signed lineage tokens, a
+misconfigured or malicious agent may claim any delegation depth. `require_delegation_proof`
+provides a hook for implementations that issue signed delegation credentials; the token format
+is not specified in this version (see RFC-0002).
+
+#### `delegation` block conformance
+
+- `delegation` is OPTIONAL at both root and unit level.
+- Parsers MUST NOT reject a manifest because `delegation` is absent.
+- Parsers MUST silently ignore unrecognised sub-fields.
+- When a per-unit `max_depth` is present, it MUST be ≤ the root `max_depth` if a root value is set.
+- `kcp_version: "0.6"` manifests MUST NOT fail validation if `delegation` is present; parsers
+  that do not recognise `delegation` MUST silently ignore it.
+
+---
+
+### 3.5 `compliance`
+
+The root-level `compliance` block declares the regulatory context, data residency requirements,
+sensitivity classification, and processing restrictions that apply to this manifest. It is
+advisory metadata: compliance enforcement depends on the consuming agent and its runtime
+environment.
+
+Agents that cannot satisfy the compliance requirements declared for a unit SHOULD NOT access
+that unit and SHOULD surface the constraint to their operator.
+
+```yaml
+compliance:
+  data_residency:
+    regions: [EEA]             # geographic processing constraint (see region vocabulary)
+    hard_requirement: false    # if true: legally mandatory, not advisory
+  regulations: [GDPR, NIS2]   # applicable regulations (see regulation vocabulary)
+  sensitivity: internal        # public | internal | confidential | restricted
+  restrictions:                # processing restrictions (see restriction vocabulary)
+    - no-external-llm
+    - audit-required
+```
+
+#### `compliance` field reference
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `data_residency` | OPTIONAL | object | Geographic constraints on where this knowledge may be stored and processed. |
+| `data_residency.regions` | OPTIONAL | list | Permitted geographic regions. See region vocabulary. |
+| `data_residency.hard_requirement` | OPTIONAL | boolean | If `true`, the residency constraint is legally mandatory. Default: `false`. |
+| `regulations` | OPTIONAL | list | Named regulations that apply to this knowledge. Unknown values MUST be silently ignored. |
+| `sensitivity` | OPTIONAL | string | Information sensitivity level. Overrides `sensitivity` declared at the unit level (§4.11) when used in a root compliance block; at unit level they are equivalent. |
+| `restrictions` | OPTIONAL | list | Processing restrictions. Unknown values MUST be silently ignored. |
+
+#### Sensitivity levels
+
+Aligned with ISO 27001 and common national information classification frameworks:
+
+| Value | Meaning |
+|-------|---------|
+| `public` | No restrictions. Freely shareable. |
+| `internal` | For internal use only. Not for external parties without authorisation. |
+| `confidential` | Restricted within the organisation. Need-to-know basis. |
+| `restricted` | Highest sensitivity. Strict access controls required. |
+
+#### Regulation vocabulary
+
+Implementations SHOULD recognise the following named values:
+
+| Value | Regulation |
+|-------|-----------|
+| `GDPR` | EU General Data Protection Regulation |
+| `ePrivacy` | EU ePrivacy Directive / Regulation |
+| `NIS2` | EU Network and Information Security Directive 2 |
+| `HIPAA` | US Health Insurance Portability and Accountability Act |
+| `HITECH` | US Health Information Technology for Economic and Clinical Health Act |
+| `CCPA` | California Consumer Privacy Act |
+| `MiFID2` | EU Markets in Financial Instruments Directive II |
+| `DORA` | EU Digital Operational Resilience Act (financial sector) |
+| `AML5D` | EU 5th Anti-Money Laundering Directive |
+| `FATF` | Financial Action Task Force recommendations |
+| `ITAR` | US International Traffic in Arms Regulations |
+| `eIDAS` | EU Electronic Identification, Authentication and Trust Services |
+
+Unknown values MUST be silently ignored.
+
+#### Restriction vocabulary
+
+| Value | Meaning |
+|-------|---------|
+| `no-external-llm` | Knowledge MUST NOT be sent to an externally-hosted language model. |
+| `no-logging` | Knowledge MUST NOT be written to persistent logs. |
+| `no-cross-border` | Knowledge MUST NOT leave the declared `data_residency` regions. |
+| `no-ai-training` | Knowledge MUST NOT be used to train or fine-tune AI models. |
+| `audit-required` | All access MUST be logged with sufficient detail for compliance audit. |
+| `human-approval-required` | A human MUST approve access before the unit is loaded. Connects to `delegation.human_in_the_loop`. |
+
+Unknown values MUST be silently ignored.
+
+#### Per-unit `compliance` overrides
+
+Units MAY declare their own `compliance` block to tighten or loosen the root defaults for that
+unit specifically:
+
+```yaml
+units:
+  - id: customer-data
+    path: data/customers.md
+    compliance:
+      data_residency:
+        regions: [EEA]
+        hard_requirement: true
+      regulations: [GDPR, ePrivacy]
+      sensitivity: confidential
+      restrictions:
+        - no-external-llm
+        - audit-required
+
+  - id: public-overview
+    path: README.md
+    compliance:
+      sensitivity: public     # override: less restrictive than root default
+```
+
+#### Known limitations (v0.7)
+
+**Restriction enforcement is application-defined.** The restriction vocabulary declares intent.
+There is no standard technical mechanism to verify that a `no-ai-training` restriction has been
+honoured by the consuming agent. Agents SHOULD treat restrictions as contractual commitments
+and record them in audit logs as evidence of acknowledged obligation.
+
+**Data residency evaluation requires runtime context.** A parser cannot determine the
+geographic location of the consuming agent at parse time. Agents SHOULD evaluate
+`data_residency` against their deployment context and decline to access units they cannot
+process in compliance.
+
+#### `compliance` block conformance
+
+- `compliance` is OPTIONAL at both root and unit level.
+- Parsers MUST NOT reject a manifest because `compliance` is absent.
+- Parsers MUST silently ignore unrecognised sub-fields and unknown list values.
+- Per-unit `compliance` values override root `compliance` for that unit only.
+- `kcp_version: "0.6"` manifests MUST NOT fail validation if `compliance` is present; parsers
+  that do not recognise `compliance` MUST silently ignore it.
 
 ---
 
