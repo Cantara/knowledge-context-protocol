@@ -153,6 +153,20 @@ The `delegation` block is defined in [RFC-0002 Proposal 3](../../RFC-0002-Auth-a
 
 ---
 
+## Running the Simulator
+
+The `simulator/` directory contains a runnable Java demo that walks through all four phases of the A2A + KCP interaction: agent discovery, knowledge discovery, OAuth2 authentication, and per-unit access decisions with escalating controls.
+
+```bash
+cd simulator
+mvn package
+java -jar target/kcp-a2a-simulator-0.1.0-jar-with-dependencies.jar --auto-approve
+```
+
+See [simulator/README.md](simulator/README.md) for prerequisites, build instructions, and interactive mode.
+
+---
+
 ## References
 
 - [A2A Specification](https://google.github.io/A2A/) — Google's Agent-to-Agent protocol

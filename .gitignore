@@ -23,6 +23,7 @@
 hs_err_pid*
 replay_pid*
 target/
+dependency-reduced-pom.xml
 __pycache__/
 *.pyc
 .pytest_cache/
