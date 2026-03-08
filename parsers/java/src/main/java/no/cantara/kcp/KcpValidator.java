@@ -1,5 +1,7 @@
 package no.cantara.kcp;
 
+import no.cantara.kcp.model.Compliance;
+import no.cantara.kcp.model.Delegation;
 import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
 import no.cantara.kcp.model.Relationship;
@@ -34,6 +36,7 @@ public class KcpValidator {
     private static final Set<String> VALID_INDEXING_SHORTHANDS = Set.of("open", "read-only", "no-train", "none");
     private static final Set<String> VALID_ACCESS_VALUES = Set.of("public", "authenticated", "restricted");
     private static final Set<String> VALID_SENSITIVITY_VALUES = Set.of("public", "internal", "confidential", "restricted");
+    private static final Set<String> VALID_HITL_VALUES = Set.of("always", "on-sensitive", "never");
     private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7");
     private static final Pattern ID_PATTERN = Pattern.compile("^[a-z0-9.\\-]+$");
     private static final int MAX_TRIGGER_LENGTH = 60;
@@ -191,7 +194,37 @@ public class KcpValidator {
             if (unit.sensitivity() != null && !VALID_SENSITIVITY_VALUES.contains(unit.sensitivity())) {
                 warnings.add(p + ": unknown 'sensitivity' value '" + unit.sensitivity() + "'");
             }
+
+            // delegation validation (§3.4)
+            validateDelegation(unit.delegation(), manifest.delegation(), p, errors, warnings);
+
+            // compliance validation (§3.5)
+            validateCompliance(unit.compliance(), p, errors, warnings);
+
+            // hints validation (§4.10)
+            if (unit.hints() instanceof Map<?, ?> hints) {
+                if (Boolean.TRUE.equals(hints.get("summary_available")) && hints.get("summary_unit") == null) {
+                    warnings.add(p + ": summary_available is true but no summary_unit declared");
+                }
+                Object summaryUnit = hints.get("summary_unit");
+                if (summaryUnit instanceof String su && !unitIds.contains(su)) {
+                    warnings.add(p + ": summary_unit references non-existent unit '" + su + "'");
+                }
+                Object chunkOf = hints.get("chunk_of");
+                if (chunkOf instanceof String co && !unitIds.contains(co)) {
+                    warnings.add(p + ": chunk_of references non-existent unit '" + co + "'");
+                }
+                if (hints.get("chunk_index") != null && hints.get("chunk_of") == null) {
+                    warnings.add(p + ": chunk_index is present without chunk_of");
+                }
+            }
         }
+
+        // Root-level delegation validation
+        validateDelegation(manifest.delegation(), null, "manifest", errors, warnings);
+
+        // Root-level compliance validation
+        validateCompliance(manifest.compliance(), "manifest", errors, warnings);
 
         // Warn if any unit requires auth but no root-level auth block is present (§7)
         boolean hasProtectedUnits = manifest.units().stream()
@@ -258,6 +291,30 @@ public class KcpValidator {
             }
         }
         state.put(node, 2);
+    }
+
+    private static void validateDelegation(Delegation delegation, Delegation rootDelegation,
+                                              String prefix, List<String> errors, List<String> warnings) {
+        if (delegation == null) return;
+        if (delegation.humanInTheLoop() != null && !VALID_HITL_VALUES.contains(delegation.humanInTheLoop())) {
+            errors.add(prefix + ": delegation.human_in_the_loop must be one of " +
+                    sorted(VALID_HITL_VALUES) + ", got '" + delegation.humanInTheLoop() + "'");
+        }
+        if (rootDelegation != null && delegation.maxDepth() != null && rootDelegation.maxDepth() != null) {
+            if (delegation.maxDepth() > rootDelegation.maxDepth()) {
+                errors.add(prefix + ": unit delegation.max_depth (" + delegation.maxDepth() +
+                        ") must not exceed root delegation.max_depth (" + rootDelegation.maxDepth() + ")");
+            }
+        }
+    }
+
+    private static void validateCompliance(Compliance compliance, String prefix,
+                                           List<String> errors, List<String> warnings) {
+        if (compliance == null) return;
+        if (compliance.sensitivity() != null && !VALID_SENSITIVITY_VALUES.contains(compliance.sensitivity())) {
+            errors.add(prefix + ": compliance.sensitivity must be one of " +
+                    sorted(VALID_SENSITIVITY_VALUES) + ", got '" + compliance.sensitivity() + "'");
+        }
     }
 
     private static List<String> sorted(Set<String> set) {

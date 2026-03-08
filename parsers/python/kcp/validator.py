@@ -17,6 +17,7 @@ VALID_UPDATE_FREQUENCIES = {"hourly", "daily", "weekly", "monthly", "rarely", "n
 VALID_INDEXING_SHORTHANDS = {"open", "read-only", "no-train", "none"}
 VALID_ACCESS_VALUES = {"public", "authenticated", "restricted"}
 VALID_SENSITIVITY_VALUES = {"public", "internal", "confidential", "restricted"}
+VALID_HITL_VALUES = {"always", "on-sensitive", "never"}
 KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7"}
 _ID_PATTERN = re.compile(r"^[a-z0-9.\-]+$")
 _MAX_TRIGGER_LENGTH = 60
@@ -205,6 +206,68 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
         if unit.sensitivity is not None and unit.sensitivity not in VALID_SENSITIVITY_VALUES:
             warnings.append(
                 f"{p}: unknown 'sensitivity' value '{unit.sensitivity}'"
+            )
+
+        # delegation validation (§3.4)
+        if unit.delegation is not None:
+            if (unit.delegation.human_in_the_loop is not None
+                    and unit.delegation.human_in_the_loop not in VALID_HITL_VALUES):
+                errors.append(
+                    f"{p}: delegation.human_in_the_loop must be one of "
+                    f"{sorted(VALID_HITL_VALUES)}, got '{unit.delegation.human_in_the_loop}'"
+                )
+            if (manifest.delegation is not None
+                    and unit.delegation.max_depth is not None
+                    and manifest.delegation.max_depth is not None
+                    and unit.delegation.max_depth > manifest.delegation.max_depth):
+                errors.append(
+                    f"{p}: unit delegation.max_depth ({unit.delegation.max_depth}) "
+                    f"must not exceed root delegation.max_depth ({manifest.delegation.max_depth})"
+                )
+
+        # compliance validation (§3.5)
+        if unit.compliance is not None:
+            if (unit.compliance.sensitivity is not None
+                    and unit.compliance.sensitivity not in VALID_SENSITIVITY_VALUES):
+                errors.append(
+                    f"{p}: compliance.sensitivity must be one of "
+                    f"{sorted(VALID_SENSITIVITY_VALUES)}, got '{unit.compliance.sensitivity}'"
+                )
+
+        # hints validation (§4.10)
+        if unit.hints is not None:
+            h = unit.hints
+            if h.get("summary_available") is True and not h.get("summary_unit"):
+                warnings.append(f"{p}: summary_available is true but no summary_unit declared")
+            summary_unit = h.get("summary_unit")
+            if isinstance(summary_unit, str) and summary_unit not in unit_ids:
+                warnings.append(
+                    f"{p}: summary_unit references non-existent unit '{summary_unit}'"
+                )
+            chunk_of = h.get("chunk_of")
+            if isinstance(chunk_of, str) and chunk_of not in unit_ids:
+                warnings.append(
+                    f"{p}: chunk_of references non-existent unit '{chunk_of}'"
+                )
+            if h.get("chunk_index") is not None and not h.get("chunk_of"):
+                warnings.append(f"{p}: chunk_index is present without chunk_of")
+
+    # Root-level delegation validation
+    if manifest.delegation is not None:
+        if (manifest.delegation.human_in_the_loop is not None
+                and manifest.delegation.human_in_the_loop not in VALID_HITL_VALUES):
+            errors.append(
+                f"manifest: delegation.human_in_the_loop must be one of "
+                f"{sorted(VALID_HITL_VALUES)}, got '{manifest.delegation.human_in_the_loop}'"
+            )
+
+    # Root-level compliance validation
+    if manifest.compliance is not None:
+        if (manifest.compliance.sensitivity is not None
+                and manifest.compliance.sensitivity not in VALID_SENSITIVITY_VALUES):
+            errors.append(
+                f"manifest: compliance.sensitivity must be one of "
+                f"{sorted(VALID_SENSITIVITY_VALUES)}, got '{manifest.compliance.sensitivity}'"
             )
 
     # Warn if any unit requires auth but no root-level auth block is present (§7)

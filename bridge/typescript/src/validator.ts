@@ -26,6 +26,16 @@ const VALID_SENSITIVITY_VALUES = new Set([
   "confidential",
   "restricted",
 ]);
+const VALID_HITL_VALUES = new Set(["always", "on-sensitive", "never"]);
+const KNOWN_KCP_VERSIONS = new Set([
+  "0.1",
+  "0.2",
+  "0.3",
+  "0.4",
+  "0.5",
+  "0.6",
+  "0.7",
+]);
 
 export function validate(
   manifest: KnowledgeManifest,
@@ -38,6 +48,15 @@ export function validate(
   if (!manifest.project) errors.push("Root field 'project' is required");
   if (!manifest.version) errors.push("Root field 'version' is required");
   if (manifest.units.length === 0) warnings.push("Manifest has no units");
+
+  // kcp_version — RECOMMENDED; warn if absent or unknown (§6.1)
+  if (!manifest.kcp_version) {
+    warnings.push("manifest: 'kcp_version' not declared; assuming 0.7");
+  } else if (!KNOWN_KCP_VERSIONS.has(manifest.kcp_version)) {
+    warnings.push(
+      `manifest: unknown kcp_version '${manifest.kcp_version}'; processing as 0.7`
+    );
+  }
 
   const unitIds = new Set<string>();
 
@@ -59,8 +78,8 @@ export function validate(
       errors.push(`${ctx}: missing required field 'audience'`);
 
     if (unit.scope && !VALID_SCOPES.has(unit.scope)) {
-      warnings.push(
-        `${ctx}: unknown scope '${unit.scope}' (expected: global, project, module)`
+      errors.push(
+        `${ctx}: 'scope' must be one of [global, module, project], got '${unit.scope}'`
       );
     }
 
@@ -85,6 +104,61 @@ export function validate(
     // sensitivity validation (§4.12)
     if (unit.sensitivity && !VALID_SENSITIVITY_VALUES.has(unit.sensitivity)) {
       warnings.push(`${ctx}: unknown 'sensitivity' value '${unit.sensitivity}'`);
+    }
+
+    // delegation validation (§3.4)
+    if (unit.delegation) {
+      if (
+        unit.delegation.human_in_the_loop &&
+        !VALID_HITL_VALUES.has(unit.delegation.human_in_the_loop)
+      ) {
+        errors.push(
+          `${ctx}: delegation.human_in_the_loop must be one of [always, never, on-sensitive], got '${unit.delegation.human_in_the_loop}'`
+        );
+      }
+      if (
+        manifest.delegation?.max_depth != null &&
+        unit.delegation.max_depth != null &&
+        unit.delegation.max_depth > manifest.delegation.max_depth
+      ) {
+        errors.push(
+          `${ctx}: unit delegation.max_depth (${unit.delegation.max_depth}) must not exceed root delegation.max_depth (${manifest.delegation.max_depth})`
+        );
+      }
+    }
+
+    // compliance validation (§3.5)
+    if (unit.compliance?.sensitivity) {
+      if (!VALID_SENSITIVITY_VALUES.has(unit.compliance.sensitivity)) {
+        errors.push(
+          `${ctx}: compliance.sensitivity must be one of [confidential, internal, public, restricted], got '${unit.compliance.sensitivity}'`
+        );
+      }
+    }
+
+    // hints validation (§4.10)
+    if (unit.hints) {
+      const h = unit.hints as Record<string, unknown>;
+      if (h.summary_available === true && !h.summary_unit) {
+        warnings.push(
+          `${ctx}: summary_available is true but no summary_unit declared`
+        );
+      }
+      if (typeof h.summary_unit === "string" && !unitIds.has(h.summary_unit)) {
+        warnings.push(
+          `${ctx}: summary_unit references non-existent unit '${h.summary_unit}'`
+        );
+      }
+      if (typeof h.chunk_of === "string" && !unitIds.has(h.chunk_of)) {
+        warnings.push(
+          `${ctx}: chunk_of references non-existent unit '${h.chunk_of}'`
+        );
+      }
+      if (h.chunk_index != null && !h.chunk_of) {
+        warnings.push(
+          `${ctx}: chunk_index is present without chunk_of`
+        );
+      }
     }
 
     // File existence check (only if manifestDir is provided)
@@ -121,6 +195,24 @@ export function validate(
           `Unit '${unit.id}': depends_on references unknown unit '${dep}'`
         );
       }
+    }
+  }
+
+  // Root-level delegation validation (§3.4)
+  if (manifest.delegation?.human_in_the_loop) {
+    if (!VALID_HITL_VALUES.has(manifest.delegation.human_in_the_loop)) {
+      errors.push(
+        `manifest: delegation.human_in_the_loop must be one of [always, never, on-sensitive], got '${manifest.delegation.human_in_the_loop}'`
+      );
+    }
+  }
+
+  // Root-level compliance validation (§3.5)
+  if (manifest.compliance?.sensitivity) {
+    if (!VALID_SENSITIVITY_VALUES.has(manifest.compliance.sensitivity)) {
+      errors.push(
+        `manifest: compliance.sensitivity must be one of [confidential, internal, public, restricted], got '${manifest.compliance.sensitivity}'`
+      );
     }
   }
 
