@@ -1,0 +1,72 @@
+{
+  "name": "Transaction Intelligence Agent",
+  "description": "Provides access to sanctions lists, transaction patterns, customer profiles, SAR drafts, and raw wire transfer data for AML compliance orchestration.",
+  "url": "https://aml.example.com/agent",
+  "version": "1.0.0",
+  "documentationUrl": "https://aml.example.com/docs",
+  "provider": {
+    "organization": "Example Bank Compliance",
+    "url": "https://aml.example.com"
+  },
+  "securitySchemes": {
+    "oauth2": {
+      "type": "oauth2",
+      "flows": {
+        "clientCredentials": {
+          "tokenUrl": "https://auth.aml.example.com/oauth2/token",
+          "scopes": {
+            "read:sanctions": "Read OFAC/EU sanctions list metadata",
+            "read:transactions": "Read aggregated transaction pattern data",
+            "aml-analyst": "Access customer profiles for AML analysis (PII, GDPR-regulated)",
+            "compliance-officer": "Access SAR drafts and raw wire transfers (restricted)"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "oauth2": ["read:sanctions"]
+    }
+  ],
+  "skills": [
+    {
+      "id": "sanctions-screening",
+      "name": "Sanctions Screening",
+      "description": "Screen entities against OFAC, EU, and UN sanctions lists. Match names, aliases, and corporate structures.",
+      "tags": ["sanctions", "OFAC", "EU", "screening", "compliance"],
+      "examples": [
+        "Screen 'Meridian Holdings Ltd' against all sanctions lists",
+        "Check for fuzzy name matches on the OFAC SDN list"
+      ]
+    },
+    {
+      "id": "transaction-analysis",
+      "name": "Transaction Analysis",
+      "description": "Analyse transaction patterns for suspicious activity indicators: structuring, layering, rapid movement, geographic anomalies.",
+      "tags": ["transactions", "patterns", "suspicious-activity", "AML"],
+      "examples": [
+        "Identify structuring patterns in account 4401-7890",
+        "Show geographic distribution of wire transfers over 100K EUR"
+      ]
+    },
+    {
+      "id": "sar-preparation",
+      "name": "SAR Preparation",
+      "description": "Assist compliance officers in drafting Suspicious Activity Reports with supporting evidence and regulatory citations.",
+      "tags": ["SAR", "compliance", "reporting", "FATF", "AML5D"],
+      "examples": [
+        "Draft SAR narrative for case AML-2026-0042",
+        "Compile transaction evidence supporting SAR filing"
+      ]
+    }
+  ],
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false,
+    "stateTransitionHistory": true
+  },
+  "defaultInputModes": ["application/json", "text/plain"],
+  "defaultOutputModes": ["application/json", "text/plain"],
+  "knowledgeManifest": "/.well-known/kcp.json"
+}

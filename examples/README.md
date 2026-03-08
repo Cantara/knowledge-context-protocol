@@ -1,6 +1,6 @@
 # KCP Examples
 
-Four reference implementations showing the adoption gradient — from the minimum viable configuration to multi-agent coordination with A2A.
+Reference implementations and runnable simulation scenarios — from the minimum viable configuration to adversarial multi-agent stress tests.
 
 ## [minimal/](./minimal/)
 
@@ -62,6 +62,38 @@ An A2A Agent Card paired with a KCP manifest for a clinical research agent. Show
 - The `knowledgeManifest` field in the Agent Card linking to the KCP manifest
 
 Blog post: [The Front Door and the Filing Cabinet](https://wiki.totto.org/blog/2026/03/08/the-front-door-and-the-filing-cabinet-a2a-agent-cards-meet-kcp/)
+
+---
+
+---
+
+## Simulation Scenarios
+
+Three runnable Java simulators that stress-test the A2A + KCP composition model at increasing complexity. Each surfaces specific spec behaviours and gaps, contributing to the v0.7 roadmap.
+
+### [scenario1-energy-metering/](./scenario1-energy-metering/)
+
+**Level 1 — Happy path + HITL**
+
+A utility company's energy metering agent. 2 agents, 4 knowledge units escalating from `public` to `access: restricted` with `human_in_the_loop`. 36 tests.
+
+Demonstrates: basic public/authenticated/restricted flow, W3C Trace Context audit entries, `approval_mechanism` spec gap (implementation-defined in v0.6).
+
+### [scenario2-legal-delegation/](./scenario2-legal-delegation/)
+
+**Level 2 — 3-hop delegation chain**
+
+A law firm's document review pipeline with 3 agents in a chain. Shows `max_depth: 0` (absolute no-delegation), capability attenuation enforcement (delegated token must have narrower scope), and delegation depth limit rejection.
+
+Spec gaps surfaced: capability attenuation is declarative not mechanical; depth counting has no normative definition; `max_depth: 0` semantics are ambiguous.
+
+### [scenario3-financial-aml/](./scenario3-financial-aml/)
+
+**Level 3 — Adversarial (5 agents, 7 phases)**
+
+Anti-money-laundering compliance orchestration with a `RogueAgent` that attempts 4 distinct violations: delegation depth exceeded, scope elevation, `max_depth: 0` bypass, and GDPR data residency block.
+
+Spec gaps surfaced: no cryptographic delegation chain integrity; `no_ai_training` restriction is unenforceable; batched HITL flow is undefined; `compliance` block is RFC-0004, not v0.6 core.
 
 ---
 
