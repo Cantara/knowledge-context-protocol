@@ -28,7 +28,7 @@ Example: "How do I validate a knowledge.yaml file?" → trigger `validation, sch
 - /PROPOSAL.md — Why KCP exists and what problem it solves
 - /README.md — Overview, comparison with llms.txt and MCP, getting started
 - /guides/adopting-kcp-in-existing-projects.md — How to add KCP to your project in under 30 minutes
-- /examples/README.md — Example manifests at three adoption levels (minimal → full)
+- /examples/README.md — Example manifests at four adoption levels plus simulation scenarios (A2A+KCP, energy metering, legal delegation, financial AML)
 - /RFC-0001-KCP-Extended.md — Extensions: payments, compliance, federation, context hints
 
 ## How KCP Relates to llms.txt and MCP
@@ -39,8 +39,8 @@ Example: "How do I validate a knowledge.yaml file?" → trigger `validation, sch
 
 ## Real-World Adopters
 
-- wiki.totto.org — personal knowledge wiki (KCP v0.6, 83 posts indexed)
-- wiki.cantara.no — Cantara open source community wiki (KCP v0.6)
+- wiki.totto.org — personal knowledge wiki (KCP v0.7, 83 posts indexed)
+- wiki.cantara.no — Cantara open source community wiki (KCP v0.7)
 - crewAI, microsoft/autogen, huggingface/smolagents, anomalyco/opencode — KCP manifests submitted (PRs open, March 2026)
 
 ## License

@@ -6,7 +6,7 @@
 **Supersedes:** Proposals A and B in [RFC-0001](./RFC-0001-KCP-Extended.md)
 **Issues:** [#1 (auth)](https://github.com/Cantara/knowledge-context-protocol/issues/1) · [#3 (delegation)](https://github.com/Cantara/knowledge-context-protocol/issues/3)
 **Discussion:** [GitHub Issues](https://github.com/Cantara/knowledge-context-protocol/issues)
-**Spec:** [SPEC.md](./SPEC.md) (current: v0.6)
+**Spec:** [SPEC.md](./SPEC.md) (current: v0.7)
 
 ---
 
@@ -19,11 +19,13 @@ The following proposals from this RFC have been promoted to the core specificati
 | `access` (unit-level) | v0.5 | Level 2 | Proposal 1. Three values: `public`, `authenticated`, `restricted`. |
 | `auth_scope` (unit-level) | v0.6 | Level 2 | Proposal 1. Opaque scope token, companion to `access: restricted`. |
 | `auth` (root-level) | v0.6 | Level 3 | Proposal 2, partial. Core method types only: `none`, `oauth2`, `api_key`. |
+| `delegation` (root-level) | v0.7 | Level 3 | Proposal 3. `max_depth`, `require_capability_attenuation`, `audit_chain`, `human_in_the_loop`. |
 
 **Still RFC-only (not yet promoted):**
 - `auth.methods` types beyond the core three: `bearer_token`, `spiffe`, `did`, `http_signature` — awaiting implementation feedback.
 - `auth` at unit level (per-unit auth override) — awaiting real-world use cases.
-- `delegation` block (Proposal 3) — awaiting RFC-0004 `trust.audit` stabilization and community input on `max_depth` abstraction.
+- `delegation` at unit level (per-unit delegation override) — promoted at root level in v0.7; per-unit override awaiting real-world use cases.
+- `require_delegation_proof` — awaiting XAA / OIDC-A stabilization.
 
 ---
 
@@ -400,7 +402,7 @@ The proposal supports `client_credentials`, `authorization_code`, and `device_co
 - **Open a new issue** if you have a use case this does not cover
 - **Submit a PR** to this document if you have concrete improvements to the field definitions
 
-Core fields from this RFC (`access`, `auth_scope`, `auth` with `none`/`oauth2`/`api_key`) were promoted to SPEC.md in v0.5 and v0.6. See the Promotion History section above. The remaining proposals (extended auth types, per-unit auth, delegation) remain open for community input.
+Core fields from this RFC (`access`, `auth_scope`, `auth` with `none`/`oauth2`/`api_key`) were promoted to SPEC.md in v0.5 and v0.6. The `delegation` block (`max_depth`, `require_capability_attenuation`, `audit_chain`, `human_in_the_loop`) was promoted to core in v0.7. See the Promotion History section above. The remaining proposals (extended auth types, per-unit auth, per-unit delegation, `require_delegation_proof`) remain open for community input.
 
 ---
 

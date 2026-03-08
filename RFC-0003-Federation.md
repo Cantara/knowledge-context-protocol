@@ -6,7 +6,7 @@
 **Supersedes:** Proposal M in [RFC-0001](./RFC-0001-KCP-Extended.md)
 **Issue:** [#12](https://github.com/Cantara/knowledge-context-protocol/issues/12)
 **Discussion:** [GitHub Issues](https://github.com/Cantara/knowledge-context-protocol/issues/12)
-**Spec:** [SPEC.md](./SPEC.md) (current: v0.6)
+**Spec:** [SPEC.md](./SPEC.md) (current: v0.7)
 **Depends on:** [RFC-0002](./RFC-0002-Auth-and-Delegation.md) (auth for remote manifests)
 
 ---

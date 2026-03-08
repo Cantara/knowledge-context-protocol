@@ -6,7 +6,7 @@
 **Supersedes:** Proposals E and G in [RFC-0001](./RFC-0001-KCP-Extended.md)
 **Issues:** [#5 (trust/audit)](https://github.com/Cantara/knowledge-context-protocol/issues/5) · [#11 (compliance)](https://github.com/Cantara/knowledge-context-protocol/issues/11)
 **Discussion:** [GitHub Issues](https://github.com/Cantara/knowledge-context-protocol/issues)
-**Spec:** [SPEC.md](./SPEC.md) (current: v0.6)
+**Spec:** [SPEC.md](./SPEC.md) (current: v0.7)
 **Related:** [RFC-0002](./RFC-0002-Auth-and-Delegation.md) (auth and delegation) · [RFC-0003](./RFC-0003-Federation.md) (federation) · [RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md) (payment — composes with `agent_requirements` for token-gated access patterns)
 **Contributions:** `attestation_url` / `attestation_jwks` mechanism proposed by [@douglasborthwick-crypto](https://github.com/douglasborthwick-crypto) in [#5](https://github.com/Cantara/knowledge-context-protocol/issues/5)
 
@@ -22,13 +22,17 @@ The following proposals from this RFC have been promoted to the core specificati
 | `trust.audit.agent_must_log` | v0.6 | Level 3 | Advisory: agents SHOULD log access. |
 | `trust.audit.require_trace_context` | v0.6 | Level 3 | W3C Trace Context headers. For local file access, agents SHOULD generate a traceparent value and record it in local logs. |
 | `sensitivity` (unit-level) | v0.5 | Level 2 | Four values: `public`, `internal`, `confidential`, `restricted`. Placed on units, not in a compliance block. |
+| `compliance.data_residency` | v0.7 | Level 3 | Region list with optional `hard_requirement`. |
+| `compliance.sensitivity` | v0.7 | Level 3 | Root-level default; per-unit override of the existing unit-level `sensitivity` field. |
+| `compliance.regulations` | v0.7 | Level 3 | Named regulation vocabulary (GDPR, NIS2, HIPAA, etc.). |
+| `compliance.restrictions` | v0.7 | Level 3 | Processing restriction vocabulary (`no_ai_training`, `no-external-llm`, etc.). |
 
 **Still RFC-only (not yet promoted):**
 - `trust.content_integrity` — signing infrastructure (`manifest_hash`, `signing`) awaiting wider deployment of JWS/HTTP Signatures for knowledge manifests.
 - `trust.audit.provides_access_receipts` / `receipt_format` — awaiting implementation feedback on receipt formats.
 - `trust.agent_requirements` — `require_attestation`, `trusted_providers`, `attestation_url`, `attestation_jwks` awaiting OIDC-A ratification and community input.
 - `trust.provenance.publisher_did` — W3C DID resolution not yet common enough for core.
-- `compliance` block — `data_residency`, `regulations`, `restrictions` awaiting enterprise validation and community input on vocabulary.
+- `compliance` at unit level (per-unit compliance override) — promoted at root level in v0.7; per-unit override awaiting real-world validation.
 
 ---
 
@@ -560,7 +564,7 @@ Should there be a field to declare that this manifest or its publisher holds a s
 - **Open a new issue** if your compliance use case is not covered
 - **Submit a PR** to this document with concrete improvements
 
-Core audit fields from this RFC (`trust.audit.agent_must_log`, `trust.audit.require_trace_context`) were promoted to SPEC.md in v0.6. See the Promotion History section above. The remaining proposals (content integrity, agent requirements, compliance block) remain open for community input. RFC-0002 core auth fields have now been promoted, unblocking future promotion of compliance restrictions that depend on delegation mechanisms.
+Core audit fields from this RFC (`trust.audit.agent_must_log`, `trust.audit.require_trace_context`) were promoted to SPEC.md in v0.6. The `compliance` block (`data_residency`, `sensitivity`, `regulations`, `restrictions`) was promoted to core in v0.7, following enterprise validation through 4 simulation scenarios (150 adversarial tests). See the Promotion History section above. The remaining proposals (content integrity, agent requirements, per-unit compliance override) remain open for community input.
 
 ---
 

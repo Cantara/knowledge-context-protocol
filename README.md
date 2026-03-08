@@ -17,7 +17,7 @@ MCP solved the tool connectivity problem. KCP addresses the knowledge structure 
 Drop a `knowledge.yaml` at the root of any project. Agents stop guessing and start navigating.
 
 ```yaml
-kcp_version: "0.6"
+kcp_version: "0.7"
 project: my-project
 version: 1.0.0
 units:
@@ -96,6 +96,16 @@ trust:                             # optional — publisher provenance and audit
 auth:                              # optional — authentication methods
   methods:
     - type: none | oauth2 | api_key
+delegation:                        # optional — delegation constraints (v0.7)
+  max_depth: 3                     # 0 = no delegation; absent = unlimited
+  require_capability_attenuation: true
+  audit_chain: true
+  human_in_the_loop: recommended
+compliance:                        # optional — data governance (v0.7)
+  data_residency: [EU]
+  sensitivity: confidential
+  regulations: [GDPR, NIS2]
+  restrictions: [no_ai_training]
 payment:                           # optional — default monetisation tier
   default_tier: free | metered | subscription
 
@@ -162,6 +172,8 @@ relationships:
 | `auth_scope` | optional | Opaque scope token indicating which credential scope is needed (meaningful when `access` is `restricted`) |
 | `sensitivity` | optional | Information classification: `public`, `internal`, `confidential`, `restricted` |
 | `deprecated` | optional | If `true`, this unit is present but should not be used for new development |
+| `delegation` | optional | Per-unit delegation override: `max_depth`, `require_capability_attenuation`, `audit_chain`, `human_in_the_loop` |
+| `compliance` | optional | Per-unit compliance override: `data_residency`, `sensitivity`, `regulations`, `restrictions` |
 | `payment` | optional | Monetisation tier: `default_tier: free \| metered \| subscription` |
 
 ### Minimum Viable KCP
@@ -169,7 +181,7 @@ relationships:
 Five fields per unit are enough to start:
 
 ```yaml
-kcp_version: "0.6"
+kcp_version: "0.7"
 project: my-project
 version: 1.0.0
 units:
@@ -188,7 +200,7 @@ The standard allows complexity but does not demand it.
 
 ```yaml
 # knowledge.yaml
-kcp_version: "0.6"
+kcp_version: "0.7"
 project: wiki.example.org
 version: 1.0.0
 updated: "2026-02-28"
@@ -266,6 +278,12 @@ Use the full field set including `triggers`, `audience`, `relationships`, and ad
 multiple agent roles querying the same corpus with different task contexts and constrained
 context budgets.
 
+**Level 4 — Multi-agent systems**
+Add `auth`, `delegation`, and `compliance` blocks. Pair with an A2A Agent Card
+(`/.well-known/agent.json`) and link to KCP via the `knowledgeManifest` convention.
+Enforce delegation depth, capability attenuation, HITL gates, and data residency
+constraints across agent chains.
+
 ---
 
 ## Relationship to HATEOAS
@@ -298,6 +316,12 @@ that implements it.
 
 `synthesis export --format kcp` will generate a `knowledge.yaml` from an existing
 Synthesis index automatically.
+
+**A2A** (Agent-to-Agent, Google) defines how agents discover and invoke each other via
+`/.well-known/agent.json` Agent Cards. A2A is the transport/invocation layer (per-agent
+granularity). KCP is the knowledge-access layer (per-unit granularity). They are complementary:
+an Agent Card describes what an agent can do; a KCP manifest describes what it knows.
+See [SPEC.md §12](./SPEC.md#12-relationship-to-a2a) and [examples/a2a-agent-card/](./examples/a2a-agent-card/).
 
 **[kcp-commands](https://github.com/Cantara/kcp-commands)** is a KCP-native Claude Code hook that
 applies the KCP principle at the Bash tool boundary. Each manifest is a `knowledge.yaml`-compatible
@@ -338,6 +362,7 @@ The full design rationale, benchmarks, and adoption walkthroughs are documented 
 | [kcp-commands: Save 33% of Context Window](https://wiki.totto.org/blog/2026/03/02/kcp-commands/) | Phase A/B/C design, 283 manifests, 67K tokens saved |
 | [KCP Comes to OpenCode](https://wiki.totto.org/blog/2026/03/03/opencode-kcp-plugin/) | opencode-kcp-plugin: system prompt injection + glob annotation |
 | [kcp-memory: Give Claude Code a Memory](https://wiki.totto.org/blog/2026/03/03/kcp-memory/) | Three-layer memory model, MCP server, 6 tools |
+| [The Front Door and the Filing Cabinet: A2A Agent Cards Meet KCP](https://wiki.totto.org/blog/2026/03/08/the-front-door-and-the-filing-cabinet-a2a-agent-cards-meet-kcp/) | A2A + KCP composability; 4 simulators, 150 adversarial tests; 8 spec gaps → v0.7 |
 
 ---
 
@@ -351,7 +376,7 @@ Until formal acceptance, KCP remains an Apache 2.0 open specification proposed b
 
 ## Status
 
-**Current:** Draft specification — v0.6
+**Current:** Draft specification — v0.7
 
 This is an early proposal. The format is intentionally minimal. Feedback, use cases, and pull
 requests are welcome.
@@ -359,14 +384,15 @@ requests are welcome.
 - **[SPEC.md](./SPEC.md)** — Normative specification (field definitions, validation rules, conformance levels)
 - **[PROPOSAL.md](./PROPOSAL.md)** — The case for a knowledge architecture standard
 - **[RFC-0001](./RFC-0001-KCP-Extended.md)** — Extended capabilities (overview of all proposals; F/H/I/J/K/L/N promoted to v0.3–v0.4 core)
-- **[RFC-0002](./RFC-0002-Auth-and-Delegation.md)** — Auth and delegation metadata (`access`, `auth_scope`, `auth` promoted to core in v0.5–v0.6; `delegation` remains RFC)
+- **[RFC-0002](./RFC-0002-Auth-and-Delegation.md)** — Auth and delegation metadata (`access`, `auth_scope`, `auth` promoted to core in v0.5–v0.6; `delegation` promoted to core in v0.7)
 - **[RFC-0003](./RFC-0003-Federation.md)** — Cross-manifest federation proposal (`manifests` block, `external_depends_on`, hub-and-spoke model)
-- **[RFC-0004](./RFC-0004-Trust-and-Compliance.md)** — Trust, provenance, and compliance metadata (`trust.provenance`, `sensitivity` promoted in v0.5; `trust.audit` promoted in v0.6; `compliance` remains RFC)
+- **[RFC-0004](./RFC-0004-Trust-and-Compliance.md)** — Trust, provenance, and compliance metadata (`trust.provenance`, `sensitivity` promoted in v0.5; `trust.audit` promoted in v0.6; `compliance` promoted to core in v0.7)
 - **[RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md)** — Payment and rate-limit metadata proposal (`payment`, `rate_limits` blocks)
 - **[RFC-0006](./RFC-0006-Context-Window-Hints.md)** — Context window hints (accepted; promoted to SPEC.md §4.10 in v0.4)
-- **parsers/** — Reference implementations (Python, Java)
+- **parsers/** — Reference implementations (Python, Java, TypeScript) — 401 tests passing
 - **bridge/** — MCP servers: expose any `knowledge.yaml` as MCP resources (TypeScript · Python · Java)
 - **plugins/opencode/** — OpenCode plugin (`opencode-kcp-plugin` on npm)
+- **examples/** — Reference manifests at four adoption levels plus 4 simulation scenarios (150 adversarial tests: A2A+KCP clinical research, energy metering HITL, legal delegation chains, financial AML)
 - **[kcp-memory](https://github.com/Cantara/kcp-memory)** — Episodic memory daemon for Claude Code (separate repo)
 
 ---
