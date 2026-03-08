@@ -732,3 +732,199 @@ class TestPathTraversalValidation:
         data = {**MINIMAL, "units": [{**MINIMAL["units"][0], "path": "../../.env"}]}
         with pytest.raises(ValueError, match="escapes"):
             parse_dict(data)
+
+
+class TestTrustParsing:
+    """Tests for trust block parsing (#10)."""
+
+    def test_parses_root_trust(self):
+        data = {
+            **MINIMAL,
+            "trust": {
+                "provenance": {
+                    "publisher": "Acme Corp",
+                    "publisher_url": "https://acme.com",
+                    "contact": "docs@acme.com",
+                },
+                "audit": {
+                    "agent_must_log": True,
+                    "require_trace_context": False,
+                },
+            },
+        }
+        m = parse_dict(data)
+        assert m.trust is not None
+        assert m.trust.provenance is not None
+        assert m.trust.provenance.publisher == "Acme Corp"
+        assert m.trust.provenance.publisher_url == "https://acme.com"
+        assert m.trust.provenance.contact == "docs@acme.com"
+        assert m.trust.audit is not None
+        assert m.trust.audit.agent_must_log is True
+        assert m.trust.audit.require_trace_context is False
+
+    def test_absent_trust_is_none(self):
+        m = parse_dict(MINIMAL)
+        assert m.trust is None
+
+
+class TestAuthParsing:
+    """Tests for auth block parsing (#10)."""
+
+    def test_parses_root_auth(self):
+        data = {
+            **MINIMAL,
+            "auth": {
+                "methods": [
+                    {"type": "oauth2", "issuer": "https://auth.example.com", "scopes": ["read:docs"]},
+                    {"type": "api_key", "header": "X-API-Key", "registration_url": "https://example.com/register"},
+                    {"type": "none"},
+                ],
+            },
+        }
+        m = parse_dict(data)
+        assert m.auth is not None
+        assert len(m.auth.methods) == 3
+        assert m.auth.methods[0].type == "oauth2"
+        assert m.auth.methods[0].issuer == "https://auth.example.com"
+        assert m.auth.methods[0].scopes == ["read:docs"]
+        assert m.auth.methods[1].type == "api_key"
+        assert m.auth.methods[1].header == "X-API-Key"
+        assert m.auth.methods[2].type == "none"
+
+    def test_absent_auth_is_none(self):
+        m = parse_dict(MINIMAL)
+        assert m.auth is None
+
+    def test_warns_protected_units_without_auth(self):
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.7",
+            "units": [{**MINIMAL["units"][0], "access": "restricted"}],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert any("auth" in w for w in result.warnings)
+
+
+class TestHintsParsing:
+    """Tests for hints block parsing (#10)."""
+
+    def test_parses_unit_hints(self):
+        data = {
+            **MINIMAL,
+            "units": [{
+                **MINIMAL["units"][0],
+                "hints": {
+                    "token_estimate": 5000,
+                    "load_strategy": "lazy",
+                    "priority": "critical",
+                    "summary_available": True,
+                    "summary_unit": "overview-tldr",
+                },
+            }],
+        }
+        m = parse_dict(data)
+        assert m.units[0].hints is not None
+        assert m.units[0].hints["token_estimate"] == 5000
+        assert m.units[0].hints["load_strategy"] == "lazy"
+        assert m.units[0].hints["summary_available"] is True
+
+    def test_parses_root_hints(self):
+        data = {
+            **MINIMAL,
+            "hints": {
+                "total_token_estimate": 50000,
+                "unit_count": 5,
+                "recommended_entry_point": "overview",
+            },
+        }
+        m = parse_dict(data)
+        assert m.hints is not None
+        assert m.hints["total_token_estimate"] == 50000
+
+
+class TestPaymentParsing:
+    """Tests for payment block parsing (#10)."""
+
+    def test_parses_root_payment(self):
+        data = {**MINIMAL, "payment": {"default_tier": "free"}}
+        m = parse_dict(data)
+        assert m.payment is not None
+
+    def test_parses_unit_payment(self):
+        data = {
+            **MINIMAL,
+            "units": [{
+                **MINIMAL["units"][0],
+                "payment": {"default_tier": "metered"},
+            }],
+        }
+        m = parse_dict(data)
+        assert m.units[0].payment is not None
+
+    def test_absent_payment_is_none(self):
+        m = parse_dict(MINIMAL)
+        assert m.payment is None
+
+
+class TestDelegationComplianceValidation:
+    """Tests for delegation/compliance validation (#9, #11)."""
+
+    def test_invalid_hitl_produces_error(self):
+        data = {**MINIMAL, "delegation": {"human_in_the_loop": "invalid-value"}}
+        m = parse_dict(data)
+        result = validate(m)
+        assert not result.is_valid
+        assert any("human_in_the_loop" in e for e in result.errors)
+
+    def test_valid_hitl_values_accepted(self):
+        for value in ["always", "on-sensitive", "never"]:
+            data = {**MINIMAL, "delegation": {"human_in_the_loop": value}}
+            m = parse_dict(data)
+            result = validate(m)
+            assert not any("human_in_the_loop" in e for e in result.errors), \
+                f"human_in_the_loop='{value}' should be valid"
+
+    def test_unit_max_depth_exceeding_root_produces_error(self):
+        data = {
+            **MINIMAL,
+            "delegation": {"max_depth": 2},
+            "units": [{**MINIMAL["units"][0], "delegation": {"max_depth": 5}}],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert not result.is_valid
+        assert any("max_depth" in e for e in result.errors)
+
+    def test_invalid_compliance_sensitivity_produces_error(self):
+        data = {**MINIMAL, "compliance": {"sensitivity": "top-secret"}}
+        m = parse_dict(data)
+        result = validate(m)
+        assert not result.is_valid
+        assert any("compliance.sensitivity" in e for e in result.errors)
+
+    def test_summary_available_without_summary_unit_warns(self):
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.7",
+            "units": [{
+                **MINIMAL["units"][0],
+                "hints": {"summary_available": True},
+            }],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert any("summary_available" in w and "summary_unit" in w for w in result.warnings)
+
+    def test_chunk_index_without_chunk_of_warns(self):
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.7",
+            "units": [{
+                **MINIMAL["units"][0],
+                "hints": {"chunk_index": 1},
+            }],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert any("chunk_index" in w and "chunk_of" in w for w in result.warnings)

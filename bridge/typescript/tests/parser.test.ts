@@ -221,6 +221,172 @@ describe("parseCompliance", () => {
   });
 });
 
+describe("parseTrust", () => {
+  it("parses root-level trust block", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      trust: {
+        provenance: {
+          publisher: "Acme Corp",
+          publisher_url: "https://acme.com",
+          contact: "docs@acme.com",
+        },
+        audit: {
+          agent_must_log: true,
+          require_trace_context: false,
+        },
+      },
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    expect(manifest.trust).toBeDefined();
+    expect(manifest.trust?.provenance?.publisher).toBe("Acme Corp");
+    expect(manifest.trust?.provenance?.publisher_url).toBe("https://acme.com");
+    expect(manifest.trust?.provenance?.contact).toBe("docs@acme.com");
+    expect(manifest.trust?.audit?.agent_must_log).toBe(true);
+    expect(manifest.trust?.audit?.require_trace_context).toBe(false);
+  });
+
+  it("absent trust is undefined", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    expect(manifest.trust).toBeUndefined();
+  });
+});
+
+describe("parseAuth", () => {
+  it("parses root-level auth block with multiple methods", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      auth: {
+        methods: [
+          { type: "oauth2", issuer: "https://auth.example.com", scopes: ["read:docs"] },
+          { type: "api_key", header: "X-API-Key", registration_url: "https://example.com/register" },
+          { type: "none" },
+        ],
+      },
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    expect(manifest.auth).toBeDefined();
+    expect(manifest.auth?.methods).toHaveLength(3);
+    expect(manifest.auth?.methods[0].type).toBe("oauth2");
+    expect(manifest.auth?.methods[0].issuer).toBe("https://auth.example.com");
+    expect(manifest.auth?.methods[0].scopes).toEqual(["read:docs"]);
+    expect(manifest.auth?.methods[1].type).toBe("api_key");
+    expect(manifest.auth?.methods[1].header).toBe("X-API-Key");
+    expect(manifest.auth?.methods[2].type).toBe("none");
+  });
+
+  it("absent auth is undefined", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    expect(manifest.auth).toBeUndefined();
+  });
+});
+
+describe("parseHints", () => {
+  it("parses unit-level hints block", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      units: [{
+        id: "u",
+        path: "f.md",
+        intent: "i",
+        scope: "global",
+        audience: ["agent"],
+        hints: {
+          token_estimate: 5000,
+          load_strategy: "lazy",
+          summary_available: true,
+          summary_unit: "overview-tldr",
+        },
+      }],
+    });
+    expect(manifest.units[0].hints).toBeDefined();
+    expect(manifest.units[0].hints?.token_estimate).toBe(5000);
+    expect(manifest.units[0].hints?.load_strategy).toBe("lazy");
+    expect(manifest.units[0].hints?.summary_available).toBe(true);
+  });
+
+  it("parses root-level hints block", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      hints: { total_token_estimate: 50000, unit_count: 5 },
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    expect(manifest.hints).toBeDefined();
+    expect(manifest.hints?.total_token_estimate).toBe(50000);
+  });
+});
+
+describe("parsePayment", () => {
+  it("parses root-level payment block", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      payment: { default_tier: "free" },
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    expect(manifest.payment).toBeDefined();
+  });
+
+  it("parses unit-level payment block", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      units: [{
+        id: "u",
+        path: "f.md",
+        intent: "i",
+        scope: "global",
+        audience: ["agent"],
+        payment: { default_tier: "metered" },
+      }],
+    });
+    expect(manifest.units[0].payment).toBeDefined();
+  });
+
+  it("absent payment is undefined", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    expect(manifest.payment).toBeUndefined();
+  });
+});
+
+describe("path traversal (#12)", () => {
+  it("rejects ../secret", () => {
+    expect(() => validateUnitPath("../secret")).toThrow("escapes");
+  });
+
+  it("rejects ../../etc/passwd", () => {
+    expect(() => validateUnitPath("../../etc/passwd")).toThrow("escapes");
+  });
+
+  it("rejects absolute /etc/passwd", () => {
+    expect(() => validateUnitPath("/etc/passwd")).toThrow("relative");
+  });
+
+  it("rejects docs/../../etc/shadow", () => {
+    expect(() => validateUnitPath("docs/../../etc/shadow")).toThrow("escapes");
+  });
+
+  it("accepts safe nested path", () => {
+    expect(validateUnitPath("docs/guide/intro.md")).toBe("docs/guide/intro.md");
+  });
+});
+
 describe("parseFile", () => {
   it("parses the minimal fixture", () => {
     const manifest = parseFile(join(MINIMAL_DIR, "knowledge.yaml"));

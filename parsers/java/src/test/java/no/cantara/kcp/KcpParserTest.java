@@ -884,4 +884,261 @@ class KcpParserTest {
         assertNull(m.compliance());
         assertNull(m.units().get(0).compliance());
     }
+
+    // -----------------------------------------------------------------------
+    // Trust block parsing tests (#10)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void parsesRootTrust() {
+        Map<String, Object> trustMap = Map.of(
+                "provenance", Map.of(
+                        "publisher", "Acme Corp",
+                        "publisher_url", "https://acme.com",
+                        "contact", "docs@acme.com"
+                ),
+                "audit", Map.of(
+                        "agent_must_log", true,
+                        "require_trace_context", false
+                )
+        );
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("trust", trustMap);
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        assertNotNull(m.trust());
+        assertNotNull(m.trust().provenance());
+        assertEquals("Acme Corp", m.trust().provenance().publisher());
+        assertEquals("https://acme.com", m.trust().provenance().publisherUrl());
+        assertEquals("docs@acme.com", m.trust().provenance().contact());
+        assertNotNull(m.trust().audit());
+        assertTrue(m.trust().audit().agentMustLog());
+        assertFalse(m.trust().audit().requireTraceContext());
+    }
+
+    @Test
+    void absentTrustIsNull() {
+        KnowledgeManifest m = KcpParser.fromMap(MINIMAL);
+        assertNull(m.trust());
+    }
+
+    // -----------------------------------------------------------------------
+    // Auth block parsing tests (#10)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void parsesRootAuth() {
+        Map<String, Object> authMap = Map.of(
+                "methods", List.of(
+                        Map.of("type", "oauth2", "issuer", "https://auth.example.com", "scopes", List.of("read:docs")),
+                        Map.of("type", "api_key", "header", "X-API-Key", "registration_url", "https://example.com/register"),
+                        Map.of("type", "none")
+                )
+        );
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("auth", authMap);
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        assertNotNull(m.auth());
+        assertEquals(3, m.auth().methods().size());
+        assertEquals("oauth2", m.auth().methods().get(0).type());
+        assertEquals("https://auth.example.com", m.auth().methods().get(0).issuer());
+        assertEquals(List.of("read:docs"), m.auth().methods().get(0).scopes());
+        assertEquals("api_key", m.auth().methods().get(1).type());
+        assertEquals("X-API-Key", m.auth().methods().get(1).header());
+        assertEquals("none", m.auth().methods().get(2).type());
+    }
+
+    @Test
+    void absentAuthIsNull() {
+        KnowledgeManifest m = KcpParser.fromMap(MINIMAL);
+        assertNull(m.auth());
+    }
+
+    @Test
+    void warnsWhenProtectedUnitsButNoAuth() {
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.7",
+                "units", List.of(Map.of(
+                        "id", "u1", "path", "f.md", "intent", "test", "scope", "global",
+                        "audience", List.of("agent"), "access", "restricted"
+                ))
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("auth")));
+    }
+
+    // -----------------------------------------------------------------------
+    // Hints block parsing tests (#10)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void parsesUnitHints() {
+        Map<String, Object> hintsMap = new HashMap<>(Map.of(
+                "token_estimate", 5000,
+                "load_strategy", "lazy",
+                "priority", "critical",
+                "density", "dense",
+                "summary_available", true,
+                "summary_unit", "overview-tldr"
+        ));
+        Map<String, Object> unitData = new HashMap<>(Map.of(
+                "id", "u1", "path", "f.md", "intent", "test", "scope", "global",
+                "audience", List.of("agent"), "hints", hintsMap
+        ));
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0",
+                "units", List.of(unitData)
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        assertNotNull(m.units().get(0).hints());
+        assertInstanceOf(Map.class, m.units().get(0).hints());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> hints = (Map<String, Object>) m.units().get(0).hints();
+        assertEquals(5000, hints.get("token_estimate"));
+        assertEquals("lazy", hints.get("load_strategy"));
+        assertEquals(true, hints.get("summary_available"));
+    }
+
+    @Test
+    void parsesRootHints() {
+        Map<String, Object> hintsMap = Map.of(
+                "total_token_estimate", 50000,
+                "unit_count", 5,
+                "recommended_entry_point", "overview"
+        );
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("hints", hintsMap);
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        assertNotNull(m.hints());
+        assertInstanceOf(Map.class, m.hints());
+    }
+
+    // -----------------------------------------------------------------------
+    // Payment block parsing tests (#10)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void parsesRootPayment() {
+        Map<String, Object> paymentMap = Map.of("default_tier", "free");
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("payment", paymentMap);
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        assertNotNull(m.payment());
+        assertInstanceOf(Map.class, m.payment());
+    }
+
+    @Test
+    void parsesUnitPayment() {
+        Map<String, Object> paymentMap = Map.of("default_tier", "metered");
+        Map<String, Object> unitData = new HashMap<>(Map.of(
+                "id", "u1", "path", "f.md", "intent", "test", "scope", "global",
+                "audience", List.of("agent"), "payment", paymentMap
+        ));
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0",
+                "units", List.of(unitData)
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        assertNotNull(m.units().get(0).payment());
+    }
+
+    @Test
+    void absentPaymentIsNull() {
+        KnowledgeManifest m = KcpParser.fromMap(MINIMAL);
+        assertNull(m.payment());
+    }
+
+    // -----------------------------------------------------------------------
+    // Delegation/compliance validation tests (#9)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void invalidHitlValueProducesError() {
+        Map<String, Object> delegationMap = Map.of("human_in_the_loop", "invalid-value");
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("delegation", delegationMap);
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertFalse(result.isValid());
+        assertTrue(result.errors().stream().anyMatch(e -> e.contains("human_in_the_loop")));
+    }
+
+    @Test
+    void validHitlValuesAccepted() {
+        for (String value : List.of("always", "on-sensitive", "never")) {
+            Map<String, Object> delegationMap = Map.of("human_in_the_loop", value);
+            Map<String, Object> data = new HashMap<>(MINIMAL);
+            data.put("delegation", delegationMap);
+            KnowledgeManifest m = KcpParser.fromMap(data);
+            KcpValidator.ValidationResult result = KcpValidator.validate(m);
+            assertTrue(result.errors().stream().noneMatch(e -> e.contains("human_in_the_loop")),
+                    "human_in_the_loop value '" + value + "' should be valid");
+        }
+    }
+
+    @Test
+    void unitMaxDepthExceedingRootProducesError() {
+        Map<String, Object> rootDelegation = Map.of("max_depth", 2);
+        Map<String, Object> unitDelegation = Map.of("max_depth", 5);
+        Map<String, Object> unitData = new HashMap<>(Map.of(
+                "id", "u1", "path", "f.md", "intent", "test", "scope", "global",
+                "audience", List.of("agent"), "delegation", unitDelegation
+        ));
+        Map<String, Object> data = new HashMap<>(Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.7",
+                "units", List.of(unitData)
+        ));
+        data.put("delegation", rootDelegation);
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertFalse(result.isValid());
+        assertTrue(result.errors().stream().anyMatch(e -> e.contains("max_depth")));
+    }
+
+    @Test
+    void invalidComplianceSensitivityProducesError() {
+        Map<String, Object> complianceMap = Map.of("sensitivity", "top-secret");
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("compliance", complianceMap);
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertFalse(result.isValid());
+        assertTrue(result.errors().stream().anyMatch(e -> e.contains("compliance.sensitivity")));
+    }
+
+    // -----------------------------------------------------------------------
+    // Hints validation tests (#11)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void summaryAvailableWithoutSummaryUnitWarns() {
+        Map<String, Object> hintsMap = Map.of("summary_available", true);
+        Map<String, Object> unitData = new HashMap<>(Map.of(
+                "id", "u1", "path", "f.md", "intent", "test", "scope", "global",
+                "audience", List.of("agent"), "hints", hintsMap
+        ));
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.7",
+                "units", List.of(unitData)
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("summary_available") && w.contains("summary_unit")));
+    }
+
+    @Test
+    void chunkIndexWithoutChunkOfWarns() {
+        Map<String, Object> hintsMap = Map.of("chunk_index", 1);
+        Map<String, Object> unitData = new HashMap<>(Map.of(
+                "id", "u1", "path", "f.md", "intent", "test", "scope", "global",
+                "audience", List.of("agent"), "hints", hintsMap
+        ));
+        Map<String, Object> data = Map.of(
+                "project", "test", "version", "1.0.0", "kcp_version", "0.7",
+                "units", List.of(unitData)
+        );
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("chunk_index") && w.contains("chunk_of")));
+    }
 }
