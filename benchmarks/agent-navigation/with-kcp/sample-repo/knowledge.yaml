@@ -1,0 +1,88 @@
+# Bookshelf API — Knowledge Context Protocol manifest
+kcp_version: "0.7"
+project: bookshelf-api
+version: "1.0.0"
+language: en
+license: MIT
+
+units:
+  - id: auth
+    path: src/auth.js
+    intent: "How authentication works: JWT bearer tokens, validation middleware, and token generation"
+    scope: global
+    audience: [developer, agent]
+    kind: knowledge
+    format: text
+    triggers:
+      - "authenticate"
+      - "JWT"
+      - "bearer token"
+      - "login"
+      - "authorization header"
+      - "401"
+      - "token"
+
+  - id: config
+    path: config/settings.js
+    intent: "All environment variables and configuration: database, auth, rate limiting, and server port"
+    scope: global
+    audience: [developer, operator, agent]
+    kind: knowledge
+    format: text
+    triggers:
+      - "environment variable"
+      - "config"
+      - "DB_HOST"
+      - "DB_PORT"
+      - "DB_NAME"
+      - "JWT_SECRET"
+      - "API_PORT"
+      - ".env"
+      - "database"
+      - "settings"
+
+  - id: rate-limiting
+    path: src/middleware.js
+    intent: "Rate limiting configuration: per-IP sliding window, 429 responses, and Retry-After header"
+    scope: project
+    audience: [developer, agent]
+    kind: knowledge
+    format: text
+    depends_on: [config]
+    triggers:
+      - "rate limit"
+      - "429"
+      - "throttle"
+      - "too many requests"
+      - "Retry-After"
+      - "RATE_LIMIT_WINDOW"
+      - "RATE_LIMIT_MAX"
+
+  - id: api-endpoints
+    path: src/server.js
+    intent: "REST API endpoints: GET /health, GET/POST /api/books, pagination, and request validation"
+    scope: global
+    audience: [developer, agent]
+    kind: knowledge
+    format: text
+    depends_on: [auth, rate-limiting]
+    triggers:
+      - "endpoint"
+      - "route"
+      - "API"
+      - "books"
+      - "health check"
+      - "POST"
+      - "GET"
+      - "pagination"
+
+relationships:
+  - from: config
+    to: auth
+    type: enables
+  - from: config
+    to: rate-limiting
+    type: enables
+  - from: auth
+    to: api-endpoints
+    type: enables
