@@ -71,6 +71,7 @@
         <li><a href="#compare">Compare</a></li>
         <li><a href="#spec">Spec</a></li>
         <li><a href="#use-cases">Use Cases</a></li>
+        <li><a href="#scenarios">Scenarios</a></li>
         <li><a href="#get-started">Get Started</a></li>
         <li><a href="#playground">Try it</a></li>
         <li><a href="#roadmap">Roadmap</a></li>
@@ -611,6 +612,15 @@ relationships:
         <p>Real <code>knowledge.yaml</code> files from the KCP repository, showing the adoption gradient from a single unit to a full knowledge graph.</p>
       </div>
 
+      <!-- Adoption gradient image -->
+      <div class="reveal" style="margin-bottom: var(--space-12);">
+        <img src="assets/images/scenarios/adoption-gradient.png" alt="The KCP Adoption Gradient: from Minimal to Multi-Agent across five stages" style="width: 100%; max-width: 56rem; margin: 0 auto; display: block; border-radius: var(--radius-xl); border: 1px solid var(--border-primary);">
+      </div>
+
+      <!-- Foundation examples -->
+      <h3 class="reveal" style="margin-bottom: var(--space-4); font-size: var(--fs-lg);">Foundation</h3>
+      <p class="reveal" style="margin-bottom: var(--space-6); color: var(--text-secondary);">Start here. These examples cover the first three stages of the adoption gradient.</p>
+
       <div class="tab-group">
       <div class="reveal">
         <div class="tabs" role="tablist">
@@ -799,6 +809,111 @@ relationships:
         </div>
       </div>
       </div>
+
+      <!-- Enterprise patterns -->
+      <h3 class="reveal" style="margin-top: var(--space-16); margin-bottom: var(--space-4); font-size: var(--fs-lg);">Enterprise Patterns</h3>
+      <p class="reveal" style="margin-bottom: var(--space-6); color: var(--text-secondary);">Access control, rate limiting, compliance, and cross-org federation.</p>
+
+      <div class="usecase-grid reveal">
+        <div class="usecase-card">
+          <div class="usecase-card__header">
+            <h4>Compliance Audit</h4>
+          </div>
+          <p>A healthcare system with PII sensitivity, restricted access, delegation chains, and mandatory human-in-the-loop for patient data.</p>
+          <div class="usecase-card__fields">
+            <span class="usecase-card__field-tag">access</span>
+            <span class="usecase-card__field-tag">sensitivity</span>
+            <span class="usecase-card__field-tag">delegation</span>
+            <span class="usecase-card__field-tag">human_in_the_loop</span>
+          </div>
+          <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/compliance-audit/" target="_blank" rel="noopener" class="btn btn--ghost" style="align-self: flex-start; margin-top: auto;">View on GitHub</a>
+        </div>
+
+        <div class="usecase-card">
+          <div class="usecase-card__header">
+            <h4>API Platform Rate Limits</h4>
+          </div>
+          <p>Public and internal API documentation with per-unit rate limits, tiered access (public vs restricted), and advisory throttling metadata.</p>
+          <div class="usecase-card__fields">
+            <span class="usecase-card__field-tag">rate_limits</span>
+            <span class="usecase-card__field-tag">access</span>
+            <span class="usecase-card__field-tag">auth_scope</span>
+          </div>
+          <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/api-platform-rate-limits/" target="_blank" rel="noopener" class="btn btn--ghost" style="align-self: flex-start; margin-top: auto;">View on GitHub</a>
+        </div>
+
+        <div class="usecase-card">
+          <div class="usecase-card__header">
+            <h4>Federation</h4>
+          </div>
+          <p>Cross-organization knowledge sharing with role-based audience gating, auth methods, and trust boundaries between two independent orgs.</p>
+          <div class="usecase-card__fields">
+            <span class="usecase-card__field-tag">auth.methods</span>
+            <span class="usecase-card__field-tag">trust.audit</span>
+            <span class="usecase-card__field-tag">audience</span>
+          </div>
+          <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/federation/" target="_blank" rel="noopener" class="btn btn--ghost" style="align-self: flex-start; margin-top: auto;">View on GitHub</a>
+        </div>
+      </div>
+
+      <!-- Advanced patterns -->
+      <h3 class="reveal" style="margin-top: var(--space-16); margin-bottom: var(--space-4); font-size: var(--fs-lg);">Advanced</h3>
+      <p class="reveal" style="margin-bottom: var(--space-6); color: var(--text-secondary);">Relationship graphs, chunking hints, A2A integration, and well-known discovery.</p>
+
+      <div class="usecase-grid reveal">
+        <div class="usecase-card">
+          <div class="usecase-card__header">
+            <h4>Dependency Graph</h4>
+          </div>
+          <p>A platform migration scenario exercising all five relationship types: <code>depends_on</code>, <code>enables</code>, <code>context</code>, <code>supersedes</code>, and <code>contradicts</code>.</p>
+          <div class="usecase-card__fields">
+            <span class="usecase-card__field-tag">depends_on</span>
+            <span class="usecase-card__field-tag">supersedes</span>
+            <span class="usecase-card__field-tag">contradicts</span>
+            <span class="usecase-card__field-tag">enables</span>
+          </div>
+          <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/dependency-graph/" target="_blank" rel="noopener" class="btn btn--ghost" style="align-self: flex-start; margin-top: auto;">View on GitHub</a>
+        </div>
+
+        <div class="usecase-card">
+          <div class="usecase-card__header">
+            <h4>Hints &amp; Chunking</h4>
+          </div>
+          <p>Large documents with token-budget hints, chunking strategies, and summary-first loading patterns for context-window-aware agents.</p>
+          <div class="usecase-card__fields">
+            <span class="usecase-card__field-tag">hints</span>
+            <span class="usecase-card__field-tag">chunking</span>
+            <span class="usecase-card__field-tag">token_budget</span>
+          </div>
+          <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/hints-and-chunking/" target="_blank" rel="noopener" class="btn btn--ghost" style="align-self: flex-start; margin-top: auto;">View on GitHub</a>
+        </div>
+
+        <div class="usecase-card">
+          <div class="usecase-card__header">
+            <h4>A2A Agent Card</h4>
+          </div>
+          <p>Composing Google A2A agent identity with KCP knowledge manifests. The Front Door (<code>agent.json</code>) meets the Filing Cabinet (<code>kcp.json</code>).</p>
+          <div class="usecase-card__fields">
+            <span class="usecase-card__field-tag">a2a</span>
+            <span class="usecase-card__field-tag">knowledgeManifest</span>
+            <span class="usecase-card__field-tag">.well-known</span>
+          </div>
+          <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/a2a-agent-card/" target="_blank" rel="noopener" class="btn btn--ghost" style="align-self: flex-start; margin-top: auto;">View on GitHub</a>
+        </div>
+
+        <div class="usecase-card">
+          <div class="usecase-card__header">
+            <h4>Well-Known Discovery</h4>
+          </div>
+          <p>HTTP-based discovery via <code>/.well-known/kcp.json</code> endpoint, enabling agents to locate knowledge manifests without prior configuration.</p>
+          <div class="usecase-card__fields">
+            <span class="usecase-card__field-tag">.well-known/kcp.json</span>
+            <span class="usecase-card__field-tag">discovery</span>
+          </div>
+          <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/well-known-discovery/" target="_blank" rel="noopener" class="btn btn--ghost" style="align-self: flex-start; margin-top: auto;">View on GitHub</a>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -1448,6 +1563,160 @@ units:
         </div>
 
       </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       SCENARIOS & SIMULATORS
+       ============================================================ -->
+  <section id="scenarios" class="section--alt">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">Scenarios &amp; Simulators</span>
+        <h2>Stress-testing the protocol</h2>
+        <p>Five runnable Java simulators exercise the A2A + KCP composition model at increasing complexity &mdash; from happy-path energy metering to adversarial multi-agent AML orchestration. Each scenario surfaces specific spec behaviors and drives the v0.8+ roadmap.</p>
+      </div>
+
+      <!-- Hero illustration -->
+      <div class="reveal" style="margin-bottom: var(--space-16);">
+        <img src="assets/images/scenarios/simulator-overview.png" alt="Three simulation levels: Happy Path with HITL, 3-Hop Delegation Chain, and Adversarial Orchestration" style="width: 100%; max-width: 64rem; margin: 0 auto; display: block; border-radius: var(--radius-xl); border: 1px solid var(--border-primary);">
+      </div>
+
+      <!-- Scenarios table -->
+      <div class="reveal" style="overflow-x: auto; margin-bottom: var(--space-16);">
+        <table style="width: 100%; border-collapse: collapse; font-size: var(--fs-sm); line-height: var(--lh-relaxed);">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border-primary); text-align: left;">
+              <th style="padding: var(--space-3) var(--space-4); font-weight: var(--fw-semibold); white-space: nowrap;">Scenario</th>
+              <th style="padding: var(--space-3) var(--space-4); font-weight: var(--fw-semibold);">What it tests</th>
+              <th style="padding: var(--space-3) var(--space-4); font-weight: var(--fw-semibold);">Key spec features</th>
+              <th style="padding: var(--space-3) var(--space-4); font-weight: var(--fw-semibold); text-align: center;">Agents</th>
+              <th style="padding: var(--space-3) var(--space-4); font-weight: var(--fw-semibold); text-align: center;">Tests</th>
+              <th style="padding: var(--space-3) var(--space-4); font-weight: var(--fw-semibold); text-align: center;">GitHub</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border-primary);">
+              <td style="padding: var(--space-3) var(--space-4); font-weight: var(--fw-medium); white-space: nowrap;">Energy Metering</td>
+              <td style="padding: var(--space-3) var(--space-4);">Happy path, HITL gate, audit trail</td>
+              <td style="padding: var(--space-3) var(--space-4);"><code>access</code>, <code>delegation</code>, <code>human_in_the_loop</code></td>
+              <td style="padding: var(--space-3) var(--space-4); text-align: center;">2</td>
+              <td style="padding: var(--space-3) var(--space-4); text-align: center;">36</td>
+              <td style="padding: var(--space-3) var(--space-4); text-align: center;"><a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/scenario1-energy-metering/" target="_blank" rel="noopener" style="color: var(--text-link);">View</a></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-primary);">
+              <td style="padding: var(--space-3) var(--space-4); font-weight: var(--fw-medium); white-space: nowrap;">Legal Delegation</td>
+              <td style="padding: var(--space-3) var(--space-4);">3-hop chain, max_depth:0, capability attenuation</td>
+              <td style="padding: var(--space-3) var(--space-4);"><code>delegation.max_depth</code>, <code>auth_scope</code></td>
+              <td style="padding: var(--space-3) var(--space-4); text-align: center;">3</td>
+              <td style="padding: var(--space-3) var(--space-4); text-align: center;">36</td>
+              <td style="padding: var(--space-3) var(--space-4); text-align: center;"><a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/scenario2-legal-delegation/" target="_blank" rel="noopener" style="color: var(--text-link);">View</a></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-primary);">
+              <td style="padding: var(--space-3) var(--space-4); font-weight: var(--fw-medium); white-space: nowrap;">Financial AML</td>
+              <td style="padding: var(--space-3) var(--space-4);">Adversarial multi-agent, GDPR, rogue agent</td>
+              <td style="padding: var(--space-3) var(--space-4);"><code>compliance</code>, <code>sensitivity</code>, <code>delegation</code></td>
+              <td style="padding: var(--space-3) var(--space-4); text-align: center;">5</td>
+              <td style="padding: var(--space-3) var(--space-4); text-align: center;">27</td>
+              <td style="padding: var(--space-3) var(--space-4); text-align: center;"><a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/scenario3-financial-aml/" target="_blank" rel="noopener" style="color: var(--text-link);">View</a></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-primary);">
+              <td style="padding: var(--space-3) var(--space-4); font-weight: var(--fw-medium); white-space: nowrap;">Rate-Limit Aware</td>
+              <td style="padding: var(--space-3) var(--space-4);">Advisory rate_limits, PoliteAgent vs GreedyAgent</td>
+              <td style="padding: var(--space-3) var(--space-4);"><code>rate_limits</code> &sect;4.15</td>
+              <td style="padding: var(--space-3) var(--space-4); text-align: center;">2</td>
+              <td style="padding: var(--space-3) var(--space-4); text-align: center;">34</td>
+              <td style="padding: var(--space-3) var(--space-4); text-align: center;"><a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/scenario4-rate-limit-aware/" target="_blank" rel="noopener" style="color: var(--text-link);">View</a></td>
+            </tr>
+            <tr>
+              <td style="padding: var(--space-3) var(--space-4); font-weight: var(--fw-medium); white-space: nowrap;">Dependency Ordering</td>
+              <td style="padding: var(--space-3) var(--space-4);">Topological sort, cycle detection, all 5 relationship types</td>
+              <td style="padding: var(--space-3) var(--space-4);"><code>depends_on</code>, <code>supersedes</code>, <code>contradicts</code></td>
+              <td style="padding: var(--space-3) var(--space-4); text-align: center;">1</td>
+              <td style="padding: var(--space-3) var(--space-4); text-align: center;">34</td>
+              <td style="padding: var(--space-3) var(--space-4); text-align: center;"><a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/scenario5-dependency-ordering/" target="_blank" rel="noopener" style="color: var(--text-link);">View</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Visual illustrations row -->
+      <div class="reveal" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-6); margin-bottom: var(--space-16);">
+        <div>
+          <img src="assets/images/scenarios/delegation-chain.png" alt="Level 2 Simulator: Capability Attenuation across a 3-agent delegation chain with max_depth:0 rejection" style="width: 100%; border-radius: var(--radius-xl); border: 1px solid var(--border-primary);">
+          <p style="font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: var(--space-2); text-align: center;">Scenario 2: 3-hop delegation with scope attenuation</p>
+        </div>
+        <div>
+          <img src="assets/images/scenarios/adversarial-rogue-agent.png" alt="Level 3 Simulator: RogueAgent attempting GDPR bypass, scope elevation, max_depth bypass, and delegation depth violations" style="width: 100%; border-radius: var(--radius-xl); border: 1px solid var(--border-primary);">
+          <p style="font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: var(--space-2); text-align: center;">Scenario 3: Adversarial RogueAgent stress test</p>
+        </div>
+      </div>
+
+      <!-- A2A + KCP Composition -->
+      <div class="reveal" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-6); margin-bottom: var(--space-16);">
+        <div>
+          <img src="assets/images/scenarios/a2a-kcp-composition.png" alt="Stage 4: The Multi-Agent Composition Model showing the Front Door (agent.json) connected to the Filing Cabinet (kcp.json) via knowledgeManifest" style="width: 100%; border-radius: var(--radius-xl); border: 1px solid var(--border-primary);">
+          <p style="font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: var(--space-2); text-align: center;">A2A + KCP composition: Front Door meets Filing Cabinet</p>
+        </div>
+        <div>
+          <img src="assets/images/scenarios/escalating-access-control.png" alt="Escalating access control pyramid: public, authenticated, restricted (PII), and human-in-the-loop layers" style="width: 100%; border-radius: var(--radius-xl); border: 1px solid var(--border-primary);">
+          <p style="font-size: var(--fs-xs); color: var(--text-tertiary); margin-top: var(--space-2); text-align: center;">Escalating access: public to HITL-gated</p>
+        </div>
+      </div>
+
+      <!-- Spec to simulator mapping -->
+      <div class="reveal" style="max-width: 52rem; margin: 0 auto;">
+        <h3 style="margin-bottom: var(--space-6); font-size: var(--fs-lg);">Which simulator tests what?</h3>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: var(--fs-sm); line-height: var(--lh-relaxed);">
+            <thead>
+              <tr style="border-bottom: 2px solid var(--border-primary); text-align: left;">
+                <th style="padding: var(--space-3) var(--space-4); font-weight: var(--fw-semibold);">Spec Feature</th>
+                <th style="padding: var(--space-3) var(--space-4); font-weight: var(--fw-semibold);">Tested by</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid var(--border-primary);">
+                <td style="padding: var(--space-3) var(--space-4);"><code>rate_limits</code> (&sect;4.15)</td>
+                <td style="padding: var(--space-3) var(--space-4);">
+                  <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/scenario4-rate-limit-aware/" target="_blank" rel="noopener" style="color: var(--text-link);">scenario4</a>,
+                  <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/api-platform-rate-limits/" target="_blank" rel="noopener" style="color: var(--text-link);">api-platform-rate-limits</a>
+                </td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--border-primary);">
+                <td style="padding: var(--space-3) var(--space-4);"><code>delegation</code> (&sect;3.4)</td>
+                <td style="padding: var(--space-3) var(--space-4);">
+                  <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/scenario2-legal-delegation/" target="_blank" rel="noopener" style="color: var(--text-link);">scenario2</a>,
+                  <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/scenario3-financial-aml/" target="_blank" rel="noopener" style="color: var(--text-link);">scenario3</a>
+                </td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--border-primary);">
+                <td style="padding: var(--space-3) var(--space-4);"><code>compliance</code> (&sect;3.5)</td>
+                <td style="padding: var(--space-3) var(--space-4);">
+                  <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/scenario3-financial-aml/" target="_blank" rel="noopener" style="color: var(--text-link);">scenario3</a>,
+                  <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/compliance-audit/" target="_blank" rel="noopener" style="color: var(--text-link);">compliance-audit</a>
+                </td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--border-primary);">
+                <td style="padding: var(--space-3) var(--space-4);"><code>human_in_the_loop</code></td>
+                <td style="padding: var(--space-3) var(--space-4);">
+                  <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/scenario1-energy-metering/" target="_blank" rel="noopener" style="color: var(--text-link);">scenario1</a>,
+                  <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/scenario2-legal-delegation/" target="_blank" rel="noopener" style="color: var(--text-link);">scenario2</a>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: var(--space-3) var(--space-4);"><code>relationships</code> (&sect;5)</td>
+                <td style="padding: var(--space-3) var(--space-4);">
+                  <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/scenario5-dependency-ordering/" target="_blank" rel="noopener" style="color: var(--text-link);">scenario5</a>,
+                  <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/dependency-graph/" target="_blank" rel="noopener" style="color: var(--text-link);">dependency-graph</a>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </section>
 
