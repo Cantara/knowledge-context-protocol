@@ -17,7 +17,7 @@ VALID_UPDATE_FREQUENCIES = {"hourly", "daily", "weekly", "monthly", "rarely", "n
 VALID_INDEXING_SHORTHANDS = {"open", "read-only", "no-train", "none"}
 VALID_ACCESS_VALUES = {"public", "authenticated", "restricted"}
 VALID_SENSITIVITY_VALUES = {"public", "internal", "confidential", "restricted"}
-VALID_HITL_VALUES = {"always", "on-sensitive", "never"}
+# human_in_the_loop is an object per spec §3.4 — no HITL enum, validation done inline
 KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7"}
 _ID_PATTERN = re.compile(r"^[a-z0-9.\-]+$")
 _MAX_TRIGGER_LENGTH = 60
@@ -210,11 +210,17 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
 
         # delegation validation (§3.4)
         if unit.delegation is not None:
-            if (unit.delegation.human_in_the_loop is not None
-                    and unit.delegation.human_in_the_loop not in VALID_HITL_VALUES):
+            hitl = unit.delegation.human_in_the_loop
+            if hitl is not None and not isinstance(hitl, dict):
                 errors.append(
-                    f"{p}: delegation.human_in_the_loop must be one of "
-                    f"{sorted(VALID_HITL_VALUES)}, got '{unit.delegation.human_in_the_loop}'"
+                    f"{p}: delegation.human_in_the_loop must be an object "
+                    f"(with optional 'required' and 'approval_mechanism' fields), got '{hitl}'"
+                )
+            if isinstance(hitl, dict) and hitl.get("approval_mechanism") not in (
+                    None, "oauth_consent", "uma", "custom"):
+                errors.append(
+                    f"{p}: delegation.human_in_the_loop.approval_mechanism must be one of "
+                    f"['oauth_consent', 'uma', 'custom'], got '{hitl.get('approval_mechanism')}'"
                 )
             if (manifest.delegation is not None
                     and unit.delegation.max_depth is not None
@@ -254,11 +260,17 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
 
     # Root-level delegation validation
     if manifest.delegation is not None:
-        if (manifest.delegation.human_in_the_loop is not None
-                and manifest.delegation.human_in_the_loop not in VALID_HITL_VALUES):
+        hitl = manifest.delegation.human_in_the_loop
+        if hitl is not None and not isinstance(hitl, dict):
             errors.append(
-                f"manifest: delegation.human_in_the_loop must be one of "
-                f"{sorted(VALID_HITL_VALUES)}, got '{manifest.delegation.human_in_the_loop}'"
+                f"manifest: delegation.human_in_the_loop must be an object "
+                f"(with optional 'required' and 'approval_mechanism' fields), got '{hitl}'"
+            )
+        if isinstance(hitl, dict) and hitl.get("approval_mechanism") not in (
+                None, "oauth_consent", "uma", "custom"):
+            errors.append(
+                f"manifest: delegation.human_in_the_loop.approval_mechanism must be one of "
+                f"['oauth_consent', 'uma', 'custom'], got '{hitl.get('approval_mechanism')}'"
             )
 
     # Root-level compliance validation

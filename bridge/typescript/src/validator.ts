@@ -26,7 +26,7 @@ const VALID_SENSITIVITY_VALUES = new Set([
   "confidential",
   "restricted",
 ]);
-const VALID_HITL_VALUES = new Set(["always", "on-sensitive", "never"]);
+// human_in_the_loop is an object per spec §3.4 — no HITL enum, validation done inline
 const KNOWN_KCP_VERSIONS = new Set([
   "0.1",
   "0.2",
@@ -108,13 +108,19 @@ export function validate(
 
     // delegation validation (§3.4)
     if (unit.delegation) {
-      if (
-        unit.delegation.human_in_the_loop &&
-        !VALID_HITL_VALUES.has(unit.delegation.human_in_the_loop)
-      ) {
+      const hitl = unit.delegation.human_in_the_loop;
+      if (hitl !== undefined && hitl !== null && typeof hitl !== "object") {
         errors.push(
-          `${ctx}: delegation.human_in_the_loop must be one of [always, never, on-sensitive], got '${unit.delegation.human_in_the_loop}'`
+          `${ctx}: delegation.human_in_the_loop must be an object (with optional 'required' and 'approval_mechanism' fields), got '${hitl}'`
         );
+      }
+      if (hitl && typeof hitl === "object") {
+        const mech = (hitl as Record<string, unknown>).approval_mechanism;
+        if (mech !== undefined && !["oauth_consent", "uma", "custom"].includes(mech as string)) {
+          errors.push(
+            `${ctx}: delegation.human_in_the_loop.approval_mechanism must be one of [oauth_consent, uma, custom], got '${mech}'`
+          );
+        }
       }
       if (
         manifest.delegation?.max_depth != null &&
@@ -199,11 +205,20 @@ export function validate(
   }
 
   // Root-level delegation validation (§3.4)
-  if (manifest.delegation?.human_in_the_loop) {
-    if (!VALID_HITL_VALUES.has(manifest.delegation.human_in_the_loop)) {
+  if (manifest.delegation?.human_in_the_loop !== undefined) {
+    const hitl = manifest.delegation.human_in_the_loop;
+    if (hitl !== null && typeof hitl !== "object") {
       errors.push(
-        `manifest: delegation.human_in_the_loop must be one of [always, never, on-sensitive], got '${manifest.delegation.human_in_the_loop}'`
+        `manifest: delegation.human_in_the_loop must be an object (with optional 'required' and 'approval_mechanism' fields), got '${hitl}'`
       );
+    }
+    if (hitl && typeof hitl === "object") {
+      const mech = (hitl as Record<string, unknown>).approval_mechanism;
+      if (mech !== undefined && !["oauth_consent", "uma", "custom"].includes(mech as string)) {
+        errors.push(
+          `manifest: delegation.human_in_the_loop.approval_mechanism must be one of [oauth_consent, uma, custom], got '${mech}'`
+        );
+      }
     }
   }
 

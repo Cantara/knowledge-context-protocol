@@ -116,7 +116,9 @@ units:
       - "voltage"
     delegation:
       max_depth: 1
-      human_in_the_loop: approval
+      human_in_the_loop:
+        required: true
+        approval_mechanism: oauth_consent
 
 relationships:
 
