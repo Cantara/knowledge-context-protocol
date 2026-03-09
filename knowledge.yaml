@@ -9,6 +9,11 @@ language: en
 license: "Apache-2.0"
 indexing: open
 
+rate_limits:
+  default:
+    requests_per_minute: 60
+    requests_per_day: 5000
+
 units:
 
   # -- Core specification -------------------------------------------------------
@@ -73,7 +78,7 @@ units:
     audience: [human, agent, architect, developer]
     validated: "2026-02-28"
     depends_on: [spec, rfc-0002]
-    triggers: [payment, x402, rate limits, micropayment, subscription, metered, quota, 429, economics]
+    triggers: [payment, x402, rate limits, micropayment, subscription, metered, quota, "429", economics]
 
   - id: rfc-0006
     path: RFC-0006-Context-Window-Hints.md
@@ -168,6 +173,107 @@ units:
       - "front door"
       - "delegation"
       - "human in the loop"
+
+  - id: example-compliance-audit
+    path: examples/compliance-audit/knowledge.yaml
+    intent: "How do I declare GDPR and NIS2 compliance constraints, data residency, and audit requirements in a knowledge manifest?"
+    scope: module
+    audience: [developer, agent, architect]
+    validated: "2026-03-09"
+    depends_on: [examples-index]
+    triggers: [compliance, GDPR, NIS2, data residency, sensitivity, audit, patient data, healthcare]
+
+  - id: example-api-platform-rate-limits
+    path: examples/api-platform-rate-limits/knowledge.yaml
+    intent: "How do I declare advisory rate limits at root and unit level for a tiered API platform?"
+    scope: module
+    audience: [developer, agent]
+    validated: "2026-03-09"
+    depends_on: [examples-index]
+    triggers: [rate limits, requests per minute, throttle, self-throttle, API platform, tiered access, advisory]
+
+  - id: example-dependency-graph
+    path: examples/dependency-graph/knowledge.yaml
+    intent: "How do all five relationship types (depends_on, enables, supersedes, contradicts, context) work in a realistic knowledge graph?"
+    scope: module
+    audience: [developer, agent]
+    validated: "2026-03-09"
+    depends_on: [examples-index]
+    triggers: [depends_on, supersedes, contradicts, relationship types, dependency graph, migration, topology]
+
+  - id: example-federation
+    path: examples/federation/knowledge.yaml
+    intent: "How do I federate multiple knowledge manifests across repositories using the hub-and-spoke manifests block?"
+    scope: module
+    audience: [developer, agent, architect]
+    validated: "2026-03-09"
+    depends_on: [examples-index, rfc-0003]
+    triggers: [federation, sub-manifest, hub, spoke, cross-repo, manifests block]
+
+  - id: example-hints-and-chunking
+    path: examples/hints-and-chunking/knowledge.yaml
+    intent: "How do I declare token estimates, load strategies, and chunking relationships to help agents manage context windows?"
+    scope: module
+    audience: [developer, agent]
+    validated: "2026-03-09"
+    depends_on: [examples-index, rfc-0006]
+    triggers: [hints, chunking, token estimate, context window, load strategy, eager, lazy, summary unit]
+
+  - id: example-well-known-discovery
+    path: examples/well-known-discovery/README.md
+    intent: "How does /.well-known/kcp.json discovery work? How do agents find a project's knowledge manifest automatically?"
+    scope: module
+    audience: [developer, agent]
+    validated: "2026-03-09"
+    depends_on: [examples-index]
+    triggers: [well-known, discovery, kcp.json, auto-discovery, manifest location]
+
+  # -- Simulators ----------------------------------------------------------------
+
+  - id: scenario1-energy-metering
+    path: examples/scenario1-energy-metering/README.md
+    intent: "How does a 2-agent energy metering system navigate access levels, HITL gates, and audit trails? (Happy path simulation)"
+    scope: module
+    audience: [developer, agent, architect]
+    validated: "2026-03-09"
+    depends_on: [example-a2a-agent-card]
+    triggers: [simulator, scenario, energy metering, HITL, human in the loop, audit trail, happy path, access levels]
+
+  - id: scenario2-legal-delegation
+    path: examples/scenario2-legal-delegation/README.md
+    intent: "How does a 3-hop delegation chain work with max_depth:0 enforcement and capability attenuation? (Legal research simulation)"
+    scope: module
+    audience: [developer, agent, architect]
+    validated: "2026-03-09"
+    depends_on: [scenario1-energy-metering]
+    triggers: [simulator, scenario, delegation chain, max_depth, capability attenuation, legal, sealed records, court]
+
+  - id: scenario3-financial-aml
+    path: examples/scenario3-financial-aml/README.md
+    intent: "How does an adversarial multi-agent system resist a rogue agent attacking GDPR residency, scope elevation, and delegation depth limits? (AML compliance simulation)"
+    scope: module
+    audience: [developer, agent, architect]
+    validated: "2026-03-09"
+    depends_on: [scenario2-legal-delegation]
+    triggers: [simulator, scenario, adversarial, rogue agent, AML, financial, GDPR, compliance, sanctions, SAR, wire transfer]
+
+  - id: scenario4-rate-limit-aware
+    path: examples/scenario4-rate-limit-aware/README.md
+    intent: "How does a rate-limit-aware agent self-throttle using advisory rate_limits? PoliteAgent vs GreedyAgent comparison."
+    scope: module
+    audience: [developer, agent]
+    validated: "2026-03-09"
+    depends_on: [scenario1-energy-metering]
+    triggers: [simulator, scenario, rate limits, self-throttle, polite agent, greedy agent, advisory, requests per minute, burst]
+
+  - id: scenario5-dependency-ordering
+    path: examples/scenario5-dependency-ordering/README.md
+    intent: "How does an agent use topological sort to load units in safe dependency order, detect cycles, and handle supersedes/contradicts relationships?"
+    scope: module
+    audience: [developer, agent]
+    validated: "2026-03-09"
+    depends_on: [scenario1-energy-metering]
+    triggers: [simulator, scenario, topological sort, dependency ordering, cycle detection, Kahn algorithm, supersedes, contradicts, ingestion]
 
   # -- Parsers -------------------------------------------------------------------
 
@@ -266,6 +372,42 @@ relationships:
     type: context
   - from: example-a2a-agent-card
     to: rfc-0002
+    type: context
+
+  - from: example-compliance-audit
+    to: rfc-0004
+    type: context
+  - from: example-api-platform-rate-limits
+    to: rfc-0005
+    type: context
+  - from: example-dependency-graph
+    to: spec
+    type: context
+  - from: example-federation
+    to: rfc-0003
+    type: context
+  - from: example-hints-and-chunking
+    to: rfc-0006
+    type: context
+  - from: example-well-known-discovery
+    to: spec
+    type: context
+
+  # Simulators validate the spec under adversarial conditions
+  - from: scenario1-energy-metering
+    to: rfc-0002
+    type: context
+  - from: scenario2-legal-delegation
+    to: rfc-0002
+    type: context
+  - from: scenario3-financial-aml
+    to: rfc-0004
+    type: context
+  - from: scenario4-rate-limit-aware
+    to: rfc-0005
+    type: context
+  - from: scenario5-dependency-ordering
+    to: spec
     type: context
 
   # Parsers implement the spec
