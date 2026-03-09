@@ -1,0 +1,54 @@
+name: Interoperability Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  interop-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Build TypeScript bridge
+        run: |
+          cd bridge/typescript
+          npm install
+          npm run build
+
+      - name: Install Python packages
+        run: |
+          pip install -e parsers/python
+          pip install -e bridge/python
+
+      - name: Install TS client dependencies
+        run: |
+          cd tests/interop/ts-client
+          npm install --ignore-scripts
+
+      - name: Run TypeScript client
+        run: |
+          cd tests/interop/ts-client
+          npx tsx interop_client.ts ../knowledge.yaml ../ts-results.json
+
+      - name: Run Python client
+        run: |
+          cd tests/interop
+          python python-client/interop_client.py knowledge.yaml python-results.json
+
+      - name: Assert parity
+        run: |
+          cd tests/interop
+          python assert_parity.py ts-results.json python-results.json

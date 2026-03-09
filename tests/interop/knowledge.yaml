@@ -1,0 +1,55 @@
+# Interoperability test manifest
+# Used to verify that all language bridges produce identical MCP results
+kcp_version: "0.7"
+project: interop-test
+version: "1.0.0"
+updated: "2026-03-09"
+language: en
+license: Apache-2.0
+
+units:
+  - id: auth-guide
+    path: docs/authentication.md
+    intent: "How to authenticate with the API using OAuth2 or API keys"
+    scope: global
+    audience: [developer, agent]
+    kind: knowledge
+    format: markdown
+    triggers:
+      - "authenticate"
+      - "OAuth"
+      - "API key"
+      - "login"
+      - "bearer token"
+
+  - id: rate-limiting
+    path: docs/rate-limiting.md
+    intent: "Rate limiting policies and how to handle 429 responses"
+    scope: project
+    audience: [developer, agent]
+    kind: knowledge
+    format: markdown
+    depends_on: [auth-guide]
+    triggers:
+      - "rate limit"
+      - "429"
+      - "throttle"
+      - "backoff"
+
+  - id: env-config
+    path: docs/environment.md
+    intent: "Environment variables and configuration options"
+    scope: global
+    audience: [developer, operator, agent]
+    kind: knowledge
+    format: markdown
+    triggers:
+      - "environment variable"
+      - "config"
+      - "DATABASE_URL"
+      - ".env"
+
+relationships:
+  - from: auth-guide
+    to: rate-limiting
+    type: enables
