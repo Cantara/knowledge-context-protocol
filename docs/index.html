@@ -72,7 +72,7 @@
         <li><a href="#spec">Spec</a></li>
         <li><a href="#use-cases">Use Cases</a></li>
         <li><a href="#scenarios">Scenarios</a></li>
-        <li><a href="#simulator">Demo</a></li>
+        <li><a href="simulator.html">Demo</a></li>
         <li><a href="#get-started">Get Started</a></li>
         <li><a href="#playground">Try it</a></li>
         <li><a href="#roadmap">Roadmap</a></li>
@@ -1722,105 +1722,17 @@ units:
   </section>
 
 
-  <!-- ============================================================
-       SIMULATOR PLAYER
-       ============================================================ -->
-  <section id="simulator">
+  <!-- Simulator moved to simulator.html -->
+  <section id="simulator" style="padding: var(--space-12) 0; background: var(--bg-secondary); text-align: center;">
     <div class="container">
       <div class="section-header reveal">
         <span class="section-label">Live Demo</span>
         <h2>Watch the simulators run</h2>
-        <p class="section-sub">Five runnable Java simulators stress-test KCP under realistic and adversarial conditions. Pre-recorded output &mdash; plays identically every time.</p>
+        <p>Five runnable Java simulators stress-test KCP under realistic and adversarial conditions. Pre-recorded output &mdash; plays identically every time.</p>
       </div>
-
-      <!-- Scenario selector tabs -->
-      <div class="sim-tabs reveal">
-        <button class="sim-tab active" data-scenario="s3">Financial AML &#9733;</button>
-        <button class="sim-tab" data-scenario="s4">Rate Limits</button>
-        <button class="sim-tab" data-scenario="s2">Legal Delegation</button>
-        <button class="sim-tab" data-scenario="s1">Energy Metering</button>
-        <button class="sim-tab" data-scenario="s5">Dependency Order</button>
-      </div>
-
-      <div class="sim-layout reveal">
-        <!-- Left: terminal -->
-        <div class="sim-terminal-wrap">
-          <div class="sim-terminal-header">
-            <span class="sim-title"></span>
-            <div class="sim-controls">
-              <button class="sim-btn" id="sim-play-pause">&#9654; Play</button>
-              <button class="sim-btn" id="sim-restart">&#8634; Restart</button>
-              <select id="sim-speed">
-                <option value="1">1&times;</option>
-                <option value="2">2&times;</option>
-                <option value="4">4&times;</option>
-              </select>
-              <select id="sim-jump">
-                <option value="">Jump to phase&hellip;</option>
-              </select>
-            </div>
-          </div>
-          <div class="sim-terminal" id="sim-output"></div>
-          <div class="sim-progress">
-            <div class="sim-progress-bar" id="sim-progress-bar"></div>
-          </div>
-        </div>
-
-        <!-- Right: live stats -->
-        <div class="sim-stats">
-          <div class="sim-stat-header">Live stats</div>
-          <div class="sim-stat"><span class="sim-stat-label">Scenario</span><span class="sim-stat-value" id="stat-scenario">&mdash;</span></div>
-          <div class="sim-stat"><span class="sim-stat-label">Agents</span><span class="sim-stat-value" id="stat-agents">&mdash;</span></div>
-          <div class="sim-stat"><span class="sim-stat-label">Units loaded</span><span class="sim-stat-value" id="stat-loaded">0</span></div>
-          <div class="sim-stat"><span class="sim-stat-label">BLOCKED</span><span class="sim-stat-value sim-stat--red" id="stat-blocked">0</span></div>
-          <div class="sim-stat"><span class="sim-stat-label">Violations</span><span class="sim-stat-value sim-stat--orange" id="stat-violations">0</span></div>
-          <div class="sim-stat"><span class="sim-stat-label">HITL approvals</span><span class="sim-stat-value sim-stat--green" id="stat-hitl">0</span></div>
-          <div class="sim-stat"><span class="sim-stat-label">Audit entries</span><span class="sim-stat-value sim-stat--amber" id="stat-audit">0</span></div>
-          <div class="sim-stat-footer">
-            <a class="sim-gh-link" href="" target="_blank" rel="noopener">View source on GitHub &rarr;</a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Phase 2: Interactive rate-limit editor -->
-      <div class="sim-interactive reveal" id="sim-interactive">
-        <div class="sim-interactive-header">
-          <h3>Interactive: Edit the manifest and re-run</h3>
-          <p>Change <code>requests_per_minute</code> or <code>requests_per_day</code> on any unit. Hit <strong>Run</strong> to see how each agent responds. <kbd>Ctrl+Enter</kbd> runs from the editor.</p>
-        </div>
-
-        <div class="sim-interactive-layout">
-          <!-- Left: editable knowledge.yaml -->
-          <div class="sim-editor-wrap">
-            <div class="sim-editor-header">
-              <span>knowledge.yaml</span>
-              <button class="sim-btn" id="sim-reset-yaml">&#8634; Reset</button>
-            </div>
-            <textarea class="sim-editor" id="sim-yaml-editor" spellcheck="false"></textarea>
-            <div class="sim-editor-footer">
-              <label>Requests per unit: <input type="range" id="sim-req-count" min="2" max="15" value="8"> <span id="sim-req-count-val">8</span></label>
-              <button class="sim-btn sim-btn--primary" id="sim-run-btn">&#9654; Run simulation</button>
-            </div>
-          </div>
-
-          <!-- Right: side-by-side agent outputs -->
-          <div class="sim-agents-wrap">
-            <div class="sim-agent-panels">
-              <div class="sim-agent-panel">
-                <div class="sim-agent-header sim-agent-header--polite">&#129309; PoliteAgent</div>
-                <div class="sim-terminal sim-terminal--sm" id="sim-polite-output"></div>
-                <div class="sim-agent-summary" id="sim-polite-summary"></div>
-              </div>
-              <div class="sim-agent-panel">
-                <div class="sim-agent-header sim-agent-header--greedy">&#9889; GreedyAgent</div>
-                <div class="sim-terminal sim-terminal--sm" id="sim-greedy-output"></div>
-                <div class="sim-agent-summary" id="sim-greedy-summary"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+      <a href="simulator.html" class="btn btn--primary">
+        Open Simulator &rarr;
+      </a>
     </div>
   </section>
 
@@ -2611,8 +2523,6 @@ relationships:
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/xml.min.js"></script>
   <script src="js/app.js"></script>
   <script src="js/playground.js"></script>
-  <script src="js/simulator-player.js"></script>
-  <script src="js/scenario4-interactive.js"></script>
 
   <!-- Back to top -->
   <button class="back-to-top" id="back-to-top" aria-label="Back to top">

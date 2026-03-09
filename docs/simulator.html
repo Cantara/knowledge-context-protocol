@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KCP Simulators — Knowledge Context Protocol</title>
+  <meta name="description" content="Five runnable Java simulators that stress-test KCP under realistic and adversarial conditions — from happy-path energy metering to multi-agent AML with a rogue attacker.">
+  <meta name="theme-color" content="#2563eb">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="KCP Simulators — Knowledge Context Protocol">
+  <meta property="og:description" content="Five runnable Java simulators that stress-test KCP under realistic and adversarial conditions.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://cantara.github.io/knowledge-context-protocol/simulator.html">
+  <meta property="og:image" content="https://cantara.github.io/knowledge-context-protocol/og-image.svg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+
+  <!-- Agent discoverability -->
+  <link rel="knowledge" href="https://raw.githubusercontent.com/Cantara/knowledge-context-protocol/main/knowledge.yaml">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- jsyaml (needed by scenario4-interactive.js) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+  <script data-goatcounter="https://kcp.goatcounter.com/count"
+          async src="//gc.zgo.at/count.js"></script>
+</head>
+<body>
+
+  <!-- ============================================================
+       NAVIGATION
+       ============================================================ -->
+  <nav class="nav" role="navigation" aria-label="Main navigation">
+    <div class="nav__inner">
+      <a href="index.html" class="nav__brand" aria-label="KCP Home">
+        <svg class="nav__logo" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="8" cy="8" r="4" fill="currentColor"/>
+          <circle cx="24" cy="8" r="4" fill="currentColor"/>
+          <circle cx="16" cy="24" r="5" fill="currentColor"/>
+          <line x1="11" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="10" y1="11" x2="14" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="22" y1="11" x2="18" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="8" cy="8" r="1.5" fill="var(--bg-primary)"/>
+          <circle cx="24" cy="8" r="1.5" fill="var(--bg-primary)"/>
+          <circle cx="16" cy="24" r="2" fill="var(--bg-primary)"/>
+        </svg>
+        KCP
+      </a>
+
+      <ul class="nav__links" id="nav-links">
+        <li><a href="index.html#compare">Compare</a></li>
+        <li><a href="index.html#spec">Spec</a></li>
+        <li><a href="index.html#use-cases">Use Cases</a></li>
+        <li><a href="index.html#scenarios">Scenarios</a></li>
+        <li><a href="index.html" style="font-weight: var(--fw-medium);">&larr; KCP</a></li>
+        <li><a href="index.html#get-started">Get Started</a></li>
+        <li><a href="index.html#playground">Try it</a></li>
+        <li><a href="index.html#roadmap">Roadmap</a></li>
+        <li><a href="index.html#faq">FAQ</a></li>
+        <li><a href="index.html#community">Community</a></li>
+      </ul>
+
+      <div class="nav__actions">
+        <a href="https://github.com/Cantara/knowledge-context-protocol" class="btn btn--ghost" target="_blank" rel="noopener" aria-label="View on GitHub">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        </a>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="nav__mobile-toggle" id="mobile-toggle" aria-label="Toggle navigation menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+
+  <!-- ============================================================
+       PAGE HERO
+       ============================================================ -->
+  <section class="sim-page-hero">
+    <div class="container">
+      <h1>KCP Simulators</h1>
+      <p>Five runnable Java simulators that stress-test KCP under realistic and adversarial conditions &mdash; from happy-path energy metering to multi-agent AML with a rogue attacker.</p>
+      <div class="sim-hero-actions">
+        <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples" class="btn btn--primary" target="_blank" rel="noopener">
+          View source on GitHub &rarr;
+        </a>
+        <a href="index.html" class="btn btn--secondary">
+          &larr; Back to KCP
+        </a>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       SCENARIO CARDS
+       ============================================================ -->
+  <section class="sim-scenarios-overview">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">Five Scenarios</span>
+        <h2>Choose a scenario to explore</h2>
+        <p>Click a card to load that scenario in the player below. Each exercises a different set of KCP spec behaviours.</p>
+      </div>
+
+      <div class="sim-scenario-cards">
+
+        <div class="sim-scenario-card" data-scenario="s1" tabindex="0" role="button" aria-label="Load scenario 1: Energy Metering">
+          <div class="sim-scenario-badge">S1</div>
+          <h3>Energy Metering</h3>
+          <div class="sim-card-tag">Happy path</div>
+          <p>Two agents, one knowledge manifest, one human approving a billing query.</p>
+          <ul>
+            <li>HITL approval flow</li>
+            <li>Audit trail entries</li>
+            <li>Access level progression</li>
+          </ul>
+        </div>
+
+        <div class="sim-scenario-card" data-scenario="s2" tabindex="0" role="button" aria-label="Load scenario 2: Legal Delegation">
+          <div class="sim-scenario-badge">S2</div>
+          <h3>Legal Delegation</h3>
+          <div class="sim-card-tag">3-hop chain</div>
+          <p>A 3-hop delegation chain hits its depth limit trying to reach court-sealed records.</p>
+          <ul>
+            <li>max_depth enforcement at hop 3</li>
+            <li>Capability attenuation</li>
+            <li>Sealed record block</li>
+          </ul>
+        </div>
+
+        <div class="sim-scenario-card active" data-scenario="s3" tabindex="0" role="button" aria-label="Load scenario 3: Financial AML (recommended)">
+          <div class="sim-scenario-badge">S3 &#9733; Recommended</div>
+          <h3>Financial AML</h3>
+          <div class="sim-card-tag">Adversarial</div>
+          <p>A rogue sub-agent attacks four compliance vectors. All four are blocked.</p>
+          <ul>
+            <li>GDPR residency block</li>
+            <li>Scope elevation rejection</li>
+            <li>Delegation depth exceeded</li>
+            <li>Data minimisation enforcement</li>
+          </ul>
+        </div>
+
+        <div class="sim-scenario-card" data-scenario="s4" tabindex="0" role="button" aria-label="Load scenario 4: Rate Limits">
+          <div class="sim-scenario-badge">S4</div>
+          <h3>Rate Limits</h3>
+          <div class="sim-card-tag">Advisory throttling</div>
+          <p>Same manifest. Two agents. Opposite behaviour.</p>
+          <ul>
+            <li>PoliteAgent self-throttles before hitting limit</li>
+            <li>GreedyAgent logs violations but keeps going</li>
+          </ul>
+        </div>
+
+        <div class="sim-scenario-card" data-scenario="s5" tabindex="0" role="button" aria-label="Load scenario 5: Dependency Ordering">
+          <div class="sim-scenario-badge">S5</div>
+          <h3>Dependency Ordering</h3>
+          <div class="sim-card-tag">Graph traversal</div>
+          <p>One agent, one knowledge graph, one topological sort to rule them all.</p>
+          <ul>
+            <li>Kahn's algorithm producing a safe load order</li>
+            <li>Cycle detection rejecting circular deps</li>
+            <li>supersedes/contradicts handling</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       ANIMATED PLAYER
+       ============================================================ -->
+  <section id="simulator" class="sim-player-section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">Live Demo</span>
+        <h2>Watch the simulators run</h2>
+        <p class="section-sub">Pre-recorded output from the Java simulators &mdash; plays identically every time. No server, no WASM.</p>
+      </div>
+
+      <!-- Scenario selector tabs -->
+      <div class="sim-tabs">
+        <button class="sim-tab active" data-scenario="s3">Financial AML &#9733;</button>
+        <button class="sim-tab" data-scenario="s4">Rate Limits</button>
+        <button class="sim-tab" data-scenario="s2">Legal Delegation</button>
+        <button class="sim-tab" data-scenario="s1">Energy Metering</button>
+        <button class="sim-tab" data-scenario="s5">Dependency Order</button>
+      </div>
+
+      <!-- Color legend -->
+      <div class="sim-color-legend">
+        <span style="font-size: var(--fs-xs); color: var(--text-secondary); margin-right: var(--space-2);">Legend:</span>
+        <span class="sim-legend-item"><span class="sim-legend-dot sim-legend-dot--normal"></span> Normal</span>
+        <span class="sim-legend-item"><span class="sim-legend-dot sim-legend-dot--throttle"></span> Throttled</span>
+        <span class="sim-legend-item"><span class="sim-legend-dot sim-legend-dot--blocked"></span> BLOCKED / Violation</span>
+        <span class="sim-legend-item"><span class="sim-legend-dot sim-legend-dot--hitl"></span> HITL</span>
+        <span class="sim-legend-item"><span class="sim-legend-dot sim-legend-dot--audit"></span> Audit</span>
+      </div>
+
+      <div class="sim-layout">
+        <!-- Left: terminal -->
+        <div class="sim-terminal-wrap">
+          <div class="sim-terminal-header">
+            <span class="sim-title"></span>
+            <div class="sim-controls">
+              <button class="sim-btn" id="sim-play-pause">&#9654; Play</button>
+              <button class="sim-btn" id="sim-restart">&#8634; Restart</button>
+              <select id="sim-speed">
+                <option value="1">1&times;</option>
+                <option value="2">2&times;</option>
+                <option value="4">4&times;</option>
+              </select>
+              <select id="sim-jump">
+                <option value="">Jump to phase&hellip;</option>
+              </select>
+            </div>
+          </div>
+          <div class="sim-terminal" id="sim-output"></div>
+          <div class="sim-progress">
+            <div class="sim-progress-bar" id="sim-progress-bar"></div>
+          </div>
+        </div>
+
+        <!-- Right: live stats -->
+        <div class="sim-stats">
+          <div class="sim-stat-header">Live stats</div>
+          <div class="sim-stat"><span class="sim-stat-label">Scenario</span><span class="sim-stat-value" id="stat-scenario">&mdash;</span></div>
+          <div class="sim-stat"><span class="sim-stat-label">Agents</span><span class="sim-stat-value" id="stat-agents">&mdash;</span></div>
+          <div class="sim-stat"><span class="sim-stat-label">Units loaded</span><span class="sim-stat-value" id="stat-loaded">0</span></div>
+          <div class="sim-stat"><span class="sim-stat-label">BLOCKED</span><span class="sim-stat-value sim-stat--red" id="stat-blocked">0</span></div>
+          <div class="sim-stat"><span class="sim-stat-label">Violations</span><span class="sim-stat-value sim-stat--orange" id="stat-violations">0</span></div>
+          <div class="sim-stat"><span class="sim-stat-label">HITL approvals</span><span class="sim-stat-value sim-stat--green" id="stat-hitl">0</span></div>
+          <div class="sim-stat"><span class="sim-stat-label">Audit entries</span><span class="sim-stat-value sim-stat--amber" id="stat-audit">0</span></div>
+          <div class="sim-stat-footer">
+            <a class="sim-gh-link" href="" target="_blank" rel="noopener">View source on GitHub &rarr;</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       INTERACTIVE RATE-LIMIT EDITOR
+       ============================================================ -->
+  <section class="sim-interactive-section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-label">Interactive Editor</span>
+        <h2>Edit the manifest and re-run</h2>
+        <p>Edit the <code>knowledge.yaml</code> manifest &mdash; change rate limits, add units, toggle access levels &mdash; then hit <strong>Run</strong> to see how each agent responds in real time.</p>
+      </div>
+
+      <div class="sim-interactive" id="sim-interactive">
+        <div class="sim-interactive-header">
+          <h3>Rate-limit editor: PoliteAgent vs GreedyAgent</h3>
+          <p>Change <code>requests_per_minute</code> or <code>requests_per_day</code> on any unit. Hit <strong>Run</strong> to see how each agent responds. <kbd>Ctrl+Enter</kbd> runs from the editor.</p>
+        </div>
+
+        <div class="sim-interactive-layout">
+          <!-- Left: editable knowledge.yaml -->
+          <div class="sim-editor-wrap">
+            <div class="sim-editor-header">
+              <span>knowledge.yaml</span>
+              <button class="sim-btn" id="sim-reset-yaml">&#8634; Reset</button>
+            </div>
+            <textarea class="sim-editor" id="sim-yaml-editor" spellcheck="false"></textarea>
+            <div class="sim-editor-footer">
+              <label>Requests per unit: <input type="range" id="sim-req-count" min="2" max="15" value="8"> <span id="sim-req-count-val">8</span></label>
+              <button class="sim-btn sim-btn--primary" id="sim-run-btn">&#9654; Run simulation</button>
+            </div>
+          </div>
+
+          <!-- Right: side-by-side agent outputs -->
+          <div class="sim-agents-wrap">
+            <div class="sim-agent-panels">
+              <div class="sim-agent-panel">
+                <div class="sim-agent-header sim-agent-header--polite">&#129309; PoliteAgent</div>
+                <div class="sim-terminal sim-terminal--sm" id="sim-polite-output"></div>
+                <div class="sim-agent-summary" id="sim-polite-summary"></div>
+              </div>
+              <div class="sim-agent-panel">
+                <div class="sim-agent-header sim-agent-header--greedy">&#9889; GreedyAgent</div>
+                <div class="sim-terminal sim-terminal--sm" id="sim-greedy-output"></div>
+                <div class="sim-agent-summary" id="sim-greedy-summary"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p style="margin-top: var(--space-3); font-size: var(--fs-xs); color: var(--text-tertiary);">
+          <kbd>Ctrl+Enter</kbd> runs &middot; <strong>Reset</strong> restores the example manifest
+        </p>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       FOOTER
+       ============================================================ -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__inner">
+        <div class="footer__brand">
+          <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="8" cy="8" r="4" fill="currentColor"/>
+            <circle cx="24" cy="8" r="4" fill="currentColor"/>
+            <circle cx="16" cy="24" r="5" fill="currentColor"/>
+            <line x1="11" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="10" y1="11" x2="14" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="22" y1="11" x2="18" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="8" cy="8" r="1.5" fill="var(--bg-primary)"/>
+            <circle cx="24" cy="8" r="1.5" fill="var(--bg-primary)"/>
+            <circle cx="16" cy="24" r="2" fill="var(--bg-primary)"/>
+          </svg>
+          Knowledge Context Protocol
+        </div>
+
+        <div class="footer__cols">
+          <div class="footer__col">
+            <span class="footer__col-label">Resources</span>
+            <ul>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol" target="_blank" rel="noopener">GitHub</a></li>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/SPEC.md" target="_blank" rel="noopener">Specification</a></li>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/PROPOSAL.md" target="_blank" rel="noopener">Proposal</a></li>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/issues" target="_blank" rel="noopener">Issues</a></li>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/discussions" target="_blank" rel="noopener">Discussions</a></li>
+            </ul>
+          </div>
+          <div class="footer__col">
+            <span class="footer__col-label">RFCs</span>
+            <ul>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0001-KCP-Extended.md" target="_blank" rel="noopener">RFC-0001 Extended Fields</a></li>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0002-Auth-and-Delegation.md" target="_blank" rel="noopener">RFC-0002 Auth &amp; Delegation</a></li>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0003-Federation.md" target="_blank" rel="noopener">RFC-0003 Federation</a></li>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0004-Trust-and-Compliance.md" target="_blank" rel="noopener">RFC-0004 Trust &amp; Compliance</a></li>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0005-Payment-and-Rate-Limits.md" target="_blank" rel="noopener">RFC-0005 Payment &amp; Rate Limits</a></li>
+              <li><a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0006-Context-Window-Hints.md" target="_blank" rel="noopener">RFC-0006 Context Window Hints</a></li>
+            </ul>
+          </div>
+          <div class="footer__col">
+            <span class="footer__col-label">Project</span>
+            <ul>
+              <li><a href="https://github.com/Cantara" target="_blank" rel="noopener">Cantara</a></li>
+              <li><a href="https://www.exoreaction.com" target="_blank" rel="noopener">eXOReaction</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer__meta">
+        <p>Apache License 2.0 &middot; Proposed by <a href="https://www.exoreaction.com" target="_blank" rel="noopener">eXOReaction AS</a>, Oslo, Norway &middot; Hosted under <a href="https://github.com/Cantara" target="_blank" rel="noopener">Cantara</a></p>
+      </div>
+    </div>
+  </footer>
+
+
+  <!-- ============================================================
+       SCRIPTS
+       ============================================================ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/simulator-player.js"></script>
+  <script src="js/scenario4-interactive.js"></script>
+  <script>
+    // Wire scenario cards to the animated player
+    document.querySelectorAll('.sim-scenario-card').forEach(function (card) {
+      function loadCard() {
+        var scenario = card.dataset.scenario;
+        if (!scenario) return;
+        // Update active card
+        document.querySelectorAll('.sim-scenario-card').forEach(function (c) {
+          c.classList.remove('active');
+        });
+        card.classList.add('active');
+        // Scroll player into view
+        var playerSection = document.getElementById('simulator');
+        if (playerSection) playerSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Trigger the simulator tab click so the player loads the right scenario
+        var tab = document.querySelector('.sim-tab[data-scenario="' + scenario + '"]');
+        if (tab) tab.click();
+      }
+      card.addEventListener('click', loadCard);
+      card.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); loadCard(); }
+      });
+    });
+
+    // Auto-play the animated player after it initialises
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(function () {
+        var btn = document.getElementById('sim-play-pause');
+        if (btn && btn.textContent.trim().includes('Play')) btn.click();
+      }, 800);
+    });
+  </script>
+
+  <!-- Back to top -->
+  <button class="back-to-top" id="back-to-top" aria-label="Back to top">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><polyline points="18 15 12 9 6 15"/></svg>
+  </button>
+</body>
+</html>
