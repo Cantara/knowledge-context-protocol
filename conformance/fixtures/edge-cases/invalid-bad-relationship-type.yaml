@@ -1,0 +1,22 @@
+# Edge case — relationship with unknown type
+kcp_version: "0.7"
+project: test-bad-rel-type
+version: "1.0.0"
+
+units:
+  - id: unit-a
+    path: docs/a.md
+    intent: "Unit A"
+    scope: global
+    audience: [developer]
+
+  - id: unit-b
+    path: docs/b.md
+    intent: "Unit B"
+    scope: global
+    audience: [developer]
+
+relationships:
+  - from: unit-a
+    to: unit-b
+    type: destroys

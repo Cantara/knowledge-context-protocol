@@ -1,0 +1,11 @@
+# Level 1 — unit has invalid scope value
+kcp_version: "0.7"
+project: test-bad-scope
+version: "1.0.0"
+
+units:
+  - id: bad-scope
+    path: docs/guide.md
+    intent: "A guide"
+    scope: universe
+    audience: [human]

@@ -1,0 +1,12 @@
+# Level 1 — unit missing required 'scope' field
+# Note: parsers default scope to "global" if absent, so we set it explicitly to empty
+kcp_version: "0.7"
+project: test-missing-scope
+version: "1.0.0"
+
+units:
+  - id: no-scope
+    path: docs/guide.md
+    intent: "A guide"
+    scope: ""
+    audience: [human]

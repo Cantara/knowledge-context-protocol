@@ -1,0 +1,6 @@
+{
+  "valid": false,
+  "errors": ["unit 'bad-scope': 'scope' must be one of [global, module, project]"],
+  "unit_count": 1,
+  "relationship_count": 0
+}

@@ -1,0 +1,8 @@
+{
+  "valid": true,
+  "warnings": ["depends_on references unknown unit 'non-existent-unit'"],
+  "errors": [],
+  "unit_count": 1,
+  "relationship_count": 0,
+  "_note": "Dangling depends_on is a warning, not an error"
+}

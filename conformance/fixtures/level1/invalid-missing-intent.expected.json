@@ -1,0 +1,8 @@
+{
+  "valid": false,
+  "errors": ["unit 'no-intent' missing required field 'intent'"],
+  "unit_count": 1,
+  "relationship_count": 0,
+  "_note": "Python parser raises KeyError during parsing (parse_error). Java/TypeScript reach validation. Both behaviours are acceptable — the manifest is rejected either way.",
+  "parse_error_also_acceptable": true
+}

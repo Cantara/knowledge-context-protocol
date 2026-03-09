@@ -1,0 +1,21 @@
+# Level 3 — valid compliance block with data residency and regulations
+kcp_version: "0.7"
+project: test-compliance
+version: "1.0.0"
+
+compliance:
+  sensitivity: internal
+  regulations: [GDPR, NIS2]
+  data_residency: [EU]
+
+units:
+  - id: customer-data
+    path: docs/customers.md
+    intent: "Customer data handling procedures"
+    scope: module
+    audience: [developer, operator]
+    compliance:
+      sensitivity: confidential
+      regulations: [GDPR]
+      data_residency: [EU]
+      restrictions: [no_ai_training]

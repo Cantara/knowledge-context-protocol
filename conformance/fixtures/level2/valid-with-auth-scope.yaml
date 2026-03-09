@@ -1,0 +1,27 @@
+# Level 2 — valid auth_scope on a restricted unit
+kcp_version: "0.7"
+project: test-auth-scope
+version: "1.0.0"
+
+auth:
+  methods:
+    - type: oauth2
+      issuer: "https://auth.example.com"
+      scopes: ["read:docs", "admin:docs"]
+
+units:
+  - id: public-docs
+    path: docs/public.md
+    intent: "Public documentation"
+    scope: global
+    audience: [human, developer]
+    access: public
+
+  - id: internal-docs
+    path: docs/internal.md
+    intent: "Internal documentation requiring authentication"
+    scope: project
+    audience: [developer]
+    access: restricted
+    auth_scope: "admin:docs"
+    sensitivity: confidential

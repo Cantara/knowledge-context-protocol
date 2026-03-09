@@ -163,3 +163,73 @@ jobs:
           echo "$output" | grep -q "loaded sub-manifest" \
             && echo "sub-manifests: PASS" \
             || { echo "sub-manifests: FAIL"; exit 1; }
+
+  conformance-java:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: 17
+
+      - name: Build parser
+        run: |
+          cd parsers/java
+          mvn install -q
+
+      - name: Compile conformance runner
+        run: |
+          SNAKEYAML=$(find ~/.m2/repository/org/yaml/snakeyaml -name "snakeyaml-2.6.jar" | head -1)
+          javac -cp parsers/java/target/classes:${SNAKEYAML} \
+            -d conformance/runners/java \
+            conformance/runners/java/ConformanceRunner.java
+
+      - name: Run conformance tests
+        run: |
+          SNAKEYAML=$(find ~/.m2/repository/org/yaml/snakeyaml -name "snakeyaml-2.6.jar" | head -1)
+          java -cp conformance/runners/java:parsers/java/target/classes:${SNAKEYAML} \
+            no.cantara.kcp.conformance.ConformanceRunner conformance/fixtures
+
+  conformance-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install parser
+        run: pip install -e parsers/python
+
+      - name: Run conformance tests
+        run: python conformance/runners/python/conformance_runner.py conformance/fixtures
+
+  conformance-typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: |
+          cd bridge/typescript
+          npm install
+
+      - name: Build bridge
+        run: |
+          cd bridge/typescript
+          npm run build
+
+      - name: Run conformance tests
+        run: |
+          cd bridge/typescript
+          npx tsx ../../conformance/runners/typescript/conformance_runner.ts ../../conformance/fixtures

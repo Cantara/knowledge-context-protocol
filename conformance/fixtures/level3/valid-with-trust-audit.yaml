@@ -1,0 +1,20 @@
+# Level 3 — valid trust block with audit requirements
+kcp_version: "0.7"
+project: test-trust-audit
+version: "1.0.0"
+
+trust:
+  provenance:
+    publisher: "Acme Corp"
+    publisher_url: "https://acme.example.com"
+    contact: "security@acme.example.com"
+  audit:
+    agent_must_log: true
+    require_trace_context: true
+
+units:
+  - id: security-policy
+    path: docs/security.md
+    intent: "Security policies and access controls"
+    scope: global
+    audience: [developer, operator]

@@ -1,0 +1,15 @@
+# Level 3 — invalid human_in_the_loop value
+kcp_version: "0.7"
+project: test-bad-hitl
+version: "1.0.0"
+
+delegation:
+  max_depth: 3
+  human_in_the_loop: sometimes
+
+units:
+  - id: test-unit
+    path: docs/test.md
+    intent: "A test unit"
+    scope: global
+    audience: [developer]

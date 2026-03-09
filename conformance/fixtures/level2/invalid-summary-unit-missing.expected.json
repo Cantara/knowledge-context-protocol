@@ -1,0 +1,8 @@
+{
+  "valid": true,
+  "warnings": ["summary_unit references non-existent unit 'does-not-exist'"],
+  "errors": [],
+  "unit_count": 1,
+  "relationship_count": 0,
+  "_note": "Missing summary_unit target is a warning, not an error"
+}

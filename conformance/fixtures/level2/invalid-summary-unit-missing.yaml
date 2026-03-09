@@ -1,0 +1,15 @@
+# Level 2 — hints.summary_available is true but summary_unit references non-existent unit
+kcp_version: "0.7"
+project: test-summary-missing
+version: "1.0.0"
+
+units:
+  - id: big-doc
+    path: docs/big.md
+    intent: "Large document with summary flag"
+    scope: global
+    audience: [developer]
+    hints:
+      token_estimate: 20000
+      summary_available: true
+      summary_unit: does-not-exist

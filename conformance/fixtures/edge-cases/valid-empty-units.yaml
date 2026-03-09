@@ -1,0 +1,8 @@
+# Edge case — manifest with empty units list
+# Note: Java/Python treat this as an error; TypeScript treats it as a warning.
+# The conformance runner checks validity per-implementation.
+kcp_version: "0.7"
+project: test-empty-units
+version: "1.0.0"
+
+units: []

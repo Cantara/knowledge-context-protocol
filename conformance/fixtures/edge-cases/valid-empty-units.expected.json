@@ -1,0 +1,7 @@
+{
+  "valid": false,
+  "errors": ["units must not be empty"],
+  "unit_count": 0,
+  "relationship_count": 0,
+  "_note": "Java and Python parsers treat empty units as an error. TypeScript treats it as a warning. Conformance runners should accept either behaviour."
+}

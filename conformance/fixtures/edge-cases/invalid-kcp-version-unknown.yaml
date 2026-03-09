@@ -1,0 +1,11 @@
+# Edge case — unknown kcp_version
+kcp_version: "99.0"
+project: test-future-version
+version: "1.0.0"
+
+units:
+  - id: future-unit
+    path: docs/future.md
+    intent: "A unit from the future"
+    scope: global
+    audience: [developer]

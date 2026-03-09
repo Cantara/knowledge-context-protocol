@@ -1,0 +1,42 @@
+# Level 1 — all Level-1 fields populated
+kcp_version: "0.7"
+project: test-full-fields
+version: "2.0.0"
+updated: "2026-03-01"
+language: en
+license: Apache-2.0
+
+units:
+  - id: architecture
+    path: docs/architecture.md
+    kind: knowledge
+    intent: "System architecture overview"
+    format: markdown
+    content_type: text/markdown
+    language: en
+    scope: project
+    audience: [developer, architect]
+    license: Apache-2.0
+    validated: "2026-02-15"
+    update_frequency: monthly
+    triggers:
+      - "architecture"
+      - "system design"
+      - "components"
+
+  - id: api-reference
+    path: docs/api.md
+    kind: schema
+    intent: "REST API endpoint reference"
+    format: openapi
+    scope: module
+    audience: [developer, agent]
+    triggers:
+      - "API"
+      - "endpoints"
+      - "REST"
+
+relationships:
+  - from: architecture
+    to: api-reference
+    type: enables

@@ -1,0 +1,25 @@
+# Level 2 — valid hints with summary and chunking
+kcp_version: "0.7"
+project: test-hints
+version: "1.0.0"
+
+units:
+  - id: full-doc
+    path: docs/full.md
+    intent: "Complete reference documentation"
+    scope: global
+    audience: [developer]
+    hints:
+      token_estimate: 15000
+      summary_available: true
+      summary_unit: doc-summary
+
+  - id: doc-summary
+    path: docs/summary.md
+    intent: "Summarised reference documentation"
+    scope: global
+    audience: [developer, agent]
+    hints:
+      token_estimate: 800
+      chunk_of: full-doc
+      chunk_index: 0

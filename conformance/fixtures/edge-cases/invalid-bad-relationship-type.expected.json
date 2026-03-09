@@ -1,0 +1,8 @@
+{
+  "valid": true,
+  "warnings": ["relationship type 'destroys' is not in the known set"],
+  "errors": [],
+  "unit_count": 2,
+  "relationship_count": 1,
+  "_note": "Unknown relationship type is a warning, not an error"
+}

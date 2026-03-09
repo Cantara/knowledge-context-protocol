@@ -1,0 +1,6 @@
+{
+  "valid": false,
+  "errors": ["unit delegation.max_depth (5) must not exceed root delegation.max_depth (2)"],
+  "unit_count": 1,
+  "relationship_count": 0
+}

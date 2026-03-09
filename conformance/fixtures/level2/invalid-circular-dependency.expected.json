@@ -1,0 +1,8 @@
+{
+  "valid": true,
+  "errors": [],
+  "warnings": [],
+  "unit_count": 2,
+  "relationship_count": 0,
+  "_note": "Per spec §4.7, circular depends_on cycles are silently ignored — not an error"
+}

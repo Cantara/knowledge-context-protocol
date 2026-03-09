@@ -1,0 +1,5 @@
+{
+  "parse_error": true,
+  "errors": ["Unit path escapes manifest root"],
+  "_note": "Parser must throw/raise an error during parsing — the manifest never reaches validation"
+}

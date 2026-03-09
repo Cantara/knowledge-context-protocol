@@ -1,0 +1,12 @@
+# Level 2 — depends_on references a unit ID that does not exist
+kcp_version: "0.7"
+project: test-dangling-dep
+version: "1.0.0"
+
+units:
+  - id: lonely-unit
+    path: docs/guide.md
+    intent: "A guide that depends on a non-existent unit"
+    scope: global
+    audience: [developer]
+    depends_on: [non-existent-unit]

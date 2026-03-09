@@ -1,0 +1,8 @@
+{
+  "valid": true,
+  "warnings": ["unknown kcp_version '99.0'"],
+  "errors": [],
+  "unit_count": 1,
+  "relationship_count": 0,
+  "_note": "Unknown kcp_version is a warning, not an error — forward compatibility"
+}

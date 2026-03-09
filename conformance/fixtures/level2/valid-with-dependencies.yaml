@@ -1,0 +1,25 @@
+# Level 2 — valid depends_on references between units
+kcp_version: "0.7"
+project: test-dependencies
+version: "1.0.0"
+
+units:
+  - id: base-concepts
+    path: docs/concepts.md
+    intent: "Core concepts and terminology"
+    scope: global
+    audience: [developer]
+
+  - id: advanced-usage
+    path: docs/advanced.md
+    intent: "Advanced usage patterns"
+    scope: project
+    audience: [developer]
+    depends_on: [base-concepts]
+
+  - id: troubleshooting
+    path: docs/troubleshoot.md
+    intent: "Common issues and solutions"
+    scope: project
+    audience: [developer, operator]
+    depends_on: [base-concepts, advanced-usage]

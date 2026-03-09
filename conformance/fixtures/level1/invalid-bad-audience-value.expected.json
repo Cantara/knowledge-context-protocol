@@ -1,0 +1,8 @@
+{
+  "valid": true,
+  "warnings": ["unknown audience value 'alien'"],
+  "errors": [],
+  "unit_count": 1,
+  "relationship_count": 0,
+  "_note": "Java/Python warn about unknown audience values. TypeScript does not validate audience values (only checks non-empty). cross-impl variance is acceptable."
+}

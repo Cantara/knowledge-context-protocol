@@ -1,0 +1,21 @@
+# Level 2 — circular depends_on (A -> B -> A)
+# Per spec §4.7, cycles are silently ignored — NOT an error.
+# The manifest is still valid; parsers should break the cycle gracefully.
+kcp_version: "0.7"
+project: test-circular-dep
+version: "1.0.0"
+
+units:
+  - id: unit-a
+    path: docs/a.md
+    intent: "Unit A depends on B"
+    scope: global
+    audience: [developer]
+    depends_on: [unit-b]
+
+  - id: unit-b
+    path: docs/b.md
+    intent: "Unit B depends on A"
+    scope: global
+    audience: [developer]
+    depends_on: [unit-a]

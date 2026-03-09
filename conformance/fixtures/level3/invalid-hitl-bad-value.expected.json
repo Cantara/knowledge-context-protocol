@@ -1,0 +1,6 @@
+{
+  "valid": false,
+  "errors": ["delegation.human_in_the_loop must be one of [always, never, on-sensitive]"],
+  "unit_count": 1,
+  "relationship_count": 0
+}

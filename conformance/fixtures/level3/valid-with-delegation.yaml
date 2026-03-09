@@ -1,0 +1,26 @@
+# Level 3 — valid root and unit-level delegation
+kcp_version: "0.7"
+project: test-delegation
+version: "1.0.0"
+
+delegation:
+  max_depth: 3
+  require_capability_attenuation: true
+  audit_chain: true
+  human_in_the_loop: on-sensitive
+
+units:
+  - id: general-docs
+    path: docs/general.md
+    intent: "General documentation"
+    scope: global
+    audience: [developer, agent]
+
+  - id: sensitive-data
+    path: docs/sensitive.md
+    intent: "Sensitive data handling procedures"
+    scope: module
+    audience: [agent]
+    delegation:
+      max_depth: 2
+      human_in_the_loop: always

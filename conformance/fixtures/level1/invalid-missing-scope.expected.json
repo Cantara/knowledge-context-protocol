@@ -1,0 +1,6 @@
+{
+  "valid": false,
+  "errors": ["unit 'no-scope' missing or empty required field 'scope'"],
+  "unit_count": 1,
+  "relationship_count": 0
+}

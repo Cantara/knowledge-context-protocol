@@ -1,0 +1,16 @@
+# Level 3 — unit delegation.max_depth exceeds root delegation.max_depth
+kcp_version: "0.7"
+project: test-depth-exceeded
+version: "1.0.0"
+
+delegation:
+  max_depth: 2
+
+units:
+  - id: over-delegated
+    path: docs/over.md
+    intent: "Unit with delegation depth exceeding root"
+    scope: global
+    audience: [agent]
+    delegation:
+      max_depth: 5

@@ -1,0 +1,6 @@
+{
+  "valid": false,
+  "errors": ["compliance.sensitivity must be one of [confidential, internal, public, restricted]"],
+  "unit_count": 1,
+  "relationship_count": 0
+}
