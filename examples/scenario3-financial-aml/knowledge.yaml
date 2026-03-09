@@ -129,7 +129,7 @@ units:
       max_depth: 1
       human_in_the_loop:
         required: true
-        approval_mechanism: manual
+        approval_mechanism: custom
     compliance:
       regulations: [AML5D, FATF]
 
