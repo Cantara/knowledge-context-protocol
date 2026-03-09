@@ -5,7 +5,7 @@
 # promoted to the core specification. This example shows the proposed syntax
 # for cross-manifest federation.
 
-kcp_version: "0.7"
+kcp_version: "0.8"
 project: acme-knowledge-hub
 version: 1.0.0
 updated: "2026-03-08"

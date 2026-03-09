@@ -48,7 +48,7 @@ reference implementations for others to learn from.
 A complete implementation includes:
 
 ```
-knowledge.yaml          ← the manifest (v0.7, in the target repo, not here)
+knowledge.yaml          ← the manifest (v0.8, in the target repo, not here)
 docs/.../tldr-*.md      ← TL;DR summary files (in the target repo)
 BENCHMARK.md            ← benchmark results (in the target repo)
 ```
@@ -279,7 +279,7 @@ Ineffective TL;DR files:
 
 ## Spec version release checklist
 
-When merging a PR that bumps the spec version (e.g. v0.6 → v0.7):
+When merging a PR that bumps the spec version (e.g. v0.7 → v0.8):
 
 1. **SPEC.md** — bump `kcp_version` enum, add new fields, update conformance levels
 2. **schema/knowledge-schema.json** — add new fields/definitions, bump version enum

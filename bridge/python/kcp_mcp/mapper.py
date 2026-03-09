@@ -217,7 +217,7 @@ def build_manifest_json(manifest: KnowledgeManifest, slug: str) -> str:
     doc = {
         "project":       manifest.project,
         "version":       manifest.version or "",
-        "kcp_version":   manifest.kcp_version or "0.7",
+        "kcp_version":   manifest.kcp_version or "0.8",
         "updated":       str(manifest.updated) if manifest.updated else None,
         "unit_count":    len(manifest.units),
         "units":         units_data,

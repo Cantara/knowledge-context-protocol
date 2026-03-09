@@ -9,7 +9,7 @@ Reference implementations and runnable simulation scenarios — from the minimum
 The smallest valid `knowledge.yaml`. Start here if you are not sure whether you need KCP yet.
 
 ```yaml
-kcp_version: "0.7"
+kcp_version: "0.8"
 project: my-project
 version: 1.0.0
 units:
@@ -69,7 +69,7 @@ Blog post: [The Front Door and the Filing Cabinet](https://wiki.totto.org/blog/2
 
 ## Simulation Scenarios
 
-Three runnable Java simulators that stress-test the A2A + KCP composition model at increasing complexity. Each surfaces specific spec behaviours and gaps, contributing to the v0.7 roadmap.
+Three runnable Java simulators that stress-test the A2A + KCP composition model at increasing complexity. Each surfaces specific spec behaviours and gaps, contributing to the v0.7+ roadmap.
 
 ### [scenario1-energy-metering/](./scenario1-energy-metering/)
 

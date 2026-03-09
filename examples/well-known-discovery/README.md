@@ -14,7 +14,7 @@ An agent performing HTTP-based discovery on a live site:
 
 ```json
 {
-  "kcp_version": "0.7",
+  "kcp_version": "0.8",
   "manifest": "/knowledge.yaml",
   "title": "Example Knowledge Base",
   "description": "Architecture decisions, API reference, and onboarding guides.",

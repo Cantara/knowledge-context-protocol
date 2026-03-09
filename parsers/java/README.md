@@ -146,11 +146,14 @@ Warnings are printed to stderr:
 
 ### Model classes
 
-- `KnowledgeManifest` -- root manifest: `kcpVersion`, `project`, `version`, `updated`, `language`, `license`, `indexing`, `hints`, `trust`, `auth`, `payment`, `units`, `relationships`
-- `KnowledgeUnit` -- a knowledge unit: `id`, `path`, `kind`, `intent`, `format`, `contentType`, `language`, `scope`, `audience`, `license`, `validated`, `updateFrequency`, `indexing`, `dependsOn`, `supersedes`, `triggers`, `hints`, `access`, `authScope`, `sensitivity`, `deprecated`, `payment`
+- `KnowledgeManifest` -- root manifest: `kcpVersion`, `project`, `version`, `updated`, `language`, `license`, `indexing`, `hints`, `trust`, `auth`, `delegation`, `compliance`, `rateLimits`, `payment`, `units`, `relationships`
+- `KnowledgeUnit` -- a knowledge unit: `id`, `path`, `kind`, `intent`, `format`, `contentType`, `language`, `scope`, `audience`, `license`, `validated`, `updateFrequency`, `indexing`, `dependsOn`, `supersedes`, `triggers`, `hints`, `access`, `authScope`, `sensitivity`, `deprecated`, `delegation`, `compliance`, `rateLimits`, `payment`
 - `Relationship` -- a directed relationship: `fromId`, `toId`, `type`
 - `Trust` -- trust metadata: `provenance` (publisher, publisherUrl, contact), `audit` (agentMustLog, requireTraceContext)
 - `Auth` -- authentication: `methods` (list of `AuthMethod`: type, issuer, scopes, header, registrationUrl)
+- `Delegation` -- delegation constraints: `maxDepth`, `requireCapabilityAttenuation`, `auditChain`, `humanInTheLoop`
+- `Compliance` -- data governance: `dataResidency`, `sensitivity`, `regulations`, `restrictions`
+- `RateLimits` -- rate limiting: `default` (`RateLimit`: requestsPerMinute, requestsPerDay)
 
 All model classes are Java records with immutable fields.
 

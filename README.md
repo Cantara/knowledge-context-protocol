@@ -17,7 +17,7 @@ MCP solved the tool connectivity problem. KCP addresses the knowledge structure 
 Drop a `knowledge.yaml` at the root of any project. Agents stop guessing and start navigating.
 
 ```yaml
-kcp_version: "0.7"
+kcp_version: "0.8"
 project: my-project
 version: 1.0.0
 units:
@@ -100,12 +100,19 @@ delegation:                        # optional — delegation constraints (v0.7)
   max_depth: 3                     # 0 = no delegation; absent = unlimited
   require_capability_attenuation: true
   audit_chain: true
-  human_in_the_loop: recommended
+  human_in_the_loop:               # object, not string
+    required: true
+    approval_mechanism: oauth_consent | uma | custom
+    docs_url: "https://example.com/hitl-policy"
 compliance:                        # optional — data governance (v0.7)
   data_residency: [EU]
-  sensitivity: confidential
+  sensitivity: confidential        # public | internal | confidential | restricted
   regulations: [GDPR, NIS2]
   restrictions: [no_ai_training]
+rate_limits:                       # optional — agent rate limiting (v0.8)
+  default:
+    requests_per_minute: 60
+    requests_per_day: 10000
 payment:                           # optional — default monetisation tier
   default_tier: free | metered | subscription
 
@@ -144,7 +151,7 @@ units:
 relationships:
   - from: <unit-id>
     to: <unit-id>
-    type: enables | context | supersedes | contradicts
+    type: enables | context | supersedes | contradicts | depends_on
 ```
 
 ### Knowledge Unit Fields
@@ -174,6 +181,7 @@ relationships:
 | `deprecated` | optional | If `true`, this unit is present but should not be used for new development |
 | `delegation` | optional | Per-unit delegation override: `max_depth`, `require_capability_attenuation`, `audit_chain`, `human_in_the_loop` |
 | `compliance` | optional | Per-unit compliance override: `data_residency`, `sensitivity`, `regulations`, `restrictions` |
+| `rate_limits` | optional | Rate-limit metadata: `default.requests_per_minute`, `default.requests_per_day` (root-level default; per-unit override) |
 | `payment` | optional | Monetisation tier: `default_tier: free \| metered \| subscription` |
 
 ### Minimum Viable KCP
@@ -181,7 +189,7 @@ relationships:
 Five fields per unit are enough to start:
 
 ```yaml
-kcp_version: "0.7"
+kcp_version: "0.8"
 project: my-project
 version: 1.0.0
 units:
@@ -200,7 +208,7 @@ The standard allows complexity but does not demand it.
 
 ```yaml
 # knowledge.yaml
-kcp_version: "0.7"
+kcp_version: "0.8"
 project: wiki.example.org
 version: 1.0.0
 updated: "2026-02-28"
@@ -362,7 +370,7 @@ The full design rationale, benchmarks, and adoption walkthroughs are documented 
 | [kcp-commands: Save 33% of Context Window](https://wiki.totto.org/blog/2026/03/02/kcp-commands/) | Phase A/B/C design, 283 manifests, 67K tokens saved |
 | [KCP Comes to OpenCode](https://wiki.totto.org/blog/2026/03/03/opencode-kcp-plugin/) | opencode-kcp-plugin: system prompt injection + glob annotation |
 | [kcp-memory: Give Claude Code a Memory](https://wiki.totto.org/blog/2026/03/03/kcp-memory/) | Three-layer memory model, MCP server, 6 tools |
-| [The Front Door and the Filing Cabinet: A2A Agent Cards Meet KCP](https://wiki.totto.org/blog/2026/03/08/the-front-door-and-the-filing-cabinet-a2a-agent-cards-meet-kcp/) | A2A + KCP composability; 4 simulators, 150 adversarial tests; 8 spec gaps → v0.7 |
+| [The Front Door and the Filing Cabinet: A2A Agent Cards Meet KCP](https://wiki.totto.org/blog/2026/03/08/the-front-door-and-the-filing-cabinet-a2a-agent-cards-meet-kcp/) | A2A + KCP composability; 4 simulators, 150 adversarial tests; 8 spec gaps fed into v0.7+ |
 
 ---
 
@@ -376,7 +384,7 @@ Until formal acceptance, KCP remains an Apache 2.0 open specification proposed b
 
 ## Status
 
-**Current:** Draft specification — v0.7
+**Current:** Draft specification — v0.8
 
 This is an early proposal. The format is intentionally minimal. Feedback, use cases, and pull
 requests are welcome.
@@ -387,7 +395,7 @@ requests are welcome.
 - **[RFC-0002](./RFC-0002-Auth-and-Delegation.md)** — Auth and delegation metadata (`access`, `auth_scope`, `auth` promoted to core in v0.5–v0.6; `delegation` promoted to core in v0.7)
 - **[RFC-0003](./RFC-0003-Federation.md)** — Cross-manifest federation proposal (`manifests` block, `external_depends_on`, hub-and-spoke model)
 - **[RFC-0004](./RFC-0004-Trust-and-Compliance.md)** — Trust, provenance, and compliance metadata (`trust.provenance`, `sensitivity` promoted in v0.5; `trust.audit` promoted in v0.6; `compliance` promoted to core in v0.7)
-- **[RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md)** — Payment and rate-limit metadata proposal (`payment`, `rate_limits` blocks)
+- **[RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md)** — Payment and rate-limit metadata proposal (`payment.default_tier` promoted to core in v0.5; `rate_limits` promoted to core in v0.8; payment methods and x402 remain RFC)
 - **[RFC-0006](./RFC-0006-Context-Window-Hints.md)** — Context window hints (accepted; promoted to SPEC.md §4.10 in v0.4)
 - **parsers/** — Reference parser/validator implementations (Python, Java) — 401 tests passing
 - **bridge/** — MCP servers: expose any `knowledge.yaml` as MCP resources (TypeScript · Python · Java). The TypeScript parser, validator, and mapper live in `bridge/typescript/src/` (parser.ts, validator.ts, mapper.ts).

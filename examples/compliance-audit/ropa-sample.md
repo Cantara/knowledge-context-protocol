@@ -2,7 +2,7 @@
 
 Generated: 2026-03-09T07:30:03.337774+00:00  
 System: `patient-data-platform`  
-KCP version: 0.7
+KCP version: 0.8
 
 ## Summary
 

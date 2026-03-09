@@ -11,7 +11,7 @@
 
 The Knowledge Context Protocol (KCP) is an open specification for declaring what knowledge resources an AI agent may access, how to access them, and under what constraints. The project is maintained by Cantara, an open-source organization, and developed by Thor Henning Hetland (Oslo, Norway), a software architect and practitioner with 30+ years of enterprise architecture experience, founder of JavaZone (Norway's largest software conference), and former board member of IASA (International Association of Software Architects). The KCP specification, parsers (Python, Java, TypeScript), and MCP bridge implementations are available at https://github.com/cantara/knowledge-context-protocol.
 
-KCP v0.7 is a draft specification with working implementations in three languages, a three-language conformance test suite (268 tests passing), and adoption in enterprise knowledge infrastructure tooling. It has been submitted for consideration to the Agentic AI Foundation (Linux Foundation) alongside MCP, AGENTS.md, and goose.
+KCP v0.8 is a draft specification with working implementations in three languages, a three-language conformance test suite (268 tests passing), and adoption in enterprise knowledge infrastructure tooling. It has been submitted for consideration to the Agentic AI Foundation (Linux Foundation) alongside MCP, AGENTS.md, and goose.
 
 ---
 
@@ -120,7 +120,7 @@ The `trust.audit` block (§3.2) provides two resource-declared audit obligations
 
 ### 4. Technologies
 
-KCP v0.7 (draft) ships with:
+KCP v0.8 (draft) ships with:
 - **Three parser implementations**: Python, Java (JVM), TypeScript — all open source, MIT licensed, conformance-tested
 - **Three MCP bridge implementations**: TypeScript (`kcp-mcp` npm), Python (`kcp-mcp` pip), Java (`no.cantara.kcp:kcp-mcp` Maven) — expose knowledge units as MCP resources to any MCP-compatible agent
 - **Conformance test suite**: Three-language runner, 268 tests passing, ensures cross-implementation interoperability

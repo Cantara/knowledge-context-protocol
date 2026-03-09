@@ -9,7 +9,7 @@
   "properties": {
     "kcp_version": {
       "type": "string",
-      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.7\". Prior drafts \"0.1\" through \"0.6\" are also accepted for backward compatibility.",
+      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.8\". Prior drafts \"0.1\" through \"0.7\" are also accepted for backward compatibility.",
       "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8"]
     },
     "project": {

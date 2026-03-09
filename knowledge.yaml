@@ -1,10 +1,10 @@
 # KCP eats its own dogfood.
 # This manifest describes the Knowledge Context Protocol repository itself.
 
-kcp_version: "0.7"
+kcp_version: "0.8"
 project: knowledge-context-protocol
-version: 0.7.0
-updated: "2026-03-08"
+version: 0.8.0
+updated: "2026-03-09"
 language: en
 license: "Apache-2.0"
 indexing: open
@@ -68,7 +68,7 @@ units:
 
   - id: rfc-0005
     path: RFC-0005-Payment-and-Rate-Limits.md
-    intent: "How should KCP declare payment methods and rate limits so agents can plan resource costs before attempting access? The `payment.default_tier` field was promoted to SPEC.md §4.14 in v0.5; the payment methods, x402, and rate_limits blocks remain RFC."
+    intent: "How should KCP declare payment methods and rate limits so agents can plan resource costs before attempting access? The `payment.default_tier` field was promoted to SPEC.md §4.14 in v0.5; `rate_limits` promoted to core in v0.8; the payment methods and x402 blocks remain RFC."
     scope: global
     audience: [human, agent, architect, developer]
     validated: "2026-02-28"

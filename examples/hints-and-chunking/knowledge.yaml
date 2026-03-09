@@ -2,7 +2,7 @@
 # Demonstrates token_estimate, load_strategy, summary_available/summary_unit/summary_of,
 # and chunking fields from SPEC.md §4.10.
 
-kcp_version: "0.7"
+kcp_version: "0.8"
 project: hints-and-chunking-example
 version: 1.0.0
 updated: "2026-03-08"
