@@ -7,6 +7,8 @@ import no.cantara.kcp.model.Delegation;
 import no.cantara.kcp.model.HumanInTheLoop;
 import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
+import no.cantara.kcp.model.RateLimit;
+import no.cantara.kcp.model.RateLimits;
 import no.cantara.kcp.model.Relationship;
 import no.cantara.kcp.model.Trust;
 import no.cantara.kcp.model.TrustAudit;
@@ -60,6 +62,7 @@ public class KcpParser {
         Delegation delegation = parseDelegation((Map<String, Object>) data.get("delegation"));
         Compliance compliance = parseCompliance((Map<String, Object>) data.get("compliance"));
         Object payment = data.get("payment");
+        RateLimits rateLimits = parseRateLimits((Map<String, Object>) data.get("rate_limits"));
 
         List<Map<String, Object>> unitMaps = (List<Map<String, Object>>) data.getOrDefault("units", List.of());
         List<KnowledgeUnit> units = unitMaps.stream().map(KcpParser::parseUnit).toList();
@@ -67,7 +70,7 @@ public class KcpParser {
         List<Map<String, Object>> relMaps = (List<Map<String, Object>>) data.getOrDefault("relationships", List.of());
         List<Relationship> relationships = relMaps.stream().map(KcpParser::parseRelationship).toList();
 
-        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, units, relationships);
+        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, rateLimits, units, relationships);
     }
 
     /**
@@ -117,6 +120,7 @@ public class KcpParser {
                 (String) u.get("sensitivity"),
                 (Boolean) u.get("deprecated"),
                 u.get("payment"),
+                parseRateLimits((Map<String, Object>) u.get("rate_limits")),
                 parseDelegation((Map<String, Object>) u.get("delegation")),
                 parseCompliance((Map<String, Object>) u.get("compliance"))
         );
@@ -206,6 +210,18 @@ public class KcpParser {
                 (List<String>) c.get("regulations"),
                 (List<String>) c.get("restrictions")
         );
+    }
+
+    @SuppressWarnings("unchecked")
+    private static RateLimits parseRateLimits(Map<String, Object> r) {
+        if (r == null) return null;
+        Map<String, Object> def = (Map<String, Object>) r.get("default");
+        if (def == null) return new RateLimits(null);
+        RateLimit defaultLimit = new RateLimit(
+                def.get("requests_per_minute") instanceof Number n ? n.intValue() : null,
+                def.get("requests_per_day") instanceof Number n ? n.intValue() : null
+        );
+        return new RateLimits(defaultLimit);
     }
 
     private static LocalDate parseDate(Object value) {

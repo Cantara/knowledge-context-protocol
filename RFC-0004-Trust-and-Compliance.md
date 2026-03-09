@@ -6,7 +6,7 @@
 **Supersedes:** Proposals E and G in [RFC-0001](./RFC-0001-KCP-Extended.md)
 **Issues:** [#5 (trust/audit)](https://github.com/Cantara/knowledge-context-protocol/issues/5) · [#11 (compliance)](https://github.com/Cantara/knowledge-context-protocol/issues/11)
 **Discussion:** [GitHub Issues](https://github.com/Cantara/knowledge-context-protocol/issues)
-**Spec:** [SPEC.md](./SPEC.md) (current: v0.7)
+**Spec:** [SPEC.md](./SPEC.md) (current: v0.8)
 **Related:** [RFC-0002](./RFC-0002-Auth-and-Delegation.md) (auth and delegation) · [RFC-0003](./RFC-0003-Federation.md) (federation) · [RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md) (payment — composes with `agent_requirements` for token-gated access patterns)
 **Contributions:** `attestation_url` / `attestation_jwks` mechanism proposed by [@douglasborthwick-crypto](https://github.com/douglasborthwick-crypto) in [#5](https://github.com/Cantara/knowledge-context-protocol/issues/5)
 

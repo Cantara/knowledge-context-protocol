@@ -10,7 +10,7 @@
     "kcp_version": {
       "type": "string",
       "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.7\". Prior drafts \"0.1\" through \"0.6\" are also accepted for backward compatibility.",
-      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7"]
+      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8"]
     },
     "project": {
       "type": "string",
@@ -69,6 +69,7 @@
     "delegation": { "$ref": "#/definitions/delegation_object" },
     "compliance": { "$ref": "#/definitions/compliance_object" },
     "payment": { "$ref": "#/definitions/payment_object" },
+    "rate_limits": { "$ref": "#/definitions/rate_limits_object" },
     "units": {
       "type": "array",
       "description": "Ordered list of knowledge unit declarations. REQUIRED. Must contain at least one unit.",
@@ -258,7 +259,8 @@
         },
         "delegation": { "$ref": "#/definitions/delegation_object" },
         "compliance": { "$ref": "#/definitions/compliance_object" },
-        "payment": { "$ref": "#/definitions/payment_object" }
+        "payment": { "$ref": "#/definitions/payment_object" },
+        "rate_limits": { "$ref": "#/definitions/rate_limits_object" }
       }
     },
     "unit_hints": {
@@ -471,9 +473,24 @@
           "description": "If true, agents MUST include W3C Trace Context headers on all access requests."
         },
         "human_in_the_loop": {
-          "type": "string",
-          "description": "Human approval requirement. Values: always (human MUST approve every access), on-sensitive (human MUST approve access to units with sensitivity confidential or restricted), never (no human approval required).",
-          "enum": ["always", "on-sensitive", "never"]
+          "type": "object",
+          "description": "Human approval requirement. See SPEC.md §3.4.",
+          "additionalProperties": true,
+          "properties": {
+            "required": {
+              "type": "boolean",
+              "description": "If true, a human MUST approve agent access before the unit may be loaded. Default: false."
+            },
+            "approval_mechanism": {
+              "type": "string",
+              "description": "How human approval is obtained. Values: oauth_consent, uma, custom.",
+              "enum": ["oauth_consent", "uma", "custom"]
+            },
+            "docs_url": {
+              "type": "string",
+              "description": "URL describing the approval flow. REQUIRED when approval_mechanism is custom."
+            }
+          }
         }
       }
     },
@@ -516,6 +533,30 @@
         }
       }
     },
+    "rate_limits_object": {
+      "type": "object",
+      "description": "Rate limit declarations. Can appear at root level (as default for all units) or at unit level (as override). See SPEC.md §4.15.",
+      "additionalProperties": true,
+      "properties": {
+        "default": {
+          "type": "object",
+          "description": "Default rate limit applied when no tier-specific limit is declared.",
+          "additionalProperties": true,
+          "properties": {
+            "requests_per_minute": {
+              "type": "integer",
+              "description": "Maximum requests per 60-second rolling window. Omit for no limit.",
+              "minimum": 1
+            },
+            "requests_per_day": {
+              "type": "integer",
+              "description": "Maximum requests per calendar day (UTC). Omit for no limit.",
+              "minimum": 1
+            }
+          }
+        }
+      }
+    },
     "relationship": {
       "type": "object",
       "description": "An explicit directional relationship between two knowledge units.",
@@ -534,7 +575,7 @@
         },
         "type": {
           "type": "string",
-          "description": "The type of relationship. Defined values: enables, context, supersedes, contradicts."
+          "description": "The type of relationship. Defined values: enables, context, supersedes, contradicts, depends_on."
         }
       }
     }

@@ -91,7 +91,7 @@ Example:
 
 ```json
 {
-  "kcp_version": "0.7",
+  "kcp_version": "0.8",
   "manifest": "/knowledge.yaml",
   "title": "My Project Knowledge Base",
   "description": "Architecture decisions, API reference, and onboarding guides.",
@@ -122,7 +122,7 @@ version.
 ## 3. Root Manifest Structure
 
 ```yaml
-kcp_version: "0.7"          # RECOMMENDED
+kcp_version: "0.8"          # RECOMMENDED
 project: <string>            # REQUIRED
 version: <semver string>     # RECOMMENDED
 updated: "<ISO date>"        # RECOMMENDED; quote the value (see §4.1.1)
@@ -147,7 +147,7 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
-| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.7"` for conformance with this document. |
+| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.8"` for conformance with this document. |
 | `project` | REQUIRED | string | Human-readable name of the project or documentation site. |
 | `version` | RECOMMENDED | string | Semver version of this manifest. Increment when units are added or removed. |
 | `updated` | RECOMMENDED | string | ISO 8601 date (`YYYY-MM-DD`) when this manifest was last modified. |
@@ -334,7 +334,6 @@ delegation:
 |-------|----------|------|-------------|
 | `max_depth` | OPTIONAL | integer | Maximum delegation chain depth. **The resource owner operates at depth 0.** The first agent to which access is delegated operates at depth 1. `max_depth: 0` means no delegation is permitted — only the resource owner may access the unit directly. Omit for no constraint. |
 | `require_capability_attenuation` | OPTIONAL | boolean | If `true`, each hop in the delegation chain MUST present narrower permissions than the delegating agent held. Agents SHOULD reject delegation tokens that grant equal or greater scope than the parent token. |
-| `require_delegation_proof` | OPTIONAL | boolean | If `true`, agents MUST present a verifiable delegation chain when accessing restricted units. Agents that cannot present proof MUST NOT access the unit. |
 | `audit_chain` | OPTIONAL | boolean | If `true`, agents MUST include W3C Trace Context `traceparent`/`tracestate` headers on all access requests, enabling full delegation chain reconstruction from access logs. Compatible with OpenTelemetry. |
 | `human_in_the_loop` | OPTIONAL | object | Root-level human approval requirement. May be overridden at unit level. |
 
@@ -383,9 +382,9 @@ SHOULD treat OAuth scope strings as a hierarchy where a more specific scope (e.g
 comparison specification is planned for a future version.
 
 **Delegation chain integrity requires signed tokens.** Without signed lineage tokens, a
-misconfigured or malicious agent may claim any delegation depth. `require_delegation_proof`
-provides a hook for implementations that issue signed delegation credentials; the token format
-is not specified in this version (see RFC-0002).
+misconfigured or malicious agent may claim any delegation depth. A `require_delegation_proof`
+field (reserved for future use) is specified in RFC-0002 for implementations that issue signed
+delegation credentials; the token format and normative field definition are deferred to v0.9+.
 
 #### `delegation` block conformance
 
@@ -1191,6 +1190,55 @@ Unknown `payment` sub-fields MUST be silently ignored.
 
 ---
 
+### 4.15 `rate_limits`
+
+The `rate_limits` block declares the maximum request rate an agent should observe when
+accessing this manifest's knowledge units. It is advisory metadata that allows agents to
+self-throttle without waiting for a `429 Too Many Requests` response.
+
+**Root-level (applies to all units unless overridden):**
+
+```yaml
+rate_limits:
+  default:
+    requests_per_minute: 60
+    requests_per_day: 1000
+```
+
+**Unit-level override:**
+
+```yaml
+units:
+  - id: high-volume-index
+    path: index/full.md
+    rate_limits:
+      default:
+        requests_per_minute: 10
+        requests_per_day: 100
+```
+
+#### `rate_limits` field reference
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `rate_limits` | OPTIONAL | object | Rate limit declarations. Root-level applies as default; unit-level overrides root. |
+| `rate_limits.default` | OPTIONAL | object | Default rate limit applied when no tier-specific limit is declared. |
+| `rate_limits.default.requests_per_minute` | OPTIONAL | integer | Maximum requests per 60-second rolling window. Omit for no limit. |
+| `rate_limits.default.requests_per_day` | OPTIONAL | integer | Maximum requests per calendar day (UTC). Omit for no limit. |
+
+Both `requests_per_minute` and `requests_per_day` are OPTIONAL. Declaring one without the
+other is valid. When both are declared, agents MUST respect the more restrictive limit in any
+given window.
+
+`rate_limits` is OPTIONAL at both root and unit level. Omitting it entirely means no rate
+limit is declared — agents SHOULD NOT infer a specific limit.
+
+Unknown sub-fields within `rate_limits` MUST be silently ignored. Additional rate limit
+sub-fields (per-tier, token-based, header mapping) are specified in RFC-0005 and may be
+promoted in a future version.
+
+---
+
 ## 5. Relationships
 
 The optional `relationships` section declares explicit directional relationships between units.
@@ -1200,7 +1248,7 @@ This is separate from the inline `depends_on` field and supports richer graph se
 relationships:
   - from: <unit-id>
     to: <unit-id>
-    type: enables | context | supersedes | contradicts
+    type: enables | context | supersedes | contradicts | depends_on
 ```
 
 | Type | Meaning |
@@ -1209,6 +1257,7 @@ relationships:
 | `context` | The `from` unit provides useful context for the `to` unit |
 | `supersedes` | The `from` unit replaces the `to` unit (equivalent to `unit.supersedes`) |
 | `contradicts` | The `from` unit contains information that conflicts with the `to` unit |
+| `depends_on` | The `from` unit depends on the `to` unit (mirrors the inline `depends_on` list field; use when the direction or label matters more than the inline list) |
 
 Both `from` and `to` MUST be `id` values of units declared in the same manifest. Relationships
 referencing unknown IDs SHOULD produce a validation warning and MUST be silently ignored.
@@ -1222,9 +1271,9 @@ Unknown relationship types MUST be silently ignored.
 ### 6.1 Spec Version (`kcp_version`)
 
 `kcp_version` identifies which version of this specification the manifest conforms to. Current
-valid value: `"0.7"`. The values `"0.1"` through `"0.6"` refer to prior drafts (February–March
-2026); parsers SHOULD treat these manifests as conformant with this version, as v0.7 is a
-strict superset of v0.6 (new fields only, no removals or breaking changes). Parsers
+valid value: `"0.8"`. The values `"0.1"` through `"0.7"` refer to prior drafts (February–March
+2026); parsers SHOULD treat these manifests as conformant with this version, as v0.8 is a
+strict superset of v0.7 (new fields only, no removals or breaking changes). Parsers
 encountering an unknown `kcp_version` SHOULD process the manifest using the closest known
 version and SHOULD emit a warning.
 
@@ -1481,6 +1530,7 @@ implementations. This is required for forward compatibility.
 
 ## 14. Security Considerations
 
+
 **Path traversal:** Parsers MUST NOT resolve `path` values that traverse outside the manifest's
 root directory (i.e. paths containing `..` that escape the root). Such paths SHOULD be rejected
 with an error.
@@ -1491,7 +1541,7 @@ manifest size, unit count, and string field lengths to guard against resource ex
 **Trust:** A `knowledge.yaml` is as trustworthy as its source. Agents consuming KCP manifests
 from untrusted sources SHOULD treat the content as untrusted input.
 
-### 13.1 Trust Model
+### 14.1 Trust Model
 
 KCP is a declarative format. A manifest describes properties of knowledge units — their
 intended audience, freshness, access requirements, compliance scope, and dependencies. It does
@@ -1532,7 +1582,7 @@ The following specific cases apply:
 security or legal implications. An agent that silently treats advisory compliance metadata as
 enforced is creating hidden liability for its operator.
 
-### 13.2 YAML Safety
+### 14.2 YAML Safety
 
 Parsers MUST use a safe YAML constructor that disables arbitrary type instantiation. YAML
 documents containing type tags that instantiate non-primitive types (e.g.
@@ -1541,7 +1591,7 @@ documents containing type tags that instantiate non-primitive types (e.g.
 Parsers MUST NOT use YAML loaders that execute code embedded in the document. This requirement
 applies to all YAML content, including content fetched from remote sources.
 
-### 13.3 Remote Content
+### 14.3 Remote Content
 
 Parsers and agents that fetch remote manifests (e.g. via federation or external references)
 MUST apply the following constraints:
@@ -1562,7 +1612,7 @@ MUST apply the following constraints:
 ## Appendix A: Minimal Example
 
 ```yaml
-kcp_version: "0.7"
+kcp_version: "0.8"
 project: my-project
 version: 1.0.0
 units:
@@ -1578,7 +1628,7 @@ units:
 ## Appendix B: Full Example
 
 ```yaml
-kcp_version: "0.7"
+kcp_version: "0.8"
 project: wiki.example.org
 version: 2.3.0
 updated: "2026-03-07"

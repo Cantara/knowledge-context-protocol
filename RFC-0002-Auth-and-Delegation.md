@@ -6,7 +6,7 @@
 **Supersedes:** Proposals A and B in [RFC-0001](./RFC-0001-KCP-Extended.md)
 **Issues:** [#1 (auth)](https://github.com/Cantara/knowledge-context-protocol/issues/1) · [#3 (delegation)](https://github.com/Cantara/knowledge-context-protocol/issues/3)
 **Discussion:** [GitHub Issues](https://github.com/Cantara/knowledge-context-protocol/issues)
-**Spec:** [SPEC.md](./SPEC.md) (current: v0.7)
+**Spec:** [SPEC.md](./SPEC.md) (current: v0.8)
 
 ---
 

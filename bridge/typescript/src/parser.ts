@@ -10,6 +10,7 @@ import type {
   Delegation,
   KnowledgeManifest,
   KnowledgeUnit,
+  RateLimits,
   Relationship,
   Trust,
   TrustAudit,
@@ -117,6 +118,7 @@ function parseUnit(raw: RawMap): KnowledgeUnit {
       raw["payment"] !== undefined && typeof raw["payment"] === "object" && !Array.isArray(raw["payment"])
         ? (raw["payment"] as Record<string, unknown>)
         : undefined,
+    rate_limits: parseRateLimits(raw["rate_limits"]),
     delegation: parseDelegation(raw["delegation"]),
     compliance: parseCompliance(raw["compliance"]),
   };
@@ -222,6 +224,20 @@ function parseCompliance(raw: unknown): Compliance | undefined {
   };
 }
 
+function parseRateLimits(raw: unknown): RateLimits | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const data = raw as RawMap;
+  const def = data["default"];
+  if (!def || typeof def !== "object" || Array.isArray(def)) return {};
+  const d = def as RawMap;
+  return {
+    default: {
+      requests_per_minute: d["requests_per_minute"] !== undefined ? Number(d["requests_per_minute"]) : undefined,
+      requests_per_day: d["requests_per_day"] !== undefined ? Number(d["requests_per_day"]) : undefined,
+    },
+  };
+}
+
 // --- Public API ---
 
 /**
@@ -256,6 +272,7 @@ export function parseDict(data: RawMap): KnowledgeManifest {
       data["payment"] !== undefined && typeof data["payment"] === "object" && !Array.isArray(data["payment"])
         ? (data["payment"] as Record<string, unknown>)
         : undefined,
+    rate_limits: parseRateLimits(data["rate_limits"]),
     units: rawUnits.map(parseUnit),
     relationships: rawRels.map(parseRelationship),
   };

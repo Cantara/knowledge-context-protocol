@@ -115,7 +115,7 @@ describe("parseDelegation", () => {
         max_depth: 2,
         require_capability_attenuation: true,
         audit_chain: false,
-        human_in_the_loop: "required",
+        human_in_the_loop: { required: true, approval_mechanism: "oauth_consent" },
       },
       units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
     });
@@ -123,7 +123,7 @@ describe("parseDelegation", () => {
     expect(manifest.delegation?.max_depth).toBe(2);
     expect(manifest.delegation?.require_capability_attenuation).toBe(true);
     expect(manifest.delegation?.audit_chain).toBe(false);
-    expect(manifest.delegation?.human_in_the_loop).toBe("required");
+    expect(manifest.delegation?.human_in_the_loop?.approval_mechanism).toBe("oauth_consent");
   });
 
   it("parses per-unit delegation override", () => {
@@ -136,13 +136,13 @@ describe("parseDelegation", () => {
         intent: "i",
         scope: "global",
         audience: ["agent"],
-        delegation: { max_depth: 0, human_in_the_loop: "recommended" },
+        delegation: { max_depth: 0, human_in_the_loop: { required: false, approval_mechanism: "uma" } },
       }],
     });
     const u = manifest.units[0];
     expect(u.delegation).toBeDefined();
     expect(u.delegation?.max_depth).toBe(0);
-    expect(u.delegation?.human_in_the_loop).toBe("recommended");
+    expect(u.delegation?.human_in_the_loop?.approval_mechanism).toBe("uma");
     expect(u.delegation?.require_capability_attenuation).toBeUndefined();
   });
 

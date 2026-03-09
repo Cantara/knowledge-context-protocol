@@ -20,6 +20,7 @@ public record KnowledgeManifest(
         Delegation delegation,
         Compliance compliance,
         Object payment,
+        RateLimits rateLimits,
         List<KnowledgeUnit> units,
         List<Relationship> relationships
 ) {

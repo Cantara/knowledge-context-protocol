@@ -29,6 +29,7 @@ public record KnowledgeUnit(
         String sensitivity,
         Boolean deprecated,
         Object payment,
+        RateLimits rateLimits,
         Delegation delegation,
         Compliance compliance
 ) {

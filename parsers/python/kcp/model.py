@@ -45,8 +45,22 @@ class KnowledgeUnit:
     sensitivity: Optional[str] = None
     deprecated: Optional[bool] = None
     payment: Optional[dict] = None
+    rate_limits: Optional["RateLimits"] = None
     delegation: Optional[Delegation] = None
     compliance: Optional[Compliance] = None
+
+
+@dataclass
+class RateLimit:
+    """Default rate limit tier — part of the rate_limits block. See SPEC.md §4.15."""
+    requests_per_minute: Optional[int] = None
+    requests_per_day: Optional[int] = None
+
+
+@dataclass
+class RateLimits:
+    """Rate limits block — root-level and per-unit override. See SPEC.md §4.15."""
+    default: Optional[RateLimit] = None
 
 
 @dataclass
@@ -110,4 +124,5 @@ class KnowledgeManifest:
     delegation: Optional[Delegation] = None
     compliance: Optional[Compliance] = None
     payment: Optional[dict] = None
+    rate_limits: Optional[RateLimits] = None
     relationships: list[Relationship] = field(default_factory=list)

@@ -1,5 +1,5 @@
 # Level 3 — valid compliance block with data residency and regulations
-kcp_version: "0.7"
+kcp_version: "0.8"
 project: test-compliance
 version: "1.0.0"
 

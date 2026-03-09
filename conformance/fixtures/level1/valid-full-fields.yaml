@@ -1,5 +1,5 @@
 # Level 1 — all Level-1 fields populated
-kcp_version: "0.7"
+kcp_version: "0.8"
 project: test-full-fields
 version: "2.0.0"
 updated: "2026-03-01"

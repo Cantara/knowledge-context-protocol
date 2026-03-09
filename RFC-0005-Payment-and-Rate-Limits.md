@@ -6,7 +6,24 @@
 **Supersedes:** Proposals C and D in [RFC-0001](./RFC-0001-KCP-Extended.md)
 **Issues:** [#2 (payment)](https://github.com/Cantara/knowledge-context-protocol/issues/2) · [#4 (rate limits)](https://github.com/Cantara/knowledge-context-protocol/issues/4)
 **Discussion:** [GitHub Issues](https://github.com/Cantara/knowledge-context-protocol/issues)
-**Spec:** [SPEC.md](./SPEC.md) (current: v0.7)
+**Spec:** [SPEC.md](./SPEC.md) (current: v0.8)
+
+---
+
+## Promotion History
+
+The following proposals from this RFC have been promoted to the core specification:
+
+| Field | Promoted in | Conformance Level | Notes |
+|-------|------------|-------------------|-------|
+| `rate_limits.default.requests_per_minute` | v0.8 | Level 3 | Minimal rate limit disclosure. See §4.15. |
+| `rate_limits.default.requests_per_day` | v0.8 | Level 3 | Minimal rate limit disclosure. See §4.15. |
+
+**Still RFC-only (not yet promoted):**
+
+- `payment` block (root-level and unit-level) — awaiting real-world validation of the x402 and subscription models.
+- `rate_limits` per-tier overrides (`authenticated`, `premium`) — core spec promotes `default` only.
+- Unit-level `rate_limits` override — follows root default for now; per-unit override deferred to v0.9+.
 
 ---
 

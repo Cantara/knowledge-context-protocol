@@ -1,5 +1,5 @@
 # Edge case — path traversal attack (§12: must reject)
-kcp_version: "0.7"
+kcp_version: "0.8"
 project: test-path-traversal
 version: "1.0.0"
 

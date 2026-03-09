@@ -26,6 +26,7 @@ export interface KnowledgeUnit {
   sensitivity?: string;    // "public" | "internal" | "confidential" | "restricted"
   deprecated?: boolean;
   payment?: Record<string, unknown>;
+  rate_limits?: RateLimits;
   delegation?: Delegation;
   compliance?: Compliance;
 }
@@ -92,6 +93,17 @@ export interface Compliance {
   restrictions?: string[];
 }
 
+/** Rate limits default tier — root-level and per-unit override. See SPEC.md §4.15. */
+export interface RateLimitsDefault {
+  requests_per_minute?: number;
+  requests_per_day?: number;
+}
+
+/** Rate limits block — root-level and per-unit override. See SPEC.md §4.15. */
+export interface RateLimits {
+  default?: RateLimitsDefault;
+}
+
 export interface KnowledgeManifest {
   project: string;
   version: string;
@@ -107,6 +119,7 @@ export interface KnowledgeManifest {
   delegation?: Delegation;
   compliance?: Compliance;
   payment?: Record<string, unknown>;
+  rate_limits?: RateLimits;
   relationships: Relationship[];  // defaults to []
 }
 

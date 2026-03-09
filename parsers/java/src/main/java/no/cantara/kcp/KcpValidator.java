@@ -28,7 +28,7 @@ public class KcpValidator {
 
     private static final Set<String> VALID_SCOPES = Set.of("global", "project", "module");
     private static final Set<String> VALID_AUDIENCES = Set.of("human", "agent", "developer", "operator", "architect", "devops");
-    private static final Set<String> VALID_RELATIONSHIP_TYPES = Set.of("enables", "context", "supersedes", "contradicts");
+    private static final Set<String> VALID_RELATIONSHIP_TYPES = Set.of("enables", "context", "supersedes", "contradicts", "depends_on");
     private static final Set<String> VALID_KINDS = Set.of("knowledge", "schema", "service", "policy", "executable");
     private static final Set<String> VALID_FORMATS = Set.of(
             "markdown", "pdf", "openapi", "json-schema", "jupyter",
@@ -38,7 +38,7 @@ public class KcpValidator {
     private static final Set<String> VALID_ACCESS_VALUES = Set.of("public", "authenticated", "restricted");
     private static final Set<String> VALID_SENSITIVITY_VALUES = Set.of("public", "internal", "confidential", "restricted");
     private static final Set<String> VALID_HITL_MECHANISMS = Set.of("oauth_consent", "uma", "custom");
-    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7");
+    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8");
     private static final Pattern ID_PATTERN = Pattern.compile("^[a-z0-9.\\-]+$");
     private static final int MAX_TRIGGER_LENGTH = 60;
     private static final int MAX_TRIGGERS_PER_UNIT = 20;
@@ -84,7 +84,7 @@ public class KcpValidator {
 
         // kcp_version — RECOMMENDED; warn if absent or unknown
         if (manifest.kcpVersion() == null || manifest.kcpVersion().isBlank()) {
-            warnings.add("manifest: 'kcp_version' not declared; assuming 0.7");
+            warnings.add("manifest: 'kcp_version' not declared; assuming 0.8");
         } else if (!KNOWN_KCP_VERSIONS.contains(manifest.kcpVersion())) {
             warnings.add("manifest: unknown kcp_version '" + manifest.kcpVersion() +
                     "'; processing as " + KNOWN_KCP_VERSIONS.stream().max(String::compareTo).orElse("0.6"));

@@ -6,7 +6,7 @@ import yaml
 
 from .model import (
     Auth, AuthMethod, Compliance, Delegation, KnowledgeManifest, KnowledgeUnit,
-    Relationship, Trust, TrustAudit, TrustProvenance,
+    RateLimit, RateLimits, Relationship, Trust, TrustAudit, TrustProvenance,
 )
 
 
@@ -106,6 +106,21 @@ def _parse_compliance(data: Optional[dict]) -> Optional[Compliance]:
     )
 
 
+def _parse_rate_limits(data: Optional[dict]) -> Optional[RateLimits]:
+    """Parse a rate_limits block (root-level or per-unit). See SPEC.md §4.15."""
+    if data is None:
+        return None
+    default_data = data.get("default")
+    if default_data is None:
+        return RateLimits()
+    return RateLimits(
+        default=RateLimit(
+            requests_per_minute=default_data.get("requests_per_minute"),
+            requests_per_day=default_data.get("requests_per_day"),
+        )
+    )
+
+
 def parse_dict(data: dict) -> KnowledgeManifest:
     """Parse a knowledge manifest from a pre-loaded dict."""
     units = [
@@ -132,6 +147,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
             sensitivity=u.get("sensitivity"),
             deprecated=u.get("deprecated"),
             payment=u.get("payment"),
+            rate_limits=_parse_rate_limits(u.get("rate_limits")),
             delegation=_parse_delegation(u.get("delegation")),
             compliance=_parse_compliance(u.get("compliance")),
         )
@@ -155,6 +171,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
         delegation=_parse_delegation(data.get("delegation")),
         compliance=_parse_compliance(data.get("compliance")),
         payment=data.get("payment"),
+        rate_limits=_parse_rate_limits(data.get("rate_limits")),
         units=units,
         relationships=relationships,
     )

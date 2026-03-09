@@ -1,7 +1,7 @@
 # Level 2 — circular depends_on (A -> B -> A)
 # Per spec §4.7, cycles are silently ignored — NOT an error.
 # The manifest is still valid; parsers should break the cycle gracefully.
-kcp_version: "0.7"
+kcp_version: "0.8"
 project: test-circular-dep
 version: "1.0.0"
 

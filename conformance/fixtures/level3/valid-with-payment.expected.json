@@ -1,0 +1,7 @@
+{
+  "valid": true,
+  "errors": [],
+  "warnings": ["manifest: units with access 'authenticated' or 'restricted' exist but no 'auth' block is declared"],
+  "unit_count": 1,
+  "relationship_count": 0
+}

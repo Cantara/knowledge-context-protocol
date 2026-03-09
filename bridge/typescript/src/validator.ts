@@ -18,6 +18,7 @@ const VALID_REL_TYPES = new Set([
   "context",
   "supersedes",
   "contradicts",
+  "depends_on",
 ]);
 const VALID_ACCESS_VALUES = new Set(["public", "authenticated", "restricted"]);
 const VALID_SENSITIVITY_VALUES = new Set([
@@ -35,6 +36,7 @@ const KNOWN_KCP_VERSIONS = new Set([
   "0.5",
   "0.6",
   "0.7",
+  "0.8",
 ]);
 
 export function validate(
@@ -46,15 +48,15 @@ export function validate(
 
   // Root fields
   if (!manifest.project) errors.push("Root field 'project' is required");
-  if (!manifest.version) errors.push("Root field 'version' is required");
+  if (!manifest.version) warnings.push("manifest: 'version' not declared; RECOMMENDED per §6.2");
   if (manifest.units.length === 0) warnings.push("Manifest has no units");
 
   // kcp_version — RECOMMENDED; warn if absent or unknown (§6.1)
   if (!manifest.kcp_version) {
-    warnings.push("manifest: 'kcp_version' not declared; assuming 0.7");
+    warnings.push("manifest: 'kcp_version' not declared; assuming 0.8");
   } else if (!KNOWN_KCP_VERSIONS.has(manifest.kcp_version)) {
     warnings.push(
-      `manifest: unknown kcp_version '${manifest.kcp_version}'; processing as 0.7`
+      `manifest: unknown kcp_version '${manifest.kcp_version}'; processing as 0.8`
     );
   }
 
@@ -66,7 +68,7 @@ export function validate(
     if (!unit.id) {
       errors.push("A unit is missing required field 'id'");
     } else if (unitIds.has(unit.id)) {
-      errors.push(`Duplicate unit id: '${unit.id}'`);
+      warnings.push(`Duplicate unit id: '${unit.id}'`);
     } else {
       unitIds.add(unit.id);
     }

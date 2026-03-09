@@ -1,7 +1,7 @@
 # Edge case — IDs with dots and hyphens (valid per spec: lowercase a-z, digits, dots, hyphens)
 # Note: actual Unicode in IDs would be a warning per §4.2 (non-matching ID pattern),
 # but the manifest is still valid. We test the ID pattern boundary here.
-kcp_version: "0.7"
+kcp_version: "0.8"
 project: test-unicode
 version: "1.0.0"
 

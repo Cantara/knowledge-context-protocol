@@ -1,0 +1,23 @@
+# Level 3 — advisory payment block (RFC-0005, not yet promoted to core)
+# Parsers MUST accept unknown top-level keys; payment is advisory only.
+kcp_version: "0.8"
+project: test-payment
+version: "1.0.0"
+
+payment:
+  model: metered
+  currency: USD
+  price_per_request: 0.001
+
+units:
+  - id: premium-corpus
+    path: docs/corpus.md
+    intent: "Premium research corpus"
+    scope: global
+    audience: [agent]
+    access: restricted
+    payment:
+      model: subscription
+      plans:
+        - name: basic
+          price_per_month: 49
