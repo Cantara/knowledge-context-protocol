@@ -12,7 +12,7 @@
 #   - Delegation depth counting (owner=0, first delegatee=1)
 #   - HITL at depth=2 for client-communications
 
-kcp_version: "0.6"
+kcp_version: "0.8"
 project: legal-research-agent
 version: 1.0.0
 updated: "2026-03-08"

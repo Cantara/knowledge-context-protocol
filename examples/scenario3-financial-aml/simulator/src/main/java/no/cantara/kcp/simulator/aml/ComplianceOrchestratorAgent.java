@@ -4,6 +4,8 @@ import no.cantara.kcp.model.KnowledgeUnit;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -34,6 +36,7 @@ public final class ComplianceOrchestratorAgent {
     private AccessDecisionEngine decisionEngine;
     private DelegationChainEngine delegationEngine;
     private ComplianceEngine complianceEngine;
+    private RateLimitAdvisor rateLimitAdvisor;
 
     // Stats
     private int unitsLoaded = 0;
@@ -43,16 +46,17 @@ public final class ComplianceOrchestratorAgent {
     private int humanApprovals = 0;
     private int auditEntries = 0;
     private int violationsDetected = 0;
+    private int rateLimitAdvisoryViolations = 0;
 
     public ComplianceOrchestratorAgent(ConsoleLog log, boolean autoApprove) {
         this.log = log;
         this.autoApprove = autoApprove;
     }
 
-    /** Run the full 7-phase simulation. */
+    /** Run the full 8-phase simulation. */
     public void run(Path agentCardPath, Path manifestPath) throws IOException {
         log.header("SCENARIO 3: Financial AML Intelligence (Adversarial)");
-        log.plain("Domain: Anti-Money-Laundering Compliance | KCP v0.6 | A2A Agent Card v1.0.0");
+        log.plain("Domain: Anti-Money-Laundering Compliance | KCP v0.8 | A2A Agent Card v1.0.0");
         log.plain("Agents: ComplianceOrchestrator, TransactionIntelligence, SanctionsScreening, MLRiskScoring, RogueAgent");
         log.blank();
 
@@ -78,6 +82,9 @@ public final class ComplianceOrchestratorAgent {
         log.blank();
 
         phase7ComplianceBlock();
+        log.blank();
+
+        phase8RogueRateLimitBurst();
         log.blank();
 
         printSummary();
@@ -109,6 +116,7 @@ public final class ComplianceOrchestratorAgent {
         decisionEngine = new AccessDecisionEngine(oauth2, txAgent.unitDelegation());
         delegationEngine = new DelegationChainEngine(txAgent.rootDelegation(), txAgent.unitDelegation());
         complianceEngine = new ComplianceEngine(txAgent.unitCompliance());
+        rateLimitAdvisor = buildRateLimitAdvisor(manifestPath);
 
         orchestratorToken = oauth2.issueToken("compliance-orchestrator",
                 Set.of("read:sanctions", "read:transactions", "aml-analyst", "compliance-officer"));
@@ -281,6 +289,87 @@ public final class ComplianceOrchestratorAgent {
         log.audit("trace: " + TraceContext.newTraceparent());
     }
 
+    /**
+     * Phase 8: RogueAgent burst-requests customer-profiles beyond rate_limits advisory.
+     * Advisory: requests succeed (rate_limits not enforced) but violations are logged.
+     */
+    private void phase8RogueRateLimitBurst() {
+        log.section("Phase 8: RogueAgent -- Rate Limit Advisory Burst");
+
+        log.blank();
+        log.query("P8", "RogueAgent burst-requesting 'customer-profiles' (advisory limit: 5/min)");
+
+        RateLimitAdvisor.AdvisoryLimit limit = rateLimitAdvisor.getLimit("customer-profiles");
+        log.kcp("Advisory rate_limits for 'customer-profiles': "
+                + (limit.requestsPerMinute() != null ? limit.requestsPerMinute() + "/min" : "unlimited")
+                + ", " + (limit.requestsPerDay() != null ? limit.requestsPerDay() + "/day" : "unlimited"));
+        log.kcp("Advisory: rate_limits is not enforced — requests will succeed but violations are logged");
+
+        // RogueAgent bursts 10 requests in rapid succession
+        int burstCount = 10;
+        for (int i = 1; i <= burstCount; i++) {
+            boolean withinLimit = rateLimitAdvisor.recordRequest("customer-profiles", "RogueAgent");
+            if (!withinLimit) {
+                rateLimitAdvisoryViolations++;
+                log.kcp("Request #" + i + ": ADVISORY_VIOLATION (exceeded rate_limits)");
+            } else {
+                log.kcp("Request #" + i + ": within advisory limit");
+            }
+        }
+
+        long violations = rateLimitAdvisor.violationCount("customer-profiles");
+        log.kcp("Result: " + burstCount + " requests completed, " + violations + " advisory violations");
+        log.kcp("RogueAgent exceeded rate_limits advisory for customer-profiles");
+        auditEntries++;
+        log.audit("trace: " + TraceContext.newTraceparent());
+        log.audit("RATE_LIMIT_ADVISORY: RogueAgent burst " + burstCount
+                + " requests to 'customer-profiles' — " + violations + " exceeded advisory " + limit.requestsPerMinute() + "/min");
+    }
+
+    @SuppressWarnings("unchecked")
+    private RateLimitAdvisor buildRateLimitAdvisor(Path manifestPath) throws IOException {
+        org.yaml.snakeyaml.Yaml yaml = new org.yaml.snakeyaml.Yaml(
+                new org.yaml.snakeyaml.constructor.SafeConstructor(new org.yaml.snakeyaml.LoaderOptions()));
+        Map<String, Object> rawData;
+        try (java.io.InputStream is = java.nio.file.Files.newInputStream(manifestPath)) {
+            rawData = yaml.load(is);
+        }
+
+        // Extract root default
+        Integer rootRpm = null;
+        Integer rootRpd = null;
+        Map<String, Object> rootLimits = (Map<String, Object>) rawData.get("rate_limits");
+        if (rootLimits != null) {
+            Map<String, Object> rootDefault = (Map<String, Object>) rootLimits.get("default");
+            if (rootDefault != null) {
+                rootRpm = rootDefault.get("requests_per_minute") instanceof Number n ? n.intValue() : null;
+                rootRpd = rootDefault.get("requests_per_day") instanceof Number n ? n.intValue() : null;
+            }
+        }
+
+        Map<String, RateLimitAdvisor.AdvisoryLimit> unitLimits = new HashMap<>();
+        List<Map<String, Object>> rawUnits = (List<Map<String, Object>>) rawData.getOrDefault("units", List.of());
+        for (Map<String, Object> rawUnit : rawUnits) {
+            String id = (String) rawUnit.get("id");
+            if (id == null) continue;
+
+            Map<String, Object> unitRateLimits = (Map<String, Object>) rawUnit.get("rate_limits");
+            if (unitRateLimits != null) {
+                Map<String, Object> unitDefault = (Map<String, Object>) unitRateLimits.get("default");
+                if (unitDefault != null) {
+                    Integer rpm = unitDefault.get("requests_per_minute") instanceof Number n ? n.intValue() : null;
+                    Integer rpd = unitDefault.get("requests_per_day") instanceof Number n ? n.intValue() : null;
+                    unitLimits.put(id, new RateLimitAdvisor.AdvisoryLimit(rpm, rpd));
+                    continue;
+                }
+            }
+            // Fall back to root default
+            unitLimits.put(id, new RateLimitAdvisor.AdvisoryLimit(rootRpm, rootRpd));
+        }
+
+        return new RateLimitAdvisor(unitLimits);
+    }
+
     private void accessUnit(String label, String unitId, SimulatedToken token) {
         log.query(label, "Requesting unit: " + unitId);
 
@@ -357,13 +446,14 @@ public final class ComplianceOrchestratorAgent {
 
     private void printSummary() {
         log.header("SIMULATION SUMMARY");
-        log.summary("Units loaded successfully:  " + unitsLoaded);
-        log.summary("Access denied (policy):     " + accessDeniedPolicy);
-        log.summary("Access denied (delegation): " + accessDeniedDelegation);
-        log.summary("Access denied (compliance): " + accessDeniedCompliance);
-        log.summary("HITL approvals:             " + humanApprovals);
-        log.summary("Audit entries:              " + auditEntries);
-        log.summary("Violations detected:        " + violationsDetected);
+        log.summary("Units loaded successfully:    " + unitsLoaded);
+        log.summary("Access denied (policy):       " + accessDeniedPolicy);
+        log.summary("Access denied (delegation):   " + accessDeniedDelegation);
+        log.summary("Access denied (compliance):   " + accessDeniedCompliance);
+        log.summary("HITL approvals:               " + humanApprovals);
+        log.summary("Rate limit advisory violations: " + rateLimitAdvisoryViolations);
+        log.summary("Audit entries:                " + auditEntries);
+        log.summary("Violations detected:          " + violationsDetected);
     }
 
     // --- Accessors for testing ---
@@ -374,4 +464,6 @@ public final class ComplianceOrchestratorAgent {
     public int humanApprovals() { return humanApprovals; }
     public int auditEntries() { return auditEntries; }
     public int violationsDetected() { return violationsDetected; }
+    public int rateLimitAdvisoryViolations() { return rateLimitAdvisoryViolations; }
+    public RateLimitAdvisor rateLimitAdvisor() { return rateLimitAdvisor; }
 }

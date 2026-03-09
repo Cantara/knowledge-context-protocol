@@ -1,0 +1,184 @@
+# NovaPlatform v1 → v2 Migration — KCP manifest
+# Companion to the scenario5 dependency-ordering simulator.
+#
+# 8 units exercising all 5 relationship types:
+#   depends_on, enables, supersedes, contradicts, context
+#
+# The simulator builds a dependency graph from both inline depends_on fields
+# and relationships[] entries, topologically sorts, and loads in safe order.
+
+kcp_version: "0.8"
+project: novaplatform-migration
+version: "2.0.0"
+updated: "2026-03-09"
+language: en
+license: Apache-2.0
+
+trust:
+  provenance:
+    publisher: "NovaPlatform Engineering"
+    publisher_url: "https://docs.novaplatform.example"
+    contact: "platform-team@novaplatform.example"
+
+rate_limits:
+  default:
+    requests_per_minute: 60
+    requests_per_day: 5000
+
+units:
+
+  - id: platform-overview
+    path: docs/overview/platform-v1.md
+    intent: "What is the current NovaPlatform v1 architecture, its components, and how do they interact?"
+    scope: global
+    audience: [human, agent, developer, architect]
+    validated: "2026-03-01"
+    access: public
+    sensitivity: public
+    triggers:
+      - "platform overview"
+      - "v1 architecture"
+      - "current architecture"
+
+  - id: migration-guide
+    path: docs/migration/v1-to-v2.md
+    intent: "How do I migrate from NovaPlatform v1 to v2, step by step?"
+    scope: global
+    audience: [human, agent, developer]
+    validated: "2026-03-01"
+    access: public
+    sensitivity: public
+    depends_on: [platform-overview]
+    triggers:
+      - "migration"
+      - "upgrade"
+      - "v1 to v2"
+
+  - id: api-v1-reference
+    path: docs/api/v1-reference.md
+    intent: "What are the NovaPlatform v1 API endpoints and response schemas?"
+    scope: global
+    audience: [human, agent, developer]
+    validated: "2025-06-15"
+    access: public
+    sensitivity: public
+    deprecated: true
+    triggers:
+      - "v1 API"
+      - "legacy API"
+
+  - id: api-v2-reference
+    path: docs/api/v2-reference.md
+    intent: "What are the NovaPlatform v2 API endpoints and response schemas?"
+    scope: global
+    audience: [human, agent, developer]
+    validated: "2026-03-01"
+    access: public
+    sensitivity: public
+    depends_on: [migration-guide]
+    supersedes: api-v1-reference
+    triggers:
+      - "v2 API"
+      - "new API"
+
+  - id: deployment-guide
+    path: docs/ops/deployment-v2.md
+    intent: "How do I deploy NovaPlatform v2 to production?"
+    scope: project
+    audience: [human, agent, developer, operator]
+    validated: "2026-03-01"
+    access: authenticated
+    sensitivity: internal
+    depends_on: [api-v2-reference]
+    triggers:
+      - "deployment"
+      - "production"
+      - "infrastructure"
+
+  - id: legacy-security-policy
+    path: docs/security/legacy-perimeter.md
+    intent: "What was the NovaPlatform v1 perimeter-based security policy?"
+    scope: module
+    audience: [human, agent, architect]
+    validated: "2024-01-15"
+    access: authenticated
+    sensitivity: internal
+    deprecated: true
+    triggers:
+      - "legacy security"
+      - "perimeter security"
+
+  - id: zero-trust-policy
+    path: docs/security/zero-trust.md
+    intent: "What is the NovaPlatform v2 zero-trust security policy?"
+    scope: module
+    audience: [human, agent, architect]
+    validated: "2026-03-01"
+    access: authenticated
+    sensitivity: internal
+    supersedes: legacy-security-policy
+    triggers:
+      - "zero trust"
+      - "mTLS"
+      - "v2 security"
+
+  - id: troubleshooting
+    path: docs/ops/troubleshooting.md
+    intent: "How do I diagnose and fix common issues after deploying NovaPlatform v2?"
+    scope: project
+    audience: [human, agent, developer, operator]
+    validated: "2026-03-01"
+    access: public
+    sensitivity: public
+    depends_on: [deployment-guide]
+    triggers:
+      - "troubleshooting"
+      - "error"
+      - "debug"
+
+relationships:
+
+  # depends_on
+  - from: migration-guide
+    to: platform-overview
+    type: depends_on
+
+  - from: api-v2-reference
+    to: migration-guide
+    type: depends_on
+
+  - from: deployment-guide
+    to: api-v2-reference
+    type: depends_on
+
+  - from: troubleshooting
+    to: deployment-guide
+    type: depends_on
+
+  # enables
+  - from: platform-overview
+    to: migration-guide
+    type: enables
+
+  - from: deployment-guide
+    to: troubleshooting
+    type: enables
+
+  # supersedes
+  - from: api-v2-reference
+    to: api-v1-reference
+    type: supersedes
+
+  - from: zero-trust-policy
+    to: legacy-security-policy
+    type: supersedes
+
+  # contradicts
+  - from: legacy-security-policy
+    to: zero-trust-policy
+    type: contradicts
+
+  # context
+  - from: legacy-security-policy
+    to: zero-trust-policy
+    type: context

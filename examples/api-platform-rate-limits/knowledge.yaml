@@ -1,0 +1,159 @@
+# API Platform Rate Limits — KCP manifest
+# Demonstrates rate_limits at root and unit level (SPEC.md §4.15).
+#
+# Scenario: TechCorp publishes API documentation via KCP. Different tiers
+# of docs have different rate limits — from generous public quickstart guides
+# to tightly controlled internal architecture docs.
+#
+# Key points:
+#   - Root-level rate_limits apply to all units unless overridden
+#   - Unit-level rate_limits override the root default entirely
+#   - rate_limits is advisory — agents should self-throttle, not expect enforcement
+#   - Access tier and rate limit escalation are independent but correlated
+
+kcp_version: "0.8"
+project: techcorp-api-platform
+version: "2.1.0"
+updated: "2026-03-09"
+language: en
+license: CC-BY-4.0
+
+trust:
+  provenance:
+    publisher: "TechCorp Developer Relations"
+    publisher_url: "https://developers.techcorp.example"
+    contact: "devrel@techcorp.example"
+
+# Root-level default: generous for public docs, agents should self-throttle
+rate_limits:
+  default:
+    requests_per_minute: 120
+    requests_per_day: 10000
+
+auth:
+  methods:
+    - type: oauth2
+      issuer: "https://auth.techcorp.example"
+      scopes: ["docs:read", "internal:read", "partner:read"]
+      header: Authorization
+    - type: none
+
+units:
+  - id: api-quickstart
+    path: docs/quickstart.md
+    intent: "How do I get started with the TechCorp API in under 5 minutes?"
+    scope: global
+    audience: [human, agent, developer]
+    validated: "2026-03-01"
+    access: public
+    sensitivity: public
+    triggers:
+      - "quickstart"
+      - "getting started"
+      - "hello world"
+      - "first API call"
+    # No unit-level rate_limits — inherits root default (120/min, 10000/day)
+
+  - id: api-reference
+    path: docs/reference/api-reference.md
+    intent: "What are all available API endpoints, parameters, and response schemas?"
+    scope: global
+    audience: [human, agent, developer]
+    validated: "2026-03-01"
+    access: public
+    sensitivity: public
+    depends_on: [api-quickstart]
+    triggers:
+      - "API reference"
+      - "endpoint"
+      - "parameters"
+      - "response schema"
+    # Moderate limits — large doc, agents should pace themselves
+    rate_limits:
+      default:
+        requests_per_minute: 60
+        requests_per_day: 5000
+
+  - id: sdk-guide
+    path: docs/sdk/guide.md
+    intent: "How do I use the official TechCorp SDKs for Python, Java, and TypeScript?"
+    scope: project
+    audience: [human, agent, developer]
+    validated: "2026-03-01"
+    access: authenticated
+    auth_scope: docs:read
+    sensitivity: internal
+    depends_on: [api-reference]
+    triggers:
+      - "SDK"
+      - "Python SDK"
+      - "Java SDK"
+      - "TypeScript SDK"
+      - "client library"
+    rate_limits:
+      default:
+        requests_per_minute: 30
+        requests_per_day: 2000
+
+  - id: partner-integration-guide
+    path: docs/partner/integration.md
+    intent: "What are the partner-specific API extensions, webhooks, and SLA guarantees?"
+    scope: module
+    audience: [agent, partner]
+    validated: "2026-03-01"
+    access: restricted
+    auth_scope: partner:read
+    sensitivity: confidential
+    depends_on: [api-reference]
+    triggers:
+      - "partner"
+      - "webhook"
+      - "SLA"
+      - "integration guide"
+    # Tight limits — confidential partner content
+    rate_limits:
+      default:
+        requests_per_minute: 10
+        requests_per_day: 200
+
+  - id: internal-architecture
+    path: docs/internal/architecture.md
+    intent: "What is the internal architecture, data flow, and service topology of the TechCorp platform?"
+    scope: module
+    audience: [agent]
+    validated: "2026-03-01"
+    access: restricted
+    auth_scope: internal:read
+    sensitivity: restricted
+    depends_on: [api-reference, partner-integration-guide]
+    triggers:
+      - "architecture"
+      - "data flow"
+      - "service topology"
+      - "internal"
+    # Very tight limits — internal only
+    rate_limits:
+      default:
+        requests_per_minute: 5
+        requests_per_day: 50
+
+relationships:
+  - from: api-quickstart
+    to: api-reference
+    type: enables
+
+  - from: api-reference
+    to: sdk-guide
+    type: enables
+
+  - from: api-reference
+    to: partner-integration-guide
+    type: enables
+
+  - from: api-reference
+    to: internal-architecture
+    type: depends_on
+
+  - from: partner-integration-guide
+    to: internal-architecture
+    type: context

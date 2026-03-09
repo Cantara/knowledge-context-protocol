@@ -7,11 +7,14 @@
 #   - 5 knowledge units with escalating access and compliance constraints
 #   - 7 phases including 4 adversarial attack attempts
 #
-# Compliance fields (RFC-0004, not in v0.6 core):
+# v0.8 additions:
+#   - rate_limits at root (60/min, 1000/day) and unit level (customer-profiles, raw-wire-transfers)
+#
+# Compliance fields (RFC-0004, not in v0.8 core):
 #   - regulations, data_residency, restrictions are parsed from raw YAML
 #   - Enforcement is application-defined until RFC-0004 promotes to core
 
-kcp_version: "0.6"
+kcp_version: "0.8"
 project: transaction-intelligence-agent
 version: 1.0.0
 updated: "2026-03-08"
@@ -34,6 +37,12 @@ auth:
       token_endpoint: "https://auth.aml.example.com/oauth2/token"
       scopes: ["read:sanctions", "read:transactions", "aml-analyst", "compliance-officer"]
     - type: none
+
+# Root-level advisory rate limits (SPEC.md §4.15).
+rate_limits:
+  default:
+    requests_per_minute: 60
+    requests_per_day: 1000
 
 # Root-level delegation constraints (RFC-0002 Proposal 3).
 delegation:
@@ -97,6 +106,11 @@ units:
       - "risk rating"
       - "beneficial owner"
       - "PEP"
+    # Tight rate limits — PII data, agents must pace themselves
+    rate_limits:
+      default:
+        requests_per_minute: 5
+        requests_per_day: 50
     delegation:
       max_depth: 2
       human_in_the_loop:
@@ -150,6 +164,11 @@ units:
       - "SWIFT"
       - "raw transfer"
       - "routing"
+    # Very tight rate limits — most sensitive data
+    rate_limits:
+      default:
+        requests_per_minute: 2
+        requests_per_day: 20
     delegation:
       max_depth: 0
     compliance:

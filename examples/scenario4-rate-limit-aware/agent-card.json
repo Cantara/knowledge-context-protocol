@@ -1,0 +1,18 @@
+{
+  "name": "PoliteAgent",
+  "description": "A rate-limit-aware documentation agent that reads KCP manifests and self-throttles based on advisory rate_limits.",
+  "url": "https://agents.example.com/polite-agent",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "skills": [
+    {
+      "id": "read-docs",
+      "name": "Documentation Reader",
+      "description": "Reads documentation units respecting advisory rate limits declared in KCP manifests."
+    }
+  ],
+  "knowledgeManifest": "knowledge.yaml"
+}

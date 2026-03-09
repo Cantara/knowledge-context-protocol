@@ -204,8 +204,19 @@ public class KcpParser {
     @SuppressWarnings("unchecked")
     private static Compliance parseCompliance(Map<String, Object> c) {
         if (c == null) return null;
+        // data_residency can be a list (e.g. [EU]) or a map (e.g. {regions: [EU]})
+        List<String> dataResidency = null;
+        Object dr = c.get("data_residency");
+        if (dr instanceof List<?>) {
+            dataResidency = (List<String>) dr;
+        } else if (dr instanceof Map<?, ?> drMap) {
+            Object regions = ((Map<String, Object>) drMap).get("regions");
+            if (regions instanceof List<?>) {
+                dataResidency = (List<String>) regions;
+            }
+        }
         return new Compliance(
-                (List<String>) c.get("data_residency"),
+                dataResidency,
                 (String) c.get("sensitivity"),
                 (List<String>) c.get("regulations"),
                 (List<String>) c.get("restrictions")

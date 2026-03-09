@@ -65,11 +65,37 @@ Blog post: [The Front Door and the Filing Cabinet](https://wiki.totto.org/blog/2
 
 ---
 
+## [api-platform-rate-limits/](./api-platform-rate-limits/)
+
+**`rate_limits` at root and unit level. Access tier escalation.**
+
+An API documentation platform where different documentation tiers have different advisory rate limits. Shows:
+- Root-level `rate_limits` as default for all units
+- Unit-level overrides (from generous 120/min for public quickstart to tight 5/min for internal architecture)
+- Correlation between `access`/`sensitivity` and rate limit tightness
+- `depends_on` vs `enables` vs `context` relationship types
+- Advisory semantics: agents self-throttle, KCP does not enforce
+
+---
+
+## [dependency-graph/](./dependency-graph/)
+
+**All 5 relationship types. Platform migration scenario.**
+
+A NovaPlatform v1-to-v2 migration with 8 units exercising every relationship type:
+- `depends_on` — migration-guide depends on platform-overview
+- `enables` — platform-overview enables migration-guide
+- `supersedes` — api-v2-reference supersedes api-v1-reference
+- `contradicts` — legacy-security-policy contradicts zero-trust-policy
+- `context` — legacy-security-policy provides context for zero-trust-policy
+
+---
+
 ---
 
 ## Simulation Scenarios
 
-Three runnable Java simulators that stress-test the A2A + KCP composition model at increasing complexity. Each surfaces specific spec behaviours and gaps, contributing to the v0.7+ roadmap.
+Five runnable Java simulators that stress-test the A2A + KCP composition model at increasing complexity. Each surfaces specific spec behaviours and gaps, contributing to the v0.8+ roadmap.
 
 ### [scenario1-energy-metering/](./scenario1-energy-metering/)
 
@@ -89,11 +115,23 @@ Spec gaps surfaced: capability attenuation is declarative not mechanical; depth 
 
 ### [scenario3-financial-aml/](./scenario3-financial-aml/)
 
-**Level 3 — Adversarial (5 agents, 7 phases)**
+**Level 3 — Adversarial (5 agents, 8 phases)**
 
-Anti-money-laundering compliance orchestration with a `RogueAgent` that attempts 4 distinct violations: delegation depth exceeded, scope elevation, `max_depth: 0` bypass, and GDPR data residency block.
+Anti-money-laundering compliance orchestration with a `RogueAgent` that attempts 4 distinct violations plus a rate limit advisory burst: delegation depth exceeded, scope elevation, `max_depth: 0` bypass, GDPR data residency block, and advisory `rate_limits` burst on `customer-profiles`.
 
-Spec gaps surfaced: no cryptographic delegation chain integrity; `no_ai_training` restriction is unenforceable; batched HITL flow is undefined; `compliance` block is RFC-0004, not v0.6 core.
+Spec gaps surfaced: no cryptographic delegation chain integrity; `no_ai_training` restriction is unenforceable; batched HITL flow is undefined; `compliance` block is RFC-0004, not v0.8 core.
+
+### [scenario4-rate-limit-aware/](./scenario4-rate-limit-aware/)
+
+**Level 4 — Rate Limit Advisory (2 agents, 4 units)**
+
+Two agents — PoliteAgent (self-throttling) and GreedyAgent (burst) — access the same manifest with escalating advisory `rate_limits`. PoliteAgent checks `isWithinLimit()` before each request and waits when the budget is exhausted. GreedyAgent ignores limits entirely but logs every `ADVISORY VIOLATION`. Demonstrates that `rate_limits` is metadata, not enforcement.
+
+### [scenario5-dependency-ordering/](./scenario5-dependency-ordering/)
+
+**Level 5 — Dependency Ordering (topological sort, all 5 relationship types)**
+
+A knowledge ingestion agent that builds a dependency graph from `depends_on` fields and `type: depends_on` relationships, topologically sorts using Kahn's algorithm, and loads units in safe order. Handles `supersedes` (logs "prefer this version"), `contradicts` (flags warnings), cycle detection with `CycleException`, and cascading skip when a dependency fails. 8 units from a platform migration scenario.
 
 ---
 
@@ -106,3 +144,5 @@ Spec gaps surfaced: no cryptographic delegation chain integrity; `no_ai_training
 | **Open source wiki** | + `triggers`, `relationships` | Multi-section knowledge bases, community docs |
 | **Enterprise** | + full relationship graph, role-based audience, cross-repo units | Large orgs, multiple repositories, agent deployments |
 | **Multi-agent** | + A2A Agent Card, `auth`, `delegation`, `trust.audit`, per-unit PII | Multi-agent systems, regulated domains, delegation chains |
+| **Rate-limited** | + `rate_limits` at root and unit level, advisory self-throttling | High-traffic APIs, tiered documentation, agent ecosystems |
+| **Dependency-aware** | + all 5 relationship types, topological ordering, cycle detection | Platform migrations, versioned docs, policy evolution |

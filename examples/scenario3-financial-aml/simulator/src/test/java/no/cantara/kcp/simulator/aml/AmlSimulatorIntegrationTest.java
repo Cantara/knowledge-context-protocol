@@ -230,42 +230,42 @@ class AmlSimulatorIntegrationTest {
     @Test
     void summaryShowsCorrectUnitCount() throws IOException {
         String output = runSimulator();
-        assertTrue(output.contains("Units loaded successfully:  6"),
+        assertTrue(output.contains("Units loaded successfully:    6"),
                 "Should show 6 units loaded (2 happy + 2 HITL + 2 delegated): " + extractSummary(output));
     }
 
     @Test
     void summaryShowsPolicyDenials() throws IOException {
         String output = runSimulator();
-        assertTrue(output.contains("Access denied (policy):     1"),
+        assertTrue(output.contains("Access denied (policy):       1"),
                 "Should show 1 policy denial (scope elevation): " + extractSummary(output));
     }
 
     @Test
     void summaryShowsDelegationDenials() throws IOException {
         String output = runSimulator();
-        assertTrue(output.contains("Access denied (delegation): 2"),
+        assertTrue(output.contains("Access denied (delegation):   2"),
                 "Should show 2 delegation denials (depth + no-delegation): " + extractSummary(output));
     }
 
     @Test
     void summaryShowsComplianceDenials() throws IOException {
         String output = runSimulator();
-        assertTrue(output.contains("Access denied (compliance): 1"),
+        assertTrue(output.contains("Access denied (compliance):   1"),
                 "Should show 1 compliance denial (data residency): " + extractSummary(output));
     }
 
     @Test
     void summaryShowsHitlApprovals() throws IOException {
         String output = runSimulator();
-        assertTrue(output.contains("HITL approvals:             2"),
+        assertTrue(output.contains("HITL approvals:               2"),
                 "Should show 2 HITL approvals: " + extractSummary(output));
     }
 
     @Test
     void summaryShowsViolationsDetected() throws IOException {
         String output = runSimulator();
-        assertTrue(output.contains("Violations detected:        4"),
+        assertTrue(output.contains("Violations detected:          4"),
                 "Should show 4 violations (depth + scope + no-delegation + compliance): "
                         + extractSummary(output));
     }
@@ -280,7 +280,50 @@ class AmlSimulatorIntegrationTest {
         assertTrue(output.contains("Phase 5"), "Should contain Phase 5");
         assertTrue(output.contains("Phase 6"), "Should contain Phase 6");
         assertTrue(output.contains("Phase 7"), "Should contain Phase 7");
+        assertTrue(output.contains("Phase 8"), "Should contain Phase 8");
         assertTrue(output.contains("SIMULATION SUMMARY"), "Should contain summary");
+    }
+
+    // --- Phase 8: Rate Limit Advisory ---
+
+    @Test
+    void phase8_rogueRateLimitBurst() throws IOException {
+        String output = runSimulator();
+        int posP8 = output.indexOf("[P8]");
+        assertTrue(posP8 >= 0, "Should have P8");
+        int posSummary = output.indexOf("SIMULATION SUMMARY", posP8);
+        String block = output.substring(posP8, posSummary > 0 ? posSummary : output.length());
+        assertTrue(block.contains("customer-profiles"), "P8 should reference customer-profiles");
+        assertTrue(block.contains("ADVISORY_VIOLATION"), "P8 should log advisory violations");
+        assertTrue(block.contains("RogueAgent exceeded rate_limits advisory"),
+                "P8 should report exceeded advisory");
+    }
+
+    @Test
+    void phase8_advisoryViolationsLogged() throws IOException {
+        String output = runSimulator();
+        assertTrue(output.contains("RATE_LIMIT_ADVISORY"), "Should contain RATE_LIMIT_ADVISORY audit entry");
+    }
+
+    @Test
+    void phase8_rateLimitAdvisoryViolationsCountedInSummary() throws IOException {
+        String output = runSimulator();
+        assertTrue(output.contains("Rate limit advisory violations: 5"),
+                "Should show 5 advisory violations (10 burst - 5 within limit): " + extractSummary(output));
+    }
+
+    @Test
+    void phase8_rateLimitAdvisorDetectsCorrectLimit() throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ConsoleLog log = new ConsoleLog(new PrintStream(baos));
+        ComplianceOrchestratorAgent orchestrator = new ComplianceOrchestratorAgent(log, true);
+        orchestrator.run(agentCardPath(), manifestPath());
+
+        RateLimitAdvisor advisor = orchestrator.rateLimitAdvisor();
+        assertNotNull(advisor, "Rate limit advisor should be initialized");
+        RateLimitAdvisor.AdvisoryLimit cpLimit = advisor.getLimit("customer-profiles");
+        assertEquals(5, cpLimit.requestsPerMinute(), "customer-profiles should have 5/min limit");
+        assertEquals(50, cpLimit.requestsPerDay(), "customer-profiles should have 50/day limit");
     }
 
     // --- Stats accessors ---
@@ -298,6 +341,8 @@ class AmlSimulatorIntegrationTest {
         assertEquals(1, orchestrator.accessDeniedCompliance());
         assertEquals(2, orchestrator.humanApprovals());
         assertEquals(4, orchestrator.violationsDetected());
+        assertEquals(5, orchestrator.rateLimitAdvisoryViolations(),
+                "10 burst requests - 5 within limit = 5 advisory violations");
     }
 
     private String extractSummary(String output) {

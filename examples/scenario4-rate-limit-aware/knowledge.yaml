@@ -1,0 +1,125 @@
+# Rate-Limit-Aware Agent — KCP manifest
+# Companion to the scenario4 simulator.
+#
+# Demonstrates rate_limits at root and unit level with 4 units of escalating
+# access and tightening advisory rate limits.
+#
+# Root default: 30/min, 1000/day
+# Units override: from generous (120/min) to very tight (2/min)
+
+kcp_version: "0.8"
+project: rate-limit-demo
+version: "1.0.0"
+updated: "2026-03-09"
+language: en
+license: Apache-2.0
+
+trust:
+  provenance:
+    publisher: "Example Corp Documentation"
+    publisher_url: "https://docs.example.com"
+    contact: "docs-team@example.com"
+  audit:
+    agent_must_log: true
+    require_trace_context: true
+
+rate_limits:
+  default:
+    requests_per_minute: 30
+    requests_per_day: 1000
+
+auth:
+  methods:
+    - type: oauth2
+      issuer: "https://auth.example.com"
+      scopes: ["docs:read", "internal:read", "compliance:read"]
+    - type: none
+
+units:
+
+  - id: public-docs
+    path: docs/public/index.md
+    intent: "What public documentation is available and how is it organised?"
+    scope: global
+    audience: [human, agent, developer]
+    validated: "2026-03-01"
+    access: public
+    sensitivity: public
+    triggers:
+      - "public docs"
+      - "documentation"
+      - "getting started"
+    rate_limits:
+      default:
+        requests_per_minute: 120
+        requests_per_day: 10000
+
+  - id: api-reference
+    path: docs/api/reference.md
+    intent: "What are the API endpoints, parameters, and response formats?"
+    scope: project
+    audience: [human, agent, developer]
+    validated: "2026-03-01"
+    access: authenticated
+    auth_scope: docs:read
+    sensitivity: internal
+    depends_on: [public-docs]
+    triggers:
+      - "API reference"
+      - "endpoints"
+      - "parameters"
+    rate_limits:
+      default:
+        requests_per_minute: 60
+        requests_per_day: 5000
+
+  - id: internal-guide
+    path: docs/internal/guide.md
+    intent: "What are the internal implementation details, architecture decisions, and operational runbooks?"
+    scope: module
+    audience: [agent, developer]
+    validated: "2026-03-01"
+    access: restricted
+    auth_scope: internal:read
+    sensitivity: confidential
+    depends_on: [api-reference]
+    triggers:
+      - "internal guide"
+      - "architecture"
+      - "runbook"
+    rate_limits:
+      default:
+        requests_per_minute: 10
+        requests_per_day: 200
+
+  - id: compliance-data
+    path: docs/compliance/audit-records.md
+    intent: "What are the compliance audit records, regulatory filings, and data handling policies?"
+    scope: module
+    audience: [agent]
+    validated: "2026-03-01"
+    access: restricted
+    auth_scope: compliance:read
+    sensitivity: restricted
+    depends_on: [internal-guide]
+    triggers:
+      - "compliance"
+      - "audit records"
+      - "regulatory"
+    rate_limits:
+      default:
+        requests_per_minute: 2
+        requests_per_day: 20
+
+relationships:
+  - from: public-docs
+    to: api-reference
+    type: enables
+
+  - from: api-reference
+    to: internal-guide
+    type: enables
+
+  - from: internal-guide
+    to: compliance-data
+    type: enables

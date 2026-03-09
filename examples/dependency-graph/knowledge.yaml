@@ -1,0 +1,227 @@
+# NovaPlatform v1 → v2 Migration — KCP manifest
+# Demonstrates all 5 relationship types: depends_on, enables, supersedes,
+# contradicts, and context.
+#
+# Scenario: A platform migration project with 8 knowledge units covering
+# the old v1 architecture, the new v2 APIs, deployment guides, security
+# policy evolution, and troubleshooting.
+
+kcp_version: "0.8"
+project: novaplatform-migration
+version: "2.0.0"
+updated: "2026-03-09"
+language: en
+license: Apache-2.0
+
+trust:
+  provenance:
+    publisher: "NovaPlatform Engineering"
+    publisher_url: "https://docs.novaplatform.example"
+    contact: "platform-team@novaplatform.example"
+
+auth:
+  methods:
+    - type: oauth2
+      issuer: "https://auth.novaplatform.example"
+      scopes: ["docs:read"]
+    - type: none
+
+rate_limits:
+  default:
+    requests_per_minute: 60
+    requests_per_day: 5000
+
+units:
+
+  # -- Current v1 architecture overview (public, no deps) ----------------------
+
+  - id: platform-overview
+    path: docs/overview/platform-v1.md
+    intent: "What is the current NovaPlatform v1 architecture, its components, and how do they interact?"
+    scope: global
+    audience: [human, agent, developer, architect]
+    validated: "2026-03-01"
+    access: public
+    sensitivity: public
+    triggers:
+      - "platform overview"
+      - "v1 architecture"
+      - "current architecture"
+      - "system components"
+
+  # -- Migration guide (public, depends on platform-overview) -------------------
+
+  - id: migration-guide
+    path: docs/migration/v1-to-v2.md
+    intent: "How do I migrate from NovaPlatform v1 to v2, step by step?"
+    scope: global
+    audience: [human, agent, developer]
+    validated: "2026-03-01"
+    access: public
+    sensitivity: public
+    depends_on: [platform-overview]
+    triggers:
+      - "migration"
+      - "upgrade"
+      - "v1 to v2"
+      - "breaking changes"
+      - "migration steps"
+
+  # -- Deprecated v1 API docs (public) -----------------------------------------
+
+  - id: api-v1-reference
+    path: docs/api/v1-reference.md
+    intent: "What are the NovaPlatform v1 API endpoints, request formats, and response schemas?"
+    scope: global
+    audience: [human, agent, developer]
+    validated: "2025-06-15"
+    access: public
+    sensitivity: public
+    deprecated: true
+    triggers:
+      - "v1 API"
+      - "legacy API"
+      - "old endpoints"
+      - "v1 reference"
+
+  # -- New v2 API docs, supersedes v1 (public) ---------------------------------
+
+  - id: api-v2-reference
+    path: docs/api/v2-reference.md
+    intent: "What are the NovaPlatform v2 API endpoints, request formats, and response schemas?"
+    scope: global
+    audience: [human, agent, developer]
+    validated: "2026-03-01"
+    access: public
+    sensitivity: public
+    depends_on: [migration-guide]
+    supersedes: api-v1-reference
+    triggers:
+      - "v2 API"
+      - "new API"
+      - "current endpoints"
+      - "v2 reference"
+
+  # -- Deployment guide for v2 (authenticated) ----------------------------------
+
+  - id: deployment-guide
+    path: docs/ops/deployment-v2.md
+    intent: "How do I deploy NovaPlatform v2 to production, including infrastructure requirements and rollback procedures?"
+    scope: project
+    audience: [human, agent, developer, operator]
+    validated: "2026-03-01"
+    access: authenticated
+    sensitivity: internal
+    depends_on: [api-v2-reference]
+    triggers:
+      - "deployment"
+      - "production"
+      - "infrastructure"
+      - "rollback"
+      - "Kubernetes"
+
+  # -- Legacy security policy (internal, contradicts zero-trust) ----------------
+
+  - id: legacy-security-policy
+    path: docs/security/legacy-perimeter.md
+    intent: "What was the NovaPlatform v1 perimeter-based security policy and its network trust assumptions?"
+    scope: module
+    audience: [human, agent, architect]
+    validated: "2024-01-15"
+    access: authenticated
+    sensitivity: internal
+    deprecated: true
+    triggers:
+      - "legacy security"
+      - "perimeter security"
+      - "network trust"
+      - "firewall rules"
+      - "v1 security"
+
+  # -- New zero-trust policy, supersedes legacy (internal) ----------------------
+
+  - id: zero-trust-policy
+    path: docs/security/zero-trust.md
+    intent: "What is the NovaPlatform v2 zero-trust security policy, mTLS requirements, and identity verification model?"
+    scope: module
+    audience: [human, agent, architect]
+    validated: "2026-03-01"
+    access: authenticated
+    sensitivity: internal
+    supersedes: legacy-security-policy
+    triggers:
+      - "zero trust"
+      - "mTLS"
+      - "identity verification"
+      - "v2 security"
+      - "service mesh"
+
+  # -- Troubleshooting guide (public) ------------------------------------------
+
+  - id: troubleshooting
+    path: docs/ops/troubleshooting.md
+    intent: "How do I diagnose and fix common issues after deploying NovaPlatform v2?"
+    scope: project
+    audience: [human, agent, developer, operator]
+    validated: "2026-03-01"
+    access: public
+    sensitivity: public
+    depends_on: [deployment-guide]
+    triggers:
+      - "troubleshooting"
+      - "error"
+      - "debug"
+      - "common issues"
+      - "fix"
+
+relationships:
+
+  # depends_on: migration-guide requires platform-overview to be understood first
+  - from: migration-guide
+    to: platform-overview
+    type: depends_on
+
+  # depends_on: api-v2-reference requires migration-guide context
+  - from: api-v2-reference
+    to: migration-guide
+    type: depends_on
+
+  # depends_on: deployment-guide requires api-v2-reference
+  - from: deployment-guide
+    to: api-v2-reference
+    type: depends_on
+
+  # depends_on: troubleshooting requires deployment-guide
+  - from: troubleshooting
+    to: deployment-guide
+    type: depends_on
+
+  # enables: platform-overview enables the migration process
+  - from: platform-overview
+    to: migration-guide
+    type: enables
+
+  # enables: deployment-guide enables troubleshooting
+  - from: deployment-guide
+    to: troubleshooting
+    type: enables
+
+  # supersedes: v2 API replaces v1 API
+  - from: api-v2-reference
+    to: api-v1-reference
+    type: supersedes
+
+  # supersedes: zero-trust policy replaces legacy perimeter security
+  - from: zero-trust-policy
+    to: legacy-security-policy
+    type: supersedes
+
+  # contradicts: legacy security policy conflicts with zero-trust policy
+  - from: legacy-security-policy
+    to: zero-trust-policy
+    type: contradicts
+
+  # context: legacy security policy provides historical context for zero-trust
+  - from: legacy-security-policy
+    to: zero-trust-policy
+    type: context
