@@ -99,9 +99,7 @@ units:
       - "PEP"
     delegation:
       max_depth: 2
-      human_in_the_loop:
-        required: true
-        approval_mechanism: oauth_consent
+      human_in_the_loop: approval
     # RFC-0004 compliance fields (not in v0.6 core, parsed from raw YAML)
     compliance:
       regulations: [GDPR, AML5D]
@@ -127,9 +125,7 @@ units:
       - "filing"
     delegation:
       max_depth: 1
-      human_in_the_loop:
-        required: true
-        approval_mechanism: manual
+      human_in_the_loop: approval
     compliance:
       regulations: [AML5D, FATF]
 

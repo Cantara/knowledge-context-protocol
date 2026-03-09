@@ -100,9 +100,7 @@ units:
       - "confidential"
     delegation:
       max_depth: 2
-      human_in_the_loop:
-        required: true
-        approval_mechanism: manual
+      human_in_the_loop: approval
 
   # -- Sealed court records (restricted, NO delegation) ------------------------
 
