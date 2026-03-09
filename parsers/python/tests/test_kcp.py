@@ -604,7 +604,7 @@ class TestDelegationParsing:
                 "max_depth": 2,
                 "require_capability_attenuation": True,
                 "audit_chain": False,
-                "human_in_the_loop": "required",
+                "human_in_the_loop": {"required": True, "approval_mechanism": "oauth_consent"},
             },
         }
         m = parse_dict(data)
@@ -612,7 +612,7 @@ class TestDelegationParsing:
         assert m.delegation.max_depth == 2
         assert m.delegation.require_capability_attenuation is True
         assert m.delegation.audit_chain is False
-        assert m.delegation.human_in_the_loop == "required"
+        assert m.delegation.human_in_the_loop == {"required": True, "approval_mechanism": "oauth_consent"}
 
     def test_parses_unit_delegation_override(self):
         data = {
@@ -621,7 +621,7 @@ class TestDelegationParsing:
                 **MINIMAL["units"][0],
                 "delegation": {
                     "max_depth": 0,
-                    "human_in_the_loop": "recommended",
+                    "human_in_the_loop": {"required": False, "approval_mechanism": "uma"},
                 },
             }],
         }
@@ -629,7 +629,7 @@ class TestDelegationParsing:
         u = m.units[0]
         assert u.delegation is not None
         assert u.delegation.max_depth == 0
-        assert u.delegation.human_in_the_loop == "recommended"
+        assert u.delegation.human_in_the_loop == {"required": False, "approval_mechanism": "uma"}
         assert u.delegation.require_capability_attenuation is None
 
     def test_absent_delegation_is_none(self):
@@ -871,19 +871,19 @@ class TestDelegationComplianceValidation:
     """Tests for delegation/compliance validation (#9, #11)."""
 
     def test_invalid_hitl_produces_error(self):
-        data = {**MINIMAL, "delegation": {"human_in_the_loop": "invalid-value"}}
+        data = {**MINIMAL, "delegation": {"human_in_the_loop": {"required": True, "approval_mechanism": "invalid-value"}}}
         m = parse_dict(data)
         result = validate(m)
         assert not result.is_valid
         assert any("human_in_the_loop" in e for e in result.errors)
 
     def test_valid_hitl_values_accepted(self):
-        for value in ["always", "on-sensitive", "never"]:
-            data = {**MINIMAL, "delegation": {"human_in_the_loop": value}}
+        for mech in ["oauth_consent", "uma", "custom"]:
+            data = {**MINIMAL, "delegation": {"human_in_the_loop": {"required": True, "approval_mechanism": mech}}}
             m = parse_dict(data)
             result = validate(m)
             assert not any("human_in_the_loop" in e for e in result.errors), \
-                f"human_in_the_loop='{value}' should be valid"
+                f"human_in_the_loop approval_mechanism='{mech}' should be valid"
 
     def test_unit_max_depth_exceeding_root_produces_error(self):
         data = {

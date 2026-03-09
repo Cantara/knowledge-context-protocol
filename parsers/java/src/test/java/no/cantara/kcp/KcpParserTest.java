@@ -792,7 +792,7 @@ class KcpParserTest {
                 "max_depth", 2,
                 "require_capability_attenuation", true,
                 "audit_chain", false,
-                "human_in_the_loop", "required"
+                "human_in_the_loop", Map.of("required", true, "approval_mechanism", "oauth_consent")
         ));
         Map<String, Object> data = new HashMap<>(MINIMAL);
         data.put("delegation", delegationMap);
@@ -801,14 +801,16 @@ class KcpParserTest {
         assertEquals(2, m.delegation().maxDepth());
         assertTrue(m.delegation().requireCapabilityAttenuation());
         assertFalse(m.delegation().auditChain());
-        assertEquals("required", m.delegation().humanInTheLoop());
+        assertNotNull(m.delegation().humanInTheLoop());
+        assertTrue(m.delegation().humanInTheLoop().required());
+        assertEquals("oauth_consent", m.delegation().humanInTheLoop().approvalMechanism());
     }
 
     @Test
     void parsesUnitDelegationOverride() {
         Map<String, Object> unitDelegation = new HashMap<>(Map.of(
                 "max_depth", 0,
-                "human_in_the_loop", "recommended"
+                "human_in_the_loop", Map.of("required", false, "approval_mechanism", "uma")
         ));
         Map<String, Object> unitData = new HashMap<>(Map.of(
                 "id", "u1", "path", "f.md", "intent", "test", "scope", "global",
@@ -822,7 +824,9 @@ class KcpParserTest {
         KnowledgeUnit u = m.units().get(0);
         assertNotNull(u.delegation());
         assertEquals(0, u.delegation().maxDepth());
-        assertEquals("recommended", u.delegation().humanInTheLoop());
+        assertNotNull(u.delegation().humanInTheLoop());
+        assertFalse(u.delegation().humanInTheLoop().required());
+        assertEquals("uma", u.delegation().humanInTheLoop().approvalMechanism());
         assertNull(u.delegation().requireCapabilityAttenuation());
     }
 
@@ -1054,7 +1058,8 @@ class KcpParserTest {
 
     @Test
     void invalidHitlValueProducesError() {
-        Map<String, Object> delegationMap = Map.of("human_in_the_loop", "invalid-value");
+        Map<String, Object> delegationMap = Map.of(
+                "human_in_the_loop", Map.of("required", true, "approval_mechanism", "invalid-value"));
         Map<String, Object> data = new HashMap<>(MINIMAL);
         data.put("delegation", delegationMap);
         KnowledgeManifest m = KcpParser.fromMap(data);
@@ -1065,14 +1070,15 @@ class KcpParserTest {
 
     @Test
     void validHitlValuesAccepted() {
-        for (String value : List.of("always", "on-sensitive", "never")) {
-            Map<String, Object> delegationMap = Map.of("human_in_the_loop", value);
+        for (String mech : List.of("oauth_consent", "uma", "custom")) {
+            Map<String, Object> delegationMap = Map.of(
+                    "human_in_the_loop", Map.of("required", true, "approval_mechanism", mech));
             Map<String, Object> data = new HashMap<>(MINIMAL);
             data.put("delegation", delegationMap);
             KnowledgeManifest m = KcpParser.fromMap(data);
             KcpValidator.ValidationResult result = KcpValidator.validate(m);
             assertTrue(result.errors().stream().noneMatch(e -> e.contains("human_in_the_loop")),
-                    "human_in_the_loop value '" + value + "' should be valid");
+                    "human_in_the_loop approval_mechanism '" + mech + "' should be valid");
         }
     }
 
