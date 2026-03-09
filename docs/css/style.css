@@ -2416,3 +2416,37 @@ section {
 .sim-gh-link:hover {
   color: var(--accent-primary);
 }
+
+/* ---------- Interactive Simulator (Phase 2) ---------- */
+.sim-interactive { margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--border-primary, #e2e8f0); }
+.sim-interactive-header { margin-bottom: 1.5rem; }
+.sim-interactive-header h3 { font-size: var(--fs-lg); margin-bottom: var(--space-2); }
+.sim-interactive-header p { color: var(--text-secondary); font-size: var(--fs-sm); }
+
+.sim-interactive-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+@media (max-width: 900px) { .sim-interactive-layout { grid-template-columns: 1fr; } }
+
+.sim-editor-wrap { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--border-primary, #e2e8f0); border-radius: var(--radius-lg, 8px); overflow: hidden; }
+.sim-editor-header { display: flex; justify-content: space-between; align-items: center; padding: var(--space-2) var(--space-3); background: #161b22; color: #e6edf3; font-family: var(--font-mono); font-size: var(--fs-xs); border-bottom: 1px solid #30363d; }
+.sim-editor { font-family: var(--font-mono); font-size: 0.78rem; line-height: 1.6; padding: var(--space-3); height: 320px; border: none; outline: none; background: #0d1117; color: #c9d1d9; resize: none; tab-size: 2; }
+.sim-editor-footer { display: flex; align-items: center; justify-content: space-between; padding: var(--space-2) var(--space-3); background: #161b22; border-top: 1px solid #30363d; gap: var(--space-2); flex-wrap: wrap; }
+.sim-editor-footer label { font-size: var(--fs-xs); color: #8b949e; display: flex; align-items: center; gap: 0.4rem; }
+.sim-btn--primary { background: var(--accent-primary, #3b82f6); border-color: var(--accent-primary, #3b82f6); color: white; font-weight: var(--fw-semibold); }
+.sim-btn--primary:hover { opacity: 0.9; }
+
+.sim-agents-wrap { display: flex; flex-direction: column; }
+.sim-agent-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; flex: 1; }
+@media (max-width: 600px) { .sim-agent-panels { grid-template-columns: 1fr; } }
+.sim-agent-panel { display: flex; flex-direction: column; border: 1px solid var(--border-primary, #e2e8f0); border-radius: var(--radius-lg, 8px); overflow: hidden; }
+.sim-agent-header { padding: 0.4rem 0.75rem; font-size: var(--fs-xs); font-weight: var(--fw-semibold); text-align: center; }
+.sim-agent-header--polite { background: #0d2c1a; color: #3fb950; border-bottom: 1px solid #1a4a2a; }
+.sim-agent-header--greedy { background: #2c0d0d; color: #f85149; border-bottom: 1px solid #4a1a1a; }
+.sim-terminal--sm { font-family: var(--font-mono); font-size: 0.72rem; line-height: 1.5; padding: 0.6rem; height: 280px; overflow-y: auto; background: #0d1117; color: #c9d1d9; }
+.sim-agent-summary { padding: 0.4rem 0.75rem; font-size: 0.78rem; font-family: var(--font-mono); background: #161b22; color: #8b949e; border-top: 1px solid #30363d; min-height: 2rem; }
+
+/* Interactive log line colors */
+.sim-line { padding: 1px 0; }
+.sim-line--request  { color: #c9d1d9; }
+.sim-line--throttle { color: #d29922; }
+.sim-line--violation { color: #f85149; font-weight: var(--fw-semibold); }
+.sim-line--summary  { color: #8b949e; margin-top: 0.25rem; border-top: 1px solid #21262d; padding-top: 0.25rem; }

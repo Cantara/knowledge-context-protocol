@@ -1781,6 +1781,46 @@ units:
           </div>
         </div>
       </div>
+
+      <!-- Phase 2: Interactive rate-limit editor -->
+      <div class="sim-interactive reveal" id="sim-interactive">
+        <div class="sim-interactive-header">
+          <h3>Interactive: Edit the manifest and re-run</h3>
+          <p>Change <code>requests_per_minute</code> or <code>requests_per_day</code> on any unit. Hit <strong>Run</strong> to see how each agent responds. <kbd>Ctrl+Enter</kbd> runs from the editor.</p>
+        </div>
+
+        <div class="sim-interactive-layout">
+          <!-- Left: editable knowledge.yaml -->
+          <div class="sim-editor-wrap">
+            <div class="sim-editor-header">
+              <span>knowledge.yaml</span>
+              <button class="sim-btn" id="sim-reset-yaml">&#8634; Reset</button>
+            </div>
+            <textarea class="sim-editor" id="sim-yaml-editor" spellcheck="false"></textarea>
+            <div class="sim-editor-footer">
+              <label>Requests per unit: <input type="range" id="sim-req-count" min="2" max="15" value="8"> <span id="sim-req-count-val">8</span></label>
+              <button class="sim-btn sim-btn--primary" id="sim-run-btn">&#9654; Run simulation</button>
+            </div>
+          </div>
+
+          <!-- Right: side-by-side agent outputs -->
+          <div class="sim-agents-wrap">
+            <div class="sim-agent-panels">
+              <div class="sim-agent-panel">
+                <div class="sim-agent-header sim-agent-header--polite">&#129309; PoliteAgent</div>
+                <div class="sim-terminal sim-terminal--sm" id="sim-polite-output"></div>
+                <div class="sim-agent-summary" id="sim-polite-summary"></div>
+              </div>
+              <div class="sim-agent-panel">
+                <div class="sim-agent-header sim-agent-header--greedy">&#9889; GreedyAgent</div>
+                <div class="sim-terminal sim-terminal--sm" id="sim-greedy-output"></div>
+                <div class="sim-agent-summary" id="sim-greedy-summary"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -2572,6 +2612,7 @@ relationships:
   <script src="js/app.js"></script>
   <script src="js/playground.js"></script>
   <script src="js/simulator-player.js"></script>
+  <script src="js/scenario4-interactive.js"></script>
 
   <!-- Back to top -->
   <button class="back-to-top" id="back-to-top" aria-label="Back to top">
