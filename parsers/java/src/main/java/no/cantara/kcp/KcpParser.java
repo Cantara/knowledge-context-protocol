@@ -177,11 +177,19 @@ public class KcpParser {
     @SuppressWarnings("unchecked")
     private static Delegation parseDelegation(Map<String, Object> d) {
         if (d == null) return null;
+        // human_in_the_loop can be a simple string (e.g. "required") or a map
+        // (e.g. {required: true, approval_mechanism: oauth_consent}).
+        // Convert to string for the typed model; consumers needing the full
+        // structure should use raw YAML parsing.
+        Object hitlRaw = d.get("human_in_the_loop");
+        String hitl = hitlRaw instanceof String s ? s
+                : hitlRaw instanceof Map<?,?> m ? m.toString()
+                : hitlRaw != null ? hitlRaw.toString() : null;
         return new Delegation(
                 (Integer) d.get("max_depth"),
                 (Boolean) d.get("require_capability_attenuation"),
                 (Boolean) d.get("audit_chain"),
-                (String) d.get("human_in_the_loop")
+                hitl
         );
     }
 
