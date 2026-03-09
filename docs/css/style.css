@@ -2223,3 +2223,196 @@ section {
 .mt-12 { margin-top: var(--space-12); }
 .mb-4 { margin-bottom: var(--space-4); }
 .mb-8 { margin-bottom: var(--space-8); }
+
+/* ---------- Simulator Player ---------- */
+.sim-tabs {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-6);
+}
+
+.sim-tab {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.sim-tab:hover {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+.sim-tab.active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--text-inverse);
+}
+
+.sim-layout {
+  display: grid;
+  grid-template-columns: 1fr 240px;
+  gap: var(--space-6);
+}
+
+@media (max-width: 768px) {
+  .sim-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sim-terminal-wrap {
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: #0d1117;
+}
+
+.sim-terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.sim-title {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: #e6edf3;
+}
+
+.sim-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sim-btn {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid #30363d;
+  border-radius: var(--radius-sm);
+  background: #21262d;
+  color: #e6edf3;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  transition: background var(--duration-fast);
+}
+
+.sim-btn:hover {
+  background: #30363d;
+}
+
+#sim-speed,
+#sim-jump {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid #30363d;
+  border-radius: var(--radius-sm);
+  background: #21262d;
+  color: #e6edf3;
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+}
+
+.sim-terminal {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-normal);
+  padding: var(--space-4);
+  height: 400px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.sim-progress {
+  height: 3px;
+  background: #30363d;
+}
+
+.sim-progress-bar {
+  height: 100%;
+  background: var(--accent-primary);
+  width: 0;
+  transition: width 0.1s;
+}
+
+/* Terminal line colors (always dark background) */
+.sim-line-kcp      { color: #58a6ff; }
+.sim-line-a2a      { color: #bc8cff; }
+.sim-line-audit    { color: #d29922; }
+.sim-line-hitl     { color: #3fb950; }
+.sim-line-success  { color: #3fb950; }
+.sim-line-blocked  { color: #f85149; font-weight: var(--fw-bold); }
+.sim-line-violation { color: #f85149; }
+.sim-line-advisory { color: #d18616; }
+.sim-line-phase    { color: #8b949e; }
+.sim-line-info     { color: #c9d1d9; }
+
+/* Stats panel */
+.sim-stats {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.sim-stat-header {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-wide);
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-4);
+}
+
+.sim-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-secondary);
+  font-size: var(--fs-sm);
+}
+
+.sim-stat:last-of-type {
+  border-bottom: none;
+}
+
+.sim-stat-label {
+  color: var(--text-secondary);
+}
+
+.sim-stat-value {
+  font-family: var(--font-mono);
+  font-weight: var(--fw-semibold);
+}
+
+.sim-stat--red    { color: #ef4444; }
+.sim-stat--orange { color: #f97316; }
+.sim-stat--green  { color: #22c55e; }
+.sim-stat--amber  { color: #f59e0b; }
+
+.sim-stat-footer {
+  margin-top: var(--space-4);
+}
+
+.sim-gh-link {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  text-decoration: none;
+}
+
+.sim-gh-link:hover {
+  color: var(--accent-primary);
+}

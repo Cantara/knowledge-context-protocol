@@ -72,6 +72,7 @@
         <li><a href="#spec">Spec</a></li>
         <li><a href="#use-cases">Use Cases</a></li>
         <li><a href="#scenarios">Scenarios</a></li>
+        <li><a href="#simulator">Demo</a></li>
         <li><a href="#get-started">Get Started</a></li>
         <li><a href="#playground">Try it</a></li>
         <li><a href="#roadmap">Roadmap</a></li>
@@ -1722,6 +1723,69 @@ units:
 
 
   <!-- ============================================================
+       SIMULATOR PLAYER
+       ============================================================ -->
+  <section id="simulator">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">Live Demo</span>
+        <h2>Watch the simulators run</h2>
+        <p class="section-sub">Five runnable Java simulators stress-test KCP under realistic and adversarial conditions. Pre-recorded output &mdash; plays identically every time.</p>
+      </div>
+
+      <!-- Scenario selector tabs -->
+      <div class="sim-tabs reveal">
+        <button class="sim-tab active" data-scenario="s3">Financial AML &#9733;</button>
+        <button class="sim-tab" data-scenario="s4">Rate Limits</button>
+        <button class="sim-tab" data-scenario="s2">Legal Delegation</button>
+        <button class="sim-tab" data-scenario="s1">Energy Metering</button>
+        <button class="sim-tab" data-scenario="s5">Dependency Order</button>
+      </div>
+
+      <div class="sim-layout reveal">
+        <!-- Left: terminal -->
+        <div class="sim-terminal-wrap">
+          <div class="sim-terminal-header">
+            <span class="sim-title"></span>
+            <div class="sim-controls">
+              <button class="sim-btn" id="sim-play-pause">&#9654; Play</button>
+              <button class="sim-btn" id="sim-restart">&#8634; Restart</button>
+              <select id="sim-speed">
+                <option value="1">1&times;</option>
+                <option value="2">2&times;</option>
+                <option value="4">4&times;</option>
+              </select>
+              <select id="sim-jump">
+                <option value="">Jump to phase&hellip;</option>
+              </select>
+            </div>
+          </div>
+          <div class="sim-terminal" id="sim-output"></div>
+          <div class="sim-progress">
+            <div class="sim-progress-bar" id="sim-progress-bar"></div>
+          </div>
+        </div>
+
+        <!-- Right: live stats -->
+        <div class="sim-stats">
+          <div class="sim-stat-header">Live stats</div>
+          <div class="sim-stat"><span class="sim-stat-label">Scenario</span><span class="sim-stat-value" id="stat-scenario">&mdash;</span></div>
+          <div class="sim-stat"><span class="sim-stat-label">Agents</span><span class="sim-stat-value" id="stat-agents">&mdash;</span></div>
+          <div class="sim-stat"><span class="sim-stat-label">Units loaded</span><span class="sim-stat-value" id="stat-loaded">0</span></div>
+          <div class="sim-stat"><span class="sim-stat-label">BLOCKED</span><span class="sim-stat-value sim-stat--red" id="stat-blocked">0</span></div>
+          <div class="sim-stat"><span class="sim-stat-label">Violations</span><span class="sim-stat-value sim-stat--orange" id="stat-violations">0</span></div>
+          <div class="sim-stat"><span class="sim-stat-label">HITL approvals</span><span class="sim-stat-value sim-stat--green" id="stat-hitl">0</span></div>
+          <div class="sim-stat"><span class="sim-stat-label">Audit entries</span><span class="sim-stat-value sim-stat--amber" id="stat-audit">0</span></div>
+          <div class="sim-stat-footer">
+            <a class="sim-gh-link" href="" target="_blank" rel="noopener">View source on GitHub &rarr;</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
        GET STARTED
        ============================================================ -->
   <section id="get-started">
@@ -2507,6 +2571,7 @@ relationships:
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/xml.min.js"></script>
   <script src="js/app.js"></script>
   <script src="js/playground.js"></script>
+  <script src="js/simulator-player.js"></script>
 
   <!-- Back to top -->
   <button class="back-to-top" id="back-to-top" aria-label="Back to top">
