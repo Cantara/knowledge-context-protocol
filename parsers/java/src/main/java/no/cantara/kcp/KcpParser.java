@@ -4,6 +4,7 @@ import no.cantara.kcp.model.Auth;
 import no.cantara.kcp.model.AuthMethod;
 import no.cantara.kcp.model.Compliance;
 import no.cantara.kcp.model.Delegation;
+import no.cantara.kcp.model.HumanInTheLoop;
 import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
 import no.cantara.kcp.model.Relationship;
@@ -177,14 +178,17 @@ public class KcpParser {
     @SuppressWarnings("unchecked")
     private static Delegation parseDelegation(Map<String, Object> d) {
         if (d == null) return null;
-        // human_in_the_loop can be a simple string (e.g. "required") or a map
-        // (e.g. {required: true, approval_mechanism: oauth_consent}).
-        // Convert to string for the typed model; consumers needing the full
-        // structure should use raw YAML parsing.
+        // human_in_the_loop is an object per SPEC.md §3.4
+        HumanInTheLoop hitl = null;
         Object hitlRaw = d.get("human_in_the_loop");
-        String hitl = hitlRaw instanceof String s ? s
-                : hitlRaw instanceof Map<?,?> m ? m.toString()
-                : hitlRaw != null ? hitlRaw.toString() : null;
+        if (hitlRaw instanceof Map<?,?> m) {
+            Map<String, Object> hm = (Map<String, Object>) m;
+            hitl = new HumanInTheLoop(
+                    (Boolean) hm.get("required"),
+                    (String) hm.get("approval_mechanism"),
+                    (String) hm.get("docs_url")
+            );
+        }
         return new Delegation(
                 (Integer) d.get("max_depth"),
                 (Boolean) d.get("require_capability_attenuation"),

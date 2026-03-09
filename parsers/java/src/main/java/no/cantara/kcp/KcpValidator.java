@@ -2,6 +2,7 @@ package no.cantara.kcp;
 
 import no.cantara.kcp.model.Compliance;
 import no.cantara.kcp.model.Delegation;
+import no.cantara.kcp.model.HumanInTheLoop;
 import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
 import no.cantara.kcp.model.Relationship;
@@ -36,7 +37,7 @@ public class KcpValidator {
     private static final Set<String> VALID_INDEXING_SHORTHANDS = Set.of("open", "read-only", "no-train", "none");
     private static final Set<String> VALID_ACCESS_VALUES = Set.of("public", "authenticated", "restricted");
     private static final Set<String> VALID_SENSITIVITY_VALUES = Set.of("public", "internal", "confidential", "restricted");
-    private static final Set<String> VALID_HITL_VALUES = Set.of("always", "on-sensitive", "never");
+    private static final Set<String> VALID_HITL_MECHANISMS = Set.of("oauth_consent", "uma", "custom");
     private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7");
     private static final Pattern ID_PATTERN = Pattern.compile("^[a-z0-9.\\-]+$");
     private static final int MAX_TRIGGER_LENGTH = 60;
@@ -296,9 +297,13 @@ public class KcpValidator {
     private static void validateDelegation(Delegation delegation, Delegation rootDelegation,
                                               String prefix, List<String> errors, List<String> warnings) {
         if (delegation == null) return;
-        if (delegation.humanInTheLoop() != null && !VALID_HITL_VALUES.contains(delegation.humanInTheLoop())) {
-            errors.add(prefix + ": delegation.human_in_the_loop must be one of " +
-                    sorted(VALID_HITL_VALUES) + ", got '" + delegation.humanInTheLoop() + "'");
+        // human_in_the_loop is an object per SPEC.md §3.4 — validate approval_mechanism if present
+        if (delegation.humanInTheLoop() != null) {
+            String mech = delegation.humanInTheLoop().approvalMechanism();
+            if (mech != null && !VALID_HITL_MECHANISMS.contains(mech)) {
+                errors.add(prefix + ": delegation.human_in_the_loop.approval_mechanism must be one of " +
+                        sorted(VALID_HITL_MECHANISMS) + ", got '" + mech + "'");
+            }
         }
         if (rootDelegation != null && delegation.maxDepth() != null && rootDelegation.maxDepth() != null) {
             if (delegation.maxDepth() > rootDelegation.maxDepth()) {

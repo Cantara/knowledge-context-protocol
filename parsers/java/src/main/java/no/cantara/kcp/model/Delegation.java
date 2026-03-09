@@ -8,6 +8,6 @@ public record Delegation(
         Integer maxDepth,
         Boolean requireCapabilityAttenuation,
         Boolean auditChain,
-        String humanInTheLoop
+        HumanInTheLoop humanInTheLoop
 ) {
 }

@@ -1,6 +1,6 @@
 {
   "valid": false,
-  "errors": ["delegation.human_in_the_loop must be one of [always, never, on-sensitive]"],
+  "errors": ["delegation.human_in_the_loop.approval_mechanism must be one of [custom, oauth_consent, uma], got 'sometimes'"],
   "unit_count": 1,
   "relationship_count": 0
 }

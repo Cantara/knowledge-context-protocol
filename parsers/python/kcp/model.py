@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 
 @dataclass
@@ -9,7 +9,7 @@ class Delegation:
     max_depth: Optional[int] = None
     require_capability_attenuation: Optional[bool] = None
     audit_chain: Optional[bool] = None
-    human_in_the_loop: Optional[str] = None
+    human_in_the_loop: Optional[Any] = None  # dict per spec §3.4
 
 
 @dataclass

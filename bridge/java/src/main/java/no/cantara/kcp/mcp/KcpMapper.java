@@ -1,6 +1,7 @@
 package no.cantara.kcp.mcp;
 
 import io.modelcontextprotocol.spec.McpSchema;
+import no.cantara.kcp.model.HumanInTheLoop;
 import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
 import no.cantara.kcp.model.Relationship;
@@ -154,7 +155,11 @@ public final class KcpMapper {
                 sb.append("\nDelegation max depth: ").append(unit.delegation().maxDepth());
             }
             if (unit.delegation().humanInTheLoop() != null) {
-                sb.append("\nHuman in the loop: ").append(unit.delegation().humanInTheLoop());
+                HumanInTheLoop hitl = unit.delegation().humanInTheLoop();
+                String desc = Boolean.TRUE.equals(hitl.required())
+                        ? "required (" + (hitl.approvalMechanism() != null ? hitl.approvalMechanism() : "unspecified") + ")"
+                        : "not required";
+                sb.append("\nHuman in the loop: ").append(desc);
             }
             if (unit.delegation().auditChain() != null) {
                 sb.append("\nDelegation audit chain: ").append(unit.delegation().auditChain());
@@ -250,7 +255,24 @@ public final class KcpMapper {
                 }
                 if (u.delegation().humanInTheLoop() != null) {
                     if (!first) sb.append(",");
-                    sb.append("\"human_in_the_loop\":").append(quoted(u.delegation().humanInTheLoop()));
+                    HumanInTheLoop hitl = u.delegation().humanInTheLoop();
+                    sb.append("\"human_in_the_loop\":{");
+                    boolean hitlFirst = true;
+                    if (hitl.required() != null) {
+                        sb.append("\"required\":").append(hitl.required());
+                        hitlFirst = false;
+                    }
+                    if (hitl.approvalMechanism() != null) {
+                        if (!hitlFirst) sb.append(",");
+                        sb.append("\"approval_mechanism\":").append(quoted(hitl.approvalMechanism()));
+                        hitlFirst = false;
+                    }
+                    if (hitl.docsUrl() != null) {
+                        if (!hitlFirst) sb.append(",");
+                        sb.append("\"docs_url\":").append(quoted(hitl.docsUrl()));
+                    }
+                    sb.append("}");
+                    first = false;
                 }
                 sb.append("}");
             }

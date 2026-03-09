@@ -69,12 +69,19 @@ export interface Trust {
   audit?: TrustAudit;
 }
 
+/** Human-in-the-loop approval object — see SPEC.md §3.4. */
+export interface HumanInTheLoop {
+  required?: boolean;
+  approval_mechanism?: string;  // oauth_consent | uma | custom
+  docs_url?: string;
+}
+
 /** Delegation constraints block — root-level and per-unit override. See SPEC.md §3.4. */
 export interface Delegation {
   max_depth?: number;
   require_capability_attenuation?: boolean;
   audit_chain?: boolean;
-  human_in_the_loop?: string;
+  human_in_the_loop?: HumanInTheLoop;
 }
 
 /** Compliance metadata block — root-level and per-unit override. See SPEC.md §3.5. */

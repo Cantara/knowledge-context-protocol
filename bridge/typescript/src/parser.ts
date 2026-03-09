@@ -185,10 +185,19 @@ function parseDelegation(raw: unknown): Delegation | undefined {
         : undefined,
     audit_chain:
       data["audit_chain"] !== undefined ? Boolean(data["audit_chain"]) : undefined,
-    human_in_the_loop:
-      data["human_in_the_loop"] !== undefined
-        ? String(data["human_in_the_loop"])
-        : undefined,
+    human_in_the_loop: (() => {
+      const raw = data["human_in_the_loop"];
+      if (raw === undefined || raw === null) return undefined;
+      if (typeof raw === "object" && !Array.isArray(raw)) {
+        const h = raw as Record<string, unknown>;
+        return {
+          required: h["required"] !== undefined ? Boolean(h["required"]) : undefined,
+          approval_mechanism: h["approval_mechanism"] !== undefined ? String(h["approval_mechanism"]) : undefined,
+          docs_url: h["docs_url"] !== undefined ? String(h["docs_url"]) : undefined,
+        };
+      }
+      return undefined;
+    })(),
   };
 }
 

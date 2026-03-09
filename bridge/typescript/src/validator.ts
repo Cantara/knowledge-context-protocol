@@ -109,14 +109,9 @@ export function validate(
     // delegation validation (§3.4)
     if (unit.delegation) {
       const hitl = unit.delegation.human_in_the_loop;
-      if (hitl !== undefined && hitl !== null && typeof hitl !== "object") {
-        errors.push(
-          `${ctx}: delegation.human_in_the_loop must be an object (with optional 'required' and 'approval_mechanism' fields), got '${hitl}'`
-        );
-      }
-      if (hitl && typeof hitl === "object") {
-        const mech = (hitl as Record<string, unknown>).approval_mechanism;
-        if (mech !== undefined && !["oauth_consent", "uma", "custom"].includes(mech as string)) {
+      if (hitl !== undefined) {
+        const mech = hitl.approval_mechanism;
+        if (mech !== undefined && !["oauth_consent", "uma", "custom"].includes(mech)) {
           errors.push(
             `${ctx}: delegation.human_in_the_loop.approval_mechanism must be one of [oauth_consent, uma, custom], got '${mech}'`
           );
@@ -207,18 +202,11 @@ export function validate(
   // Root-level delegation validation (§3.4)
   if (manifest.delegation?.human_in_the_loop !== undefined) {
     const hitl = manifest.delegation.human_in_the_loop;
-    if (hitl !== null && typeof hitl !== "object") {
+    const mech = hitl.approval_mechanism;
+    if (mech !== undefined && !["oauth_consent", "uma", "custom"].includes(mech)) {
       errors.push(
-        `manifest: delegation.human_in_the_loop must be an object (with optional 'required' and 'approval_mechanism' fields), got '${hitl}'`
+        `manifest: delegation.human_in_the_loop.approval_mechanism must be one of [oauth_consent, uma, custom], got '${mech}'`
       );
-    }
-    if (hitl && typeof hitl === "object") {
-      const mech = (hitl as Record<string, unknown>).approval_mechanism;
-      if (mech !== undefined && !["oauth_consent", "uma", "custom"].includes(mech as string)) {
-        errors.push(
-          `manifest: delegation.human_in_the_loop.approval_mechanism must be one of [oauth_consent, uma, custom], got '${mech}'`
-        );
-      }
     }
   }
 

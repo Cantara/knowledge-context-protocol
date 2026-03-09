@@ -1,11 +1,13 @@
-# Level 3 — invalid human_in_the_loop value
+# Level 3 — invalid human_in_the_loop.approval_mechanism value
 kcp_version: "0.7"
 project: test-bad-hitl
 version: "1.0.0"
 
 delegation:
   max_depth: 3
-  human_in_the_loop: sometimes
+  human_in_the_loop:
+    required: true
+    approval_mechanism: sometimes
 
 units:
   - id: test-unit
