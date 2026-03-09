@@ -1,17 +1,15 @@
-kcp_version: "0.7"
-id: patient-data-platform
-title: Patient Data Platform
-description: Healthcare data platform processing patient records and clinical data
+kcp_version: "0.8"
+project: patient-data-platform
+version: "1.0.0"
 updated: "2026-03-09"
 
 compliance:
-  sensitivity: high
+  sensitivity: confidential
   data_residency:
     - EU
-  data_categories:
-    - health
-    - personal
-  legal_basis: explicit_consent
+  regulations:
+    - GDPR
+    - NIS2
 
 auth:
   methods:
@@ -29,60 +27,53 @@ trust:
 
 units:
   - id: patient-records
-    title: Patient Records API
-    intent: Read and update patient demographic and clinical records
-    scope: engineering
-    access: restricted
-    auth_scope: patient:read patient:write
-    compliance:
-      sensitivity: high
-      data_residency:
-        - EU
-      data_categories:
-        - health
-        - personal
-      legal_basis: explicit_consent
-    trust:
-      audit:
-        agent_must_log: true
-        require_trace_context: true
     path: docs/api/patient-records.md
-
-  - id: appointment-scheduler
-    title: Appointment Scheduling API
-    intent: Schedule and manage patient appointments
-    scope: engineering
+    intent: Read and update patient demographic and clinical records
+    scope: module
     access: restricted
     auth_scope: patient:read
+    audience: [developer, operator]
     compliance:
-      sensitivity: medium
+      sensitivity: restricted
       data_residency:
         - EU
-      data_categories:
-        - personal
-      legal_basis: contract
+      regulations:
+        - GDPR
+
+  - id: appointment-scheduler
     path: docs/api/appointments.md
+    intent: Schedule and manage patient appointments
+    scope: module
+    access: restricted
+    auth_scope: patient:read
+    audience: [developer, operator]
+    compliance:
+      sensitivity: confidential
+      data_residency:
+        - EU
 
   - id: analytics-dashboard
-    title: Anonymised Analytics Dashboard
+    path: docs/analytics/README.md
     intent: View aggregated, anonymised patient flow and outcome statistics
-    scope: internal
-    access: internal
+    scope: module
+    access: authenticated
+    audience: [operator]
     compliance:
-      sensitivity: low
+      sensitivity: internal
       data_residency:
         - EU
-    path: docs/analytics/README.md
 
   - id: audit-log
-    title: Audit Log Export
+    path: docs/compliance/audit-log.md
     intent: Export agent access log for NIS2 and GDPR audit purposes
-    scope: compliance
+    scope: module
     access: restricted
     auth_scope: audit:read
+    audience: [operator]
     compliance:
-      sensitivity: high
+      sensitivity: restricted
       data_residency:
         - EU
-      legal_basis: legal_obligation
-    path: docs/compliance/audit-log.md
+      regulations:
+        - GDPR
+        - NIS2
