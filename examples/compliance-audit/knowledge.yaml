@@ -1,0 +1,88 @@
+kcp_version: "0.7"
+id: patient-data-platform
+title: Patient Data Platform
+description: Healthcare data platform processing patient records and clinical data
+updated: "2026-03-09"
+
+compliance:
+  sensitivity: high
+  data_residency:
+    - EU
+  data_categories:
+    - health
+    - personal
+  legal_basis: explicit_consent
+
+auth:
+  methods:
+    - type: oauth2
+      issuer: https://auth.example.health
+      scopes:
+        - patient:read
+        - patient:write
+        - audit:read
+
+trust:
+  audit:
+    agent_must_log: true
+    require_trace_context: true
+
+units:
+  - id: patient-records
+    title: Patient Records API
+    intent: Read and update patient demographic and clinical records
+    scope: engineering
+    access: restricted
+    auth_scope: patient:read patient:write
+    compliance:
+      sensitivity: high
+      data_residency:
+        - EU
+      data_categories:
+        - health
+        - personal
+      legal_basis: explicit_consent
+    trust:
+      audit:
+        agent_must_log: true
+        require_trace_context: true
+    path: docs/api/patient-records.md
+
+  - id: appointment-scheduler
+    title: Appointment Scheduling API
+    intent: Schedule and manage patient appointments
+    scope: engineering
+    access: restricted
+    auth_scope: patient:read
+    compliance:
+      sensitivity: medium
+      data_residency:
+        - EU
+      data_categories:
+        - personal
+      legal_basis: contract
+    path: docs/api/appointments.md
+
+  - id: analytics-dashboard
+    title: Anonymised Analytics Dashboard
+    intent: View aggregated, anonymised patient flow and outcome statistics
+    scope: internal
+    access: internal
+    compliance:
+      sensitivity: low
+      data_residency:
+        - EU
+    path: docs/analytics/README.md
+
+  - id: audit-log
+    title: Audit Log Export
+    intent: Export agent access log for NIS2 and GDPR audit purposes
+    scope: compliance
+    access: restricted
+    auth_scope: audit:read
+    compliance:
+      sensitivity: high
+      data_residency:
+        - EU
+      legal_basis: legal_obligation
+    path: docs/compliance/audit-log.md

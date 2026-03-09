@@ -1,0 +1,102 @@
+{
+  "ropa_version": "1.0",
+  "generated": "2026-03-09T07:30:03.302889+00:00",
+  "system_id": "patient-data-platform",
+  "system_title": "Patient Data Platform",
+  "kcp_version": "0.7",
+  "article_30_records": [
+    {
+      "unit_id": "patient-records",
+      "title": "Patient Records API",
+      "purpose": "Read and update patient demographic and clinical records",
+      "personal_data": true,
+      "data_categories": [
+        "health",
+        "personal"
+      ],
+      "legal_basis": "Art. 6(1)(a) + Art. 9(2)(a) \u2014 Explicit consent",
+      "recipients": "Named authorised agents/services only",
+      "data_residency": [
+        "EU"
+      ],
+      "third_country_transfer": false,
+      "risk_level": "High",
+      "security_measures": {
+        "agent_must_log": true,
+        "require_trace_context": true,
+        "access_control": "patient:read patient:write"
+      }
+    },
+    {
+      "unit_id": "appointment-scheduler",
+      "title": "Appointment Scheduling API",
+      "purpose": "Schedule and manage patient appointments",
+      "personal_data": true,
+      "data_categories": [
+        "personal"
+      ],
+      "legal_basis": "Art. 6(1)(b) \u2014 Contract performance",
+      "recipients": "Named authorised agents/services only",
+      "data_residency": [
+        "EU"
+      ],
+      "third_country_transfer": false,
+      "risk_level": "Medium",
+      "security_measures": {
+        "agent_must_log": true,
+        "require_trace_context": true,
+        "access_control": "patient:read"
+      }
+    },
+    {
+      "unit_id": "analytics-dashboard",
+      "title": "Anonymised Analytics Dashboard",
+      "purpose": "View aggregated, anonymised patient flow and outcome statistics",
+      "personal_data": true,
+      "data_categories": [
+        "health",
+        "personal"
+      ],
+      "legal_basis": "Art. 6(1)(a) + Art. 9(2)(a) \u2014 Explicit consent",
+      "recipients": "Authorised internal staff",
+      "data_residency": [
+        "EU"
+      ],
+      "third_country_transfer": false,
+      "risk_level": "Low",
+      "security_measures": {
+        "agent_must_log": true,
+        "require_trace_context": true,
+        "access_control": ""
+      }
+    },
+    {
+      "unit_id": "audit-log",
+      "title": "Audit Log Export",
+      "purpose": "Export agent access log for NIS2 and GDPR audit purposes",
+      "personal_data": true,
+      "data_categories": [
+        "health",
+        "personal"
+      ],
+      "legal_basis": "Art. 6(1)(c) \u2014 Legal obligation",
+      "recipients": "Named authorised agents/services only",
+      "data_residency": [
+        "EU"
+      ],
+      "third_country_transfer": false,
+      "risk_level": "High",
+      "security_measures": {
+        "agent_must_log": true,
+        "require_trace_context": true,
+        "access_control": "audit:read"
+      }
+    }
+  ],
+  "summary": {
+    "total_processing_activities": 4,
+    "high_risk_activities": 2,
+    "third_country_transfers": 0,
+    "audit_logged_activities": 4
+  }
+}

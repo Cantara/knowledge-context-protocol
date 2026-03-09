@@ -1,0 +1,227 @@
+{
+  "log_version": "1.0",
+  "generated": "2026-03-09T07:30:27.577240+00:00",
+  "system_id": "patient-data-platform",
+  "directive": "NIS2 Art. 21 \u2014 Cybersecurity risk-management measures",
+  "events": [
+    {
+      "timestamp": "2026-03-09T06:30:34.577127+00:00",
+      "traceparent": "00-48cf415724ae905838024d821f95b313-3bef9925a11480b5-01",
+      "agent_id": "orchestrator-agent-1",
+      "unit_id": "patient-records",
+      "unit_title": "Patient Records API",
+      "access_decision": "granted",
+      "required_scopes": [
+        "patient:read",
+        "patient:write"
+      ],
+      "agent_scopes": [
+        "audit:read",
+        "patient:read",
+        "patient:write"
+      ],
+      "sensitivity": "high",
+      "severity": "WARNING",
+      "audit_required": true,
+      "nis2_relevant": true
+    },
+    {
+      "timestamp": "2026-03-09T06:30:54.577127+00:00",
+      "traceparent": "00-0ad0d001d8e285b61e3f6ce091288c92-0cb4527ba071534c-01",
+      "agent_id": "analytics-agent-2",
+      "unit_id": "analytics-dashboard",
+      "unit_title": "Anonymised Analytics Dashboard",
+      "access_decision": "granted",
+      "required_scopes": [],
+      "agent_scopes": [
+        "audit:read"
+      ],
+      "sensitivity": "low",
+      "severity": "INFO",
+      "audit_required": true,
+      "nis2_relevant": false
+    },
+    {
+      "timestamp": "2026-03-09T06:31:06.577127+00:00",
+      "traceparent": "00-33e18fdce4f91a18b2df580939e88626-349be9f90fa3d485-01",
+      "agent_id": "analytics-agent-2",
+      "unit_id": "patient-records",
+      "unit_title": "Patient Records API",
+      "access_decision": "denied",
+      "required_scopes": [
+        "patient:read",
+        "patient:write"
+      ],
+      "agent_scopes": [
+        "audit:read"
+      ],
+      "sensitivity": "high",
+      "severity": "WARNING",
+      "audit_required": true,
+      "nis2_relevant": true
+    },
+    {
+      "timestamp": "2026-03-09T06:31:26.577127+00:00",
+      "traceparent": "00-c192983070ae151d7e8176f5de6492ab-435da564fbd60f3a-01",
+      "agent_id": "unknown-agent-3",
+      "unit_id": "appointment-scheduler",
+      "unit_title": "Appointment Scheduling API",
+      "access_decision": "denied",
+      "required_scopes": [
+        "patient:read"
+      ],
+      "agent_scopes": [],
+      "sensitivity": "medium",
+      "severity": "WARNING",
+      "audit_required": true,
+      "nis2_relevant": true
+    },
+    {
+      "timestamp": "2026-03-09T06:31:37.577127+00:00",
+      "traceparent": "00-5facfdc67841b89836d9e80b7c07b0e3-7ea986598d3eb246-01",
+      "agent_id": "unknown-agent-3",
+      "unit_id": "appointment-scheduler",
+      "unit_title": "Appointment Scheduling API",
+      "access_decision": "denied",
+      "required_scopes": [
+        "patient:read"
+      ],
+      "agent_scopes": [],
+      "sensitivity": "medium",
+      "severity": "WARNING",
+      "audit_required": true,
+      "nis2_relevant": true
+    },
+    {
+      "timestamp": "2026-03-09T06:31:54.577127+00:00",
+      "traceparent": "00-ad3469b0d77b6220b569b2c02ba448aa-fd7b94f28100fe66-01",
+      "agent_id": "orchestrator-agent-1",
+      "unit_id": "analytics-dashboard",
+      "unit_title": "Anonymised Analytics Dashboard",
+      "access_decision": "granted",
+      "required_scopes": [],
+      "agent_scopes": [
+        "audit:read",
+        "patient:read",
+        "patient:write"
+      ],
+      "sensitivity": "low",
+      "severity": "INFO",
+      "audit_required": true,
+      "nis2_relevant": false
+    },
+    {
+      "timestamp": "2026-03-09T06:32:12.577127+00:00",
+      "traceparent": "00-f7ff1c563370d827401c5e5c1eef2e7b-8e0ba56ee91860b0-01",
+      "agent_id": "analytics-agent-2",
+      "unit_id": "appointment-scheduler",
+      "unit_title": "Appointment Scheduling API",
+      "access_decision": "denied",
+      "required_scopes": [
+        "patient:read"
+      ],
+      "agent_scopes": [
+        "audit:read"
+      ],
+      "sensitivity": "medium",
+      "severity": "WARNING",
+      "audit_required": true,
+      "nis2_relevant": true
+    },
+    {
+      "timestamp": "2026-03-09T06:32:33.577127+00:00",
+      "traceparent": "00-ced230653ed180eba6602e5eacdfe8df-ff082b944243ccf4-01",
+      "agent_id": "orchestrator-agent-1",
+      "unit_id": "audit-log",
+      "unit_title": "Audit Log Export",
+      "access_decision": "granted",
+      "required_scopes": [
+        "audit:read"
+      ],
+      "agent_scopes": [
+        "audit:read",
+        "patient:read",
+        "patient:write"
+      ],
+      "sensitivity": "high",
+      "severity": "WARNING",
+      "audit_required": true,
+      "nis2_relevant": true
+    },
+    {
+      "timestamp": "2026-03-09T06:32:43.577127+00:00",
+      "traceparent": "00-93934d2793bb39b0bb6aa0127eff9d0f-3118981fcecee295-01",
+      "agent_id": "analytics-agent-2",
+      "unit_id": "audit-log",
+      "unit_title": "Audit Log Export",
+      "access_decision": "granted",
+      "required_scopes": [
+        "audit:read"
+      ],
+      "agent_scopes": [
+        "audit:read"
+      ],
+      "sensitivity": "high",
+      "severity": "WARNING",
+      "audit_required": true,
+      "nis2_relevant": true
+    },
+    {
+      "timestamp": "2026-03-09T06:33:01.577127+00:00",
+      "traceparent": "00-f1a4824430f62d61259077db34dfdde5-5c41b6774700c06b-01",
+      "agent_id": "unknown-agent-3",
+      "unit_id": "analytics-dashboard",
+      "unit_title": "Anonymised Analytics Dashboard",
+      "access_decision": "granted",
+      "required_scopes": [],
+      "agent_scopes": [],
+      "sensitivity": "low",
+      "severity": "INFO",
+      "audit_required": true,
+      "nis2_relevant": false
+    },
+    {
+      "timestamp": "2026-03-09T06:33:23.577127+00:00",
+      "traceparent": "00-8fa84c554f86b13a8737cc1c5d602911-7a14033d97602c3a-01",
+      "agent_id": "orchestrator-agent-1",
+      "unit_id": "analytics-dashboard",
+      "unit_title": "Anonymised Analytics Dashboard",
+      "access_decision": "granted",
+      "required_scopes": [],
+      "agent_scopes": [
+        "audit:read",
+        "patient:read",
+        "patient:write"
+      ],
+      "sensitivity": "low",
+      "severity": "INFO",
+      "audit_required": true,
+      "nis2_relevant": false
+    },
+    {
+      "timestamp": "2026-03-09T06:33:43.577127+00:00",
+      "traceparent": "00-0f996b72e73ea2777ca40845afb6e894-8041619398d7b0af-01",
+      "agent_id": "analytics-agent-2",
+      "unit_id": "patient-records",
+      "unit_title": "Patient Records API",
+      "access_decision": "denied",
+      "required_scopes": [
+        "patient:read",
+        "patient:write"
+      ],
+      "agent_scopes": [
+        "audit:read"
+      ],
+      "sensitivity": "high",
+      "severity": "WARNING",
+      "audit_required": true,
+      "nis2_relevant": true
+    }
+  ],
+  "summary": {
+    "total_events": 12,
+    "nis2_relevant_events": 8,
+    "denied_access_attempts": 5,
+    "trace_context_present": 12
+  }
+}
