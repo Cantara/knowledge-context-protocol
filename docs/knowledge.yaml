@@ -200,6 +200,17 @@ units:
     depends_on: [spec]
     triggers: [typescript, ts, parser, validator, mapper, mcp, bridge, npm]
 
+  # -- Ecosystem positioning ----------------------------------------------------
+
+  - id: webmcp-comparison
+    path: docs/ecosystem/webmcp-comparison.md
+    intent: "How does WebMCP (Google+Microsoft browser action protocol) compare to KCP? Are they competing or complementary?"
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-03-09"
+    depends_on: [readme]
+    triggers: [webmcp, web mcp, browser actions, google, microsoft, navigator.modelContext, comparison, ecosystem, complement]
+
   # -- GitHub Pages site ---------------------------------------------------------
 
   - id: site
@@ -273,6 +284,11 @@ relationships:
   # The site presents the spec
   - from: site
     to: spec
+    type: context
+
+  # Ecosystem comparisons provide positioning context
+  - from: webmcp-comparison
+    to: readme
     type: context
 
   # The RFC extends the spec

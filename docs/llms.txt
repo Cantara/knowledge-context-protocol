@@ -30,6 +30,7 @@ Example: "How do I validate a knowledge.yaml file?" → trigger `validation, sch
 - /guides/adopting-kcp-in-existing-projects.md — How to add KCP to your project in under 30 minutes
 - /examples/README.md — Example manifests at four adoption levels plus simulation scenarios (A2A+KCP, energy metering, legal delegation, financial AML)
 - /RFC-0001-KCP-Extended.md — Extensions: payments, compliance, federation, context hints
+- /docs/ecosystem/webmcp-comparison.md — WebMCP vs KCP: Google+Microsoft browser-action standard vs KCP knowledge layer (complementary, not competing)
 
 ## How KCP Relates to llms.txt and MCP
 
