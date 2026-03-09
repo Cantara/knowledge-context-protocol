@@ -7,7 +7,9 @@ delegation:
   max_depth: 3
   require_capability_attenuation: true
   audit_chain: true
-  human_in_the_loop: on-sensitive
+  human_in_the_loop:
+    required: true
+    approval_mechanism: oauth_consent
 
 units:
   - id: general-docs
@@ -23,4 +25,6 @@ units:
     audience: [agent]
     delegation:
       max_depth: 2
-      human_in_the_loop: always
+      human_in_the_loop:
+        required: true
+        approval_mechanism: oauth_consent
