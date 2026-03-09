@@ -122,37 +122,37 @@
         <div class="sim-scenario-card" data-scenario="s1" tabindex="0" role="button" aria-label="Load scenario 1: Energy Metering">
           <div class="sim-scenario-badge">S1</div>
           <h3>Energy Metering</h3>
-          <div class="sim-card-tag">Happy path</div>
-          <p>Two agents, one knowledge manifest, one human approving a billing query.</p>
+          <div class="sim-card-tag">Happy path &mdash; start here</div>
+          <p>An energy company's metering agent needs to query billing data. The unit is <code>access: restricted</code> — a human must approve before the agent can proceed.</p>
           <ul>
-            <li>HITL approval flow</li>
-            <li>Audit trail entries</li>
-            <li>Access level progression</li>
+            <li>HITL approval requested and granted</li>
+            <li>Audit entry written for each access event</li>
+            <li>Access escalates: public → authenticated → restricted</li>
           </ul>
         </div>
 
         <div class="sim-scenario-card" data-scenario="s2" tabindex="0" role="button" aria-label="Load scenario 2: Legal Delegation">
           <div class="sim-scenario-badge">S2</div>
           <h3>Legal Delegation</h3>
-          <div class="sim-card-tag">3-hop chain</div>
-          <p>A 3-hop delegation chain hits its depth limit trying to reach court-sealed records.</p>
+          <div class="sim-card-tag">3-hop delegation chain</div>
+          <p>A legal AI assistant delegates to a research sub-agent, which delegates further to document retrieval. At hop 3 it reaches court-sealed records — where <code>max_depth</code> terminates the chain.</p>
           <ul>
-            <li>max_depth enforcement at hop 3</li>
-            <li>Capability attenuation</li>
-            <li>Sealed record block</li>
+            <li>3-hop chain: orchestrator → researcher → retriever</li>
+            <li>max_depth: 0 blocks the deepest hop</li>
+            <li>Capability attenuation across each delegation</li>
           </ul>
         </div>
 
         <div class="sim-scenario-card active" data-scenario="s3" tabindex="0" role="button" aria-label="Load scenario 3: Financial AML (recommended)">
           <div class="sim-scenario-badge">S3 &#9733; Recommended</div>
           <h3>Financial AML</h3>
-          <div class="sim-card-tag">Adversarial</div>
-          <p>A rogue sub-agent attacks four compliance vectors. All four are blocked.</p>
+          <div class="sim-card-tag">Adversarial &mdash; rogue agent</div>
+          <p>An AML orchestrator has spawned a rogue sub-agent. It tries four simultaneous compliance attacks: moving SAR data out of the EU, claiming inflated scope, tunnelling past delegation depth, and requesting unauthorized data categories. All four are blocked.</p>
           <ul>
-            <li>GDPR residency block</li>
-            <li>Scope elevation rejection</li>
-            <li>Delegation depth exceeded</li>
-            <li>Data minimisation enforcement</li>
+            <li>GDPR residency: SAR data blocked outside EU</li>
+            <li>Scope elevation: inflated claims rejected</li>
+            <li>Delegation depth exceeded at the rogue sub-agent</li>
+            <li>Data minimisation: restricted field denied</li>
           </ul>
         </div>
 
@@ -160,10 +160,11 @@
           <div class="sim-scenario-badge">S4</div>
           <h3>Rate Limits</h3>
           <div class="sim-card-tag">Advisory throttling</div>
-          <p>Same manifest. Two agents. Opposite behaviour.</p>
+          <p>Two agents consume the same API documentation manifest. KCP's <code>rate_limits</code> are advisory — the spec declares limits but cannot enforce them. Agent design determines compliance.</p>
           <ul>
-            <li>PoliteAgent self-throttles before hitting limit</li>
-            <li>GreedyAgent logs violations but keeps going</li>
+            <li>PoliteAgent reads limits, self-throttles, waits</li>
+            <li>GreedyAgent ignores limits, logs violations, keeps going</li>
+            <li>Both succeed — advisory means no enforcement</li>
           </ul>
         </div>
 
@@ -171,11 +172,11 @@
           <div class="sim-scenario-badge">S5</div>
           <h3>Dependency Ordering</h3>
           <div class="sim-card-tag">Graph traversal</div>
-          <p>One agent, one knowledge graph, one topological sort to rule them all.</p>
+          <p>A knowledge graph has cross-document dependencies: guides depend on references, references on a glossary. Loading in random order would fail. The agent runs topological sort to find the safe ingestion order.</p>
           <ul>
-            <li>Kahn's algorithm producing a safe load order</li>
-            <li>Cycle detection rejecting circular deps</li>
-            <li>supersedes/contradicts handling</li>
+            <li>Kahn's algorithm finds the safe load order</li>
+            <li>Cycle detection rejects a deliberate circular dep</li>
+            <li>supersedes and contradicts relationships handled</li>
           </ul>
         </div>
 
@@ -203,6 +204,9 @@
         <button class="sim-tab" data-scenario="s1">Energy Metering</button>
         <button class="sim-tab" data-scenario="s5">Dependency Order</button>
       </div>
+
+      <!-- Per-scenario context — updated by JS when tabs change -->
+      <div class="sim-context-desc" id="sim-context-desc"></div>
 
       <!-- Color legend -->
       <div class="sim-color-legend">
@@ -266,7 +270,18 @@
       <div class="section-header">
         <span class="section-label">Interactive Editor</span>
         <h2>Edit the manifest and re-run</h2>
-        <p>Edit the <code>knowledge.yaml</code> manifest &mdash; change rate limits, add units, toggle access levels &mdash; then hit <strong>Run</strong> to see how each agent responds in real time.</p>
+        <p class="section-sub">KCP's <code>rate_limits</code> block is advisory — it declares how fast agents <em>should</em> go, but cannot enforce it. How an agent responds is entirely up to its design. Edit the manifest below and see two agents make opposite choices from the same instructions.</p>
+      </div>
+
+      <div class="sim-concept-explainer">
+        <div class="sim-concept sim-concept--polite">
+          <strong>&#129309; PoliteAgent</strong>
+          <p>Reads <code>rate_limits</code> before each request. If the next request would exceed the declared limit, it waits for the window to reset and retries. Slower — but respectful of shared infrastructure and easy to reason about in audits.</p>
+        </div>
+        <div class="sim-concept sim-concept--greedy">
+          <strong>&#9889; GreedyAgent</strong>
+          <p>Ignores <code>rate_limits</code> entirely. Makes every request immediately and logs an ADVISORY VIOLATION when a limit is exceeded — but never slows down. In a real deployment this pattern generates noise and strains shared systems.</p>
+        </div>
       </div>
 
       <div class="sim-interactive" id="sim-interactive">
@@ -382,6 +397,30 @@
   <script src="js/simulator-player.js"></script>
   <script src="js/scenario4-interactive.js"></script>
   <script>
+    // Per-scenario descriptions shown in the context strip below the tabs
+    var SCENARIO_DESCRIPTIONS = {
+      s1: 'Happy path — the baseline for understanding KCP in practice. Two agents navigate access levels and a human-in-the-loop gate before billing data is released. Every access event is written to the audit trail.',
+      s2: 'A legal research chain that spans three agents. The orchestrator delegates to a researcher, who delegates to a document retrieval agent. At hop 3 the chain reaches court-sealed records where <code>max_depth: 0</code> terminates it — regardless of what capabilities the requesting agent claims.',
+      s3: '<strong>Recommended first scenario.</strong> A rogue AML sub-agent attempts four simultaneous compliance attacks against a financial knowledge manifest. Each attack targets a different KCP field: <code>compliance.data_residency</code>, <code>auth_scope</code>, <code>delegation.max_depth</code>, and <code>compliance.restrictions</code>. All four are blocked.',
+      s4: 'Two agents, one manifest. KCP\'s <code>rate_limits</code> are advisory — the spec declares limits but cannot enforce them. PoliteAgent self-throttles before exceeding them. GreedyAgent ignores them entirely, logging violations but never stopping. Neither is rejected. Advisory disclosure shifts responsibility to the agent.',
+      s5: 'A knowledge graph where units depend on other units. Loading in arbitrary order would break things (a guide may reference a glossary that hasn\'t loaded yet). The agent runs Kahn\'s topological sort, processes the graph in dependency order, detects a deliberate circular dependency and rejects it.',
+    };
+
+    function updateContextDesc(scenarioId) {
+      var el = document.getElementById('sim-context-desc');
+      if (el) el.innerHTML = SCENARIO_DESCRIPTIONS[scenarioId] || '';
+    }
+
+    // Hook into tab clicks so the description updates with the player
+    document.querySelectorAll('.sim-tab').forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        updateContextDesc(tab.dataset.scenario);
+      });
+    });
+
+    // Set initial description for the default scenario (s3)
+    updateContextDesc('s3');
+
     // Wire scenario cards to the animated player
     document.querySelectorAll('.sim-scenario-card').forEach(function (card) {
       function loadCard() {

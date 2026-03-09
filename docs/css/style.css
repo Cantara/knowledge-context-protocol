@@ -2489,3 +2489,15 @@ section {
 .sim-legend-dot--blocked  { background: #f85149; }
 .sim-legend-dot--hitl     { background: #3fb950; }
 .sim-legend-dot--audit    { background: #d29922; }
+
+/* Simulator page — context strip and agent explainer */
+.sim-context-desc { font-size: var(--fs-sm); color: var(--text-secondary); padding: var(--space-3) var(--space-4); background: var(--bg-secondary); border-left: 3px solid var(--accent-primary); border-radius: 0 var(--radius-lg) var(--radius-lg) 0; margin-bottom: var(--space-4); line-height: 1.6; min-height: 2.5rem; }
+.sim-context-desc:empty { display: none; }
+
+.sim-concept-explainer { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin: var(--space-6) 0; }
+@media (max-width: 640px) { .sim-concept-explainer { grid-template-columns: 1fr; } }
+.sim-concept { padding: var(--space-4); border-radius: var(--radius-xl); border: 1px solid var(--border-primary); }
+.sim-concept--polite { border-color: #1a4a2a; background: rgba(13,44,26,0.3); }
+.sim-concept--greedy { border-color: #4a1a1a; background: rgba(44,13,13,0.3); }
+.sim-concept strong { display: block; margin-bottom: var(--space-2); font-size: var(--fs-base); }
+.sim-concept p { font-size: var(--fs-sm); color: var(--text-secondary); line-height: 1.5; margin: 0; }
