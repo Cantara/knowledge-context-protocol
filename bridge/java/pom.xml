@@ -6,7 +6,7 @@
 
     <groupId>no.cantara.kcp</groupId>
     <artifactId>kcp-mcp</artifactId>
-    <version>0.11.0</version>
+    <version>0.12.0</version>
     <packaging>jar</packaging>
 
     <name>KCP MCP Bridge (Java)</name>
