@@ -1,0 +1,25 @@
+# Level 3 — valid federation with relationship: archive and update_frequency: never
+# The 5th manifest relationship value — agents MAY skip archived manifests unless requested
+kcp_version: "0.9"
+project: test-federation-archive
+version: "1.0.0"
+
+manifests:
+  - id: legacy-api
+    url: "https://example.com/legacy-api/knowledge.yaml"
+    label: "Legacy API (deprecated)"
+    relationship: archive
+    update_frequency: never
+
+units:
+  - id: migration-guide
+    path: docs/migration.md
+    intent: "How to migrate from the legacy API to the current version"
+    scope: project
+    audience: [developer, agent]
+    external_depends_on:
+      - manifest: legacy-api
+        unit: endpoints
+        on_failure: skip
+
+relationships: []

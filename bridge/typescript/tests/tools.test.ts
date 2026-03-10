@@ -8,6 +8,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 const FULL_DIR = join(import.meta.dirname, "fixtures/full");
 const MINIMAL_DIR = join(import.meta.dirname, "fixtures/minimal");
 const COMMANDS_DIR = join(import.meta.dirname, "fixtures/commands");
+const FEDERATION_DIR = join(import.meta.dirname, "fixtures/federation");
 
 async function connectClient(
   manifestPath: string,
@@ -239,6 +240,56 @@ describe("get_command_syntax tool", () => {
     expect(text).toContain("Unknown command");
     expect(text).toContain("Available commands:");
     expect(result.isError).toBe(true);
+    await client.close();
+  });
+});
+
+describe("list_manifests tool", () => {
+  it("returns empty array when manifest has no federation block", async () => {
+    const client = await connectClient(join(MINIMAL_DIR, "knowledge.yaml"));
+    const result = await client.callTool({
+      name: "list_manifests",
+      arguments: {},
+    });
+
+    const text = (result.content as Array<{ type: string; text: string }>)[0]
+      .text;
+    const entries = JSON.parse(text);
+    expect(entries).toEqual([]);
+    await client.close();
+  });
+
+  it("returns manifest entries from federation block", async () => {
+    const client = await connectClient(
+      join(FEDERATION_DIR, "knowledge.yaml")
+    );
+    const result = await client.callTool({
+      name: "list_manifests",
+      arguments: {},
+    });
+
+    const text = (result.content as Array<{ type: string; text: string }>)[0]
+      .text;
+    const entries = JSON.parse(text);
+    expect(entries).toHaveLength(2);
+
+    expect(entries[0].id).toBe("platform");
+    expect(entries[0].url).toBe(
+      "https://example.com/platform/knowledge.yaml"
+    );
+    expect(entries[0].label).toBe("Platform Team");
+    expect(entries[0].relationship).toBe("foundation");
+    expect(entries[0].has_local_mirror).toBe(false);
+    expect(entries[0].update_frequency).toBe("weekly");
+
+    expect(entries[1].id).toBe("security");
+    expect(entries[1].url).toBe(
+      "https://example.com/security/knowledge.yaml"
+    );
+    expect(entries[1].label).toBe("Security Team");
+    expect(entries[1].relationship).toBe("governs");
+    expect(entries[1].has_local_mirror).toBe(false);
+    expect(entries[1].update_frequency).toBeNull();
     await client.close();
   });
 });

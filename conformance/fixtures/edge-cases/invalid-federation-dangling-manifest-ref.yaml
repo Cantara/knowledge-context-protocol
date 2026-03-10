@@ -1,0 +1,24 @@
+# Edge case — external_depends_on references a manifest id not in the manifests block
+# "nonexistent" is not declared — validators emit a warning (not error)
+kcp_version: "0.9"
+project: test-federation-dangling-ref
+version: "1.0.0"
+
+manifests:
+  - id: platform
+    url: "https://example.com/platform/knowledge.yaml"
+    label: "Platform Team"
+    relationship: foundation
+
+units:
+  - id: overview
+    path: docs/overview.md
+    intent: "Project overview"
+    scope: global
+    audience: [developer, agent]
+    external_depends_on:
+      - manifest: nonexistent
+        unit: some-unit
+        on_failure: skip
+
+relationships: []

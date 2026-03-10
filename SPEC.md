@@ -1822,6 +1822,17 @@ auth:
     - type: none
 payment:
   default_tier: free
+manifests:
+  - id: platform-core
+    url: "https://platform.example.org/knowledge.yaml"
+    label: "Core Platform Services"
+    relationship: foundation
+    update_frequency: weekly
+  - id: security-policies
+    url: "https://security.example.org/knowledge.yaml"
+    label: "Security & Compliance Policies"
+    relationship: governs
+    update_frequency: daily
 
 units:
   - id: about
@@ -1895,6 +1906,13 @@ units:
     depends_on: [architecture-overview]
     supersedes: deployment-guide-v2
     triggers: [deployment, production, release, kubernetes, docker]
+    external_depends_on:
+      - manifest: platform-core
+        unit: infra-config
+        on_failure: warn
+      - manifest: security-policies
+        unit: deployment-policy
+        on_failure: degrade
     hints:
       token_estimate: 8000
       load_strategy: lazy

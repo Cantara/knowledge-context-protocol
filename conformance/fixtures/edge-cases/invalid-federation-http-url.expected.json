@@ -1,0 +1,7 @@
+{
+  "valid": false,
+  "errors": ["manifest url must use HTTPS"],
+  "unit_count": 1,
+  "relationship_count": 0,
+  "_note": "§3.6: manifests[].url MUST use HTTPS. All three validators emit an error for http:// URLs."
+}

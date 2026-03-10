@@ -1,0 +1,20 @@
+# Edge case — manifest id violates ^[a-z0-9.\-]+$ pattern
+# "Platform_Team" contains uppercase letters and underscore
+kcp_version: "0.9"
+project: test-federation-bad-id
+version: "1.0.0"
+
+manifests:
+  - id: Platform_Team
+    url: "https://example.com/platform/knowledge.yaml"
+    label: "Platform Team"
+    relationship: foundation
+
+units:
+  - id: overview
+    path: docs/overview.md
+    intent: "Project overview"
+    scope: global
+    audience: [developer, agent]
+
+relationships: []

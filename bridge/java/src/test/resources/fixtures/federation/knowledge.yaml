@@ -1,0 +1,27 @@
+kcp_version: "0.9"
+project: federation-test
+version: 1.0.0
+
+manifests:
+  - id: platform
+    url: "https://example.com/platform/knowledge.yaml"
+    label: "Platform Team"
+    relationship: foundation
+    update_frequency: weekly
+  - id: security
+    url: "https://example.com/security/knowledge.yaml"
+    label: "Security Team"
+    relationship: governs
+
+units:
+  - id: overview
+    path: README.md
+    intent: "Project overview"
+    scope: global
+    audience: [developer, agent]
+    external_depends_on:
+      - manifest: platform
+        unit: quickstart
+        on_failure: warn
+
+relationships: []
