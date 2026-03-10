@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class Scenario5Test {
 
     private static final String MANIFEST_YAML = """
-            kcp_version: "0.8"
+            kcp_version: "0.9"
             project: novaplatform-migration
             version: "2.0.0"
             units:

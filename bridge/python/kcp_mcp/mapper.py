@@ -214,10 +214,10 @@ def build_manifest_json(manifest: KnowledgeManifest, slug: str) -> str:
                 entry["compliance"] = compliance_entry
         units_data.append(entry)
 
-    doc = {
+    doc: dict = {
         "project":       manifest.project,
         "version":       manifest.version or "",
-        "kcp_version":   manifest.kcp_version or "0.8",
+        "kcp_version":   manifest.kcp_version or "0.9",
         "updated":       str(manifest.updated) if manifest.updated else None,
         "unit_count":    len(manifest.units),
         "units":         units_data,
@@ -226,4 +226,30 @@ def build_manifest_json(manifest: KnowledgeManifest, slug: str) -> str:
             for r in manifest.relationships
         ],
     }
+
+    # Federation fields (§3.6)
+    if manifest.manifests:
+        doc["manifests"] = [
+            {
+                "id": m.id,
+                "url": m.url,
+                **({"label": m.label} if m.label else {}),
+                **({"relationship": m.relationship} if m.relationship else {}),
+                **({"update_frequency": m.update_frequency} if m.update_frequency else {}),
+                **({"local_mirror": m.local_mirror} if m.local_mirror else {}),
+            }
+            for m in manifest.manifests
+        ]
+    if manifest.external_relationships:
+        doc["external_relationships"] = [
+            {
+                **({"from_manifest": er.from_manifest} if er.from_manifest else {}),
+                "from_unit": er.from_unit,
+                **({"to_manifest": er.to_manifest} if er.to_manifest else {}),
+                "to_unit": er.to_unit,
+                "type": er.type,
+            }
+            for er in manifest.external_relationships
+        ]
+
     return json.dumps(doc, indent=2)

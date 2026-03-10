@@ -10,11 +10,11 @@
 # v0.8 additions:
 #   - rate_limits at root (60/min, 1000/day) and unit level (customer-profiles, raw-wire-transfers)
 #
-# Compliance fields (RFC-0004, not in v0.8 core):
-#   - regulations, data_residency, restrictions are parsed from raw YAML
-#   - Enforcement is application-defined until RFC-0004 promotes to core
+# Compliance fields (promoted from RFC-0004 to core in v0.7):
+#   - regulations, data_residency, restrictions
+#   - Remaining RFC-0004 scope (content integrity, attestation) not yet in core
 
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: transaction-intelligence-agent
 version: 1.0.0
 updated: "2026-03-08"

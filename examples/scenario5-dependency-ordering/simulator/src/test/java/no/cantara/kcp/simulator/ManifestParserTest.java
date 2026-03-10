@@ -22,7 +22,7 @@ class ManifestParserTest {
     @Test
     void parsesUnitsAndRelationships() {
         String yaml = """
-                kcp_version: "0.8"
+                kcp_version: "0.9"
                 project: test
                 version: "1.0.0"
                 units:
@@ -47,7 +47,7 @@ class ManifestParserTest {
     @Test
     void parsesSupersedes() {
         String yaml = """
-                kcp_version: "0.8"
+                kcp_version: "0.9"
                 project: test
                 version: "1.0.0"
                 units:
@@ -68,7 +68,7 @@ class ManifestParserTest {
     @Test
     void parsesAllRelationshipTypes() {
         String yaml = """
-                kcp_version: "0.8"
+                kcp_version: "0.9"
                 project: test
                 version: "1.0.0"
                 units:
@@ -108,7 +108,7 @@ class ManifestParserTest {
     @Test
     void parsesAccessAndSensitivity() {
         String yaml = """
-                kcp_version: "0.8"
+                kcp_version: "0.9"
                 project: test
                 version: "1.0.0"
                 units:

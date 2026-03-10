@@ -6,7 +6,7 @@
 **Supersedes:** Proposals C and D in [RFC-0001](./RFC-0001-KCP-Extended.md)
 **Issues:** [#2 (payment)](https://github.com/Cantara/knowledge-context-protocol/issues/2) · [#4 (rate limits)](https://github.com/Cantara/knowledge-context-protocol/issues/4)
 **Discussion:** [GitHub Issues](https://github.com/Cantara/knowledge-context-protocol/issues)
-**Spec:** [SPEC.md](./SPEC.md) (current: v0.8)
+**Spec:** [SPEC.md](./SPEC.md) (current: v0.9)
 
 ---
 

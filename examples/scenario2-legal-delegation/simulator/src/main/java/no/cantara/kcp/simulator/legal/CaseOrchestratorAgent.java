@@ -42,7 +42,7 @@ public final class CaseOrchestratorAgent {
     /** Run the full simulation. */
     public void run(Path agentCardPath, Path manifestPath) throws IOException {
         log.header("SCENARIO 2: Legal Document Review (3-Hop Delegation)");
-        log.plain("Domain: Law Firm Document Review | KCP v0.6 | A2A Agent Card v1.0.0");
+        log.plain("Domain: Law Firm Document Review | KCP v0.9 | A2A Agent Card v1.0.0");
         log.plain("Agents: CaseOrchestratorAgent -> LegalResearchAgent -> ExternalCaseLawAgent");
         log.blank();
 

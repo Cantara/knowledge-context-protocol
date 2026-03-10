@@ -13,7 +13,7 @@ import java.util.Map;
  *   <li>depth=2: second delegatee (ExternalCaseLawAgent)</li>
  * </ul>
  *
- * <p>This convention is flagged as a spec gap -- KCP v0.6 does not define
+ * <p>This convention is flagged as a spec gap -- KCP v0.9 does not define
  * whether the owner is depth=0 or depth=1.
  */
 public final class DelegationChainEngine {

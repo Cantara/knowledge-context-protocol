@@ -1,13 +1,13 @@
 # NovaPlatform v1 → v2 Migration — KCP manifest
 # Companion to the scenario5 dependency-ordering simulator.
 #
-# 8 units exercising all 5 relationship types:
+# 8 units exercising 5 of 6 relationship types:
 #   depends_on, enables, supersedes, contradicts, context
 #
 # The simulator builds a dependency graph from both inline depends_on fields
 # and relationships[] entries, topologically sorts, and loads in safe order.
 
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: novaplatform-migration
 version: "2.0.0"
 updated: "2026-03-09"

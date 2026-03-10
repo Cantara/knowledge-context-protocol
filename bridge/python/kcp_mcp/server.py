@@ -1,6 +1,7 @@
 """
 KCP MCP server — low-level Server API matching the TypeScript bridge pattern.
 """
+import json
 import sys
 from pathlib import Path
 
@@ -9,6 +10,8 @@ from mcp.server.lowlevel.server import ReadResourceContents
 from mcp.types import (
     Annotations,
     Resource,
+    TextContent,
+    Tool,
 )
 from pydantic import AnyUrl
 
@@ -165,4 +168,44 @@ def create_server(
         else:
             return [ReadResourceContents(content=content, mime_type=mime)]
 
+    # ── Tools ────────────────────────────────────────────────────────────────
+
+    @server.list_tools()
+    async def list_tools() -> list[Tool]:
+        return [
+            Tool(
+                name="list_manifests",
+                description=(
+                    "List the sub-manifests declared in this knowledge.yaml federation block."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                },
+            ),
+        ]
+
+    @server.call_tool()
+    async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+        if name == "list_manifests":
+            return _handle_list_manifests(manifest)
+        return [TextContent(type="text", text=f"Unknown tool: {name}")]
+
     return server
+
+
+def _handle_list_manifests(manifest: KnowledgeManifest) -> list[TextContent]:
+    """Return JSON array of declared sub-manifests."""
+    entries = []
+    for m in manifest.manifests:
+        entry: dict = {
+            "id": m.id,
+            "url": m.url,
+            "label": m.label,
+            "relationship": m.relationship,
+            "has_local_mirror": bool(m.local_mirror),
+            "update_frequency": m.update_frequency,
+        }
+        entries.append(entry)
+    return [TextContent(type="text", text=json.dumps(entries, indent=2))]

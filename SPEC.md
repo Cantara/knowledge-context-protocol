@@ -1,8 +1,8 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.7
+**Version:** 0.9
 **Status:** Draft
-**Date:** 2026-03-08
+**Date:** 2026-03-10
 **Repository:** github.com/cantara/knowledge-context-protocol
 
 ---
@@ -62,7 +62,7 @@ the default root location.
 
 A project MAY contain multiple manifests (e.g. one per subdirectory). Each manifest is
 independent and MUST NOT reference units from other manifests by path. Cross-manifest
-relationships are out of scope for this version of the specification.
+federation is supported via the `manifests` block — see §3.6.
 
 ### 1.4 Discovery via `/.well-known/kcp.json`
 
@@ -91,7 +91,7 @@ Example:
 
 ```json
 {
-  "kcp_version": "0.8",
+  "kcp_version": "0.9",
   "manifest": "/knowledge.yaml",
   "title": "My Project Knowledge Base",
   "description": "Architecture decisions, API reference, and onboarding guides.",
@@ -122,7 +122,7 @@ version.
 ## 3. Root Manifest Structure
 
 ```yaml
-kcp_version: "0.8"          # RECOMMENDED
+kcp_version: "0.9"          # RECOMMENDED
 project: <string>            # REQUIRED
 version: <semver string>     # RECOMMENDED
 updated: "<ISO date>"        # RECOMMENDED; quote the value (see §4.1.1)
@@ -135,6 +135,8 @@ auth: <object>               # OPTIONAL; authentication methods for this knowled
 delegation: <object>         # OPTIONAL; delegation chain constraints for multi-agent access (see §3.4)
 compliance: <object>         # OPTIONAL; compliance classification and processing restrictions (see §3.5)
 payment: <object>            # OPTIONAL; default monetisation tier for all units (see §4.14)
+manifests: <list>            # OPTIONAL; federation declarations (see §3.6)
+external_relationships: <list>  # OPTIONAL; cross-manifest relationship declarations (see §3.6)
 
 units:                       # REQUIRED; list of knowledge units
   - ...
@@ -147,7 +149,7 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
-| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.8"` for conformance with this document. |
+| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.9"` for conformance with this document. |
 | `project` | REQUIRED | string | Human-readable name of the project or documentation site. |
 | `version` | RECOMMENDED | string | Semver version of this manifest. Increment when units are added or removed. |
 | `updated` | RECOMMENDED | string | ISO 8601 date (`YYYY-MM-DD`) when this manifest was last modified. |
@@ -160,6 +162,8 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 | `delegation` | OPTIONAL | object | Delegation chain constraints for multi-agent access. See §3.4. |
 | `compliance` | OPTIONAL | object | Compliance classification, data residency, and processing restrictions. See §3.5. |
 | `payment` | OPTIONAL | object | Default monetisation tier for all units. See §4.14. |
+| `manifests` | OPTIONAL | list | Federation declarations — sub-manifests this manifest has a relationship with. See §3.6. |
+| `external_relationships` | OPTIONAL | list | Cross-manifest relationship declarations. See §3.6. |
 | `units` | REQUIRED | list | Ordered list of knowledge unit declarations. MUST contain at least one unit. |
 | `relationships` | OPTIONAL | list | Explicit cross-unit relationship declarations. See §5. |
 
@@ -514,6 +518,149 @@ process in compliance.
 - Per-unit `compliance` values override root `compliance` for that unit only.
 - `kcp_version: "0.7"` manifests MUST NOT fail validation if `compliance` is present; parsers
   that do not recognise `compliance` MUST silently ignore it.
+
+### 3.6 Federation
+
+The optional `manifests` block declares external KCP manifests that this manifest has
+a relationship with. This enables cross-manifest dependency tracking and federated
+knowledge graphs.
+
+#### `manifests` block
+
+```yaml
+manifests:
+  - id: platform
+    url: "https://platform-team.example.com/knowledge.yaml"
+    label: "Platform Engineering"
+    relationship: foundation
+    update_frequency: weekly
+    local_mirror: "./mirrors/platform-knowledge.yaml"
+```
+
+#### `manifests` entry fields
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `id` | REQUIRED | string | Local identifier. MUST match `^[a-z0-9.\-]+$`. MUST be unique within this manifest's `manifests` block. |
+| `url` | REQUIRED | string | HTTPS URL of the remote `knowledge.yaml`. MUST use HTTPS. MUST NOT resolve to private address ranges (§14.3). |
+| `label` | RECOMMENDED | string | Human-readable description. |
+| `relationship` | RECOMMENDED | string | How this sub-manifest relates to the declaring manifest. See values below. |
+| `auth` | OPTIONAL | object | Auth block (per §3.3) for fetching this specific manifest. Overrides root `auth` block for this fetch. |
+| `update_frequency` | OPTIONAL | string | How often this remote manifest typically changes. Uses the §4.6b vocabulary: `daily`, `weekly`, `monthly`, `rarely`, `never`. Agents MAY use this for cache freshness decisions. |
+| `local_mirror` | OPTIONAL | string | Relative path (forward slashes, relative to this manifest) to a local copy of the remote manifest. When present and the file exists, parsers MUST load from that path instead of fetching `url`. |
+
+#### `manifests[].relationship` values
+
+| Value | Meaning |
+|-------|---------|
+| `child` | Sub-manifest depends on the declaring manifest's context. |
+| `foundation` | Sub-manifest provides foundational knowledge the declaring manifest builds on. |
+| `governs` | Sub-manifest contains authoritative policies that govern the declaring manifest. |
+| `peer` | Sub-manifest is at the same level; the relationship is symmetric. |
+| `archive` | Sub-manifest is historical. Agents MAY skip unless specifically requested. |
+
+Unknown `relationship` values MUST be silently ignored.
+
+#### Transitive resolution
+
+A manifest declared in a `manifests` block MAY itself contain a `manifests` block.
+Parsers MUST resolve the full transitive graph of `manifests` declarations.
+
+**Topology:** DAG with local authority. Each manifest is authoritative only over the
+sub-manifests it directly declares. Trust does not propagate transitively.
+
+**Cycle detection:** Parsers MUST maintain a visited set of resolved manifest URLs
+across the entire resolution session. A manifest URL already in the visited set MUST
+NOT be fetched again. This handles both cycles (A -> B -> A) and diamonds
+(A -> B, A -> C, B -> D, C -> D) correctly — D is fetched once.
+
+**Fetch limits:**
+- Parsers MUST enforce a maximum of unique manifests per session. RECOMMENDED default: 50.
+- Parsers SHOULD emit a warning when this limit is reached.
+- Remote manifests larger than 1 MB SHOULD be rejected with a warning.
+- Remote manifests containing more than 10,000 units SHOULD be rejected with a warning.
+
+**Fetch timeout:** Parsers MUST enforce a timeout on remote manifest fetches.
+RECOMMENDED default: 10 seconds. A timed-out fetch is treated as a network error.
+
+**Local mirror resolution order:**
+1. If `local_mirror` is present and the referenced file exists, the parser MUST load
+   from that path. `url` is NOT fetched.
+2. If `local_mirror` is absent or the file does not exist, the parser SHOULD fetch `url`.
+3. If the URL fetch fails, apply `on_failure` behaviour from `external_depends_on` entries
+   that reference this manifest.
+
+#### `external_depends_on` (unit-level)
+
+A unit may declare cross-manifest dependencies:
+
+```yaml
+units:
+  - id: data-handling
+    path: compliance/data.md
+    intent: "How does this service handle personal data?"
+    external_depends_on:
+      - manifest: security        # references manifests[].id
+        unit: gdpr-policy         # unit id in the remote manifest
+        on_failure: degrade       # skip | warn | degrade (default: skip)
+```
+
+#### `external_depends_on` entry fields
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `manifest` | REQUIRED | string | The `id` of an entry in this manifest's `manifests` block. Unknown IDs MUST produce a validation warning. |
+| `unit` | REQUIRED | string | The `id` of a unit in the referenced manifest. Advisory at parse time — existence cannot be verified without fetching. |
+| `on_failure` | OPTIONAL | string | Agent behaviour when the external unit cannot be resolved. `skip` (silently ignore, default), `warn` (emit a warning to the operator), `degrade` (agent MUST indicate output is operating with incomplete dependencies). Unknown values MUST be treated as `skip`. |
+
+#### `external_relationships` (root-level)
+
+Explicit typed relationships between units across manifest boundaries:
+
+```yaml
+external_relationships:
+  - from_manifest: security       # OPTIONAL — omit = this manifest
+    from_unit: gdpr-policy        # REQUIRED
+    to_unit: data-handling        # REQUIRED
+    type: governs                 # same vocabulary as §5
+```
+
+#### `external_relationships` entry fields
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `from_manifest` | OPTIONAL | string | Source manifest `id`. Omit = this manifest. |
+| `from_unit` | REQUIRED | string | Source unit `id`. |
+| `to_manifest` | OPTIONAL | string | Target manifest `id`. Omit = this manifest. |
+| `to_unit` | REQUIRED | string | Target unit `id`. |
+| `type` | REQUIRED | string | Relationship type. Same vocabulary as §5. Unknown types MUST be silently ignored. |
+
+At least one of `from_manifest` or `to_manifest` SHOULD be present (otherwise the
+relationship belongs in `relationships`, not `external_relationships`).
+
+#### Authority model
+
+Each manifest is authoritative only over the sub-manifests it directly declares.
+A manifest does NOT inherit authority over sub-manifests declared by its transitive
+dependencies.
+
+Trust propagation across transitive boundaries is an agent-level policy decision,
+outside the scope of this specification.
+
+#### Self-contained manifests
+
+A manifest with a `manifests` block MUST remain valid and parseable when loaded in
+isolation without fetching any remote manifests. The `manifests` block is metadata
+for federation-capable tools; tools that do not support federation MUST silently
+ignore it (per §2, forward compatibility).
+
+#### Known limitations (0.9.0)
+
+- **Version pinning**: Remote manifests are fetched at their current version. Pinning
+  to a specific version is not supported. Planned for 0.10.
+- **Peer-to-peer without a declaring manifest**: Any manifest can declare sub-manifests,
+  but a manifest cannot reference another without one of them declaring the relationship.
+  Arbitrary undeclared cross-referencing is not supported.
 
 ---
 
@@ -1248,16 +1395,20 @@ This is separate from the inline `depends_on` field and supports richer graph se
 relationships:
   - from: <unit-id>
     to: <unit-id>
-    type: enables | context | supersedes | contradicts | depends_on
+    type: enables | context | supersedes | contradicts | depends_on | governs
 ```
 
-| Type | Meaning |
-|------|---------|
-| `enables` | The `from` unit enables or unlocks the `to` unit |
-| `context` | The `from` unit provides useful context for the `to` unit |
-| `supersedes` | The `from` unit replaces the `to` unit (equivalent to `unit.supersedes`) |
-| `contradicts` | The `from` unit contains information that conflicts with the `to` unit |
-| `depends_on` | The `from` unit depends on the `to` unit (mirrors the inline `depends_on` list field; use when the direction or label matters more than the inline list) |
+| Type | Meaning | Agent navigation implication |
+|------|---------|------------------------------|
+| `enables` | `from` enables or unlocks `to` | Load `from` first when user is not yet ready for `to` |
+| `context` | `from` provides useful background for `to` (advisory) | Load `from` for deeper understanding; `to` works alone |
+| `supersedes` | `from` replaces `to` | Prefer `from`; skip `to` unless historical content requested |
+| `contradicts` | `from` conflicts with `to` | Surface both as known conflict; do not treat as simultaneously authoritative |
+| `depends_on` | `from` depends on `to` | Load `to` before `from`; `from` may be incomplete without `to` |
+| `governs` | `from` declares authoritative policy/standards that `to` must comply with | When compliance/standards questions arise about `to`, load `from` as authoritative source; `from` takes precedence on conflict |
+
+The relationship type vocabulary is shared between `relationships` (§5) and
+`external_relationships` (§3.6). All types are valid in both sections.
 
 Both `from` and `to` MUST be `id` values of units declared in the same manifest. Relationships
 referencing unknown IDs SHOULD produce a validation warning and MUST be silently ignored.
@@ -1271,9 +1422,9 @@ Unknown relationship types MUST be silently ignored.
 ### 6.1 Spec Version (`kcp_version`)
 
 `kcp_version` identifies which version of this specification the manifest conforms to. Current
-valid value: `"0.8"`. The values `"0.1"` through `"0.7"` refer to prior drafts (February–March
-2026); parsers SHOULD treat these manifests as conformant with this version, as v0.8 is a
-strict superset of v0.7 (new fields only, no removals or breaking changes). Parsers
+valid value: `"0.9"`. The values `"0.1"` through `"0.8"` refer to prior drafts (January–March
+2026); parsers SHOULD treat these manifests as conformant with this version, as v0.9 is a
+strict superset of v0.8 (new fields only, no removals or breaking changes). Parsers
 encountering an unknown `kcp_version` SHOULD process the manifest using the closest known
 version and SHOULD emit a warning.
 
@@ -1320,11 +1471,12 @@ The following conditions MUST cause the parser to reject the manifest:
 A JSON Schema (draft-07) for `knowledge.yaml` is available at
 [`schema/knowledge-schema.json`](./schema/knowledge-schema.json). It covers all fields defined in
 this specification: root fields (`kcp_version`, `project`, `version`, `updated`, `language`,
-`license`, `indexing`, `hints`, `trust`, `auth`, `payment`), unit fields (`id`, `path`, `kind`,
+`license`, `indexing`, `hints`, `trust`, `auth`, `delegation`, `compliance`, `payment`,
+`rate_limits`, `manifests`, `external_relationships`), unit fields (`id`, `path`, `kind`,
 `intent`, `format`, `content_type`, `language`, `scope`, `audience`, `license`, `validated`,
 `update_frequency`, `indexing`, `depends_on`, `supersedes`, `triggers`, `hints`, `access`,
-`auth_scope`, `sensitivity`, `deprecated`, `payment`), and relationship fields (`from`, `to`,
-`type`).
+`auth_scope`, `sensitivity`, `deprecated`, `delegation`, `compliance`, `payment`, `rate_limits`,
+`external_depends_on`), and relationship fields (`from`, `to`, `type`).
 
 The schema enforces required fields, value constraints (e.g. `id` pattern, `kind` enum,
 `format` enum, trigger `maxLength` and `maxItems`), and structural rules. It can be used with
@@ -1358,11 +1510,14 @@ attribution.
 Extends Level 2 with `triggers`, `supersedes`, `license`, `update_frequency`, `indexing`,
 advanced `hints` (`priority`, `density`, chunking fields), root-level `hints`, a
 `relationships` section, the root-level `auth` block (§3.3) with authentication method
-descriptions, and the `trust.audit` sub-block (§3.2) with access logging and trace context
-requirements. A Level 3 manifest supports task-based routing, knowledge graph navigation,
-drift detection, usage rights declaration, cache management, AI crawling permissions, context
-eviction ordering, large-document chunked access, authentication discovery, and auditable
-knowledge access.
+descriptions, the `trust.audit` sub-block (§3.2) with access logging and trace context
+requirements, the `manifests` block (§3.6) with federation declarations, `external_depends_on`
+(unit-level cross-manifest dependencies), `external_relationships` (root-level cross-manifest
+relationship declarations), and `local_mirror` for air-gapped federation. A Level 3 manifest
+supports task-based routing, knowledge graph navigation, drift detection, usage rights
+declaration, cache management, AI crawling permissions, context eviction ordering,
+large-document chunked access, authentication discovery, auditable knowledge access, and
+federated multi-manifest knowledge graphs.
 
 All three levels are valid KCP. A tool MUST NOT reject a manifest for being below the
 level it was designed for — graceful degradation is required.
@@ -1607,12 +1762,23 @@ MUST apply the following constraints:
 - Parsers SHOULD enforce a maximum remote fetch depth. The RECOMMENDED default is 5.
 - The YAML safety requirements of §14.2 apply to all remotely fetched manifests.
 
+**Federation-specific constraints (§3.6):**
+
+- Parsers MUST enforce a maximum of 50 unique manifests per federation resolution session
+  (RECOMMENDED default). Exceeding this limit SHOULD produce a warning.
+- Remote manifests larger than 1 MB SHOULD be rejected with a warning.
+- Remote manifests containing more than 10,000 units SHOULD be rejected with a warning.
+- Fetch timeout: RECOMMENDED default of 10 seconds per remote manifest.
+- Trust does NOT propagate transitively across federation boundaries. A manifest is
+  authoritative only over the sub-manifests it directly declares. Trust escalation
+  through transitive chains MUST NOT be assumed.
+
 ---
 
 ## Appendix A: Minimal Example
 
 ```yaml
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: my-project
 version: 1.0.0
 units:
@@ -1628,7 +1794,7 @@ units:
 ## Appendix B: Full Example
 
 ```yaml
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: wiki.example.org
 version: 2.3.0
 updated: "2026-03-07"

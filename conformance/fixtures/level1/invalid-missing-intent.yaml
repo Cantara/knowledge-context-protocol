@@ -1,5 +1,5 @@
 # Level 1 — unit missing required 'intent' field
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: test-missing-intent
 version: "1.0.0"
 

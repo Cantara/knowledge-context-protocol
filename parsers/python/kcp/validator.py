@@ -7,7 +7,7 @@ from .model import KnowledgeManifest
 
 VALID_SCOPES = {"global", "project", "module"}
 VALID_AUDIENCES = {"human", "agent", "developer", "operator", "architect", "devops"}
-VALID_RELATIONSHIP_TYPES = {"enables", "context", "supersedes", "contradicts", "depends_on"}
+VALID_RELATIONSHIP_TYPES = {"enables", "context", "supersedes", "contradicts", "depends_on", "governs"}
 VALID_KINDS = {"knowledge", "schema", "service", "policy", "executable"}
 VALID_FORMATS = {
     "markdown", "pdf", "openapi", "json-schema", "jupyter",
@@ -18,7 +18,9 @@ VALID_INDEXING_SHORTHANDS = {"open", "read-only", "no-train", "none"}
 VALID_ACCESS_VALUES = {"public", "authenticated", "restricted"}
 VALID_SENSITIVITY_VALUES = {"public", "internal", "confidential", "restricted"}
 # human_in_the_loop is an object per spec §3.4 — no HITL enum, validation done inline
-KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8"}
+KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9"}
+VALID_MANIFEST_RELATIONSHIPS = {"child", "foundation", "governs", "peer", "archive"}
+VALID_ON_FAILURE_VALUES = {"skip", "warn", "degrade"}
 _ID_PATTERN = re.compile(r"^[a-z0-9.\-]+$")
 _MAX_TRIGGER_LENGTH = 60
 _MAX_TRIGGERS_PER_UNIT = 20
@@ -301,6 +303,61 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
         if rel.type not in VALID_RELATIONSHIP_TYPES:
             warnings.append(
                 f"{p}: 'type' must be one of {sorted(VALID_RELATIONSHIP_TYPES)}, got '{rel.type}'"
+            )
+
+    # Federation validation (§3.6)
+    manifest_ids: set[str] = set()
+    for ref in manifest.manifests:
+        p = f"manifests['{ref.id}']"
+        if not ref.id:
+            errors.append("manifests: entry missing required 'id'")
+            continue
+        if not _ID_PATTERN.match(ref.id):
+            errors.append(f"{p}: 'id' must match ^[a-z0-9.\\-]+$, got '{ref.id}'")
+        if ref.id in manifest_ids:
+            errors.append(f"{p}: duplicate manifest id")
+        manifest_ids.add(ref.id)
+        if not ref.url:
+            errors.append(f"{p}: 'url' is required")
+        elif not ref.url.startswith("https://"):
+            errors.append(f"{p}: 'url' must use HTTPS, got '{ref.url}'")
+        if ref.relationship is not None and ref.relationship not in VALID_MANIFEST_RELATIONSHIPS:
+            warnings.append(f"{p}: unknown 'relationship' value '{ref.relationship}'")
+        if ref.update_frequency is not None and ref.update_frequency not in VALID_UPDATE_FREQUENCIES:
+            warnings.append(f"{p}: unknown 'update_frequency' value '{ref.update_frequency}'")
+
+    # Validate external_depends_on references in units
+    for unit in manifest.units:
+        p = f"unit '{unit.id}'"
+        for ext_dep in unit.external_depends_on:
+            ep = f"{p}.external_depends_on['{ext_dep.manifest}/{ext_dep.unit}']"
+            if not ext_dep.manifest:
+                errors.append(f"{ep}: 'manifest' is required")
+            elif ext_dep.manifest not in manifest_ids:
+                warnings.append(f"{ep}: references unknown manifest id '{ext_dep.manifest}'")
+            if not ext_dep.unit:
+                errors.append(f"{ep}: 'unit' is required")
+            if ext_dep.on_failure and ext_dep.on_failure not in VALID_ON_FAILURE_VALUES:
+                warnings.append(
+                    f"{ep}: unknown 'on_failure' value '{ext_dep.on_failure}'; treating as 'skip'"
+                )
+
+    # Validate external_relationships
+    for ext_rel in manifest.external_relationships:
+        ep = f"external_relationship['{ext_rel.from_unit}' -> '{ext_rel.to_unit}']"
+        if not ext_rel.from_unit:
+            errors.append(f"{ep}: 'from_unit' is required")
+        if not ext_rel.to_unit:
+            errors.append(f"{ep}: 'to_unit' is required")
+        if not ext_rel.type:
+            errors.append(f"{ep}: 'type' is required")
+        if ext_rel.from_manifest and ext_rel.from_manifest not in manifest_ids:
+            warnings.append(
+                f"{ep}: 'from_manifest' references unknown manifest id '{ext_rel.from_manifest}'"
+            )
+        if ext_rel.to_manifest and ext_rel.to_manifest not in manifest_ids:
+            warnings.append(
+                f"{ep}: 'to_manifest' references unknown manifest id '{ext_rel.to_manifest}'"
             )
 
     return ValidationResult(errors=errors, warnings=warnings)

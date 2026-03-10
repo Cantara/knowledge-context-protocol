@@ -4,9 +4,12 @@ import no.cantara.kcp.model.Auth;
 import no.cantara.kcp.model.AuthMethod;
 import no.cantara.kcp.model.Compliance;
 import no.cantara.kcp.model.Delegation;
+import no.cantara.kcp.model.ExternalDependency;
+import no.cantara.kcp.model.ExternalRelationship;
 import no.cantara.kcp.model.HumanInTheLoop;
 import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
+import no.cantara.kcp.model.ManifestRef;
 import no.cantara.kcp.model.RateLimit;
 import no.cantara.kcp.model.RateLimits;
 import no.cantara.kcp.model.Relationship;
@@ -70,7 +73,13 @@ public class KcpParser {
         List<Map<String, Object>> relMaps = (List<Map<String, Object>>) data.getOrDefault("relationships", List.of());
         List<Relationship> relationships = relMaps.stream().map(KcpParser::parseRelationship).toList();
 
-        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, rateLimits, units, relationships);
+        List<Map<String, Object>> manifestMaps = (List<Map<String, Object>>) data.getOrDefault("manifests", List.of());
+        List<ManifestRef> manifests = manifestMaps.stream().map(KcpParser::parseManifestRef).toList();
+
+        List<Map<String, Object>> extRelMaps = (List<Map<String, Object>>) data.getOrDefault("external_relationships", List.of());
+        List<ExternalRelationship> externalRelationships = extRelMaps.stream().map(KcpParser::parseExternalRelationship).toList();
+
+        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, rateLimits, units, relationships, manifests, externalRelationships);
     }
 
     /**
@@ -97,6 +106,9 @@ public class KcpParser {
 
     @SuppressWarnings("unchecked")
     private static KnowledgeUnit parseUnit(Map<String, Object> u) {
+        List<Map<String, Object>> extDepMaps = (List<Map<String, Object>>) u.getOrDefault("external_depends_on", List.of());
+        List<ExternalDependency> externalDependsOn = extDepMaps.stream().map(KcpParser::parseExternalDependency).toList();
+
         return new KnowledgeUnit(
                 (String) u.get("id"),
                 validateUnitPath((String) u.get("path")),
@@ -122,7 +134,8 @@ public class KcpParser {
                 u.get("payment"),
                 parseRateLimits((Map<String, Object>) u.get("rate_limits")),
                 parseDelegation((Map<String, Object>) u.get("delegation")),
-                parseCompliance((Map<String, Object>) u.get("compliance"))
+                parseCompliance((Map<String, Object>) u.get("compliance")),
+                externalDependsOn
         );
     }
 
@@ -233,6 +246,37 @@ public class KcpParser {
                 def.get("requests_per_day") instanceof Number n ? n.intValue() : null
         );
         return new RateLimits(defaultLimit);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static ManifestRef parseManifestRef(Map<String, Object> m) {
+        return new ManifestRef(
+                (String) m.get("id"),
+                (String) m.get("url"),
+                (String) m.get("label"),
+                (String) m.get("relationship"),
+                parseAuth((Map<String, Object>) m.get("auth")),
+                (String) m.get("update_frequency"),
+                (String) m.get("local_mirror")
+        );
+    }
+
+    private static ExternalDependency parseExternalDependency(Map<String, Object> e) {
+        return new ExternalDependency(
+                (String) e.get("manifest"),
+                (String) e.get("unit"),
+                (String) e.get("on_failure")
+        );
+    }
+
+    private static ExternalRelationship parseExternalRelationship(Map<String, Object> e) {
+        return new ExternalRelationship(
+                (String) e.get("from_manifest"),
+                (String) e.get("from_unit"),
+                (String) e.get("to_manifest"),
+                (String) e.get("to_unit"),
+                (String) e.get("type")
+        );
     }
 
     private static LocalDate parseDate(Object value) {

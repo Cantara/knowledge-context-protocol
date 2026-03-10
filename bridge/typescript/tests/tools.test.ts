@@ -36,15 +36,16 @@ async function connectClient(
 }
 
 describe("tools/list", () => {
-  it("lists all three tools", async () => {
+  it("lists all four tools", async () => {
     const client = await connectClient(join(FULL_DIR, "knowledge.yaml"));
     const { tools } = await client.listTools();
 
-    expect(tools).toHaveLength(3);
+    expect(tools).toHaveLength(4);
     const names = tools.map((t) => t.name);
     expect(names).toContain("search_knowledge");
     expect(names).toContain("get_unit");
     expect(names).toContain("get_command_syntax");
+    expect(names).toContain("list_manifests");
     await client.close();
   });
 

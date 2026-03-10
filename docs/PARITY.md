@@ -27,6 +27,7 @@ When adding any capability:
 | MCP Resources (list + read) | ✅ | ✅ | |
 | `search_knowledge` tool | ✅ | ✅ | scoring: trigger=5, intent=3, id/path=1, top-5 |
 | `get_unit` tool | ✅ | ✅ | |
+| `list_manifests` tool | ✅ | ✅ | lists declared sub-manifests (federation §3.6) |
 | `get_command_syntax` tool | ✅ | ✅ | requires `--commands-dir` |
 | `sdd-review` prompt | ✅ | ✅ | focus: architecture/quality/security/performance |
 | `kcp-explore` prompt | ✅ | ✅ | requires `topic` argument |

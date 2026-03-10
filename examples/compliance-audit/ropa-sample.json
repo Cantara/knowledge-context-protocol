@@ -3,7 +3,7 @@
   "generated": "2026-03-09T07:30:03.302889+00:00",
   "system_id": "patient-data-platform",
   "system_title": "Patient Data Platform",
-  "kcp_version": "0.8",
+  "kcp_version": "0.9",
   "article_30_records": [
     {
       "unit_id": "patient-records",

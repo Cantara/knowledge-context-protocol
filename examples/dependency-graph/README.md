@@ -1,10 +1,10 @@
-# Dependency Graph — All 5 Relationship Types
+# Dependency Graph — 5 of 6 Relationship Types
 
 Demonstrates every relationship type defined in [SPEC.md section 5](../../SPEC.md): `depends_on`, `enables`, `supersedes`, `contradicts`, and `context`.
 
 ## Scenario
 
-NovaPlatform is migrating from v1 to v2. The documentation set includes the old architecture, migration guides, deprecated and current API references, evolving security policies, deployment instructions, and troubleshooting. These naturally exercise all five relationship types.
+NovaPlatform is migrating from v1 to v2. The documentation set includes the old architecture, migration guides, deprecated and current API references, evolving security policies, deployment instructions, and troubleshooting. These naturally exercise five of the six relationship types (the sixth, `governs`, is demonstrated in the [federation example](../federation/)).
 
 ## Units
 

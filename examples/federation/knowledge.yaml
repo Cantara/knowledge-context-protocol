@@ -1,36 +1,45 @@
-# Example: Federation Hub Manifest
-# Demonstrates the hub-and-spoke federation model from RFC-0003.
+# Example: Enterprise Federation Hub Manifest
+# Demonstrates the DAG federation model from KCP v0.9 §3.6.
 #
-# NOTE: The `manifests` block is defined in RFC-0003 and has NOT yet been
-# promoted to the core specification. This example shows the proposed syntax
-# for cross-manifest federation.
-
-kcp_version: "0.8"
-project: acme-knowledge-hub
-version: 1.0.0
-updated: "2026-03-08"
-language: en
-
-# --- Federation: hub-and-spoke model (RFC-0003) ------------------------------
 # The hub manifest aggregates knowledge from multiple sub-manifests.
 # Agents discover the hub, then selectively fetch sub-manifests based on
 # unit intents and triggers.
 
+kcp_version: "0.9"
+project: acme-knowledge-hub
+version: 1.0.0
+updated: "2026-03-10"
+language: en
+
+# --- Federation: DAG model (§3.6) --------------------------------------------
+# Any manifest MAY declare sub-manifests. The topology is a DAG with local
+# authority — not hub-and-spoke. Cycle detection uses a visited URL set.
+
 manifests:
-  - url: https://docs.acme.com/platform/knowledge.yaml
-    project: acme-platform
-    description: "Core platform architecture, API reference, deployment guides."
-    trust_level: internal
+  - id: platform
+    url: "https://docs.acme.com/platform/knowledge.yaml"
+    label: "Core Platform"
+    relationship: foundation
+    update_frequency: weekly
 
-  - url: https://docs.acme.com/ml-ops/knowledge.yaml
-    project: acme-ml-ops
-    description: "ML pipeline documentation, model registry, training infrastructure."
-    trust_level: internal
+  - id: security
+    url: "https://docs.acme.com/security/knowledge.yaml"
+    label: "Security & Compliance"
+    relationship: governs
+    update_frequency: daily
 
-  - url: https://github.com/acme/open-source-lib/raw/main/knowledge.yaml
-    project: acme-oss-lib
-    description: "Open-source utility library — public documentation."
-    trust_level: public
+  - id: ml-ops
+    url: "https://docs.acme.com/ml-ops/knowledge.yaml"
+    label: "ML Operations"
+    relationship: peer
+    update_frequency: weekly
+
+  - id: oss-lib
+    url: "https://github.com/acme/open-source-lib/raw/main/knowledge.yaml"
+    label: "Open Source Library"
+    relationship: child
+    update_frequency: monthly
+    local_mirror: "./mirrors/oss-lib.yaml"
 
 # --- Hub-level units ----------------------------------------------------------
 # The hub can also declare its own units (e.g. cross-cutting documentation).
@@ -42,6 +51,13 @@ units:
     scope: global
     audience: [human, developer]
     triggers: [onboarding, getting started, new hire, setup]
+    external_depends_on:
+      - manifest: platform
+        unit: quickstart
+        on_failure: warn
+      - manifest: security
+        unit: access-policy
+        on_failure: degrade
 
   - id: architecture-principles
     path: docs/architecture-principles.md
@@ -50,7 +66,40 @@ units:
     audience: [developer, architect, agent]
     triggers: [architecture, principles, standards, guidelines]
 
+  - id: deployment-guide
+    path: docs/deployment-guide.md
+    intent: "How to deploy services across the Acme platform"
+    scope: project
+    audience: [developer, agent]
+    triggers: [deploy, release, rollout, ci/cd]
+    external_depends_on:
+      - manifest: platform
+        unit: infra-config
+        on_failure: skip
+
+# --- Intra-manifest relationships --------------------------------------------
+
 relationships:
   - from: onboarding
     to: architecture-principles
+    type: context
+  - from: architecture-principles
+    to: deployment-guide
+    type: enables
+
+# --- Cross-manifest relationships (§3.6) ------------------------------------
+# These express relationships between units in different manifests.
+
+external_relationships:
+  - from_unit: architecture-principles
+    to_manifest: security
+    to_unit: security-standards
+    type: governs
+  - from_manifest: platform
+    from_unit: api-gateway
+    to_unit: deployment-guide
+    type: enables
+  - from_unit: deployment-guide
+    to_manifest: ml-ops
+    to_unit: model-serving
     type: context

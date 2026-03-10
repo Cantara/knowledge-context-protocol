@@ -10,7 +10,7 @@
 const DEFAULT_YAML = `# Rate-Limit-Aware Agent — KCP manifest
 # Edit rate_limits values below, then hit Run.
 
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: rate-limit-demo
 version: "1.0.0"
 updated: "2026-03-09"

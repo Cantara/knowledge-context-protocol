@@ -43,7 +43,7 @@ public final class GridOrchestratorAgent {
     /** Run the full simulation. */
     public void run(Path agentCardPath, Path manifestPath) throws IOException {
         log.header("SCENARIO 1: Smart Energy Metering");
-        log.plain("Domain: Utility Grid Operations | KCP v0.6 | A2A Agent Card v1.0.0");
+        log.plain("Domain: Utility Grid Operations | KCP v0.9 | A2A Agent Card v1.0.0");
         log.plain("Agents: GridOrchestratorAgent -> EnergyMeteringAgent");
         log.blank();
 

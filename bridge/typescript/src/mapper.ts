@@ -262,6 +262,29 @@ export function manifestToJson(
       to: r.to_id,
       type: r.type,
     })),
+    ...(manifest.manifests.length > 0
+      ? {
+          manifests: manifest.manifests.map((m) => ({
+            id: m.id,
+            url: m.url,
+            ...(m.label ? { label: m.label } : {}),
+            ...(m.relationship ? { relationship: m.relationship } : {}),
+            ...(m.update_frequency ? { update_frequency: m.update_frequency } : {}),
+            ...(m.local_mirror ? { local_mirror: m.local_mirror } : {}),
+          })),
+        }
+      : {}),
+    ...(manifest.external_relationships.length > 0
+      ? {
+          external_relationships: manifest.external_relationships.map((er) => ({
+            ...(er.from_manifest ? { from_manifest: er.from_manifest } : {}),
+            from_unit: er.from_unit,
+            ...(er.to_manifest ? { to_manifest: er.to_manifest } : {}),
+            to_unit: er.to_unit,
+            type: er.type,
+          })),
+        }
+      : {}),
     ...(manifest.hints ? { hints: manifest.hints } : {}),
     ...(manifest.trust ? { trust: manifest.trust } : {}),
     ...(manifest.auth ? { auth: manifest.auth } : {}),

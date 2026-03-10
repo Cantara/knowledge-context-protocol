@@ -1,5 +1,5 @@
 # Level 3 — invalid compliance.sensitivity value
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: test-bad-compliance-sensitivity
 version: "1.0.0"
 

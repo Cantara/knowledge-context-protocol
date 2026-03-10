@@ -29,12 +29,40 @@ export interface KnowledgeUnit {
   rate_limits?: RateLimits;
   delegation?: Delegation;
   compliance?: Compliance;
+  external_depends_on: ExternalDependency[];  // defaults to []
 }
 
 export interface Relationship {
   from_id: string;
   to_id: string;
-  type: string;            // "enables" | "context" | "supersedes" | "contradicts"
+  type: string;            // "enables" | "context" | "supersedes" | "contradicts" | "depends_on" | "governs"
+}
+
+/** A reference to an external KCP manifest in the federation. See SPEC.md §3.6. */
+export interface ManifestRef {
+  id: string;
+  url: string;
+  label?: string;
+  relationship?: string;   // "child" | "foundation" | "governs" | "peer" | "archive"
+  auth?: Auth;
+  update_frequency?: string;
+  local_mirror?: string;
+}
+
+/** A cross-manifest dependency for a knowledge unit. See SPEC.md §3.6. */
+export interface ExternalDependency {
+  manifest: string;
+  unit: string;
+  on_failure: string;      // "skip" | "warn" | "degrade" — default "skip"
+}
+
+/** An explicit typed relationship between units across manifest boundaries. See SPEC.md §3.6. */
+export interface ExternalRelationship {
+  from_manifest?: string;
+  from_unit: string;
+  to_manifest?: string;
+  to_unit: string;
+  type: string;
 }
 
 /** A single authentication method declaration. See SPEC.md §3.3. */
@@ -121,6 +149,8 @@ export interface KnowledgeManifest {
   payment?: Record<string, unknown>;
   rate_limits?: RateLimits;
   relationships: Relationship[];  // defaults to []
+  manifests: ManifestRef[];       // defaults to []
+  external_relationships: ExternalRelationship[];  // defaults to []
 }
 
 export interface ValidationResult {

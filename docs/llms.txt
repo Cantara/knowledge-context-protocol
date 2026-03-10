@@ -18,7 +18,7 @@ https://raw.githubusercontent.com/Cantara/knowledge-context-protocol/main/knowle
 
 To use it: fetch the manifest → parse YAML → match your query against each unit's `triggers`
 (keyword list) and `intent` (natural language) → fetch the `path` of the best match.
-Use `relationships` to navigate related content (types: enables, context, depends_on).
+Use `relationships` to navigate related content (types: enables, context, depends_on, supersedes, contradicts, governs).
 
 Example: "How do I validate a knowledge.yaml file?" → trigger `validation, schema` → unit `json-schema` → fetch schema/knowledge-schema.json
 
@@ -40,8 +40,8 @@ Example: "How do I validate a knowledge.yaml file?" → trigger `validation, sch
 
 ## Real-World Adopters
 
-- wiki.totto.org — personal knowledge wiki (KCP v0.8, 83 posts indexed)
-- wiki.cantara.no — Cantara open source community wiki (KCP v0.8)
+- wiki.totto.org — personal knowledge wiki (KCP v0.9, 83 posts indexed)
+- wiki.cantara.no — Cantara open source community wiki (KCP v0.9)
 - crewAI, microsoft/autogen, huggingface/smolagents, anomalyco/opencode — KCP manifests submitted (PRs open, March 2026)
 
 ## License

@@ -6,6 +6,45 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.9.0] — 2026-03-10 — Federation Release
+
+v0.9.0 promotes federation (RFC-0003) to the core specification. This is the first release using full semver.
+
+### Added
+
+- **Federation: `manifests` block (section 3.6)** -- root-level declaration of sub-manifests with `id`, `url`, `label`, `relationship`, `auth`, `update_frequency`, and `local_mirror` fields.
+- **Federation: `external_depends_on` (section 3.6)** -- unit-level cross-manifest dependency with `manifest`, `unit`, and `on_failure` (skip/warn/degrade) fields.
+- **Federation: `external_relationships` (section 3.6)** -- root-level cross-manifest relationships using the shared vocabulary (`enables`, `context`, `supersedes`, `contradicts`, `depends_on`, `governs`).
+- **`governs` relationship type (section 5)** -- sixth relationship type added to the shared vocabulary. Available in both intra-manifest `relationships` and cross-manifest `external_relationships`.
+- **`list_manifests` MCP tool** -- all three bridges (TypeScript, Java, Python) expose a tool that lists declared sub-manifests with their `id`, `url`, `label`, `relationship`, `has_local_mirror`, and `update_frequency`.
+- **Cycle detection and fetch limits (section 3.6, section 14.3)** -- visited URL set per resolution session, max 50 manifests, 1MB max size, 10K unit limit, 10s fetch timeout.
+- **`local_mirror` support** -- air-gapped/offline federation via local file fallback before remote fetch.
+- **Manifest relationship vocabulary** -- `child`, `foundation`, `governs`, `peer`, `archive` for `manifests[].relationship`.
+- **Conformance fixtures** -- 4 new Level 3 fixtures (federation-basic, federation-local-mirror, federation-external-relationships, with-governs) and 3 edge-case fixtures (federation-cycle, federation-diamond, federation-on-failure-degrade).
+- **Enterprise federation example** -- `examples/federation/` updated with complete hub manifest demonstrating all federation features.
+
+### Changed
+
+- `kcp_version` current value updated from `"0.8"` to `"0.9"` in spec, examples, and all parsers.
+- RFC-0003 status updated to "Promoted to core -- see SPEC.md section 3.6 (v0.9.0)".
+- `governance` renamed to `governs` everywhere (verb form, consistent with relationship vocabulary).
+- Federation topology changed from hub-and-spoke (RFC-0003 original) to DAG with local authority.
+
+### Parsers
+
+- **Java parser** (kcp-parser 0.1.0): `ManifestRef`, `ExternalDependency`, `ExternalRelationship` records; parser and validator updated. 90 tests passing.
+- **Python parser** (kcp 0.1.0): `ManifestRef`, `ExternalDependency`, `ExternalRelationship` dataclasses; parser and validator updated. 100 tests passing.
+- **TypeScript bridge** (kcp-mcp 0.11.0): model, parser, validator, mapper, server updated. 152 tests passing.
+- **Java bridge** (kcp-mcp 0.11.0): `KcpServer` updated with `list_manifests` tool. 137 tests passing.
+- **Python bridge**: server and mapper updated with `list_manifests` tool. 54 tests passing.
+
+### Deferred
+
+- Version pinning for remote manifests (planned for v0.10).
+- Peer-to-peer cross-referencing without hub (future RFC).
+
+---
+
 ## [0.8] — 2026-03-09 — Consolidation Release
 
 v0.8 is a consolidation release that fixes spec debt, promotes `rate_limits` to core, and resolves parser/schema divergences. No breaking changes.

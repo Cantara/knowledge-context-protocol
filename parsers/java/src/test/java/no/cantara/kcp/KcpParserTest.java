@@ -1147,4 +1147,280 @@ class KcpParserTest {
         KcpValidator.ValidationResult result = KcpValidator.validate(m);
         assertTrue(result.warnings().stream().anyMatch(w -> w.contains("chunk_index") && w.contains("chunk_of")));
     }
+
+    // -----------------------------------------------------------------------
+    // Federation tests (§3.6, v0.9)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void parsesManifestsBlock() {
+        Map<String, Object> manifestRef = new HashMap<>();
+        manifestRef.put("id", "platform");
+        manifestRef.put("url", "https://platform.example.com/knowledge.yaml");
+        manifestRef.put("label", "Platform Engineering");
+        manifestRef.put("relationship", "foundation");
+        manifestRef.put("update_frequency", "weekly");
+        manifestRef.put("local_mirror", "./mirrors/platform.yaml");
+
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("kcp_version", "0.9");
+        data.put("manifests", List.of(manifestRef));
+        KnowledgeManifest m = KcpParser.fromMap(data);
+
+        assertEquals(1, m.manifests().size());
+        assertEquals("platform", m.manifests().get(0).id());
+        assertEquals("https://platform.example.com/knowledge.yaml", m.manifests().get(0).url());
+        assertEquals("Platform Engineering", m.manifests().get(0).label());
+        assertEquals("foundation", m.manifests().get(0).relationship());
+        assertEquals("weekly", m.manifests().get(0).updateFrequency());
+        assertEquals("./mirrors/platform.yaml", m.manifests().get(0).localMirror());
+    }
+
+    @Test
+    void parsesManifestRefWithAuth() {
+        Map<String, Object> manifestRef = new HashMap<>();
+        manifestRef.put("id", "secure");
+        manifestRef.put("url", "https://secure.example.com/knowledge.yaml");
+        manifestRef.put("auth", Map.of("methods", List.of(
+                Map.of("type", "api_key", "header", "X-KCP-Key")
+        )));
+
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("kcp_version", "0.9");
+        data.put("manifests", List.of(manifestRef));
+        KnowledgeManifest m = KcpParser.fromMap(data);
+
+        assertNotNull(m.manifests().get(0).auth());
+        assertEquals(1, m.manifests().get(0).auth().methods().size());
+        assertEquals("api_key", m.manifests().get(0).auth().methods().get(0).type());
+    }
+
+    @Test
+    void absentManifestsBlockIsEmptyList() {
+        KnowledgeManifest m = KcpParser.fromMap(MINIMAL);
+        assertNotNull(m.manifests());
+        assertTrue(m.manifests().isEmpty());
+    }
+
+    @Test
+    void parsesExternalDependsOn() {
+        Map<String, Object> extDep = Map.of(
+                "manifest", "security",
+                "unit", "gdpr-policy",
+                "on_failure", "degrade"
+        );
+        Map<String, Object> unitData = new HashMap<>(Map.of(
+                "id", "data-handling", "path", "data.md", "intent", "Data handling",
+                "scope", "global", "audience", List.of("agent"),
+                "external_depends_on", List.of(extDep)
+        ));
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("units", List.of(unitData));
+        KnowledgeManifest m = KcpParser.fromMap(data);
+
+        assertEquals(1, m.units().get(0).externalDependsOn().size());
+        assertEquals("security", m.units().get(0).externalDependsOn().get(0).manifest());
+        assertEquals("gdpr-policy", m.units().get(0).externalDependsOn().get(0).unit());
+        assertEquals("degrade", m.units().get(0).externalDependsOn().get(0).onFailure());
+    }
+
+    @Test
+    void externalDependsOnDefaultsOnFailureToSkip() {
+        Map<String, Object> extDep = Map.of(
+                "manifest", "platform",
+                "unit", "api-guide"
+        );
+        Map<String, Object> unitData = new HashMap<>(Map.of(
+                "id", "u1", "path", "f.md", "intent", "test",
+                "scope", "global", "audience", List.of("agent"),
+                "external_depends_on", List.of(extDep)
+        ));
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("units", List.of(unitData));
+        KnowledgeManifest m = KcpParser.fromMap(data);
+
+        assertEquals("skip", m.units().get(0).externalDependsOn().get(0).onFailure());
+    }
+
+    @Test
+    void absentExternalDependsOnIsEmptyList() {
+        KnowledgeManifest m = KcpParser.fromMap(MINIMAL);
+        assertNotNull(m.units().get(0).externalDependsOn());
+        assertTrue(m.units().get(0).externalDependsOn().isEmpty());
+    }
+
+    @Test
+    void parsesExternalRelationships() {
+        Map<String, Object> extRel = new HashMap<>();
+        extRel.put("from_manifest", "security");
+        extRel.put("from_unit", "gdpr-policy");
+        extRel.put("to_unit", "data-handling");
+        extRel.put("type", "governs");
+
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("kcp_version", "0.9");
+        data.put("external_relationships", List.of(extRel));
+        KnowledgeManifest m = KcpParser.fromMap(data);
+
+        assertEquals(1, m.externalRelationships().size());
+        assertEquals("security", m.externalRelationships().get(0).fromManifest());
+        assertEquals("gdpr-policy", m.externalRelationships().get(0).fromUnit());
+        assertNull(m.externalRelationships().get(0).toManifest());
+        assertEquals("data-handling", m.externalRelationships().get(0).toUnit());
+        assertEquals("governs", m.externalRelationships().get(0).type());
+    }
+
+    @Test
+    void absentExternalRelationshipsIsEmptyList() {
+        KnowledgeManifest m = KcpParser.fromMap(MINIMAL);
+        assertNotNull(m.externalRelationships());
+        assertTrue(m.externalRelationships().isEmpty());
+    }
+
+    @Test
+    void governsRelationshipTypeIsValid() {
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("kcp_version", "0.9");
+        data.put("relationships", List.of(Map.of(
+                "from", "overview", "to", "overview", "type", "governs"
+        )));
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.warnings().stream().noneMatch(w -> w.contains("governs")));
+    }
+
+    @Test
+    void kcpVersion09IsRecognised() {
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("kcp_version", "0.9");
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.warnings().stream().noneMatch(w -> w.contains("unknown kcp_version")));
+    }
+
+    @Test
+    void manifestIdMustMatchPattern() {
+        Map<String, Object> manifestRef = new HashMap<>();
+        manifestRef.put("id", "INVALID ID!");
+        manifestRef.put("url", "https://example.com/knowledge.yaml");
+
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("manifests", List.of(manifestRef));
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertFalse(result.isValid());
+        assertTrue(result.errors().stream().anyMatch(e -> e.contains("id") && e.contains("INVALID ID!")));
+    }
+
+    @Test
+    void manifestUrlMustBeHttps() {
+        Map<String, Object> manifestRef = new HashMap<>();
+        manifestRef.put("id", "platform");
+        manifestRef.put("url", "http://insecure.example.com/knowledge.yaml");
+
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("manifests", List.of(manifestRef));
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertFalse(result.isValid());
+        assertTrue(result.errors().stream().anyMatch(e -> e.contains("HTTPS")));
+    }
+
+    @Test
+    void duplicateManifestIdProducesError() {
+        Map<String, Object> ref1 = new HashMap<>();
+        ref1.put("id", "platform");
+        ref1.put("url", "https://a.example.com/knowledge.yaml");
+        Map<String, Object> ref2 = new HashMap<>();
+        ref2.put("id", "platform");
+        ref2.put("url", "https://b.example.com/knowledge.yaml");
+
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("manifests", List.of(ref1, ref2));
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertFalse(result.isValid());
+        assertTrue(result.errors().stream().anyMatch(e -> e.contains("duplicate")));
+    }
+
+    @Test
+    void externalDependsOnUnknownManifestWarns() {
+        Map<String, Object> extDep = Map.of(
+                "manifest", "nonexistent",
+                "unit", "some-unit"
+        );
+        Map<String, Object> unitData = new HashMap<>(Map.of(
+                "id", "u1", "path", "f.md", "intent", "test",
+                "scope", "global", "audience", List.of("agent"),
+                "external_depends_on", List.of(extDep)
+        ));
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("units", List.of(unitData));
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("nonexistent")));
+    }
+
+    @Test
+    void externalRelationshipsUnknownManifestWarns() {
+        Map<String, Object> extRel = new HashMap<>();
+        extRel.put("from_manifest", "unknown-src");
+        extRel.put("from_unit", "a");
+        extRel.put("to_unit", "b");
+        extRel.put("type", "governs");
+
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("external_relationships", List.of(extRel));
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("unknown-src")));
+    }
+
+    @Test
+    void fullFederationRoundTrip() {
+        Map<String, Object> manifestRef = new HashMap<>();
+        manifestRef.put("id", "security");
+        manifestRef.put("url", "https://security.example.com/knowledge.yaml");
+        manifestRef.put("label", "Security Team");
+        manifestRef.put("relationship", "governs");
+
+        Map<String, Object> extDep = Map.of(
+                "manifest", "security",
+                "unit", "gdpr-policy",
+                "on_failure", "warn"
+        );
+        Map<String, Object> unitData = new HashMap<>(Map.of(
+                "id", "data-handling", "path", "data.md", "intent", "Data handling",
+                "scope", "global", "audience", List.of("agent"),
+                "external_depends_on", List.of(extDep)
+        ));
+
+        Map<String, Object> extRel = new HashMap<>();
+        extRel.put("from_manifest", "security");
+        extRel.put("from_unit", "gdpr-policy");
+        extRel.put("to_unit", "data-handling");
+        extRel.put("type", "governs");
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("kcp_version", "0.9");
+        data.put("project", "federation-test");
+        data.put("version", "1.0.0");
+        data.put("manifests", List.of(manifestRef));
+        data.put("units", List.of(unitData));
+        data.put("external_relationships", List.of(extRel));
+
+        KnowledgeManifest m = KcpParser.fromMap(data);
+
+        assertEquals("0.9", m.kcpVersion());
+        assertEquals(1, m.manifests().size());
+        assertEquals("security", m.manifests().get(0).id());
+        assertEquals(1, m.units().get(0).externalDependsOn().size());
+        assertEquals("warn", m.units().get(0).externalDependsOn().get(0).onFailure());
+        assertEquals(1, m.externalRelationships().size());
+        assertEquals("governs", m.externalRelationships().get(0).type());
+
+        // Validate — should have no errors
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid(), "Expected valid: " + result.errors());
+    }
 }

@@ -6,12 +6,12 @@
   'use strict';
 
   // ── Inlined JSON Schema (mirrors schema/knowledge-schema.json) ──────────────
-  var KCP_SCHEMA = {"$schema":"http://json-schema.org/draft-07/schema#","$id":"https://cantara.github.io/knowledge-context-protocol/schema/knowledge-schema.json","title":"Knowledge Context Protocol Manifest","type":"object","required":["project","units"],"additionalProperties":true,"properties":{"kcp_version":{"type":"string","enum":["0.1","0.2","0.3"]},"project":{"type":"string","minLength":1},"version":{"type":"string","pattern":"^[0-9]"},"updated":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"language":{"type":"string","minLength":2,"maxLength":35},"license":{"oneOf":[{"type":"string","minLength":1},{"$ref":"#/definitions/license_object"}]},"indexing":{"oneOf":[{"type":"string","enum":["open","read-only","no-train","none"]},{"$ref":"#/definitions/indexing_object"}]},"units":{"type":"array","minItems":1,"items":{"$ref":"#/definitions/unit"}},"relationships":{"type":"array","items":{"$ref":"#/definitions/relationship"}}},"definitions":{"license_object":{"type":"object","additionalProperties":true,"properties":{"spdx":{"type":"string","minLength":1},"url":{"type":"string"},"attribution_required":{"type":"boolean"}}},"indexing_object":{"type":"object","additionalProperties":true,"properties":{"allow":{"type":"array","items":{"type":"string"}},"deny":{"type":"array","items":{"type":"string"}},"attribution_required":{"type":"boolean"}}},"unit":{"type":"object","required":["id","path","intent","scope","audience"],"additionalProperties":true,"properties":{"id":{"type":"string","pattern":"^[a-z0-9.\\-]+$","minLength":1},"path":{"type":"string","minLength":1,"not":{"pattern":"^/"}},"kind":{"type":"string","enum":["knowledge","schema","service","policy","executable"]},"intent":{"type":"string","minLength":1},"format":{"type":"string"},"content_type":{"type":"string"},"language":{"type":"string","minLength":2,"maxLength":35},"scope":{"type":"string","enum":["global","project","module"]},"audience":{"type":"array","items":{"type":"string"},"minItems":0},"license":{"oneOf":[{"type":"string","minLength":1},{"$ref":"#/definitions/license_object"}]},"validated":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"update_frequency":{"type":"string","enum":["hourly","daily","weekly","monthly","rarely","never"]},"indexing":{"oneOf":[{"type":"string","enum":["open","read-only","no-train","none"]},{"$ref":"#/definitions/indexing_object"}]},"depends_on":{"type":"array","items":{"type":"string","pattern":"^[a-z0-9.\\-]+"}},"supersedes":{"type":"string","pattern":"^[a-z0-9.\\-]+$"},"triggers":{"type":"array","items":{"type":"string","maxLength":60},"maxItems":20}}},"relationship":{"type":"object","required":["from","to","type"],"additionalProperties":true,"properties":{"from":{"type":"string","pattern":"^[a-z0-9.\\-]+$"},"to":{"type":"string","pattern":"^[a-z0-9.\\-]+$"},"type":{"type":"string"}}}}};
+  var KCP_SCHEMA = {"$schema":"http://json-schema.org/draft-07/schema#","$id":"https://cantara.github.io/knowledge-context-protocol/schema/knowledge-schema.json","title":"Knowledge Context Protocol Manifest","type":"object","required":["project","units"],"additionalProperties":true,"properties":{"kcp_version":{"type":"string","enum":["0.1","0.2","0.3","0.4","0.5","0.6","0.7","0.8","0.9"]},"project":{"type":"string","minLength":1},"version":{"type":"string","pattern":"^[0-9]"},"updated":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"language":{"type":"string","minLength":2,"maxLength":35},"license":{"oneOf":[{"type":"string","minLength":1},{"$ref":"#/definitions/license_object"}]},"indexing":{"oneOf":[{"type":"string","enum":["open","read-only","no-train","none"]},{"$ref":"#/definitions/indexing_object"}]},"units":{"type":"array","minItems":1,"items":{"$ref":"#/definitions/unit"}},"relationships":{"type":"array","items":{"$ref":"#/definitions/relationship"}}},"definitions":{"license_object":{"type":"object","additionalProperties":true,"properties":{"spdx":{"type":"string","minLength":1},"url":{"type":"string"},"attribution_required":{"type":"boolean"}}},"indexing_object":{"type":"object","additionalProperties":true,"properties":{"allow":{"type":"array","items":{"type":"string"}},"deny":{"type":"array","items":{"type":"string"}},"attribution_required":{"type":"boolean"}}},"unit":{"type":"object","required":["id","path","intent","scope","audience"],"additionalProperties":true,"properties":{"id":{"type":"string","pattern":"^[a-z0-9.\\-]+$","minLength":1},"path":{"type":"string","minLength":1,"not":{"pattern":"^/"}},"kind":{"type":"string","enum":["knowledge","schema","service","policy","executable"]},"intent":{"type":"string","minLength":1},"format":{"type":"string"},"content_type":{"type":"string"},"language":{"type":"string","minLength":2,"maxLength":35},"scope":{"type":"string","enum":["global","project","module"]},"audience":{"type":"array","items":{"type":"string"},"minItems":0},"license":{"oneOf":[{"type":"string","minLength":1},{"$ref":"#/definitions/license_object"}]},"validated":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},"update_frequency":{"type":"string","enum":["hourly","daily","weekly","monthly","rarely","never"]},"indexing":{"oneOf":[{"type":"string","enum":["open","read-only","no-train","none"]},{"$ref":"#/definitions/indexing_object"}]},"depends_on":{"type":"array","items":{"type":"string","pattern":"^[a-z0-9.\\-]+"}},"supersedes":{"type":"string","pattern":"^[a-z0-9.\\-]+$"},"triggers":{"type":"array","items":{"type":"string","maxLength":60},"maxItems":20}}},"relationship":{"type":"object","required":["from","to","type"],"additionalProperties":true,"properties":{"from":{"type":"string","pattern":"^[a-z0-9.\\-]+$"},"to":{"type":"string","pattern":"^[a-z0-9.\\-]+$"},"type":{"type":"string"}}}}};
 
   // ── Example manifests ────────────────────────────────────────────────────────
   var EXAMPLES = {
     level1: [
-      'kcp_version: "0.6"',
+      'kcp_version: "0.9"',
       'project: my-project',
       'version: 1.0.0',
       '',
@@ -24,7 +24,7 @@
     ].join('\n'),
 
     level2: [
-      'kcp_version: "0.6"',
+      'kcp_version: "0.9"',
       'project: my-project',
       'version: 1.0.0',
       'updated: "2026-02-28"',
@@ -50,7 +50,7 @@
     ].join('\n'),
 
     level3: [
-      'kcp_version: "0.6"',
+      'kcp_version: "0.9"',
       'project: enterprise-wiki',
       'version: 2.0.0',
       'updated: "2026-02-28"',
@@ -85,7 +85,7 @@
     ].join('\n'),
 
     invalid: [
-      'kcp_version: "0.6"',
+      'kcp_version: "0.9"',
       'project: broken-manifest',
       '',
       'units:',

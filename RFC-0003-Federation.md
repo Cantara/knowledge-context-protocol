@@ -1,12 +1,13 @@
 # RFC-0003: Cross-Manifest Federation
 
-**Status:** Request for Comments
+**Status:** Promoted to core -- see SPEC.md section 3.6 (v0.9.0)
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-02-28
+**Promoted:** 2026-03-10 (v0.9.0)
 **Supersedes:** Proposal M in [RFC-0001](./RFC-0001-KCP-Extended.md)
 **Issue:** [#12](https://github.com/Cantara/knowledge-context-protocol/issues/12)
 **Discussion:** [GitHub Issues](https://github.com/Cantara/knowledge-context-protocol/issues/12)
-**Spec:** [SPEC.md](./SPEC.md) (current: v0.8)
+**Spec:** [SPEC.md](./SPEC.md) (current: v0.9)
 **Depends on:** [RFC-0002](./RFC-0002-Auth-and-Delegation.md) (auth for remote manifests)
 
 ---
@@ -427,14 +428,38 @@ The proposal adds `depends_on` and `governance` to the relationship type vocabul
 
 ---
 
-## How to Participate
+## Promotion History
 
-- **Comment on [Issue #12](https://github.com/Cantara/knowledge-context-protocol/issues/12)** — especially on the open questions above
-- **Open a new issue** if you have a use case not covered by the hub-and-spoke model
-- **Submit a PR** to this document if you have concrete improvements to the field definitions
+This RFC was promoted to the core specification in **v0.9.0** (2026-03-10).
 
-This RFC will inform v0.4 or later. The auth RFC (RFC-0002) should stabilise first, since federation depends on it for remote manifest authentication.
+### What was promoted
+
+| Feature | Spec section |
+|---------|-------------|
+| Root-level `manifests` block | SPEC.md section 3.6 |
+| Unit-level `external_depends_on` | SPEC.md section 3.6 |
+| Root-level `external_relationships` | SPEC.md section 3.6 |
+| `governs` relationship type | SPEC.md section 5 |
+| `on_failure` enum (`skip`, `warn`, `degrade`) | SPEC.md section 3.6 |
+| `local_mirror` for air-gapped federation | SPEC.md section 3.6 |
+| Cycle detection via visited URL set | SPEC.md section 3.6 |
+| Fetch limits (50 manifests, 1MB, 10K units, 10s timeout) | SPEC.md section 14.3 |
+
+### What was changed during promotion
+
+- **Topology changed from hub-and-spoke to DAG with local authority** -- any manifest MAY declare sub-manifests, not just a designated hub
+- **`governance` renamed to `governs`** -- for consistency with the relationship vocabulary (verb form)
+- **`trust_level` dropped** -- replaced by the existing `auth` block from RFC-0002
+- **`project` and `description` fields in manifest entries replaced** by `id` (local identifier) and `label` (human-readable)
+
+### What was deferred
+
+| Feature | Target |
+|---------|--------|
+| Version pinning for remote manifests | v0.10 |
+| Peer-to-peer cross-referencing without hub | Future RFC |
+| Conflict resolution for overlapping unit IDs | Future RFC |
 
 ---
 
-*Knowledge Context Protocol — proposed by [eXOReaction AS](https://www.exoreaction.com), Oslo, Norway.*
+*Knowledge Context Protocol — [eXOReaction AS](https://www.exoreaction.com), Oslo, Norway.*

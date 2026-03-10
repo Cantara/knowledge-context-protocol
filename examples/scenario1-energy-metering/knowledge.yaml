@@ -7,7 +7,7 @@
 #   3. Authenticated billing history
 #   4. Restricted raw smart meter data (HITL required)
 
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: energy-metering-agent
 version: 1.0.0
 updated: "2026-03-08"

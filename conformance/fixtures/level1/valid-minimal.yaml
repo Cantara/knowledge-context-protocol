@@ -1,5 +1,5 @@
 # Level 1 — minimum viable manifest
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: test-minimal
 version: "1.0.0"
 

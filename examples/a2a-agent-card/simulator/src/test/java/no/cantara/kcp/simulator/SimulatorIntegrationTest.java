@@ -145,7 +145,7 @@ class SimulatorIntegrationTest {
     void outputContainsKcpVersion() throws IOException {
         String output = runSimulator();
 
-        assertTrue(output.contains("KCP v0.6"),
+        assertTrue(output.contains("KCP v0.9"),
                 "Should mention KCP version");
     }
 

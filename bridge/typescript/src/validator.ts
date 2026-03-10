@@ -19,6 +19,7 @@ const VALID_REL_TYPES = new Set([
   "supersedes",
   "contradicts",
   "depends_on",
+  "governs",
 ]);
 const VALID_ACCESS_VALUES = new Set(["public", "authenticated", "restricted"]);
 const VALID_SENSITIVITY_VALUES = new Set([
@@ -37,7 +38,25 @@ const KNOWN_KCP_VERSIONS = new Set([
   "0.6",
   "0.7",
   "0.8",
+  "0.9",
 ]);
+const VALID_MANIFEST_RELATIONSHIPS = new Set([
+  "child",
+  "foundation",
+  "governs",
+  "peer",
+  "archive",
+]);
+const VALID_ON_FAILURE_VALUES = new Set(["skip", "warn", "degrade"]);
+const VALID_UPDATE_FREQUENCIES = new Set([
+  "hourly",
+  "daily",
+  "weekly",
+  "monthly",
+  "rarely",
+  "never",
+]);
+const ID_PATTERN = /^[a-z0-9.\-]+$/;
 
 export function validate(
   manifest: KnowledgeManifest,
@@ -229,6 +248,73 @@ export function validate(
     warnings.push(
       "manifest: units with access 'authenticated' or 'restricted' exist but no 'auth' block is declared"
     );
+  }
+
+  // Federation validation (§3.6)
+  const manifestIds = new Set<string>();
+  for (const ref of manifest.manifests) {
+    const ctx = `manifests['${ref.id}']`;
+    if (!ref.id) {
+      errors.push("manifests: entry missing required 'id'");
+      continue;
+    }
+    if (!ID_PATTERN.test(ref.id)) {
+      errors.push(`${ctx}: 'id' must match ^[a-z0-9.\\-]+$, got '${ref.id}'`);
+    }
+    if (manifestIds.has(ref.id)) {
+      errors.push(`${ctx}: duplicate manifest id`);
+    }
+    manifestIds.add(ref.id);
+    if (!ref.url) {
+      errors.push(`${ctx}: 'url' is required`);
+    } else if (!ref.url.startsWith("https://")) {
+      errors.push(`${ctx}: 'url' must use HTTPS, got '${ref.url}'`);
+    }
+    if (ref.relationship && !VALID_MANIFEST_RELATIONSHIPS.has(ref.relationship)) {
+      warnings.push(`${ctx}: unknown 'relationship' value '${ref.relationship}'`);
+    }
+    if (ref.update_frequency && !VALID_UPDATE_FREQUENCIES.has(ref.update_frequency)) {
+      warnings.push(`${ctx}: unknown 'update_frequency' value '${ref.update_frequency}'`);
+    }
+  }
+
+  // Validate external_depends_on references in units
+  for (const unit of manifest.units) {
+    const ctx = `Unit '${unit.id}'`;
+    for (const extDep of unit.external_depends_on) {
+      const ep = `${ctx}.external_depends_on['${extDep.manifest}/${extDep.unit}']`;
+      if (!extDep.manifest) {
+        errors.push(`${ep}: 'manifest' is required`);
+      } else if (!manifestIds.has(extDep.manifest)) {
+        warnings.push(`${ep}: references unknown manifest id '${extDep.manifest}'`);
+      }
+      if (!extDep.unit) {
+        errors.push(`${ep}: 'unit' is required`);
+      }
+      if (extDep.on_failure && !VALID_ON_FAILURE_VALUES.has(extDep.on_failure)) {
+        warnings.push(`${ep}: unknown 'on_failure' value '${extDep.on_failure}'; treating as 'skip'`);
+      }
+    }
+  }
+
+  // Validate external_relationships
+  for (const extRel of manifest.external_relationships) {
+    const ep = `external_relationship['${extRel.from_unit}' -> '${extRel.to_unit}']`;
+    if (!extRel.from_unit) {
+      errors.push(`${ep}: 'from_unit' is required`);
+    }
+    if (!extRel.to_unit) {
+      errors.push(`${ep}: 'to_unit' is required`);
+    }
+    if (!extRel.type) {
+      errors.push(`${ep}: 'type' is required`);
+    }
+    if (extRel.from_manifest && !manifestIds.has(extRel.from_manifest)) {
+      warnings.push(`${ep}: 'from_manifest' references unknown manifest id '${extRel.from_manifest}'`);
+    }
+    if (extRel.to_manifest && !manifestIds.has(extRel.to_manifest)) {
+      warnings.push(`${ep}: 'to_manifest' references unknown manifest id '${extRel.to_manifest}'`);
+    }
   }
 
   return { errors, warnings, isValid: errors.length === 0 };

@@ -77,7 +77,7 @@ function parseOutput(raw) {
 // ---------------------------------------------------------------------------
 var RAW_S1 = [
 "=== SCENARIO 1: Smart Energy Metering ===",
-"Domain: Utility Grid Operations | KCP v0.6 | A2A Agent Card v1.0.0",
+"Domain: Utility Grid Operations | KCP v0.9 | A2A Agent Card v1.0.0",
 "Agents: GridOrchestratorAgent -> EnergyMeteringAgent",
 "",
 "── Phase 1: Agent Discovery (A2A Layer) ────────────────────────",
@@ -90,7 +90,7 @@ var RAW_S1 = [
 "",
 "── Phase 2: Knowledge Discovery (KCP Layer) ────────────────────",
 "",
-"[KCP]  Energy Metering Agent reads knowledge.yaml (KCP v0.8)",
+"[KCP]  Energy Metering Agent reads knowledge.yaml (KCP v0.9)",
 "[KCP]  Project: energy-metering-agent v1.0.0",
 "[KCP]  Trust: publisher=Example Grid Utilities, audit=required, trace_context=required",
 "[KCP]  Auth: oauth2 (client_credentials) + none (public fallback)",
@@ -159,7 +159,7 @@ var RAW_S1 = [
 
 var RAW_S2 = [
 "=== SCENARIO 2: Legal Document Review (3-Hop Delegation) ===",
-"Domain: Law Firm Document Review | KCP v0.6 | A2A Agent Card v1.0.0",
+"Domain: Law Firm Document Review | KCP v0.9 | A2A Agent Card v1.0.0",
 "Agents: CaseOrchestratorAgent -> LegalResearchAgent -> ExternalCaseLawAgent",
 "",
 "── Setup: Agent Discovery + KCP Discovery + Authentication ─────",
@@ -169,7 +169,7 @@ var RAW_S2 = [
 "[A2A]  Skills: precedent-search, case-analysis",
 "[A2A]  Knowledge manifest: /.well-known/kcp.json",
 "",
-"[KCP]  LegalResearchAgent reads knowledge.yaml (KCP v0.8)",
+"[KCP]  LegalResearchAgent reads knowledge.yaml (KCP v0.9)",
 "[KCP]  Project: legal-research-agent v1.0.0",
 "[KCP]  Trust: publisher=Example Law LLP, audit=required, trace_context=required",
 "[KCP]  Auth: oauth2 (client_credentials) + none (public fallback)",
@@ -256,7 +256,7 @@ var RAW_S2 = [
 
 var RAW_S3 = [
 "=== SCENARIO 3: Financial AML Intelligence (Adversarial) ===",
-"Domain: Anti-Money-Laundering Compliance | KCP v0.8 | A2A Agent Card v1.0.0",
+"Domain: Anti-Money-Laundering Compliance | KCP v0.9 | A2A Agent Card v1.0.0",
 "Agents: ComplianceOrchestrator, TransactionIntelligence, SanctionsScreening, MLRiskScoring, RogueAgent",
 "",
 "── Setup: Discovery + Authentication ───────────────────────────",
@@ -265,7 +265,7 @@ var RAW_S3 = [
 "[A2A]  Discovered: \"Transaction Intelligence Agent\" at https://aml.example.com/agent",
 "[A2A]  Skills: sanctions-screening, transaction-analysis, sar-preparation",
 "",
-"[KCP]  TransactionIntelligenceAgent reads knowledge.yaml (KCP v0.8)",
+"[KCP]  TransactionIntelligenceAgent reads knowledge.yaml (KCP v0.9)",
 "[KCP]  Project: transaction-intelligence-agent v1.0.0",
 "[KCP]  Trust: publisher=Example Bank Compliance, audit=required",
 "[KCP]  Auth: oauth2 (client_credentials) + none (public fallback)",

@@ -1,0 +1,27 @@
+# Level 3 — valid basic federation with two sub-manifests
+kcp_version: "0.9"
+project: test-federation-basic
+version: "1.0.0"
+
+manifests:
+  - id: platform
+    url: "https://example.com/platform/knowledge.yaml"
+    label: "Platform Team"
+    relationship: foundation
+  - id: security
+    url: "https://example.com/security/knowledge.yaml"
+    label: "Security Team"
+    relationship: governs
+
+units:
+  - id: overview
+    path: docs/overview.md
+    intent: "Project overview"
+    scope: global
+    audience: [developer, agent]
+    external_depends_on:
+      - manifest: security
+        unit: gdpr-policy
+        on_failure: warn
+
+relationships: []

@@ -1,0 +1,21 @@
+# Level 3 — valid federation with local_mirror and update_frequency
+kcp_version: "0.9"
+project: test-federation-mirror
+version: "1.0.0"
+
+manifests:
+  - id: platform
+    url: "https://example.com/platform/knowledge.yaml"
+    label: "Platform Team"
+    relationship: foundation
+    update_frequency: weekly
+    local_mirror: "./mirrors/platform.yaml"
+
+units:
+  - id: overview
+    path: docs/overview.md
+    intent: "Project overview"
+    scope: global
+    audience: [developer, agent]
+
+relationships: []

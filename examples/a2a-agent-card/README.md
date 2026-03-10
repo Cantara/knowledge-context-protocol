@@ -53,7 +53,7 @@ The `knowledgeManifest` field is not part of the A2A specification today. It is 
 
 ### `knowledge.yaml` — KCP Manifest
 
-A [KCP v0.6](https://github.com/cantara/knowledge-context-protocol) manifest for the same agent. Three knowledge units with escalating access:
+A [KCP v0.9](https://github.com/cantara/knowledge-context-protocol) manifest for the same agent. Three knowledge units with escalating access:
 
 | Unit | Access | Sensitivity | Auth Scope | Delegation | HITL |
 |------|--------|------------|------------|------------|------|

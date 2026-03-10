@@ -10,7 +10,7 @@
     <packaging>jar</packaging>
 
     <name>Scenario 5: Dependency Ordering Simulator</name>
-    <description>Topological sort of KCP depends_on relationships with cycle detection and all 5 relationship types</description>
+    <description>Topological sort of KCP depends_on relationships with cycle detection and 5 of 6 relationship types</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

@@ -1,0 +1,25 @@
+# Level 3 — valid federation with external_relationships using governs type
+kcp_version: "0.9"
+project: test-federation-ext-rels
+version: "1.0.0"
+
+manifests:
+  - id: security
+    url: "https://example.com/security/knowledge.yaml"
+    label: "Security Team"
+    relationship: governs
+
+units:
+  - id: deployment-guide
+    path: docs/deploy.md
+    intent: "Deployment guide"
+    scope: project
+    audience: [developer, agent]
+
+external_relationships:
+  - from_unit: deployment-guide
+    to_manifest: security
+    to_unit: gdpr-policy
+    type: governs
+
+relationships: []

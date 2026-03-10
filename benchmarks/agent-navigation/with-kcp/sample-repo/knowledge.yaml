@@ -1,5 +1,5 @@
 # Bookshelf API — Knowledge Context Protocol manifest
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: bookshelf-api
 version: "1.0.0"
 language: en

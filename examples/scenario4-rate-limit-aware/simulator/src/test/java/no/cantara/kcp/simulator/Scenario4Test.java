@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class Scenario4Test {
 
     private static final String MANIFEST_YAML = """
-            kcp_version: "0.8"
+            kcp_version: "0.9"
             project: test-scenario4
             version: "1.0.0"
             rate_limits:
