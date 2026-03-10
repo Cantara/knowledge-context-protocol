@@ -1,5 +1,5 @@
 # Level 3 — unit delegation.max_depth exceeds root delegation.max_depth
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: test-depth-exceeded
 version: "1.0.0"
 

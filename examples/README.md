@@ -9,7 +9,7 @@ Reference implementations and runnable simulation scenarios — from the minimum
 The smallest valid `knowledge.yaml`. Start here if you are not sure whether you need KCP yet.
 
 ```yaml
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: my-project
 version: 1.0.0
 units:
@@ -80,9 +80,9 @@ An API documentation platform where different documentation tiers have different
 
 ## [dependency-graph/](./dependency-graph/)
 
-**All 5 relationship types. Platform migration scenario.**
+**5 of 6 relationship types. Platform migration scenario.**
 
-A NovaPlatform v1-to-v2 migration with 8 units exercising every relationship type:
+A NovaPlatform v1-to-v2 migration with 8 units exercising five of the six relationship types (the sixth, `governs`, is demonstrated in the [federation example](./federation/)):
 - `depends_on` — migration-guide depends on platform-overview
 - `enables` — platform-overview enables migration-guide
 - `supersedes` — api-v2-reference supersedes api-v1-reference
@@ -95,7 +95,7 @@ A NovaPlatform v1-to-v2 migration with 8 units exercising every relationship typ
 
 ## Simulation Scenarios
 
-Five runnable Java simulators that stress-test the A2A + KCP composition model at increasing complexity. Each surfaces specific spec behaviours and gaps, contributing to the v0.8+ roadmap.
+Five runnable Java simulators that stress-test the A2A + KCP composition model at increasing complexity. Each surfaces specific spec behaviours and gaps, contributing to the v0.9+ roadmap.
 
 ### [scenario1-energy-metering/](./scenario1-energy-metering/)
 
@@ -119,7 +119,7 @@ Spec gaps surfaced: capability attenuation is declarative not mechanical; depth 
 
 Anti-money-laundering compliance orchestration with a `RogueAgent` that attempts 4 distinct violations plus a rate limit advisory burst: delegation depth exceeded, scope elevation, `max_depth: 0` bypass, GDPR data residency block, and advisory `rate_limits` burst on `customer-profiles`.
 
-Spec gaps surfaced: no cryptographic delegation chain integrity; `no_ai_training` restriction is unenforceable; batched HITL flow is undefined; `compliance` block is RFC-0004, not v0.8 core.
+Spec gaps surfaced: no cryptographic delegation chain integrity; `no_ai_training` restriction is unenforceable; batched HITL flow is undefined; `compliance` block promoted from RFC-0004 to core in v0.7; content integrity and attestation remain RFC.
 
 ### [scenario4-rate-limit-aware/](./scenario4-rate-limit-aware/)
 
@@ -129,7 +129,7 @@ Two agents — PoliteAgent (self-throttling) and GreedyAgent (burst) — access 
 
 ### [scenario5-dependency-ordering/](./scenario5-dependency-ordering/)
 
-**Level 5 — Dependency Ordering (topological sort, all 5 relationship types)**
+**Level 5 — Dependency Ordering (topological sort, 5 of 6 relationship types)**
 
 A knowledge ingestion agent that builds a dependency graph from `depends_on` fields and `type: depends_on` relationships, topologically sorts using Kahn's algorithm, and loads units in safe order. Handles `supersedes` (logs "prefer this version"), `contradicts` (flags warnings), cycle detection with `CycleException`, and cascading skip when a dependency fails. 8 units from a platform migration scenario.
 
@@ -145,4 +145,4 @@ A knowledge ingestion agent that builds a dependency graph from `depends_on` fie
 | **Enterprise** | + full relationship graph, role-based audience, cross-repo units | Large orgs, multiple repositories, agent deployments |
 | **Multi-agent** | + A2A Agent Card, `auth`, `delegation`, `trust.audit`, per-unit PII | Multi-agent systems, regulated domains, delegation chains |
 | **Rate-limited** | + `rate_limits` at root and unit level, advisory self-throttling | High-traffic APIs, tiered documentation, agent ecosystems |
-| **Dependency-aware** | + all 5 relationship types, topological ordering, cycle detection | Platform migrations, versioned docs, policy evolution |
+| **Dependency-aware** | + all 6 relationship types, topological ordering, cycle detection | Platform migrations, versioned docs, policy evolution |

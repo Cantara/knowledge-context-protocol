@@ -17,7 +17,7 @@ MCP solved the tool connectivity problem. KCP addresses the knowledge structure 
 Drop a `knowledge.yaml` at the root of any project. Agents stop guessing and start navigating.
 
 ```yaml
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: my-project
 version: 1.0.0
 units:
@@ -113,6 +113,12 @@ rate_limits:                       # optional — agent rate limiting (v0.8)
   default:
     requests_per_minute: 60
     requests_per_day: 10000
+manifests:                         # optional — federation declarations (v0.9)
+  - id: <local-identifier>
+    url: "https://example.com/knowledge.yaml"
+    label: <string>
+    relationship: child | foundation | governs | peer | archive
+    local_mirror: "./mirrors/local.yaml"
 payment:                           # optional — default monetisation tier
   default_tier: free | metered | subscription
 
@@ -145,13 +151,24 @@ units:
     auth_scope: <string>               # optional — opaque scope token for restricted units
     sensitivity: public | internal | confidential | restricted  # optional
     deprecated: true | false          # optional; default: false
+    external_depends_on:               # optional — cross-manifest dependencies (v0.9)
+      - manifest: <manifests-id>
+        unit: <remote-unit-id>
+        on_failure: skip | warn | degrade  # default: skip
     payment:                           # optional — override root default
       default_tier: free | metered | subscription
 
 relationships:
   - from: <unit-id>
     to: <unit-id>
-    type: enables | context | supersedes | contradicts | depends_on
+    type: enables | context | supersedes | contradicts | depends_on | governs
+
+external_relationships:                # optional — cross-manifest relationships (v0.9)
+  - from_manifest: <manifests-id>      # optional — omit = this manifest
+    from_unit: <unit-id>
+    to_manifest: <manifests-id>        # optional — omit = this manifest
+    to_unit: <unit-id>
+    type: enables | context | supersedes | contradicts | depends_on | governs
 ```
 
 ### Knowledge Unit Fields
@@ -189,7 +206,7 @@ relationships:
 Five fields per unit are enough to start:
 
 ```yaml
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: my-project
 version: 1.0.0
 units:
@@ -208,7 +225,7 @@ The standard allows complexity but does not demand it.
 
 ```yaml
 # knowledge.yaml
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: wiki.example.org
 version: 1.0.0
 updated: "2026-02-28"
@@ -384,7 +401,7 @@ Until formal acceptance, KCP remains an Apache 2.0 open specification proposed b
 
 ## Status
 
-**Current:** Draft specification — v0.8
+**Current:** Draft specification — v0.9
 
 This is an early proposal. The format is intentionally minimal. Feedback, use cases, and pull
 requests are welcome.
@@ -393,7 +410,7 @@ requests are welcome.
 - **[PROPOSAL.md](./PROPOSAL.md)** — The case for a knowledge architecture standard
 - **[RFC-0001](./RFC-0001-KCP-Extended.md)** — Extended capabilities (overview of all proposals; F/H/I/J/K/L/N promoted to v0.3–v0.4 core)
 - **[RFC-0002](./RFC-0002-Auth-and-Delegation.md)** — Auth and delegation metadata (`access`, `auth_scope`, `auth` promoted to core in v0.5–v0.6; `delegation` promoted to core in v0.7)
-- **[RFC-0003](./RFC-0003-Federation.md)** — Cross-manifest federation proposal (`manifests` block, `external_depends_on`, hub-and-spoke model)
+- **[RFC-0003](./RFC-0003-Federation.md)** — Cross-manifest federation proposal (`manifests`, `external_depends_on`, `external_relationships` — promoted to core in v0.9 as DAG with local authority)
 - **[RFC-0004](./RFC-0004-Trust-and-Compliance.md)** — Trust, provenance, and compliance metadata (`trust.provenance`, `sensitivity` promoted in v0.5; `trust.audit` promoted in v0.6; `compliance` promoted to core in v0.7)
 - **[RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md)** — Payment and rate-limit metadata proposal (`payment.default_tier` promoted to core in v0.5; `rate_limits` promoted to core in v0.8; payment methods and x402 remain RFC)
 - **[RFC-0006](./RFC-0006-Context-Window-Hints.md)** — Context window hints (accepted; promoted to SPEC.md §4.10 in v0.4)

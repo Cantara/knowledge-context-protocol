@@ -1,0 +1,21 @@
+# Level 3 — valid intra-manifest governs relationship
+kcp_version: "0.9"
+project: test-governs
+version: "1.0.0"
+
+units:
+  - id: security-policy
+    path: docs/security-policy.md
+    intent: "Security policy for all services"
+    scope: global
+    audience: [developer, agent]
+  - id: api-service
+    path: docs/api-service.md
+    intent: "API service documentation"
+    scope: module
+    audience: [developer]
+
+relationships:
+  - from: security-policy
+    to: api-service
+    type: governs

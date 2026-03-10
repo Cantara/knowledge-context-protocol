@@ -8,8 +8,11 @@ import type {
   AuthMethod,
   Compliance,
   Delegation,
+  ExternalDependency,
+  ExternalRelationship,
   KnowledgeManifest,
   KnowledgeUnit,
+  ManifestRef,
   RateLimits,
   Relationship,
   Trust,
@@ -121,6 +124,9 @@ function parseUnit(raw: RawMap): KnowledgeUnit {
     rate_limits: parseRateLimits(raw["rate_limits"]),
     delegation: parseDelegation(raw["delegation"]),
     compliance: parseCompliance(raw["compliance"]),
+    external_depends_on: ((raw["external_depends_on"] as RawMap[]) ?? []).map(
+      parseExternalDependency
+    ),
   };
 }
 
@@ -238,6 +244,38 @@ function parseRateLimits(raw: unknown): RateLimits | undefined {
   };
 }
 
+// --- Federation parsing (§3.6) ---
+
+function parseExternalDependency(raw: RawMap): ExternalDependency {
+  return {
+    manifest: String(raw["manifest"] ?? ""),
+    unit: String(raw["unit"] ?? ""),
+    on_failure: raw["on_failure"] !== undefined ? String(raw["on_failure"]) : "skip",
+  };
+}
+
+function parseManifestRef(raw: RawMap): ManifestRef {
+  return {
+    id: String(raw["id"] ?? ""),
+    url: String(raw["url"] ?? ""),
+    label: raw["label"] !== undefined ? String(raw["label"]) : undefined,
+    relationship: raw["relationship"] !== undefined ? String(raw["relationship"]) : undefined,
+    auth: parseAuth(raw["auth"]),
+    update_frequency: raw["update_frequency"] !== undefined ? String(raw["update_frequency"]) : undefined,
+    local_mirror: raw["local_mirror"] !== undefined ? String(raw["local_mirror"]) : undefined,
+  };
+}
+
+function parseExternalRelationship(raw: RawMap): ExternalRelationship {
+  return {
+    from_manifest: raw["from_manifest"] !== undefined ? String(raw["from_manifest"]) : undefined,
+    from_unit: String(raw["from_unit"] ?? ""),
+    to_manifest: raw["to_manifest"] !== undefined ? String(raw["to_manifest"]) : undefined,
+    to_unit: String(raw["to_unit"] ?? ""),
+    type: String(raw["type"] ?? ""),
+  };
+}
+
 // --- Public API ---
 
 /**
@@ -247,6 +285,8 @@ function parseRateLimits(raw: unknown): RateLimits | undefined {
 export function parseDict(data: RawMap): KnowledgeManifest {
   const rawUnits = (data["units"] as RawMap[]) ?? [];
   const rawRels = (data["relationships"] as RawMap[]) ?? [];
+  const rawManifests = (data["manifests"] as RawMap[]) ?? [];
+  const rawExtRels = (data["external_relationships"] as RawMap[]) ?? [];
 
   return {
     project: String(data["project"] ?? ""),
@@ -275,6 +315,8 @@ export function parseDict(data: RawMap): KnowledgeManifest {
     rate_limits: parseRateLimits(data["rate_limits"]),
     units: rawUnits.map(parseUnit),
     relationships: rawRels.map(parseRelationship),
+    manifests: rawManifests.map(parseManifestRef),
+    external_relationships: rawExtRels.map(parseExternalRelationship),
   };
 }
 

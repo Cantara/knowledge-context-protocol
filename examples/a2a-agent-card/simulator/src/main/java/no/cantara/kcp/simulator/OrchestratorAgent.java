@@ -43,7 +43,7 @@ public final class OrchestratorAgent {
     /** Run the full simulation. */
     public void run(Path agentCardPath, Path manifestPath) throws IOException {
         log.header("A2A + KCP Composition Simulator");
-        log.plain("Domain: Clinical Research | KCP v0.6 | A2A Agent Card v1.0.0");
+        log.plain("Domain: Clinical Research | KCP v0.9 | A2A Agent Card v1.0.0");
         log.blank();
 
         phase1AgentDiscovery(agentCardPath);

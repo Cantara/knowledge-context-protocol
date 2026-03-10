@@ -21,7 +21,7 @@ class ManifestParserTest {
     @Test
     void unitInheritsRootDefault() {
         String yaml = """
-                kcp_version: "0.8"
+                kcp_version: "0.9"
                 project: test
                 version: "1.0.0"
                 rate_limits:
@@ -42,7 +42,7 @@ class ManifestParserTest {
     @Test
     void unitOverrideBeatsRootDefault() {
         String yaml = """
-                kcp_version: "0.8"
+                kcp_version: "0.9"
                 project: test
                 version: "1.0.0"
                 rate_limits:
@@ -66,7 +66,7 @@ class ManifestParserTest {
     @Test
     void noRateLimits_returnsUnlimited() {
         String yaml = """
-                kcp_version: "0.8"
+                kcp_version: "0.9"
                 project: test
                 version: "1.0.0"
                 units:
@@ -81,7 +81,7 @@ class ManifestParserTest {
     @Test
     void multipleUnits_differentLimits() {
         String yaml = """
-                kcp_version: "0.8"
+                kcp_version: "0.9"
                 project: test
                 version: "1.0.0"
                 rate_limits:
@@ -117,7 +117,7 @@ class ManifestParserTest {
     @Test
     void dependsOnExtracted() {
         String yaml = """
-                kcp_version: "0.8"
+                kcp_version: "0.9"
                 project: test
                 version: "1.0.0"
                 units:
@@ -133,7 +133,7 @@ class ManifestParserTest {
     @Test
     void accessAndSensitivityParsed() {
         String yaml = """
-                kcp_version: "0.8"
+                kcp_version: "0.9"
                 project: test
                 version: "1.0.0"
                 units:

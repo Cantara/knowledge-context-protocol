@@ -1,0 +1,27 @@
+# Edge case — on_failure: degrade on a governance dependency
+# Valid manifest — degrade means unit functions with reduced capability
+kcp_version: "0.9"
+project: test-federation-degrade
+version: "1.0.0"
+
+manifests:
+  - id: governance
+    url: "https://example.com/governance/knowledge.yaml"
+    label: "Governance Team"
+    relationship: governs
+
+units:
+  - id: service-docs
+    path: docs/service.md
+    intent: "Service documentation"
+    scope: module
+    audience: [developer, agent]
+    external_depends_on:
+      - manifest: governance
+        unit: gdpr-policy
+        on_failure: degrade
+      - manifest: governance
+        unit: data-retention
+        on_failure: degrade
+
+relationships: []

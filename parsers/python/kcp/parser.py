@@ -5,7 +5,8 @@ from typing import Optional, Union
 import yaml
 
 from .model import (
-    Auth, AuthMethod, Compliance, Delegation, KnowledgeManifest, KnowledgeUnit,
+    Auth, AuthMethod, Compliance, Delegation, ExternalDependency,
+    ExternalRelationship, KnowledgeManifest, KnowledgeUnit, ManifestRef,
     RateLimit, RateLimits, Relationship, Trust, TrustAudit, TrustProvenance,
 )
 
@@ -121,6 +122,39 @@ def _parse_rate_limits(data: Optional[dict]) -> Optional[RateLimits]:
     )
 
 
+def _parse_external_dependency(data: dict) -> ExternalDependency:
+    """Parse an external_depends_on entry."""
+    return ExternalDependency(
+        manifest=data["manifest"],
+        unit=data["unit"],
+        on_failure=data.get("on_failure", "skip"),
+    )
+
+
+def _parse_manifest_ref(data: dict) -> ManifestRef:
+    """Parse a manifests block entry."""
+    return ManifestRef(
+        id=data["id"],
+        url=data["url"],
+        label=data.get("label"),
+        relationship=data.get("relationship"),
+        auth=_parse_auth(data.get("auth")),
+        update_frequency=data.get("update_frequency"),
+        local_mirror=data.get("local_mirror"),
+    )
+
+
+def _parse_external_relationship(data: dict) -> ExternalRelationship:
+    """Parse an external_relationships entry."""
+    return ExternalRelationship(
+        from_manifest=data.get("from_manifest"),
+        from_unit=data["from_unit"],
+        to_manifest=data.get("to_manifest"),
+        to_unit=data["to_unit"],
+        type=data["type"],
+    )
+
+
 def parse_dict(data: dict) -> KnowledgeManifest:
     """Parse a knowledge manifest from a pre-loaded dict."""
     units = [
@@ -150,12 +184,24 @@ def parse_dict(data: dict) -> KnowledgeManifest:
             rate_limits=_parse_rate_limits(u.get("rate_limits")),
             delegation=_parse_delegation(u.get("delegation")),
             compliance=_parse_compliance(u.get("compliance")),
+            external_depends_on=[
+                _parse_external_dependency(ed)
+                for ed in u.get("external_depends_on", [])
+            ],
         )
         for u in data.get("units", [])
     ]
     relationships = [
         Relationship(from_id=r["from"], to_id=r["to"], type=r["type"])
         for r in data.get("relationships", [])
+    ]
+    manifests = [
+        _parse_manifest_ref(m)
+        for m in data.get("manifests", [])
+    ]
+    external_relationships = [
+        _parse_external_relationship(er)
+        for er in data.get("external_relationships", [])
     ]
     return KnowledgeManifest(
         project=data["project"],
@@ -174,4 +220,6 @@ def parse_dict(data: dict) -> KnowledgeManifest:
         rate_limits=_parse_rate_limits(data.get("rate_limits")),
         units=units,
         relationships=relationships,
+        manifests=manifests,
+        external_relationships=external_relationships,
     )

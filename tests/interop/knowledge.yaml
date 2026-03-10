@@ -1,6 +1,6 @@
 # Interoperability test manifest
 # Used to verify that all language bridges produce identical MCP results
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: interop-test
 version: "1.0.0"
 updated: "2026-03-09"

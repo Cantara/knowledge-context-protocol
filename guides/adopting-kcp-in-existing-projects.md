@@ -90,7 +90,7 @@ These five fields are enough for an agent to answer: "what knowledge exists, wha
 piece answer, and who is it for?"
 
 ```yaml
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: my-project
 version: 1.0.0
 
@@ -285,18 +285,20 @@ with explicit `allow` and `deny` lists.
 ### "Where does `knowledge.yaml` go in a monorepo?"
 
 Place it at the root of each subproject that has its own documentation. Each manifest
-is independent (SPEC.md §1.3). Cross-manifest references are not yet in the core spec —
-see [RFC-0003](../RFC-0003-Federation.md) for the federation proposal.
+is independent (SPEC.md §1.3). Cross-manifest references are supported via federation
+(SPEC.md §3.6) — use `external_depends_on` to declare dependencies across manifests.
 
 Alternatively, place a single manifest at the monorepo root covering all subprojects,
 using relative paths: `path: services/payments/docs/auth.md`.
+
+For cross-manifest dependencies between subprojects, use the federation features
+(SPEC.md §3.6): `manifests` block, `external_depends_on`, and `external_relationships`.
 
 ### "My docs are in Confluence, not files."
 
 KCP requires a `path` to a content file. For external documentation, either:
 - Export key documents to markdown files and declare those
 - Create stub markdown files that summarise and link to the external source
-- Wait for federation support (issue #12) which may support URL-based paths in a future version
 
 ### "How do I keep the manifest in sync with actual docs?"
 
@@ -377,4 +379,4 @@ optional gaps produce warnings, unknown fields are silently ignored.
 
 ---
 
-*See also: [SPEC.md §8 Conformance Levels](../SPEC.md) · [RFC-0001 Extended Capabilities](../RFC-0001-KCP-Extended.md) · [Issue #12 Federation](https://github.com/Cantara/knowledge-context-protocol/issues/12)*
+*See also: [SPEC.md §8 Conformance Levels](../SPEC.md) · [RFC-0001 Extended Capabilities](../RFC-0001-KCP-Extended.md) · [SPEC.md §3.6 Federation](../SPEC.md#36-federation)*

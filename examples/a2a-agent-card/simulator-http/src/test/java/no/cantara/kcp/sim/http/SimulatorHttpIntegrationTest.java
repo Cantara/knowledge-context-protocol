@@ -88,7 +88,7 @@ class SimulatorHttpIntegrationTest {
         assertEquals(200, resp.statusCode());
 
         JsonNode discovery = JSON.readTree(resp.body());
-        assertEquals("0.6", discovery.path("kcp_version").asText());
+        assertEquals("0.9", discovery.path("kcp_version").asText());
         assertTrue(discovery.path("manifest_url").asText("").contains("/knowledge.yaml"),
                 "KCP discovery must point to the manifest");
     }

@@ -1,0 +1,31 @@
+# Edge case — federation diamond: A references B and C, both B and C reference D
+# D should appear once in resolution — visited URL set handles dedup
+kcp_version: "0.9"
+project: test-federation-diamond
+version: "1.0.0"
+
+manifests:
+  - id: team-b
+    url: "https://example.com/team-b/knowledge.yaml"
+    label: "Team B"
+    relationship: peer
+  - id: team-c
+    url: "https://example.com/team-c/knowledge.yaml"
+    label: "Team C"
+    relationship: peer
+
+units:
+  - id: overview
+    path: docs/overview.md
+    intent: "Hub overview"
+    scope: global
+    audience: [developer, agent]
+    external_depends_on:
+      - manifest: team-b
+        unit: shared-lib
+        on_failure: warn
+      - manifest: team-c
+        unit: common-config
+        on_failure: skip
+
+relationships: []

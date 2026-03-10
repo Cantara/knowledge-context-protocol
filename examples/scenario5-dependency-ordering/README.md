@@ -1,6 +1,6 @@
 # Scenario 5: Dependency Ordering Simulator
 
-A knowledge ingestion agent that builds a dependency graph from `depends_on` fields and `type: depends_on` relationships, topologically sorts it using Kahn's algorithm, and loads units in safe order. Handles all 5 relationship types with appropriate logging.
+A knowledge ingestion agent that builds a dependency graph from `depends_on` fields and `type: depends_on` relationships, topologically sorts it using Kahn's algorithm, and loads units in safe order. Handles 5 of the 6 relationship types with appropriate logging (the sixth, `governs`, is demonstrated in the federation example).
 
 ## What this demonstrates
 
@@ -23,7 +23,7 @@ A knowledge ingestion agent that builds a dependency graph from `depends_on` fie
 | `zero-trust-policy` | authenticated | (none) | supersedes legacy-security-policy |
 | `troubleshooting` | public | deployment-guide | |
 
-## All 5 relationship types
+## 5 of 6 relationship types
 
 | Type | Example | Agent behaviour |
 |------|---------|-----------------|

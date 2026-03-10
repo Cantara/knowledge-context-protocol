@@ -11,7 +11,7 @@
 #   - rate_limits is advisory — agents should self-throttle, not expect enforcement
 #   - Access tier and rate limit escalation are independent but correlated
 
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: techcorp-api-platform
 version: "2.1.0"
 updated: "2026-03-09"

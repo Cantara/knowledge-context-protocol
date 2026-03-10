@@ -5,7 +5,10 @@ from pathlib import Path
 import pytest
 from mcp.server import Server
 from mcp.types import (
+    CallToolRequest,
+    CallToolRequestParams,
     ListResourcesRequest,
+    ListToolsRequest,
     ReadResourceRequest,
     ReadResourceRequestParams,
 )
@@ -221,3 +224,91 @@ async def test_missing_sub_manifest_is_skipped():
     resources = await call_list_resources(server)
     # Warning emitted; primary still served
     assert len(resources) == 2
+
+
+# ── tool helpers ─────────────────────────────────────────────────────────────
+
+async def call_list_tools(server: Server) -> list:
+    handler = server.request_handlers[ListToolsRequest]
+    result = await handler(ListToolsRequest(method="tools/list"))
+    return result.root.tools
+
+
+async def call_tool(server: Server, name: str, arguments: dict | None = None) -> object:
+    handler = server.request_handlers[CallToolRequest]
+    result = await handler(
+        CallToolRequest(
+            method="tools/call",
+            params=CallToolRequestParams(name=name, arguments=arguments or {}),
+        )
+    )
+    return result.root
+
+
+# ── list_tools ───────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_list_tools_contains_list_manifests():
+    server = get_server(MINIMAL_DIR)
+    tools = await call_list_tools(server)
+    names = [t.name for t in tools]
+    assert "list_manifests" in names
+
+
+@pytest.mark.asyncio
+async def test_list_manifests_tool_has_input_schema():
+    server = get_server(MINIMAL_DIR)
+    tools = await call_list_tools(server)
+    lm = next(t for t in tools if t.name == "list_manifests")
+    assert lm.inputSchema["type"] == "object"
+
+
+# ── list_manifests tool ──────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_list_manifests_returns_empty_array_when_no_federation():
+    server = get_server(MINIMAL_DIR)
+    result = await call_tool(server, "list_manifests")
+    text = result.content[0].text
+    entries = json.loads(text)
+    assert entries == []
+
+
+@pytest.mark.asyncio
+async def test_list_manifests_returns_manifests_from_federation(tmp_path):
+    """Create a manifest with a manifests block and verify list_manifests returns it."""
+    (tmp_path / "overview.md").write_text("# Overview")
+    (tmp_path / "knowledge.yaml").write_text(
+        'kcp_version: "0.9"\n'
+        "project: fed-test\n"
+        "version: 1.0.0\n"
+        "units:\n"
+        "  - id: overview\n"
+        "    path: overview.md\n"
+        '    intent: "Project overview"\n'
+        "    scope: global\n"
+        "    audience: [agent]\n"
+        "manifests:\n"
+        "  - id: platform\n"
+        '    url: "https://example.com/platform/knowledge.yaml"\n'
+        '    label: "Platform Team"\n'
+        "    relationship: foundation\n"
+        "    update_frequency: weekly\n"
+        "  - id: security\n"
+        '    url: "https://example.com/security/knowledge.yaml"\n'
+        '    label: "Security Team"\n'
+        "    relationship: governs\n"
+    )
+    server = create_server(tmp_path / "knowledge.yaml", warn_on_validation=False)
+    result = await call_tool(server, "list_manifests")
+    text = result.content[0].text
+    entries = json.loads(text)
+    assert len(entries) == 2
+    assert entries[0]["id"] == "platform"
+    assert entries[0]["url"] == "https://example.com/platform/knowledge.yaml"
+    assert entries[0]["label"] == "Platform Team"
+    assert entries[0]["relationship"] == "foundation"
+    assert entries[0]["has_local_mirror"] is False
+    assert entries[0]["update_frequency"] == "weekly"
+    assert entries[1]["id"] == "security"
+    assert entries[1]["relationship"] == "governs"

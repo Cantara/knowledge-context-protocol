@@ -8,6 +8,7 @@ import io.modelcontextprotocol.spec.McpServerTransportProvider;
 import no.cantara.kcp.KcpParser;
 import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
+import no.cantara.kcp.model.ManifestRef;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -347,6 +348,18 @@ public final class KcpServer {
                 (exchange, request) -> handleGetCommandSyntax(request, commandManifests)
             ));
         }
+
+        // Tool: list_manifests
+        McpSchema.JsonSchema listManifestsSchema = new McpSchema.JsonSchema(
+            "object", Map.of(), List.of(), null, null, null
+        );
+
+        server.addTool(new McpServerFeatures.SyncToolSpecification(
+            new McpSchema.Tool("list_manifests", null,
+                "List the sub-manifests declared in this knowledge.yaml federation block.",
+                listManifestsSchema, null, null, null),
+            (exchange, request) -> handleListManifests(rs.primaryManifest())
+        ));
     }
 
     // ── Tool handlers (package-private for testing) ───────────────────────────
@@ -494,6 +507,28 @@ public final class KcpServer {
 
         return new McpSchema.CallToolResult(
             List.of(new McpSchema.TextContent(KcpCommands.formatSyntaxBlock(found))),
+            false, null, null);
+    }
+
+    static McpSchema.CallToolResult handleListManifests(KnowledgeManifest manifest) {
+        StringBuilder sb = new StringBuilder("[\n");
+        List<ManifestRef> refs = manifest.manifests();
+        for (int i = 0; i < refs.size(); i++) {
+            ManifestRef m = refs.get(i);
+            if (i > 0) sb.append(",\n");
+            sb.append("  {");
+            sb.append("\"id\":\"").append(escapeJson(m.id())).append("\",");
+            sb.append("\"url\":\"").append(escapeJson(m.url())).append("\",");
+            sb.append("\"label\":").append(m.label() != null ? "\"" + escapeJson(m.label()) + "\"" : "null").append(",");
+            sb.append("\"relationship\":").append(m.relationship() != null ? "\"" + escapeJson(m.relationship()) + "\"" : "null").append(",");
+            sb.append("\"has_local_mirror\":").append(m.localMirror() != null && !m.localMirror().isEmpty()).append(",");
+            sb.append("\"update_frequency\":").append(m.updateFrequency() != null ? "\"" + escapeJson(m.updateFrequency()) + "\"" : "null");
+            sb.append("}");
+        }
+        sb.append("\n]");
+
+        return new McpSchema.CallToolResult(
+            List.of(new McpSchema.TextContent(sb.toString())),
             false, null, null);
     }
 

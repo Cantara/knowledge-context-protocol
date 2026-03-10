@@ -1,5 +1,5 @@
 {
-  "kcp_version": "0.8",
+  "kcp_version": "0.9",
   "manifest": "/knowledge.yaml",
   "title": "Example Knowledge Base",
   "description": "Architecture decisions, API reference, and onboarding guides.",

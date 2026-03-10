@@ -1,5 +1,5 @@
 # Level 3 — invalid human_in_the_loop.approval_mechanism value
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: test-bad-hitl
 version: "1.0.0"
 

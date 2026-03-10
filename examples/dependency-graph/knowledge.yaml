@@ -1,12 +1,12 @@
 # NovaPlatform v1 → v2 Migration — KCP manifest
-# Demonstrates all 5 relationship types: depends_on, enables, supersedes,
-# contradicts, and context.
+# Demonstrates 5 of the 6 relationship types: depends_on, enables, supersedes,
+# contradicts, and context. (The sixth, governs, is in the federation example.)
 #
 # Scenario: A platform migration project with 8 knowledge units covering
 # the old v1 architecture, the new v2 APIs, deployment guides, security
 # policy evolution, and troubleshooting.
 
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: novaplatform-migration
 version: "2.0.0"
 updated: "2026-03-09"

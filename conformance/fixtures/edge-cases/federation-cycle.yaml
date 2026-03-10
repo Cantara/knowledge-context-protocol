@@ -1,0 +1,24 @@
+# Edge case — federation cycle: manifest A references B, B references A
+# Validator should warn (not error) — cycles are handled at resolution time
+kcp_version: "0.9"
+project: test-federation-cycle
+version: "1.0.0"
+
+manifests:
+  - id: team-b
+    url: "https://example.com/team-b/knowledge.yaml"
+    label: "Team B"
+    relationship: peer
+
+units:
+  - id: overview
+    path: docs/overview.md
+    intent: "Team A overview"
+    scope: global
+    audience: [developer, agent]
+    external_depends_on:
+      - manifest: team-b
+        unit: shared-lib
+        on_failure: skip
+
+relationships: []

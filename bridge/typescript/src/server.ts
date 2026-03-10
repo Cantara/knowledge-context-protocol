@@ -338,6 +338,16 @@ export function createKcpServer(
         required: ["command"],
       },
     },
+    {
+      name: "list_manifests",
+      description:
+        "List the sub-manifests declared in this knowledge.yaml federation block.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {},
+        required: [],
+      },
+    },
   ];
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
@@ -448,6 +458,25 @@ export function createKcpServer(
             ],
           };
         }
+      }
+
+      case "list_manifests": {
+        const manifestsList = manifest.manifests.map((m) => ({
+          id: m.id,
+          url: m.url,
+          label: m.label ?? null,
+          relationship: m.relationship ?? null,
+          has_local_mirror: !!m.local_mirror,
+          update_frequency: m.update_frequency ?? null,
+        }));
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify(manifestsList, null, 2),
+            },
+          ],
+        };
       }
 
       case "get_command_syntax": {

@@ -31,11 +31,13 @@ public record KnowledgeUnit(
         Object payment,
         RateLimits rateLimits,
         Delegation delegation,
-        Compliance compliance
+        Compliance compliance,
+        List<ExternalDependency> externalDependsOn
 ) {
     public KnowledgeUnit {
         audience = audience != null ? List.copyOf(audience) : List.of();
         dependsOn = dependsOn != null ? List.copyOf(dependsOn) : List.of();
         triggers = triggers != null ? List.copyOf(triggers) : List.of();
+        externalDependsOn = externalDependsOn != null ? List.copyOf(externalDependsOn) : List.of();
     }
 }

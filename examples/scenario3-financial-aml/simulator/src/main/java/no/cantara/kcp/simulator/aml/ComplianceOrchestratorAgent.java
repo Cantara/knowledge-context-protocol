@@ -56,7 +56,7 @@ public final class ComplianceOrchestratorAgent {
     /** Run the full 8-phase simulation. */
     public void run(Path agentCardPath, Path manifestPath) throws IOException {
         log.header("SCENARIO 3: Financial AML Intelligence (Adversarial)");
-        log.plain("Domain: Anti-Money-Laundering Compliance | KCP v0.8 | A2A Agent Card v1.0.0");
+        log.plain("Domain: Anti-Money-Laundering Compliance | KCP v0.9 | A2A Agent Card v1.0.0");
         log.plain("Agents: ComplianceOrchestrator, TransactionIntelligence, SanctionsScreening, MLRiskScoring, RogueAgent");
         log.blank();
 

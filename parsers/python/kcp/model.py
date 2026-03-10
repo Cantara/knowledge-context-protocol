@@ -22,6 +22,14 @@ class Compliance:
 
 
 @dataclass
+class ExternalDependency:
+    """A cross-manifest dependency for a knowledge unit. See SPEC.md §3.6."""
+    manifest: str
+    unit: str
+    on_failure: str = "skip"
+
+
+@dataclass
 class KnowledgeUnit:
     id: str
     path: str
@@ -48,6 +56,7 @@ class KnowledgeUnit:
     rate_limits: Optional["RateLimits"] = None
     delegation: Optional[Delegation] = None
     compliance: Optional[Compliance] = None
+    external_depends_on: list[ExternalDependency] = field(default_factory=list)
 
 
 @dataclass
@@ -68,6 +77,28 @@ class Relationship:
     from_id: str
     to_id: str
     type: str
+
+
+@dataclass
+class ManifestRef:
+    """A reference to an external KCP manifest in the federation. See SPEC.md §3.6."""
+    id: str
+    url: str
+    label: Optional[str] = None
+    relationship: Optional[str] = None
+    auth: Optional["Auth"] = None
+    update_frequency: Optional[str] = None
+    local_mirror: Optional[str] = None
+
+
+@dataclass
+class ExternalRelationship:
+    """An explicit typed relationship between units across manifest boundaries. See SPEC.md §3.6."""
+    from_unit: str
+    to_unit: str
+    type: str
+    from_manifest: Optional[str] = None
+    to_manifest: Optional[str] = None
 
 
 @dataclass
@@ -126,3 +157,5 @@ class KnowledgeManifest:
     payment: Optional[dict] = None
     rate_limits: Optional[RateLimits] = None
     relationships: list[Relationship] = field(default_factory=list)
+    manifests: list[ManifestRef] = field(default_factory=list)
+    external_relationships: list[ExternalRelationship] = field(default_factory=list)

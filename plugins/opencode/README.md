@@ -37,7 +37,7 @@ That's it. The plugin is a no-op if no `knowledge.yaml` is present.
 Minimum viable manifest (five fields per unit):
 
 ```yaml
-kcp_version: "0.6"
+kcp_version: "0.9"
 project: my-project
 version: 1.0.0
 units:

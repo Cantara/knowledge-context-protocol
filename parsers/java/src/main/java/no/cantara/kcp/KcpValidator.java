@@ -2,9 +2,12 @@ package no.cantara.kcp;
 
 import no.cantara.kcp.model.Compliance;
 import no.cantara.kcp.model.Delegation;
+import no.cantara.kcp.model.ExternalDependency;
+import no.cantara.kcp.model.ExternalRelationship;
 import no.cantara.kcp.model.HumanInTheLoop;
 import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
+import no.cantara.kcp.model.ManifestRef;
 import no.cantara.kcp.model.Relationship;
 
 import java.nio.file.Files;
@@ -28,7 +31,7 @@ public class KcpValidator {
 
     private static final Set<String> VALID_SCOPES = Set.of("global", "project", "module");
     private static final Set<String> VALID_AUDIENCES = Set.of("human", "agent", "developer", "operator", "architect", "devops");
-    private static final Set<String> VALID_RELATIONSHIP_TYPES = Set.of("enables", "context", "supersedes", "contradicts", "depends_on");
+    private static final Set<String> VALID_RELATIONSHIP_TYPES = Set.of("enables", "context", "supersedes", "contradicts", "depends_on", "governs");
     private static final Set<String> VALID_KINDS = Set.of("knowledge", "schema", "service", "policy", "executable");
     private static final Set<String> VALID_FORMATS = Set.of(
             "markdown", "pdf", "openapi", "json-schema", "jupyter",
@@ -38,7 +41,9 @@ public class KcpValidator {
     private static final Set<String> VALID_ACCESS_VALUES = Set.of("public", "authenticated", "restricted");
     private static final Set<String> VALID_SENSITIVITY_VALUES = Set.of("public", "internal", "confidential", "restricted");
     private static final Set<String> VALID_HITL_MECHANISMS = Set.of("oauth_consent", "uma", "custom");
-    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8");
+    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9");
+    private static final Set<String> VALID_MANIFEST_RELATIONSHIPS = Set.of("child", "foundation", "governs", "peer", "archive");
+    private static final Set<String> VALID_ON_FAILURE_VALUES = Set.of("skip", "warn", "degrade");
     private static final Pattern ID_PATTERN = Pattern.compile("^[a-z0-9.\\-]+$");
     private static final int MAX_TRIGGER_LENGTH = 60;
     private static final int MAX_TRIGGERS_PER_UNIT = 20;
@@ -244,6 +249,72 @@ public class KcpValidator {
             }
             if (!VALID_RELATIONSHIP_TYPES.contains(rel.type())) {
                 warnings.add(p + ": 'type' must be one of " + sorted(VALID_RELATIONSHIP_TYPES) + ", got '" + rel.type() + "'");
+            }
+        }
+
+        // Federation validation (§3.6)
+        Set<String> manifestIds = new HashSet<>();
+        for (ManifestRef ref : manifest.manifests()) {
+            String p = "manifests['" + ref.id() + "']";
+            if (ref.id() == null || ref.id().isBlank()) {
+                errors.add("manifests: entry missing required 'id'");
+                continue;
+            }
+            if (!ID_PATTERN.matcher(ref.id()).matches()) {
+                errors.add(p + ": 'id' must match ^[a-z0-9.\\-]+$, got '" + ref.id() + "'");
+            }
+            if (!manifestIds.add(ref.id())) {
+                errors.add(p + ": duplicate manifest id");
+            }
+            if (ref.url() == null || ref.url().isBlank()) {
+                errors.add(p + ": 'url' is required");
+            } else if (!ref.url().startsWith("https://")) {
+                errors.add(p + ": 'url' must use HTTPS, got '" + ref.url() + "'");
+            }
+            if (ref.relationship() != null && !VALID_MANIFEST_RELATIONSHIPS.contains(ref.relationship())) {
+                warnings.add(p + ": unknown 'relationship' value '" + ref.relationship() + "'");
+            }
+            if (ref.updateFrequency() != null && !VALID_UPDATE_FREQUENCIES.contains(ref.updateFrequency())) {
+                warnings.add(p + ": unknown 'update_frequency' value '" + ref.updateFrequency() + "'");
+            }
+        }
+
+        // Validate external_depends_on references in units
+        for (KnowledgeUnit unit : manifest.units()) {
+            String p = "unit '" + unit.id() + "'";
+            for (ExternalDependency extDep : unit.externalDependsOn()) {
+                String ep = p + ".external_depends_on['" + extDep.manifest() + "/" + extDep.unit() + "']";
+                if (extDep.manifest() == null || extDep.manifest().isBlank()) {
+                    errors.add(ep + ": 'manifest' is required");
+                } else if (!manifestIds.contains(extDep.manifest())) {
+                    warnings.add(ep + ": references unknown manifest id '" + extDep.manifest() + "'");
+                }
+                if (extDep.unit() == null || extDep.unit().isBlank()) {
+                    errors.add(ep + ": 'unit' is required");
+                }
+                if (extDep.onFailure() != null && !VALID_ON_FAILURE_VALUES.contains(extDep.onFailure())) {
+                    warnings.add(ep + ": unknown 'on_failure' value '" + extDep.onFailure() + "'; treating as 'skip'");
+                }
+            }
+        }
+
+        // Validate external_relationships
+        for (ExternalRelationship extRel : manifest.externalRelationships()) {
+            String ep = "external_relationship['" + extRel.fromUnit() + "' -> '" + extRel.toUnit() + "']";
+            if (extRel.fromUnit() == null || extRel.fromUnit().isBlank()) {
+                errors.add(ep + ": 'from_unit' is required");
+            }
+            if (extRel.toUnit() == null || extRel.toUnit().isBlank()) {
+                errors.add(ep + ": 'to_unit' is required");
+            }
+            if (extRel.type() == null || extRel.type().isBlank()) {
+                errors.add(ep + ": 'type' is required");
+            }
+            if (extRel.fromManifest() != null && !manifestIds.contains(extRel.fromManifest()) && !extRel.fromManifest().isBlank()) {
+                warnings.add(ep + ": 'from_manifest' references unknown manifest id '" + extRel.fromManifest() + "'");
+            }
+            if (extRel.toManifest() != null && !manifestIds.contains(extRel.toManifest()) && !extRel.toManifest().isBlank()) {
+                warnings.add(ep + ": 'to_manifest' references unknown manifest id '" + extRel.toManifest() + "'");
             }
         }
 

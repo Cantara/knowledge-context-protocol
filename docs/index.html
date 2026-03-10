@@ -102,7 +102,7 @@
   <section class="hero" id="hero">
     <div class="container">
       <div class="hero__badge">
-        <span>v0.8 Draft Spec</span>
+        <span>v0.9 Draft Spec</span>
         &middot;
         <span>Open Standard</span>
         &middot;
@@ -644,7 +644,7 @@ relationships:
               <pre><code id="ex-minimal" class="language-yaml"># Minimal KCP example — five minutes to add.
 # This is a valid knowledge.yaml at Level 1 conformance.
 
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: my-project
 version: 1.0.0
 
@@ -672,7 +672,7 @@ units:
               <pre><code id="ex-personal" class="language-yaml"># Personal site / portfolio example
 # Shows: audience differentiation, freshness, depends_on
 
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: wiki.example.org
 version: 1.0.0
 updated: "2026-02-28"
@@ -746,7 +746,7 @@ relationships:
 # Dependency chains across architecture layers
 # Freshness: archived (2022) vs active (2026) content
 
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: community-wiki
 version: 1.0.0
 updated: "2026-02-28"
@@ -847,11 +847,12 @@ relationships:
           <div class="usecase-card__header">
             <h4>Federation</h4>
           </div>
-          <p>Cross-organization knowledge sharing with role-based audience gating, auth methods, and trust boundaries between two independent orgs.</p>
+          <p>DAG cross-manifest federation with typed relationships, cross-manifest dependencies, <code>on_failure</code> semantics, and <code>local_mirror</code> for air-gapped operation.</p>
           <div class="usecase-card__fields">
-            <span class="usecase-card__field-tag">auth.methods</span>
-            <span class="usecase-card__field-tag">trust.audit</span>
-            <span class="usecase-card__field-tag">audience</span>
+            <span class="usecase-card__field-tag">manifests</span>
+            <span class="usecase-card__field-tag">external_depends_on</span>
+            <span class="usecase-card__field-tag">external_relationships</span>
+            <span class="usecase-card__field-tag">local_mirror</span>
           </div>
           <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/federation/" target="_blank" rel="noopener" class="btn btn--ghost" style="align-self: flex-start; margin-top: auto;">View on GitHub</a>
         </div>
@@ -866,7 +867,7 @@ relationships:
           <div class="usecase-card__header">
             <h4>Dependency Graph</h4>
           </div>
-          <p>A platform migration scenario exercising all five relationship types: <code>depends_on</code>, <code>enables</code>, <code>context</code>, <code>supersedes</code>, and <code>contradicts</code>.</p>
+          <p>A platform migration scenario exercising five of the six relationship types: <code>depends_on</code>, <code>enables</code>, <code>context</code>, <code>supersedes</code>, and <code>contradicts</code>. (The sixth, <code>governs</code>, is demonstrated in the federation example.)</p>
           <div class="usecase-card__fields">
             <span class="usecase-card__field-tag">depends_on</span>
             <span class="usecase-card__field-tag">supersedes</span>
@@ -1484,7 +1485,7 @@ units:
             <span class="usecase-card__persona">Enterprise &middot; platform engineering</span>
           </div>
           <h4>Cross-Team Knowledge Federation</h4>
-          <p>Five teams each have their own <code>knowledge.yaml</code>. Product Alpha's deployment guide depends on Platform's infrastructure docs. Security's GDPR policy governs Product Alpha's data handling. Each manifest is an island. With KCP federation, a hub manifest composes sub-manifests with typed relationships: Platform is "foundation," Security is "governance." Units declare cross-manifest dependencies. Agents follow the graph across team boundaries.</p>
+          <p>Five teams each have their own <code>knowledge.yaml</code>. Product Alpha's deployment guide depends on Platform's infrastructure docs. Security's GDPR policy governs Product Alpha's data handling. Each manifest is an island. With KCP federation, a hub manifest composes sub-manifests with typed relationships: Platform is "foundation," Security is "governs." Units declare cross-manifest dependencies. Agents follow the graph across team boundaries.</p>
           <div class="usecase-card__fields">
             <span class="usecase-card__field-tag">manifests</span>
             <span class="usecase-card__field-tag">external_depends_on</span>
@@ -1501,7 +1502,7 @@ manifests:
   - id: security
     url: "https://security.internal/knowledge.yaml"
     label: "Security — policy, compliance"
-    relationship: governance
+    relationship: governs
 
 units:
   - id: product-deployment
@@ -1514,7 +1515,7 @@ units:
         unit: deployment-architecture
       - manifest: security
         unit: gdpr-policy
-        required: true</code></pre>
+        on_failure: warn</code></pre>
           </details>
         </div>
 
@@ -1576,7 +1577,7 @@ units:
       <div class="section-header reveal">
         <span class="section-label">Scenarios &amp; Simulators</span>
         <h2>Stress-testing the protocol</h2>
-        <p>Five runnable Java simulators exercise the A2A + KCP composition model at increasing complexity &mdash; from happy-path energy metering to adversarial multi-agent AML orchestration. Each scenario surfaces specific spec behaviors and drives the v0.8+ roadmap.</p>
+        <p>Five runnable Java simulators exercise the A2A + KCP composition model at increasing complexity &mdash; from happy-path energy metering to adversarial multi-agent AML orchestration. Each scenario surfaces specific spec behaviors and drives the v0.9+ roadmap.</p>
       </div>
 
       <!-- Hero illustration -->
@@ -1632,7 +1633,7 @@ units:
             </tr>
             <tr>
               <td style="padding: var(--space-3) var(--space-4); font-weight: var(--fw-medium); white-space: nowrap;">Dependency Ordering</td>
-              <td style="padding: var(--space-3) var(--space-4);">Topological sort, cycle detection, all 5 relationship types</td>
+              <td style="padding: var(--space-3) var(--space-4);">Topological sort, cycle detection, 5 of 6 relationship types</td>
               <td style="padding: var(--space-3) var(--space-4);"><code>depends_on</code>, <code>supersedes</code>, <code>contradicts</code></td>
               <td style="padding: var(--space-3) var(--space-4); text-align: center;">1</td>
               <td style="padding: var(--space-3) var(--space-4); text-align: center;">34</td>
@@ -1802,7 +1803,7 @@ units:
               </button>
             </div>
             <div class="code-block__body">
-              <pre><code id="qs-code-l1" class="language-yaml">kcp_version: "0.8"
+              <pre><code id="qs-code-l1" class="language-yaml">kcp_version: "0.9"
 project: my-project
 version: 1.0.0
 
@@ -1839,7 +1840,7 @@ units:
               </button>
             </div>
             <div class="code-block__body">
-              <pre><code id="qs-code-l2" class="language-yaml">kcp_version: "0.8"
+              <pre><code id="qs-code-l2" class="language-yaml">kcp_version: "0.9"
 project: my-project
 version: 1.0.0
 updated: "2026-01-01"
@@ -1893,7 +1894,7 @@ units:
               </button>
             </div>
             <div class="code-block__body">
-              <pre><code id="qs-code-l3" class="language-yaml">kcp_version: "0.8"
+              <pre><code id="qs-code-l3" class="language-yaml">kcp_version: "0.9"
 project: my-project
 version: 1.0.0
 updated: "2026-01-01"
@@ -2003,7 +2004,7 @@ relationships:
       <div class="adopters-cta-box reveal">
         <h3>Add your project</h3>
         <p>Using KCP in a public repository? Open an issue and we'll add you to this list. You can also add a badge to your own README.</p>
-        <div class="adopter-snippet">[![KCP](https://img.shields.io/badge/KCP-v0.8-2563eb?style=flat-square&logo=yaml&logoColor=white)](https://cantara.github.io/knowledge-context-protocol/)</div>
+        <div class="adopter-snippet">[![KCP](https://img.shields.io/badge/KCP-v0.9-2563eb?style=flat-square&logo=yaml&logoColor=white)](https://cantara.github.io/knowledge-context-protocol/)</div>
         <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
           <a href="https://github.com/Cantara/knowledge-context-protocol/issues/new?title=Add+adopter:+[your+project]&body=Project+name:%0ARepository+URL:%0ABrief+description:" target="_blank" rel="noopener" class="btn btn--primary">Open issue to add your project</a>
           <a href="https://github.com/Cantara/knowledge-context-protocol" target="_blank" rel="noopener" class="btn btn--outline">View on GitHub</a>
@@ -2012,7 +2013,7 @@ relationships:
 
       <div class="adopters-badges reveal">
         <img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License: Apache 2.0" height="20">
-        <img src="https://img.shields.io/badge/KCP-v0.8-22c55e?style=flat-square&logo=yaml&logoColor=white" alt="KCP v0.8" height="20">
+        <img src="https://img.shields.io/badge/KCP-v0.9-22c55e?style=flat-square&logo=yaml&logoColor=white" alt="KCP v0.9" height="20">
         <img src="https://img.shields.io/badge/spec-stable-22c55e?style=flat-square" alt="Spec: Stable" height="20">
       </div>
 
@@ -2069,7 +2070,7 @@ relationships:
       <div class="section-header reveal">
         <span class="section-label">Roadmap</span>
         <h2>Where KCP is headed</h2>
-        <p>v0.8 is the current draft. Fields are promoted from RFC proposals to core as they accumulate real-world validation. Remaining RFCs are open for community feedback through 2026.</p>
+        <p>v0.9 is the current draft. Fields are promoted from RFC proposals to core as they accumulate real-world validation. Remaining RFCs are open for community feedback through 2026.</p>
       </div>
 
       <div class="roadmap-core reveal">
@@ -2136,7 +2137,7 @@ relationships:
 
       <div class="roadmap-core reveal">
         <div class="roadmap-core__info">
-          <span class="roadmap-core__badge">v0.6</span>
+          <span class="roadmap-core__badge">v0.6 — Shipped</span>
           <h3>Authorization &amp; audit</h3>
           <p>Three fields promoted from RFC-0002 and RFC-0004. Publishers can name required auth scopes, declare supported auth methods (OAuth 2.0, API key, or none), and require agents to produce audit trails with W3C Trace Context.</p>
         </div>
@@ -2163,13 +2164,28 @@ relationships:
 
       <div class="roadmap-core reveal">
         <div class="roadmap-core__info">
-          <span class="roadmap-core__badge">v0.8 — Current</span>
-          <h3>Rate limits &amp; consolidation</h3>
-          <p>Rate-limit metadata promoted from RFC-0005, <code>depends_on</code> added as a relationship type, <code>human_in_the_loop</code> confirmed as object form, and TypeScript validator improvements (version warnings, duplicate ID warnings). No breaking changes.</p>
+          <span class="roadmap-core__badge">v0.8 — Shipped</span>
+          <h3>Consolidation &amp; rate limits</h3>
+          <p>Consolidation release: <code>rate_limits</code> promoted from RFC-0005 (default tier: <code>requests_per_minute</code>, <code>requests_per_day</code>), <code>depends_on</code> added to relationship type vocabulary, parser/schema divergences resolved.</p>
         </div>
         <div class="roadmap-core__fields">
-          <span class="roadmap-field-pill">rate_limits</span>
+          <span class="roadmap-field-pill">rate_limits.default</span>
           <span class="roadmap-field-pill">depends_on (relationship type)</span>
+        </div>
+      </div>
+
+      <div class="roadmap-core reveal">
+        <div class="roadmap-core__info">
+          <span class="roadmap-core__badge">v0.9 — Current</span>
+          <h3>Federation</h3>
+          <p>Cross-manifest federation promoted from RFC-0003: <code>manifests</code> block, <code>external_depends_on</code>, <code>external_relationships</code>, <code>governs</code> relationship type, <code>on_failure</code> semantics, <code>local_mirror</code> for air-gapped operation, cycle detection, and fetch limits. DAG topology with local authority.</p>
+        </div>
+        <div class="roadmap-core__fields">
+          <span class="roadmap-field-pill">manifests</span>
+          <span class="roadmap-field-pill">external_depends_on</span>
+          <span class="roadmap-field-pill">external_relationships</span>
+          <span class="roadmap-field-pill">governs (relationship type)</span>
+          <span class="roadmap-field-pill">local_mirror</span>
         </div>
       </div>
 
@@ -2203,9 +2219,9 @@ relationships:
             <span class="rfc-card__block">external_depends_on</span>
             <span class="rfc-card__block">external_relationships</span>
           </div>
-          <p>Hub-and-spoke cross-manifest federation with typed relationships (foundation, governance, peer), cycle detection, and security constraints.</p>
+          <p>DAG cross-manifest federation with typed relationships (foundation, governs, peer, child, archive), <code>external_depends_on</code>, <code>external_relationships</code>, cycle detection, fetch limits, and <code>local_mirror</code> for air-gapped operation.</p>
           <div class="rfc-card__footer">
-            <span class="rfc-card__status">Open for feedback</span>
+            <span class="rfc-card__status">Promoted &mdash; v0.9 &sect;3.6</span>
             <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0003-Federation.md" target="_blank" rel="noopener">Read RFC →</a>
           </div>
         </div>
@@ -2240,7 +2256,7 @@ relationships:
             <span class="rfc-card__block">payment.x402</span>
             <span class="rfc-card__block">rate_limits</span>
           </div>
-          <p>x402 stablecoin micropayments, metered billing (Stripe, Google AP2), and per-tier rate limits with token-based quotas for LLM pipelines. <code>payment.default_tier</code> was promoted to core in v0.5.</p>
+          <p>x402 stablecoin micropayments, metered billing (Stripe, Google AP2), and per-tier rate limits with token-based quotas for LLM pipelines. <code>payment.default_tier</code> was promoted to core in v0.5; <code>rate_limits</code> was promoted to core in v0.8. Remaining RFC scope: payment methods, x402, per-tier rate limit overrides.</p>
           <div class="rfc-card__footer">
             <span class="rfc-card__status">Open for feedback</span>
             <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0005-Payment-and-Rate-Limits.md" target="_blank" rel="noopener">Read RFC →</a>
@@ -2337,7 +2353,7 @@ relationships:
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
           <div class="faq-answer">
-            <p>Place it at the root of each subproject that has its own documentation. Each manifest is independent (SPEC.md section 1.3). Cross-manifest federation &mdash; linking knowledge across repos with dependency chains &mdash; is proposed in <a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0003-Federation.md" target="_blank" rel="noopener">RFC-0003</a>. Alternatively, place a single manifest at the monorepo root using relative paths to all subprojects.</p>
+            <p>Place it at the root of each subproject that has its own documentation. Each manifest is independent (SPEC.md section 1.3). Cross-manifest federation &mdash; linking knowledge across repos with dependency chains &mdash; is now part of the core specification (v0.9 &sect;3.6, promoted from <a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0003-Federation.md" target="_blank" rel="noopener">RFC-0003</a>). Alternatively, place a single manifest at the monorepo root using relative paths to all subprojects.</p>
           </div>
         </div>
 

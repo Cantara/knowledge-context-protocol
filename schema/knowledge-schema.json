@@ -9,8 +9,8 @@
   "properties": {
     "kcp_version": {
       "type": "string",
-      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.8\". Prior drafts \"0.1\" through \"0.7\" are also accepted for backward compatibility.",
-      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8"]
+      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.9\". Prior drafts \"0.1\" through \"0.8\" are also accepted for backward compatibility.",
+      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9"]
     },
     "project": {
       "type": "string",
@@ -80,6 +80,16 @@
       "type": "array",
       "description": "Explicit cross-unit relationship declarations. OPTIONAL.",
       "items": { "$ref": "#/definitions/relationship" }
+    },
+    "manifests": {
+      "type": "array",
+      "description": "Federation declarations — external KCP manifests this manifest has a relationship with. OPTIONAL. See SPEC.md §3.6.",
+      "items": { "$ref": "#/definitions/manifest_ref" }
+    },
+    "external_relationships": {
+      "type": "array",
+      "description": "Explicit typed relationships between units across manifest boundaries. OPTIONAL. See SPEC.md §3.6.",
+      "items": { "$ref": "#/definitions/external_relationship" }
     }
   },
   "definitions": {
@@ -260,7 +270,12 @@
         "delegation": { "$ref": "#/definitions/delegation_object" },
         "compliance": { "$ref": "#/definitions/compliance_object" },
         "payment": { "$ref": "#/definitions/payment_object" },
-        "rate_limits": { "$ref": "#/definitions/rate_limits_object" }
+        "rate_limits": { "$ref": "#/definitions/rate_limits_object" },
+        "external_depends_on": {
+          "type": "array",
+          "description": "Cross-manifest dependencies for this unit. OPTIONAL. See SPEC.md §3.6.",
+          "items": { "$ref": "#/definitions/external_dependency" }
+        }
       }
     },
     "unit_hints": {
@@ -575,7 +590,106 @@
         },
         "type": {
           "type": "string",
-          "description": "The type of relationship. Defined values: enables, context, supersedes, contradicts, depends_on."
+          "description": "The type of relationship. Defined values: enables, context, supersedes, contradicts, depends_on, governs."
+        }
+      }
+    },
+    "manifest_ref": {
+      "type": "object",
+      "description": "A reference to an external KCP manifest in the federation. See SPEC.md §3.6.",
+      "required": ["id", "url"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Local identifier for this sub-manifest. MUST be unique within the manifests block.",
+          "pattern": "^[a-z0-9.\\-]+$",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "description": "HTTPS URL of the remote knowledge.yaml. MUST use HTTPS.",
+          "pattern": "^https://",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable description of this sub-manifest."
+        },
+        "relationship": {
+          "type": "string",
+          "description": "How this sub-manifest relates to the declaring manifest. Values: child, foundation, governs, peer, archive.",
+          "enum": ["child", "foundation", "governs", "peer", "archive"]
+        },
+        "auth": { "$ref": "#/definitions/auth_object" },
+        "update_frequency": {
+          "type": "string",
+          "description": "How often this remote manifest typically changes. Agents MAY use this for cache freshness decisions.",
+          "enum": ["hourly", "daily", "weekly", "monthly", "rarely", "never"]
+        },
+        "local_mirror": {
+          "type": "string",
+          "description": "Relative path (forward slashes) to a local copy of the remote manifest. When present and the file exists, parsers MUST load from that path instead of fetching url."
+        }
+      }
+    },
+    "external_dependency": {
+      "type": "object",
+      "description": "A cross-manifest dependency for a knowledge unit. See SPEC.md §3.6.",
+      "required": ["manifest", "unit"],
+      "additionalProperties": true,
+      "properties": {
+        "manifest": {
+          "type": "string",
+          "description": "The id of an entry in this manifest's manifests block.",
+          "pattern": "^[a-z0-9.\\-]+$",
+          "minLength": 1
+        },
+        "unit": {
+          "type": "string",
+          "description": "The id of a unit in the referenced manifest.",
+          "pattern": "^[a-z0-9.\\-]+$",
+          "minLength": 1
+        },
+        "on_failure": {
+          "type": "string",
+          "description": "Agent behaviour when the external unit cannot be resolved. Default: skip.",
+          "enum": ["skip", "warn", "degrade"],
+          "default": "skip"
+        }
+      }
+    },
+    "external_relationship": {
+      "type": "object",
+      "description": "An explicit typed relationship between units across manifest boundaries. See SPEC.md §3.6.",
+      "required": ["from_unit", "to_unit", "type"],
+      "additionalProperties": true,
+      "properties": {
+        "from_manifest": {
+          "type": "string",
+          "description": "Source manifest id. Omit for this manifest.",
+          "pattern": "^[a-z0-9.\\-]+$"
+        },
+        "from_unit": {
+          "type": "string",
+          "description": "Source unit id.",
+          "pattern": "^[a-z0-9.\\-]+$",
+          "minLength": 1
+        },
+        "to_manifest": {
+          "type": "string",
+          "description": "Target manifest id. Omit for this manifest.",
+          "pattern": "^[a-z0-9.\\-]+$"
+        },
+        "to_unit": {
+          "type": "string",
+          "description": "Target unit id.",
+          "pattern": "^[a-z0-9.\\-]+$",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "description": "Relationship type. Same vocabulary as §5: enables, context, supersedes, contradicts, depends_on, governs."
         }
       }
     }

@@ -201,3 +201,51 @@ def test_build_manifest_json_structure():
     assert body["units"][0]["id"] == "spec"
     assert body["units"][0]["uri"] == "knowledge://test/spec"
     assert body["relationships"][0]["from"] == "spec"
+
+
+def test_build_manifest_json_includes_manifests():
+    import json
+    manifest = parse_dict({
+        "project": "fed",
+        "version": "1.0.0",
+        "units": [],
+        "manifests": [
+            {
+                "id": "platform",
+                "url": "https://example.com/platform/knowledge.yaml",
+                "label": "Platform",
+                "relationship": "foundation",
+                "update_frequency": "weekly",
+            },
+        ],
+        "external_relationships": [
+            {
+                "from_unit": "spec",
+                "to_manifest": "platform",
+                "to_unit": "deploy-guide",
+                "type": "governs",
+            },
+        ],
+    })
+    body = json.loads(build_manifest_json(manifest, "fed"))
+    assert "manifests" in body
+    assert len(body["manifests"]) == 1
+    assert body["manifests"][0]["id"] == "platform"
+    assert body["manifests"][0]["url"] == "https://example.com/platform/knowledge.yaml"
+    assert "external_relationships" in body
+    assert len(body["external_relationships"]) == 1
+    assert body["external_relationships"][0]["from_unit"] == "spec"
+    assert body["external_relationships"][0]["to_unit"] == "deploy-guide"
+    assert body["external_relationships"][0]["type"] == "governs"
+
+
+def test_build_manifest_json_omits_empty_manifests():
+    import json
+    manifest = parse_dict({
+        "project": "no-fed",
+        "version": "1.0.0",
+        "units": [],
+    })
+    body = json.loads(build_manifest_json(manifest, "no-fed"))
+    assert "manifests" not in body
+    assert "external_relationships" not in body

@@ -53,7 +53,7 @@ java -jar target/kcp-scenario1-energy-metering-0.1.0-jar-with-dependencies.jar
 
 ```
 === SCENARIO 1: Smart Energy Metering ===
-Domain: Utility Grid Operations | KCP v0.6 | A2A Agent Card v1.0.0
+Domain: Utility Grid Operations | KCP v0.9 | A2A Agent Card v1.0.0
 
 -- Phase 1: Agent Discovery (A2A Layer) ------------------------------------
 [A2A]  Discovered: "Energy Metering Agent" at https://grid.example.com/agent

@@ -22,10 +22,14 @@ public record KnowledgeManifest(
         Object payment,
         RateLimits rateLimits,
         List<KnowledgeUnit> units,
-        List<Relationship> relationships
+        List<Relationship> relationships,
+        List<ManifestRef> manifests,
+        List<ExternalRelationship> externalRelationships
 ) {
     public KnowledgeManifest {
         units = units != null ? List.copyOf(units) : List.of();
         relationships = relationships != null ? List.copyOf(relationships) : List.of();
+        manifests = manifests != null ? List.copyOf(manifests) : List.of();
+        externalRelationships = externalRelationships != null ? List.copyOf(externalRelationships) : List.of();
     }
 }

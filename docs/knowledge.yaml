@@ -1,10 +1,10 @@
 # KCP eats its own dogfood.
 # This manifest describes the Knowledge Context Protocol repository itself.
 
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: knowledge-context-protocol
-version: 0.8.0
-updated: "2026-03-09"
+version: 0.9.0
+updated: "2026-03-10"
 language: en
 license: "Apache-2.0"
 indexing: open
@@ -37,7 +37,7 @@ units:
 
   - id: rfc-0001
     path: RFC-0001-KCP-Extended.md
-    intent: "What extended capabilities are proposed beyond the core spec — payments, compliance, federation, context hints, and other proposals not yet promoted to core?"
+    intent: "What extended capabilities are proposed beyond the core spec — payments, compliance, federation, context hints, and other proposals? Many have been promoted to core; the RFC tracks the full history."
     scope: global
     audience: [human, agent, architect, developer]
     validated: "2026-02-26"
@@ -55,12 +55,12 @@ units:
 
   - id: rfc-0003
     path: RFC-0003-Federation.md
-    intent: "How should KCP support cross-manifest federation — linking knowledge across repositories and teams via a hub-and-spoke manifests block?"
+    intent: "RFC-0003 (promoted in v0.9): cross-manifest federation — linking knowledge across repositories and teams via a DAG manifests block, external_depends_on, and external_relationships."
     scope: global
     audience: [human, agent, architect, developer]
-    validated: "2026-02-28"
+    validated: "2026-03-10"
     depends_on: [spec, rfc-0002]
-    triggers: [federation, cross-manifest, multi-repo, hub, sub-manifest, external, enterprise, synthesis]
+    triggers: [federation, cross-manifest, multi-repo, hub, sub-manifest, external, enterprise, synthesis, governs, DAG]
 
   - id: rfc-0004
     path: RFC-0004-Trust-and-Compliance.md
@@ -194,7 +194,7 @@ units:
 
   - id: example-dependency-graph
     path: examples/dependency-graph/knowledge.yaml
-    intent: "How do all five relationship types (depends_on, enables, supersedes, contradicts, context) work in a realistic knowledge graph?"
+    intent: "How do all six relationship types (depends_on, enables, supersedes, contradicts, context, governs) work in a realistic knowledge graph?"
     scope: module
     audience: [developer, agent]
     validated: "2026-03-09"
@@ -203,12 +203,12 @@ units:
 
   - id: example-federation
     path: examples/federation/knowledge.yaml
-    intent: "How do I federate multiple knowledge manifests across repositories using the hub-and-spoke manifests block?"
+    intent: "How do I federate multiple knowledge manifests across repositories using the DAG manifests block, external_depends_on, and external_relationships?"
     scope: module
     audience: [developer, agent, architect]
-    validated: "2026-03-09"
+    validated: "2026-03-10"
     depends_on: [examples-index, rfc-0003]
-    triggers: [federation, sub-manifest, hub, spoke, cross-repo, manifests block]
+    triggers: [federation, sub-manifest, DAG, cross-repo, manifests block, external_depends_on, external_relationships, governs, on_failure, local_mirror]
 
   - id: example-hints-and-chunking
     path: examples/hints-and-chunking/knowledge.yaml

@@ -1,5 +1,5 @@
 # Edge case — relationship with unknown type
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: test-bad-rel-type
 version: "1.0.0"
 

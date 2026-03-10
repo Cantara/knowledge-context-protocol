@@ -928,3 +928,227 @@ class TestDelegationComplianceValidation:
         m = parse_dict(data)
         result = validate(m)
         assert any("chunk_index" in w and "chunk_of" in w for w in result.warnings)
+
+
+# ---------------------------------------------------------------------------
+# Federation tests (§3.6, v0.9)
+# ---------------------------------------------------------------------------
+
+
+class TestFederation:
+    """Tests for federation features: manifests block, external_depends_on,
+    external_relationships, and governs relationship type."""
+
+    def test_parses_manifests_block(self):
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.9",
+            "manifests": [{
+                "id": "platform",
+                "url": "https://platform.example.com/knowledge.yaml",
+                "label": "Platform Engineering",
+                "relationship": "foundation",
+                "update_frequency": "weekly",
+                "local_mirror": "./mirrors/platform.yaml",
+            }],
+        }
+        m = parse_dict(data)
+        assert len(m.manifests) == 1
+        assert m.manifests[0].id == "platform"
+        assert m.manifests[0].url == "https://platform.example.com/knowledge.yaml"
+        assert m.manifests[0].label == "Platform Engineering"
+        assert m.manifests[0].relationship == "foundation"
+        assert m.manifests[0].update_frequency == "weekly"
+        assert m.manifests[0].local_mirror == "./mirrors/platform.yaml"
+
+    def test_parses_manifest_ref_with_auth(self):
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.9",
+            "manifests": [{
+                "id": "secure",
+                "url": "https://secure.example.com/knowledge.yaml",
+                "auth": {"methods": [{"type": "api_key", "header": "X-KCP-Key"}]},
+            }],
+        }
+        m = parse_dict(data)
+        assert m.manifests[0].auth is not None
+        assert len(m.manifests[0].auth.methods) == 1
+        assert m.manifests[0].auth.methods[0].type == "api_key"
+
+    def test_absent_manifests_block_is_empty_list(self):
+        m = parse_dict(MINIMAL)
+        assert m.manifests == []
+
+    def test_parses_external_depends_on(self):
+        data = {
+            **MINIMAL,
+            "units": [{
+                **MINIMAL["units"][0],
+                "external_depends_on": [{
+                    "manifest": "security",
+                    "unit": "gdpr-policy",
+                    "on_failure": "degrade",
+                }],
+            }],
+        }
+        m = parse_dict(data)
+        assert len(m.units[0].external_depends_on) == 1
+        assert m.units[0].external_depends_on[0].manifest == "security"
+        assert m.units[0].external_depends_on[0].unit == "gdpr-policy"
+        assert m.units[0].external_depends_on[0].on_failure == "degrade"
+
+    def test_external_depends_on_defaults_on_failure_to_skip(self):
+        data = {
+            **MINIMAL,
+            "units": [{
+                **MINIMAL["units"][0],
+                "external_depends_on": [{"manifest": "platform", "unit": "api-guide"}],
+            }],
+        }
+        m = parse_dict(data)
+        assert m.units[0].external_depends_on[0].on_failure == "skip"
+
+    def test_absent_external_depends_on_is_empty_list(self):
+        m = parse_dict(MINIMAL)
+        assert m.units[0].external_depends_on == []
+
+    def test_parses_external_relationships(self):
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.9",
+            "external_relationships": [{
+                "from_manifest": "security",
+                "from_unit": "gdpr-policy",
+                "to_unit": "data-handling",
+                "type": "governs",
+            }],
+        }
+        m = parse_dict(data)
+        assert len(m.external_relationships) == 1
+        assert m.external_relationships[0].from_manifest == "security"
+        assert m.external_relationships[0].from_unit == "gdpr-policy"
+        assert m.external_relationships[0].to_manifest is None
+        assert m.external_relationships[0].to_unit == "data-handling"
+        assert m.external_relationships[0].type == "governs"
+
+    def test_absent_external_relationships_is_empty_list(self):
+        m = parse_dict(MINIMAL)
+        assert m.external_relationships == []
+
+    def test_governs_relationship_type_is_valid(self):
+        data = {
+            **MINIMAL,
+            "kcp_version": "0.9",
+            "relationships": [{"from": "overview", "to": "overview", "type": "governs"}],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert not any("governs" in w for w in result.warnings)
+
+    def test_kcp_version_09_is_recognised(self):
+        data = {**MINIMAL, "kcp_version": "0.9"}
+        m = parse_dict(data)
+        result = validate(m)
+        assert not any("unknown kcp_version" in w for w in result.warnings)
+
+    def test_manifest_id_must_match_pattern(self):
+        data = {
+            **MINIMAL,
+            "manifests": [{"id": "INVALID ID!", "url": "https://example.com/knowledge.yaml"}],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert not result.is_valid
+        assert any("INVALID ID!" in e for e in result.errors)
+
+    def test_manifest_url_must_be_https(self):
+        data = {
+            **MINIMAL,
+            "manifests": [{"id": "platform", "url": "http://insecure.example.com/knowledge.yaml"}],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert not result.is_valid
+        assert any("HTTPS" in e for e in result.errors)
+
+    def test_duplicate_manifest_id_produces_error(self):
+        data = {
+            **MINIMAL,
+            "manifests": [
+                {"id": "platform", "url": "https://a.example.com/knowledge.yaml"},
+                {"id": "platform", "url": "https://b.example.com/knowledge.yaml"},
+            ],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert not result.is_valid
+        assert any("duplicate" in e for e in result.errors)
+
+    def test_external_depends_on_unknown_manifest_warns(self):
+        data = {
+            **MINIMAL,
+            "units": [{
+                **MINIMAL["units"][0],
+                "external_depends_on": [{"manifest": "nonexistent", "unit": "some-unit"}],
+            }],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert any("nonexistent" in w for w in result.warnings)
+
+    def test_external_relationships_unknown_manifest_warns(self):
+        data = {
+            **MINIMAL,
+            "external_relationships": [{
+                "from_manifest": "unknown-src",
+                "from_unit": "a",
+                "to_unit": "b",
+                "type": "governs",
+            }],
+        }
+        m = parse_dict(data)
+        result = validate(m)
+        assert any("unknown-src" in w for w in result.warnings)
+
+    def test_full_federation_round_trip(self):
+        data = {
+            "kcp_version": "0.9",
+            "project": "federation-test",
+            "version": "1.0.0",
+            "manifests": [{
+                "id": "security",
+                "url": "https://security.example.com/knowledge.yaml",
+                "label": "Security Team",
+                "relationship": "governs",
+            }],
+            "units": [{
+                "id": "data-handling",
+                "path": "data.md",
+                "intent": "Data handling",
+                "scope": "global",
+                "audience": ["agent"],
+                "external_depends_on": [{
+                    "manifest": "security",
+                    "unit": "gdpr-policy",
+                    "on_failure": "warn",
+                }],
+            }],
+            "external_relationships": [{
+                "from_manifest": "security",
+                "from_unit": "gdpr-policy",
+                "to_unit": "data-handling",
+                "type": "governs",
+            }],
+        }
+        m = parse_dict(data)
+        assert m.kcp_version == "0.9"
+        assert len(m.manifests) == 1
+        assert m.manifests[0].id == "security"
+        assert len(m.units[0].external_depends_on) == 1
+        assert m.units[0].external_depends_on[0].on_failure == "warn"
+        assert len(m.external_relationships) == 1
+        assert m.external_relationships[0].type == "governs"
+
+        result = validate(m)
+        assert result.is_valid, f"Expected valid: {result.errors}"

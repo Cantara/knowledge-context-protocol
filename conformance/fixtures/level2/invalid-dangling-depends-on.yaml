@@ -1,5 +1,5 @@
 # Level 2 — depends_on references a unit ID that does not exist
-kcp_version: "0.8"
+kcp_version: "0.9"
 project: test-dangling-dep
 version: "1.0.0"
 
