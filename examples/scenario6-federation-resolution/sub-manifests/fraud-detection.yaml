@@ -1,0 +1,80 @@
+# Sub-manifest: fraud-detection (child)
+# Specialized fraud detection knowledge from the fraud engineering team.
+# This manifest is referenced by payments-gateway as a child dependency.
+
+kcp_version: "0.9"
+project: fraud-detection
+version: "1.7.0"
+updated: "2026-03-09"
+language: en
+license: Apache-2.0
+
+trust:
+  provenance:
+    publisher: "ClearPay Fraud Engineering"
+    publisher_url: "https://fraud-team.clearpay.example.com"
+    contact: "fraud-team@clearpay.example.com"
+
+auth:
+  methods:
+    - type: oauth2
+      issuer: "https://auth.clearpay.example.com"
+      scopes: ["fraud:read"]
+
+rate_limits:
+  default:
+    requests_per_minute: 20
+    requests_per_day: 500
+
+units:
+  - id: risk-scoring
+    path: docs/risk-scoring-model.md
+    intent: "How does the real-time risk scoring model evaluate transaction risk?"
+    scope: project
+    audience: [developer, agent, architect]
+    validated: "2026-03-05"
+    access: restricted
+    auth_scope: fraud:read
+    sensitivity: restricted
+    triggers:
+      - "risk scoring"
+      - "fraud score"
+      - "transaction risk"
+
+  - id: velocity-checks
+    path: docs/velocity-checks.md
+    intent: "What velocity checks are applied to detect rapid-fire fraud attempts?"
+    scope: project
+    audience: [developer, agent]
+    validated: "2026-03-05"
+    access: restricted
+    auth_scope: fraud:read
+    sensitivity: restricted
+    depends_on: [risk-scoring]
+    triggers:
+      - "velocity checks"
+      - "rate abuse"
+      - "rapid transactions"
+
+  - id: chargeback-analysis
+    path: docs/chargeback-analysis.md
+    intent: "How are chargebacks analyzed to update fraud detection models?"
+    scope: project
+    audience: [developer, agent, architect]
+    validated: "2026-02-28"
+    access: restricted
+    auth_scope: fraud:read
+    sensitivity: restricted
+    depends_on: [risk-scoring]
+    triggers:
+      - "chargeback"
+      - "dispute analysis"
+      - "fraud model training"
+
+relationships:
+  - from: risk-scoring
+    to: velocity-checks
+    type: enables
+  - from: risk-scoring
+    to: chargeback-analysis
+    type: enables

@@ -1,0 +1,147 @@
+# Scenario 6: Federation Resolution — Root Manifest
+# Project: payments-gateway
+#
+# Demonstrates KCP v0.9 federation (SPEC.md section 3.6):
+#   - DAG resolution with foundation, child, and archive sub-manifests
+#   - local_mirror fallback for air-gapped / offline environments
+#   - on_failure semantics (skip, warn, degrade)
+#   - external_depends_on cross-manifest unit dependencies
+#   - external_relationships (governs) across manifest boundaries
+#   - archive manifest detection and skip
+
+kcp_version: "0.9"
+project: payments-gateway
+version: "3.1.0"
+updated: "2026-03-10"
+language: en
+license: Apache-2.0
+
+trust:
+  provenance:
+    publisher: "ClearPay Payments Engineering"
+    publisher_url: "https://docs.clearpay.example.com"
+    contact: "platform-team@clearpay.example.com"
+  audit:
+    agent_must_log: true
+    require_trace_context: true
+
+auth:
+  methods:
+    - type: oauth2
+      issuer: "https://auth.clearpay.example.com"
+      scopes: ["payments:read", "settlements:read"]
+
+rate_limits:
+  default:
+    requests_per_minute: 60
+    requests_per_day: 5000
+
+# --- Federation: 4 sub-manifests forming a DAG (SPEC.md section 3.6) ----------
+# Resolution order: foundation first, then child, skip archive.
+
+manifests:
+  - id: compliance-core
+    url: "https://governance.clearpay.example.com/compliance/knowledge.yaml"
+    label: "Compliance Core — Shared Governance"
+    relationship: foundation
+    update_frequency: weekly
+    local_mirror: "./sub-manifests/compliance-core.yaml"
+
+  - id: fraud-detection
+    url: "https://fraud-team.clearpay.example.com/knowledge.yaml"
+    label: "Fraud Detection Sub-System"
+    relationship: child
+    update_frequency: daily
+
+  - id: legacy-billing
+    url: "https://archive.clearpay.example.com/billing-v1/knowledge.yaml"
+    label: "Legacy Billing (v1, retired)"
+    relationship: archive
+    update_frequency: never
+
+# --- Root-level units -----------------------------------------------------------
+
+units:
+  - id: payment-processing
+    path: docs/payment-processing.md
+    intent: "How does the payments gateway process a transaction end-to-end?"
+    scope: global
+    audience: [developer, agent, architect]
+    validated: "2026-03-01"
+    access: restricted
+    auth_scope: payments:read
+    sensitivity: confidential
+    triggers:
+      - "payment processing"
+      - "transaction flow"
+      - "payment lifecycle"
+    external_depends_on:
+      - manifest: compliance-core
+        unit: pci-dss-controls
+        on_failure: degrade
+      - manifest: fraud-detection
+        unit: risk-scoring
+        on_failure: degrade
+
+  - id: merchant-onboarding
+    path: docs/merchant-onboarding.md
+    intent: "How do merchants integrate with the payments gateway?"
+    scope: global
+    audience: [developer, agent]
+    validated: "2026-03-01"
+    access: public
+    sensitivity: public
+    triggers:
+      - "merchant onboarding"
+      - "integration guide"
+      - "merchant setup"
+    external_depends_on:
+      - manifest: compliance-core
+        unit: kyc-procedures
+        on_failure: warn
+
+  - id: settlement-engine
+    path: docs/settlement-engine.md
+    intent: "How does the settlement engine batch and reconcile transactions?"
+    scope: project
+    audience: [developer, agent, architect]
+    validated: "2026-03-01"
+    access: restricted
+    auth_scope: settlements:read
+    sensitivity: restricted
+    depends_on: [payment-processing]
+    triggers:
+      - "settlement"
+      - "reconciliation"
+      - "batch processing"
+
+# --- Intra-manifest relationships -----------------------------------------------
+
+relationships:
+  - from: payment-processing
+    to: settlement-engine
+    type: enables
+  - from: merchant-onboarding
+    to: payment-processing
+    type: context
+
+# --- Cross-manifest relationships (SPEC.md section 3.6) -------------------------
+
+external_relationships:
+  # compliance-core governs payment-processing (governance constraint)
+  - from_manifest: compliance-core
+    from_unit: pci-dss-controls
+    to_unit: payment-processing
+    type: governs
+
+  # compliance-core governs merchant-onboarding (KYC requirement)
+  - from_manifest: compliance-core
+    from_unit: kyc-procedures
+    to_unit: merchant-onboarding
+    type: governs
+
+  # fraud-detection enables payment-processing (risk scoring feeds into auth)
+  - from_manifest: fraud-detection
+    from_unit: risk-scoring
+    to_unit: payment-processing
+    type: enables

@@ -1,0 +1,90 @@
+# Sub-manifest: compliance-core (foundation)
+# Shared compliance knowledge from the central governance team.
+# This manifest is referenced by payments-gateway as a foundation dependency.
+
+kcp_version: "0.9"
+project: compliance-core
+version: "2.4.0"
+updated: "2026-03-08"
+language: en
+license: Apache-2.0
+
+trust:
+  provenance:
+    publisher: "ClearPay Governance & Compliance"
+    publisher_url: "https://governance.clearpay.example.com"
+    contact: "compliance-team@clearpay.example.com"
+  audit:
+    agent_must_log: true
+    require_trace_context: true
+
+compliance:
+  sensitivity: confidential
+  data_residency: [EU, EEA]
+  regulations: [PCI-DSS, GDPR, PSD2]
+  restrictions:
+    - "Do not cache compliance content beyond session"
+    - "Log all access for audit trail"
+
+auth:
+  methods:
+    - type: oauth2
+      issuer: "https://auth.clearpay.example.com"
+      scopes: ["compliance:read"]
+
+rate_limits:
+  default:
+    requests_per_minute: 30
+    requests_per_day: 1000
+
+units:
+  - id: pci-dss-controls
+    path: policies/pci-dss-controls.md
+    intent: "What PCI-DSS controls must payment services implement?"
+    scope: global
+    audience: [developer, agent, architect]
+    validated: "2026-03-01"
+    access: restricted
+    auth_scope: compliance:read
+    sensitivity: confidential
+    triggers:
+      - "PCI-DSS"
+      - "payment card security"
+      - "cardholder data"
+
+  - id: kyc-procedures
+    path: policies/kyc-procedures.md
+    intent: "What KYC (Know Your Customer) procedures apply to merchant onboarding?"
+    scope: global
+    audience: [developer, agent]
+    validated: "2026-03-01"
+    access: restricted
+    auth_scope: compliance:read
+    sensitivity: confidential
+    triggers:
+      - "KYC"
+      - "know your customer"
+      - "merchant verification"
+
+  - id: data-retention-policy
+    path: policies/data-retention.md
+    intent: "How long must transaction data be retained and when must it be purged?"
+    scope: global
+    audience: [developer, agent, architect]
+    validated: "2026-02-15"
+    access: restricted
+    auth_scope: compliance:read
+    sensitivity: confidential
+    depends_on: [pci-dss-controls]
+    triggers:
+      - "data retention"
+      - "purge policy"
+      - "GDPR retention"
+
+relationships:
+  - from: pci-dss-controls
+    to: data-retention-policy
+    type: enables
+  - from: kyc-procedures
+    to: pci-dss-controls
+    type: context

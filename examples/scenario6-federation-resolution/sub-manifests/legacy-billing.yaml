@@ -1,0 +1,51 @@
+# Sub-manifest: legacy-billing (archive)
+# Historical billing system documentation, retired in Q4 2025.
+# Agents SHOULD skip this manifest unless specifically requested.
+
+kcp_version: "0.9"
+project: legacy-billing
+version: "1.0.0"
+updated: "2025-09-15"
+language: en
+license: Apache-2.0
+
+trust:
+  provenance:
+    publisher: "ClearPay Engineering (archived)"
+    publisher_url: "https://archive.clearpay.example.com"
+    contact: "platform-team@clearpay.example.com"
+
+units:
+  - id: billing-v1-api
+    path: docs/billing-v1-api.md
+    intent: "What were the endpoints and schemas for the legacy billing v1 API?"
+    scope: global
+    audience: [developer]
+    validated: "2025-09-15"
+    access: public
+    sensitivity: public
+    deprecated: true
+    triggers:
+      - "legacy billing"
+      - "billing v1"
+      - "old billing API"
+
+  - id: invoice-format-v1
+    path: docs/invoice-format-v1.md
+    intent: "What was the legacy invoice XML format used by billing v1?"
+    scope: global
+    audience: [developer]
+    validated: "2025-09-15"
+    access: public
+    sensitivity: public
+    deprecated: true
+    depends_on: [billing-v1-api]
+    triggers:
+      - "legacy invoice"
+      - "invoice XML"
+      - "v1 invoice format"
+
+relationships:
+  - from: billing-v1-api
+    to: invoice-format-v1
+    type: enables
