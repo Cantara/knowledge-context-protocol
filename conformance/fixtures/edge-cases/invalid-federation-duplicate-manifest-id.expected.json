@@ -1,0 +1,7 @@
+{
+  "valid": false,
+  "errors": ["duplicate manifest id"],
+  "unit_count": 1,
+  "relationship_count": 0,
+  "_note": "§3.6: manifests[].id MUST be unique within the manifests block."
+}

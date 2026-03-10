@@ -7,6 +7,18 @@ updated: "2026-03-09"
 language: en
 license: Apache-2.0
 
+# Federation block — exercises bridge parity for manifest serialization
+manifests:
+  - id: platform
+    url: "https://example.com/platform/knowledge.yaml"
+    label: "Platform Team"
+    relationship: foundation
+    update_frequency: weekly
+  - id: security
+    url: "https://example.com/security/knowledge.yaml"
+    label: "Security Team"
+    relationship: governs
+
 units:
   - id: auth-guide
     path: docs/authentication.md
@@ -35,6 +47,10 @@ units:
       - "429"
       - "throttle"
       - "backoff"
+    external_depends_on:
+      - manifest: platform
+        unit: rate-limit-config
+        on_failure: warn
 
   - id: env-config
     path: docs/environment.md

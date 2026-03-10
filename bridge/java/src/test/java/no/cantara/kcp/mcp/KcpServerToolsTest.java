@@ -256,4 +256,35 @@ class KcpServerToolsTest {
         KcpServer.SearchResult result = KcpServer.scoreUnit(unit, List.of("zzzzzzz"), fullSlug);
         assertEquals(0, result.score());
     }
+
+    // ── list_manifests ───────────────────────────────────────────────────────
+
+    @Test void listManifestsReturnsEmptyArrayWhenNoFederationBlock() throws Exception {
+        // "full" fixture has no manifests block
+        McpSchema.CallToolResult result = KcpServer.handleListManifests(fullRs.primaryManifest());
+
+        assertFalse(result.isError());
+        String text = ((McpSchema.TextContent) result.content().get(0)).text();
+        // Empty manifests list: opening "[\n" + closing "\n]" = "[\n\n]"
+        assertTrue(text.trim().equals("[]") || text.equals("[\n\n]"),
+            "Expected empty JSON array, got: " + text);
+    }
+
+    @Test void listManifestsReturnsManifestEntriesFromFederationBlock() throws Exception {
+        KcpServer.ResourceSet fedRs = KcpServer.buildResources(fixture("federation"), false);
+
+        McpSchema.CallToolResult result = KcpServer.handleListManifests(fedRs.primaryManifest());
+
+        assertFalse(result.isError());
+        String text = ((McpSchema.TextContent) result.content().get(0)).text();
+        assertTrue(text.contains("\"id\":\"platform\""));
+        assertTrue(text.contains("\"url\":\"https://example.com/platform/knowledge.yaml\""));
+        assertTrue(text.contains("\"label\":\"Platform Team\""));
+        assertTrue(text.contains("\"relationship\":\"foundation\""));
+        assertTrue(text.contains("\"has_local_mirror\":false"));
+        assertTrue(text.contains("\"update_frequency\":\"weekly\""));
+        assertTrue(text.contains("\"id\":\"security\""));
+        assertTrue(text.contains("\"label\":\"Security Team\""));
+        assertTrue(text.contains("\"relationship\":\"governs\""));
+    }
 }

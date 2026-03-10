@@ -1,0 +1,7 @@
+{
+  "valid": false,
+  "errors": ["manifest id must match pattern ^[a-z0-9.\\-]+$"],
+  "unit_count": 1,
+  "relationship_count": 0,
+  "_note": "§3.6: manifests[].id MUST match ^[a-z0-9.\\-]+$. 'Platform_Team' has uppercase and underscore."
+}

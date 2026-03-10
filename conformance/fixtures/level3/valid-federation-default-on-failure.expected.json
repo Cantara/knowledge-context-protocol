@@ -1,0 +1,7 @@
+{
+  "valid": true,
+  "errors": [],
+  "unit_count": 1,
+  "relationship_count": 0,
+  "_note": "on_failure is omitted — parsers should default to 'skip' per §3.6"
+}

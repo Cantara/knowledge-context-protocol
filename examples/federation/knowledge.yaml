@@ -41,6 +41,23 @@ manifests:
     update_frequency: monthly
     local_mirror: "./mirrors/oss-lib.yaml"
 
+  - id: legacy-docs
+    url: "https://docs.acme.com/legacy/knowledge.yaml"
+    label: "Legacy Documentation (pre-v2)"
+    relationship: archive
+    update_frequency: never
+
+  - id: partner-api
+    url: "https://partner.acme.com/api/knowledge.yaml"
+    label: "Partner API Portal"
+    relationship: peer
+    update_frequency: daily
+    auth:
+      methods:
+        - type: oauth2
+          issuer: "https://auth.partner.acme.com"
+          scopes: ["read:knowledge"]
+
 # --- Hub-level units ----------------------------------------------------------
 # The hub can also declare its own units (e.g. cross-cutting documentation).
 
@@ -103,3 +120,21 @@ external_relationships:
     to_manifest: ml-ops
     to_unit: model-serving
     type: context
+  # Cross-sub-manifest relationship (both from_manifest and to_manifest specified)
+  - from_manifest: platform
+    from_unit: core-sdk
+    to_manifest: ml-ops
+    to_unit: ml-sdk
+    type: enables
+  # supersedes — new security standards replace legacy docs
+  - from_manifest: security
+    from_unit: security-standards-v3
+    to_manifest: legacy-docs
+    to_unit: security-standards-v2
+    type: supersedes
+  # contradicts — partner API auth model conflicts with internal policy
+  - from_manifest: partner-api
+    from_unit: auth-model
+    to_manifest: security
+    to_unit: internal-auth-policy
+    type: contradicts

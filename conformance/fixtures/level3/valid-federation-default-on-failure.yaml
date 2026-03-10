@@ -1,0 +1,23 @@
+# Level 3 — valid federation where on_failure is omitted (defaults to "skip")
+# Tests that parsers handle the absent on_failure field gracefully
+kcp_version: "0.9"
+project: test-federation-default-on-failure
+version: "1.0.0"
+
+manifests:
+  - id: platform
+    url: "https://example.com/platform/knowledge.yaml"
+    label: "Platform Team"
+    relationship: foundation
+
+units:
+  - id: service-guide
+    path: docs/service.md
+    intent: "How to build services on the platform"
+    scope: project
+    audience: [developer, agent]
+    external_depends_on:
+      - manifest: platform
+        unit: quickstart
+
+relationships: []

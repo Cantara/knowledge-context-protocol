@@ -1,0 +1,24 @@
+# Edge case — two manifest entries with the same id
+# Validators must reject this with an error (§3.6: id MUST be unique)
+kcp_version: "0.9"
+project: test-federation-dup-id
+version: "1.0.0"
+
+manifests:
+  - id: platform
+    url: "https://example.com/platform/knowledge.yaml"
+    label: "Platform Team"
+    relationship: foundation
+  - id: platform
+    url: "https://example.com/platform-v2/knowledge.yaml"
+    label: "Platform Team v2"
+    relationship: peer
+
+units:
+  - id: overview
+    path: docs/overview.md
+    intent: "Project overview"
+    scope: global
+    audience: [developer, agent]
+
+relationships: []
