@@ -2016,8 +2016,18 @@ The following open-source projects implement KCP concepts and serve as reference
 [github.com/exoreaction/synthesis](https://github.com/exoreaction/synthesis)
 
 A KCP-native knowledge infrastructure server. Synthesis indexes workspaces (code, documentation,
-configuration, PDFs) and exposes them via MCP with sub-second retrieval. It produces a
-`knowledge.yaml` from any indexed workspace via `synthesis export --format kcp`.
+configuration, PDFs) and exposes them via MCP with sub-second retrieval.
+
+**Bi-directional KCP integration:**
+- **Consumes** `knowledge.yaml`: during `synthesis scan`, any `knowledge.yaml` found at a repo
+  root is parsed to understand unit boundaries, intent, and relationships — no separate import
+  step needed. Repos without a manifest fall back to heuristic detection.
+- **Produces** `knowledge.yaml`: `synthesis export --format kcp` generates a manifest from any
+  indexed workspace, making it immediately compatible with KCP-aware tooling.
+
+The `synthesis dispatch` command composes skill matching, file retrieval, and team-conflict
+detection into a single call that returns a ready-to-use agent configuration — a KCP-native
+pattern for supervisor/orchestrator agent architectures.
 
 ### kcp-commands
 
@@ -2030,7 +2040,7 @@ A Claude Code hook that applies KCP at the Bash tool boundary. Each manifest is 
 - **Phase B** (PostToolUse, via daemon `/filter/{key}`): strips noise patterns and truncates large outputs before they reach the model's context window
 - **Phase C** (v0.9.0, EventLogger): appends a JSON event to `~/.kcp/events.jsonl` on every Bash hook call — `{"ts":"...","session_id":"...","project_dir":"...","tool":"Bash","command":"...","manifest_key":"..."}` — consumed by kcp-memory for tool-level episodic memory
 
-Ships with 283 bundled manifests covering Git, Linux/macOS, Docker, Kubernetes, cloud CLIs,
+Ships with 284 bundled manifests covering Git, Linux/macOS, Docker, Kubernetes, cloud CLIs,
 build tools, database clients, and more. Daemon on `localhost:7734` (virtual threads, ~12ms
 warm latency). Falls back to Node.js CLI if daemon not running.
 
