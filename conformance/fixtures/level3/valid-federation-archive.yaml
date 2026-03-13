@@ -1,6 +1,6 @@
 # Level 3 — valid federation with relationship: archive and update_frequency: never
 # The 5th manifest relationship value — agents MAY skip archived manifests unless requested
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: test-federation-archive
 version: "1.0.0"
 

@@ -1,6 +1,6 @@
 # Edge case — federation diamond: A references B and C, both B and C reference D
 # D should appear once in resolution — visited URL set handles dedup
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: test-federation-diamond
 version: "1.0.0"
 

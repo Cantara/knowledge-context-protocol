@@ -362,6 +362,108 @@ agent definitions, and hooks.
 
 ---
 
+## Automated scaffolding with `kcp init`
+
+Instead of manually writing `knowledge.yaml` from scratch, use `kcp init` to generate a
+starter manifest by scanning your project:
+
+```bash
+kcp init [--level 1|2|3] [--scan]
+```
+
+### What `kcp init` does
+
+1. **Scans for known artifacts:** Looks for `README.md`, `docs/`, `openapi/`, `.claude/`,
+   `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `llms.txt`, and other
+   well-known files and directories.
+
+2. **Generates a starter `knowledge.yaml`** with one unit per discovered artifact. Each
+   unit gets an `id` derived from the file name, the correct `path`, and a placeholder
+   `intent` for you to fill in.
+
+3. **Applies the requested conformance level:**
+
+| Level | What it adds |
+|-------|-------------|
+| `--level 1` (default) | `id`, `path`, `intent`, `scope`, `audience` — minimum viable manifest. |
+| `--level 2` | Level 1 + `validated` date (set to today), `hints.token_estimate` (file size / 4 heuristic). |
+| `--level 3` | Level 2 + `triggers` extracted from headings and first paragraph of each file. |
+
+### The `--scan` flag
+
+When `--scan` is passed, `kcp init` performs deeper file inspection:
+
+- **Markdown files:** Extracts the first heading as a candidate `intent`, and H2/H3 headings
+  as candidate `triggers`.
+- **OpenAPI files:** Sets `kind: schema` and extracts the API title as the `intent`.
+- **Skill files (`.claude/skills/`):** Sets `audience: [agent]` and extracts the skill
+  description as the `intent`.
+- **Policy files (`.husky/`, `.github/workflows/`):** Sets `kind: policy`.
+
+### Example
+
+```bash
+$ kcp init --level 2 --scan
+Scanning project...
+  Found: README.md
+  Found: docs/architecture.md
+  Found: docs/api/authentication.md
+  Found: openapi/payments.yaml
+  Found: .claude/skills/tdd.yaml
+
+Generated knowledge.yaml with 5 units (Level 2).
+Review and update the 'intent' fields, then validate:
+  kcp validate knowledge.yaml
+```
+
+### Generated output
+
+```yaml
+kcp_version: "0.10"
+project: my-project
+version: 1.0.0
+updated: "2026-03-13"
+
+units:
+  - id: readme
+    path: README.md
+    intent: "TODO: describe what question this answers"
+    scope: global
+    audience: [human, agent]
+    validated: "2026-03-13"
+    hints:
+      token_estimate: 1200
+
+  - id: architecture
+    path: docs/architecture.md
+    intent: "What are the architectural decisions and why?"
+    scope: global
+    audience: [developer, architect, agent]
+    validated: "2026-03-13"
+    hints:
+      token_estimate: 3400
+    triggers: [architecture, decisions, components, layers]
+
+  - id: payments-api
+    kind: schema
+    path: openapi/payments.yaml
+    intent: "What endpoints does the Payments API expose?"
+    scope: module
+    audience: [developer, agent]
+    validated: "2026-03-13"
+    hints:
+      token_estimate: 8200
+```
+
+### After `kcp init`
+
+1. **Review `intent` fields** — replace any `TODO:` placeholders with a clear question.
+2. **Adjust `scope` and `audience`** — the defaults are reasonable but may need tuning.
+3. **Add `depends_on` and `relationships`** — `kcp init` does not infer dependencies.
+4. **Run `kcp validate`** to check the manifest.
+
+---
+
 ## Validation
 
 Check your manifest is valid:
@@ -379,4 +481,4 @@ optional gaps produce warnings, unknown fields are silently ignored.
 
 ---
 
-*See also: [SPEC.md §8 Conformance Levels](../SPEC.md) · [RFC-0001 Extended Capabilities](../RFC-0001-KCP-Extended.md) · [SPEC.md §3.6 Federation](../SPEC.md#36-federation)*
+*See also: [SPEC.md §8 Conformance Levels](../SPEC.md) · [RFC-0001 Extended Capabilities](../RFC-0001-KCP-Extended.md) · [SPEC.md §3.6 Federation](../SPEC.md#36-federation) · [Instruction File Bridge](./instruction-file-bridge.md)*

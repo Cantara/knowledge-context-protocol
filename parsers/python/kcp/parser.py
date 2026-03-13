@@ -141,6 +141,8 @@ def _parse_manifest_ref(data: dict) -> ManifestRef:
         auth=_parse_auth(data.get("auth")),
         update_frequency=data.get("update_frequency"),
         local_mirror=data.get("local_mirror"),
+        version_pin=data.get("version_pin"),
+        version_policy=data.get("version_policy"),
     )
 
 

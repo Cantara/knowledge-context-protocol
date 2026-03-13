@@ -1,6 +1,6 @@
 # Level 3 — valid federation where on_failure is omitted (defaults to "skip")
 # Tests that parsers handle the absent on_failure field gracefully
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: test-federation-default-on-failure
 version: "1.0.0"
 

@@ -1,6 +1,6 @@
-# Level 3 — valid basic federation with two sub-manifests
+# Level 3 — valid federation with version pinning
 kcp_version: "0.10"
-project: test-federation-basic
+project: test-federation-version-pin
 version: "1.0.0"
 
 manifests:
@@ -8,10 +8,14 @@ manifests:
     url: "https://example.com/platform/knowledge.yaml"
     label: "Platform Team"
     relationship: foundation
+    version_pin: "2.1.0"
+    version_policy: compatible
   - id: security
     url: "https://example.com/security/knowledge.yaml"
     label: "Security Team"
     relationship: governs
+    version_pin: "1.0.0"
+    version_policy: minimum
 
 units:
   - id: overview

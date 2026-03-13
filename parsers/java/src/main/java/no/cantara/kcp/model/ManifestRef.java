@@ -11,5 +11,7 @@ public record ManifestRef(
         String relationship,
         Auth auth,
         String updateFrequency,
-        String localMirror
+        String localMirror,
+        String versionPin,
+        String versionPolicy
 ) {}

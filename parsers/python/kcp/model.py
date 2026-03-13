@@ -89,6 +89,8 @@ class ManifestRef:
     auth: Optional["Auth"] = None
     update_frequency: Optional[str] = None
     local_mirror: Optional[str] = None
+    version_pin: Optional[str] = None
+    version_policy: Optional[str] = None  # "exact" | "minimum" | "compatible" (default)
 
 
 @dataclass

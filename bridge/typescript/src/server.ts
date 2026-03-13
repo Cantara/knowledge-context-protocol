@@ -468,6 +468,8 @@ export function createKcpServer(
           relationship: m.relationship ?? null,
           has_local_mirror: !!m.local_mirror,
           update_frequency: m.update_frequency ?? null,
+          version_pin: m.version_pin ?? null,
+          version_policy: m.version_policy ?? null,
         }));
         return {
           content: [

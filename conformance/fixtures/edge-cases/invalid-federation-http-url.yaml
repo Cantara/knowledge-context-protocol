@@ -1,6 +1,6 @@
 # Edge case — manifest URL uses http:// instead of required https://
 # All validators must reject this with an error (§3.6: URL MUST use HTTPS)
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: test-federation-http-url
 version: "1.0.0"
 

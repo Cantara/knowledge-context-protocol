@@ -39,6 +39,7 @@ const KNOWN_KCP_VERSIONS = new Set([
   "0.7",
   "0.8",
   "0.9",
+  "0.10",
 ]);
 const VALID_MANIFEST_RELATIONSHIPS = new Set([
   "child",
@@ -47,6 +48,7 @@ const VALID_MANIFEST_RELATIONSHIPS = new Set([
   "peer",
   "archive",
 ]);
+const VALID_VERSION_POLICIES = new Set(["exact", "minimum", "compatible"]);
 const VALID_ON_FAILURE_VALUES = new Set(["skip", "warn", "degrade"]);
 const VALID_UPDATE_FREQUENCIES = new Set([
   "hourly",
@@ -275,6 +277,12 @@ export function validate(
     }
     if (ref.update_frequency && !VALID_UPDATE_FREQUENCIES.has(ref.update_frequency)) {
       warnings.push(`${ctx}: unknown 'update_frequency' value '${ref.update_frequency}'`);
+    }
+    if (ref.version_policy && !VALID_VERSION_POLICIES.has(ref.version_policy)) {
+      warnings.push(`${ctx}: unknown 'version_policy' value '${ref.version_policy}'; treating as 'compatible'`);
+    }
+    if (ref.version_pin && !ref.version_policy) {
+      warnings.push(`${ctx}: 'version_pin' is set but 'version_policy' is not declared; defaulting to 'compatible'`);
     }
   }
 

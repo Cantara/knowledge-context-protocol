@@ -1,7 +1,7 @@
 # Level 1 — unit has an unrecognised audience value
 # Note: unknown audience values produce warnings, not errors, per spec.
 # This fixture is "valid" (no errors) but should produce warnings.
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: test-bad-audience
 version: "1.0.0"
 

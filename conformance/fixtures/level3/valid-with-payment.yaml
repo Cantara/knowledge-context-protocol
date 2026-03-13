@@ -1,6 +1,6 @@
 # Level 3 — advisory payment block (RFC-0005, not yet promoted to core)
 # Parsers MUST accept unknown top-level keys; payment is advisory only.
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: test-payment
 version: "1.0.0"
 

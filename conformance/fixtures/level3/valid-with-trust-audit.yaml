@@ -1,5 +1,5 @@
 # Level 3 — valid trust block with audit requirements
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: test-trust-audit
 version: "1.0.0"
 

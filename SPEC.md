@@ -1,8 +1,8 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.9
+**Version:** 0.10
 **Status:** Draft
-**Date:** 2026-03-10
+**Date:** 2026-03-13
 **Repository:** github.com/cantara/knowledge-context-protocol
 
 ---
@@ -548,6 +548,8 @@ manifests:
 | `auth` | OPTIONAL | object | Auth block (per §3.3) for fetching this specific manifest. Overrides root `auth` block for this fetch. |
 | `update_frequency` | OPTIONAL | string | How often this remote manifest typically changes. Uses the §4.6b vocabulary: `daily`, `weekly`, `monthly`, `rarely`, `never`. Agents MAY use this for cache freshness decisions. |
 | `local_mirror` | OPTIONAL | string | Relative path (forward slashes, relative to this manifest) to a local copy of the remote manifest. When present and the file exists, parsers MUST load from that path instead of fetching `url`. |
+| `version_pin` | OPTIONAL | string | Semver version to pin this sub-manifest to. When present, validators SHOULD compare against the remote manifest's `version` field. See version pinning below. |
+| `version_policy` | OPTIONAL | string | How to interpret `version_pin`. Values: `exact` (versions must be equal), `minimum` (remote version >= pin), `compatible` (same major version, default). Unknown values MUST be treated as `compatible`. |
 
 #### `manifests[].relationship` values
 
@@ -654,10 +656,41 @@ isolation without fetching any remote manifests. The `manifests` block is metada
 for federation-capable tools; tools that do not support federation MUST silently
 ignore it (per §2, forward compatibility).
 
-#### Known limitations (0.9.0)
+#### Version pinning
 
-- **Version pinning**: Remote manifests are fetched at their current version. Pinning
-  to a specific version is not supported. Planned for 0.10.
+A `manifests` entry MAY declare a `version_pin` to express a version expectation for the
+remote manifest. When `version_pin` is present, validators SHOULD compare the pinned version
+against the remote manifest's `version` field using the `version_policy` semantics.
+
+**`version_policy` values:**
+
+| Policy | Meaning |
+|--------|---------|
+| `exact` | Remote `version` MUST equal `version_pin`. |
+| `minimum` | Remote `version` MUST be >= `version_pin` (semver comparison). |
+| `compatible` | Remote major version must match `version_pin`'s major version. E.g., pin `2.1.0` is compatible with `2.3.0` but not `3.0.0`. This is the default. |
+
+**Behaviour:**
+
+- Version pin mismatch produces a WARNING, never an error. KCP is advisory — version pins
+  are signals, not enforcement mechanisms.
+- When `local_mirror` is present and the file exists, `local_mirror` takes precedence over
+  version checking. The pinned version is still checked against the local mirror's `version`
+  field.
+- Validators that do not fetch remote manifests MAY skip version pin checking and SHOULD
+  emit an informational message that version pins were not verified.
+
+```yaml
+manifests:
+  - id: platform
+    url: "https://platform-team.example.com/knowledge.yaml"
+    relationship: foundation
+    version_pin: "2.1.0"
+    version_policy: compatible    # 2.x matches, 3.x does not
+```
+
+#### Known limitations (0.10.0)
+
 - **Peer-to-peer without a declaring manifest**: Any manifest can declare sub-manifests,
   but a manifest cannot reference another without one of them declaring the relationship.
   Arbitrary undeclared cross-referencing is not supported.

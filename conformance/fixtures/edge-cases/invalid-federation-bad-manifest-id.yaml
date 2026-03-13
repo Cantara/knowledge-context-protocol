@@ -1,6 +1,6 @@
 # Edge case — manifest id violates ^[a-z0-9.\-]+$ pattern
 # "Platform_Team" contains uppercase letters and underscore
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: test-federation-bad-id
 version: "1.0.0"
 

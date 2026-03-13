@@ -1,5 +1,5 @@
 # Level 2 — valid depends_on references between units
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: test-dependencies
 version: "1.0.0"
 

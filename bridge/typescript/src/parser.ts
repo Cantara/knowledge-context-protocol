@@ -263,6 +263,8 @@ function parseManifestRef(raw: RawMap): ManifestRef {
     auth: parseAuth(raw["auth"]),
     update_frequency: raw["update_frequency"] !== undefined ? String(raw["update_frequency"]) : undefined,
     local_mirror: raw["local_mirror"] !== undefined ? String(raw["local_mirror"]) : undefined,
+    version_pin: raw["version_pin"] !== undefined ? String(raw["version_pin"]) : undefined,
+    version_policy: raw["version_policy"] !== undefined ? String(raw["version_policy"]) : undefined,
   };
 }
 

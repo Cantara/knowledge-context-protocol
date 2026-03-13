@@ -9,8 +9,8 @@
   "properties": {
     "kcp_version": {
       "type": "string",
-      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.9\". Prior drafts \"0.1\" through \"0.8\" are also accepted for backward compatibility.",
-      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9"]
+      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.10\". Prior drafts \"0.1\" through \"0.9\" are also accepted for backward compatibility.",
+      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10"]
     },
     "project": {
       "type": "string",
@@ -630,6 +630,16 @@
         "local_mirror": {
           "type": "string",
           "description": "Relative path (forward slashes) to a local copy of the remote manifest. When present and the file exists, parsers MUST load from that path instead of fetching url."
+        },
+        "version_pin": {
+          "type": "string",
+          "description": "Semver version to pin this sub-manifest to. Validators SHOULD compare against the remote manifest's version field. See SPEC.md §3.6."
+        },
+        "version_policy": {
+          "type": "string",
+          "description": "How to interpret version_pin. Default: compatible. See SPEC.md §3.6.",
+          "enum": ["exact", "minimum", "compatible"],
+          "default": "compatible"
         }
       }
     },

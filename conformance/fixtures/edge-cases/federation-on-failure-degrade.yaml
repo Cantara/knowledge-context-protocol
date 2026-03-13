@@ -1,6 +1,6 @@
 # Edge case — on_failure: degrade on a governance dependency
 # Valid manifest — degrade means unit functions with reduced capability
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: test-federation-degrade
 version: "1.0.0"
 

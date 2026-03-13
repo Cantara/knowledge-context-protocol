@@ -206,6 +206,8 @@ def _handle_list_manifests(manifest: KnowledgeManifest) -> list[TextContent]:
             "relationship": m.relationship,
             "has_local_mirror": bool(m.local_mirror),
             "update_frequency": m.update_frequency,
+            "version_pin": m.version_pin,
+            "version_policy": m.version_policy,
         }
         entries.append(entry)
     return [TextContent(type="text", text=json.dumps(entries, indent=2))]

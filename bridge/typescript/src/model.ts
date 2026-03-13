@@ -47,6 +47,8 @@ export interface ManifestRef {
   auth?: Auth;
   update_frequency?: string;
   local_mirror?: string;
+  version_pin?: string;
+  version_policy?: string; // "exact" | "minimum" | "compatible" (default: "compatible")
 }
 
 /** A cross-manifest dependency for a knowledge unit. See SPEC.md §3.6. */

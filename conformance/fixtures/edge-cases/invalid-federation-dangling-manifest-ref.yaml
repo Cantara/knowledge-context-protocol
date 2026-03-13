@@ -1,6 +1,6 @@
 # Edge case — external_depends_on references a manifest id not in the manifests block
 # "nonexistent" is not declared — validators emit a warning (not error)
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: test-federation-dangling-ref
 version: "1.0.0"
 

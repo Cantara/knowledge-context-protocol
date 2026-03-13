@@ -257,7 +257,9 @@ public class KcpParser {
                 (String) m.get("relationship"),
                 parseAuth((Map<String, Object>) m.get("auth")),
                 (String) m.get("update_frequency"),
-                (String) m.get("local_mirror")
+                (String) m.get("local_mirror"),
+                (String) m.get("version_pin"),
+                (String) m.get("version_policy")
         );
     }
 

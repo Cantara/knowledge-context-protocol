@@ -1,5 +1,5 @@
 # Level 2 — hints.summary_available is true but summary_unit references non-existent unit
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: test-summary-missing
 version: "1.0.0"
 

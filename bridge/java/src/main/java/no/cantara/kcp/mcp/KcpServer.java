@@ -522,7 +522,9 @@ public final class KcpServer {
             sb.append("\"label\":").append(m.label() != null ? "\"" + escapeJson(m.label()) + "\"" : "null").append(",");
             sb.append("\"relationship\":").append(m.relationship() != null ? "\"" + escapeJson(m.relationship()) + "\"" : "null").append(",");
             sb.append("\"has_local_mirror\":").append(m.localMirror() != null && !m.localMirror().isEmpty()).append(",");
-            sb.append("\"update_frequency\":").append(m.updateFrequency() != null ? "\"" + escapeJson(m.updateFrequency()) + "\"" : "null");
+            sb.append("\"update_frequency\":").append(m.updateFrequency() != null ? "\"" + escapeJson(m.updateFrequency()) + "\"" : "null").append(",");
+            sb.append("\"version_pin\":").append(m.versionPin() != null ? "\"" + escapeJson(m.versionPin()) + "\"" : "null").append(",");
+            sb.append("\"version_policy\":").append(m.versionPolicy() != null ? "\"" + escapeJson(m.versionPolicy()) + "\"" : "null");
             sb.append("}");
         }
         sb.append("\n]");

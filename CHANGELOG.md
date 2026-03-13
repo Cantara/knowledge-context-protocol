@@ -6,6 +6,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.10.0] — 2026-03-13 — Discovery & Versioning Release
+
+v0.10.0 adds federation version pinning, a query vocabulary RFC, an instruction file bridge guide, and `kcp init` specification. Zero breaking changes.
+
+### Added
+
+- **Federation version pinning (section 3.6)** -- `version_pin` (string) and `version_policy` (exact/minimum/compatible) fields on `manifests[]` entries. Validators emit WARNING on mismatch, never reject. `local_mirror` takes precedence over version checking.
+- **RFC-0007: Query Vocabulary** -- normative query semantics for pre-invocation capability discovery. Defines request shape (terms, audience, scope, sensitivity_max, max_token_budget), response shape (scored results with match_reason), and scoring algorithm (trigger: 5pts, intent: 3pts, id/path: 1pt).
+- **Instruction File Bridge guide** -- `guides/instruction-file-bridge.md` documents how to generate vendor-specific instruction files (CLAUDE.md, copilot-instructions.md, agents.json) from knowledge.yaml.
+- **`kcp init` specification** -- added to the adopting guide. Levels 1-3, `--scan` flag for deeper file inspection, token estimation heuristic (file size / 4).
+- **Conformance fixtures** -- `valid-federation-version-pin.yaml` (Level 3) and `valid-federation-version-pin-mismatch.yaml` (edge case, warning not error).
+
+### Changed
+
+- `kcp_version` current value updated from `"0.9"` to `"0.10"` in spec, schema, examples, and all parsers/bridges.
+- Known limitations in section 3.6 updated: version pinning is now supported; only peer-to-peer limitation remains.
+- All conformance fixtures updated to `kcp_version: "0.10"`.
+
+### Parsers
+
+- **Java parser**: `ManifestRef` record extended with `versionPin` and `versionPolicy` fields; validator adds `VALID_VERSION_POLICIES` set and version pin warnings.
+- **Python parser**: `ManifestRef` dataclass extended with `version_pin` and `version_policy` fields; validator adds `VALID_VERSION_POLICIES` set and version pin warnings.
+- **TypeScript bridge**: `ManifestRef` interface extended; parser, validator, and server updated. `KNOWN_KCP_VERSIONS` includes `"0.10"`.
+- **Java bridge**: `KcpServer` list_manifests tool includes `version_pin` and `version_policy` in output.
+- **Python bridge**: mapper and server include `version_pin` and `version_policy` in federation output.
+
+---
+
 ## [0.9.0] — 2026-03-10 — Federation Release
 
 v0.9.0 promotes federation (RFC-0003) to the core specification. This is the first release using full semver.

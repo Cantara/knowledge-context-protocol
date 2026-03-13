@@ -237,6 +237,8 @@ def build_manifest_json(manifest: KnowledgeManifest, slug: str) -> str:
                 **({"relationship": m.relationship} if m.relationship else {}),
                 **({"update_frequency": m.update_frequency} if m.update_frequency else {}),
                 **({"local_mirror": m.local_mirror} if m.local_mirror else {}),
+                **({"version_pin": m.version_pin} if m.version_pin else {}),
+                **({"version_policy": m.version_policy} if m.version_policy else {}),
             }
             for m in manifest.manifests
         ]

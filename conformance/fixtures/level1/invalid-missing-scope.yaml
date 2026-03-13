@@ -1,6 +1,6 @@
 # Level 1 — unit missing required 'scope' field
 # Note: parsers default scope to "global" if absent, so we set it explicitly to empty
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: test-missing-scope
 version: "1.0.0"
 

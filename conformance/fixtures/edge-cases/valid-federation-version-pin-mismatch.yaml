@@ -1,7 +1,6 @@
-# Edge case — two manifest entries with the same id
-# Validators must reject this with an error (§3.6: id MUST be unique)
+# Edge case — version_pin set without version_policy (should produce warning, not error)
 kcp_version: "0.10"
-project: test-federation-dup-id
+project: test-version-pin-mismatch
 version: "1.0.0"
 
 manifests:
@@ -9,10 +8,8 @@ manifests:
     url: "https://example.com/platform/knowledge.yaml"
     label: "Platform Team"
     relationship: foundation
-  - id: platform
-    url: "https://example.com/platform-v2/knowledge.yaml"
-    label: "Platform Team v2"
-    relationship: peer
+    version_pin: "2.1.0"
+    # version_policy intentionally omitted — validators SHOULD warn and default to "compatible"
 
 units:
   - id: overview

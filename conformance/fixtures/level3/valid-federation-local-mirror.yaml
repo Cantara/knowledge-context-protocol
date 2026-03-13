@@ -1,5 +1,5 @@
 # Level 3 — valid federation with local_mirror and update_frequency
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: test-federation-mirror
 version: "1.0.0"
 
