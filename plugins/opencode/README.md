@@ -1,6 +1,6 @@
 # opencode-kcp-plugin
 
-An [OpenCode](https://github.com/anomalyco/opencode) plugin that uses a
+An [OpenCode](https://github.com/anomalyco/opencode) / [Kilo](https://github.com/Kilo-Org/kilocode) plugin that uses a
 [`knowledge.yaml`](https://github.com/Cantara/knowledge-context-protocol) manifest to reduce
 explore-agent tool calls by 73–80%.
 
@@ -22,7 +22,15 @@ context window recovered**, **73–80% fewer tool calls** in explore-heavy sessi
 npm install opencode-kcp-plugin
 ```
 
-Add to your `opencode.json` (or `.opencode/opencode.jsonc`):
+**OpenCode** — add to `opencode.json`:
+
+```json
+{
+  "plugin": ["opencode-kcp-plugin"]
+}
+```
+
+**Kilo** — add to `kilo.json` (or `opencode.json` — both work):
 
 ```json
 {
@@ -99,6 +107,5 @@ lookup instead of 4–8 grep/glob/read calls.
 
 ## Spec
 
-[Knowledge Context Protocol v0.6](https://github.com/Cantara/knowledge-context-protocol) —
-Apache 2.0. Submitted to the Agentic AI Foundation (Linux Foundation) for neutral governance
-alongside MCP and AGENTS.md.
+[Knowledge Context Protocol v0.9](https://github.com/Cantara/knowledge-context-protocol) —
+Apache 2.0. Submitted to the AI Alliance Foundation as a companion spec to MCP.
