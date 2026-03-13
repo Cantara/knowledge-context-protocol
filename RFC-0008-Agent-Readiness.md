@@ -17,11 +17,19 @@ whether content is still current:
 1. **Enterprise Bootstrap via `llms.txt`** — cold discovery without a central registry
 2. **Capability Declarations** — `requires_capabilities` on units + `has_capabilities` query filter
 3. **Freshness Policy** — `freshness_policy` block on root and units + `exclude_stale` query filter
-4. **Cross-Manifest Query** — `federation_scope` extension to RFC-0007 query vocabulary
+4. **Cross-Manifest Query** — `federation_scope: declared` extension to RFC-0007 query vocabulary
 
 All additions are backward compatible. A v0.11 `knowledge.yaml` validates against v0.10 parsers
 with warnings only. Implementations that do not support new query parameters MUST treat them as
 absent and behave as if the default values were specified.
+
+**Release staging.** This RFC covers two ship waves:
+
+- **v0.11 (schema):** Items 1–3 (manifest fields + bootstrap guidance). Zero bridge changes
+  required. Operators can declare `freshness_policy` and `requires_capabilities` immediately.
+- **v0.12 (query):** Query extensions — `has_capabilities`, `exclude_stale`,
+  `federation_scope`, `source_manifest`. Ships after all three bridges implement the RFC-0007
+  query baseline (`audience`, `max_token_budget`, `sensitivity_max` filters).
 
 ---
 
@@ -48,21 +56,31 @@ identified this gap and asked for a practical enterprise bootstrap.
 
 [`llms.txt`](https://llmstxt.org/) is an emerging convention: a plain Markdown file at a domain's
 root (or `/.well-known/llms.txt`) that tells AI agents what a site offers and where to find
-machine-readable resources. It is being adopted widely and costs enterprises nothing to publish.
+machine-readable resources. It is governed by the community at `llmstxt.org` and has no formal
+versioning scheme. KCP treats it as a convenient bootstrap bridge, not a foundation — the
+stable KCP-native discovery path remains `/.well-known/kcp.json` (see §1.4).
 
-KCP RECOMMENDS that any organisation deploying a KCP manifest also publishes an `llms.txt` entry
-pointing to that manifest. The format is:
+**Machine-readable KCP entries use `> knowledge:` metadata lines** — the same convention
+already defined in SPEC.md §1.2 for single-manifest discovery, extended here to support
+multiple manifests. This is unambiguous and trivially parseable; Markdown section headings
+are informational only.
 
-```markdown
-## KCP Knowledge Manifests
-- [Title](URL): Description of what this manifest covers
+```
+# Acme Corp
+> Enterprise knowledge network for AI agents. Acme builds industrial control systems.
+> knowledge: /knowledge.yaml
+> knowledge: /security/knowledge.yaml
+> knowledge: /api/knowledge.yaml
 ```
 
-**Example — single enterprise, multiple manifests:**
+The human-readable section below the metadata is optional but RECOMMENDED for readability:
 
 ```markdown
 # Acme Corp
 > Enterprise knowledge network for AI agents. Acme builds industrial control systems.
+> knowledge: /knowledge.yaml
+> knowledge: /security/knowledge.yaml
+> knowledge: /api/knowledge.yaml
 
 ## KCP Knowledge Manifests
 - [Engineering Hub](/knowledge.yaml): Core capability discovery — APIs, services, ADRs
@@ -70,20 +88,21 @@ pointing to that manifest. The format is:
 - [API Gateway](/api/knowledge.yaml): External-facing service endpoints and rate limits
 ```
 
+**Precedence:** When both `> knowledge:` metadata lines and Markdown bullet links are present,
+implementations MUST use the `> knowledge:` lines as the authoritative manifest list. The
+section heading is informational.
+
 **Example — public sector agency:**
 
-```markdown
+```
 # Norwegian Labour and Welfare Administration (NAV)
 > Public services for employment, benefits, and welfare in Norway.
-
-## KCP Knowledge Manifests
-- [Developer Knowledge Hub](https://developer.nav.no/knowledge.yaml): APIs, schemas, integration guides
-- [Policy Knowledge Hub](https://policy.nav.no/knowledge.yaml): Regulations, eligibility rules, compliance
+> knowledge: https://developer.nav.no/knowledge.yaml
+> knowledge: https://policy.nav.no/knowledge.yaml
 ```
 
-Multiple manifests are first-class. There is no limit on the number of KCP manifest entries in
-`llms.txt`. Each entry is independently addressable — an agent can load one manifest without
-loading the others.
+Multiple manifests are first-class. There is no limit on the number of `> knowledge:` lines.
+Each manifest is independently addressable — an agent can load one without loading the others.
 
 ### §1.3 Full Bootstrap Chain
 
@@ -125,7 +144,6 @@ The `/.well-known/kcp.json` discovery document (defined in SPEC.md §1.4) gains 
   "spec": "https://github.com/Cantara/knowledge-context-protocol",
   "network": {
     "role": "hub",
-    "manifest_count": 12,
     "entry_point": "/knowledge.yaml",
     "registry_label": "Acme Engineering Knowledge Network"
   }
@@ -137,9 +155,12 @@ The `/.well-known/kcp.json` discovery document (defined in SPEC.md §1.4) gains 
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
 | `role` | OPTIONAL | string | `hub` — this manifest federates others. `leaf` — this is a federated sub-manifest. `standalone` — no federation. Default: `standalone`. |
-| `manifest_count` | OPTIONAL | integer | Advisory count of manifests in the network (including this one). Meaningful when `role: hub`. |
 | `entry_point` | OPTIONAL | string | Root-relative path or absolute URL to the hub manifest. Meaningful when `role: leaf` — points the agent back to the hub. |
 | `registry_label` | OPTIONAL | string | Human-readable name for the network as a whole. |
+
+Note: a `manifest_count` field was considered and rejected — it drifts immediately as
+sub-manifests are added or removed. Agents that need a manifest count SHOULD parse the
+`knowledge.yaml` and count `manifests[]` entries directly.
 
 The `role: leaf` + `entry_point` combination solves the reverse-discovery case: an agent that
 lands on a sub-manifest can immediately see "I am a sub-manifest of a larger network; the hub
@@ -206,10 +227,22 @@ units:
     # No requires_capabilities — any agent can read this usefully
 ```
 
+**Recommended prefix convention.** To reduce synonym fragmentation across independently
+published manifests, operators SHOULD use the following prefixes:
+
+| Prefix | Meaning | Examples |
+|--------|---------|---------|
+| `tool:` | CLI tool or SDK the agent must have available | `tool:kubectl`, `tool:helm`, `tool:psql`, `tool:aws-cli` |
+| `permission:` | Authorization scope or RBAC role | `permission:gdpr-data-read`, `permission:deploy-prod` |
+| `role:` | Organisational or agent role | `role:operator`, `role:security-reviewer` |
+
+Bare strings (without prefix) remain valid. Agents performing `has_capabilities` matching
+SHOULD normalize by treating `kubectl` and `tool:kubectl` as equivalent.
+
 **Semantics:**
 
-- Values are free-form strings. No normative vocabulary is defined in this version.
-  Operators are free to use tool names, permission names, role names, or any other identifier.
+- Values follow the prefix convention above; bare strings are also accepted.
+  Parsers MUST NOT reject manifests for unknown or unprefixed values.
 - An absent or empty `requires_capabilities` means no specific capability is required.
 - Agents SHOULD evaluate `requires_capabilities` before loading a unit.
 - Agents SHOULD surface capability gaps to their operator rather than silently loading
@@ -218,19 +251,23 @@ units:
   Parsers MUST NOT reject a manifest for unknown capability values.
 - v0.10 parsers MUST silently ignore this field per forward-compatibility rules (SPEC.md §2).
 
-### §2.3 `has_capabilities` Query Filter (RFC-0007 Extension)
+### §2.3 `has_capabilities` Query Filter *(v0.12)*
+
+> **Deferred to v0.12.** The `has_capabilities` query filter requires the RFC-0007 structured
+> query baseline to be implemented in all three bridges first. The field definition is
+> specified here for completeness; implementations MUST NOT ship it before the v0.12 wave.
 
 The RFC-0007 query request object gains an optional `has_capabilities` field:
 
 ```yaml
 terms: ["deployment"]
 audience: agent
-has_capabilities: [kubectl, helm]
+has_capabilities: [tool:kubectl, tool:helm]
 ```
 
 When `has_capabilities` is set, the scorer SHOULD exclude units whose `requires_capabilities`
-contains values not present in the `has_capabilities` list. An agent declares its own capability
-set and receives only the units it can act on.
+contains values not present in the `has_capabilities` list (after prefix normalization). An
+agent declares its own capability set and receives only the units it can act on.
 
 Units with no `requires_capabilities` are always included regardless of `has_capabilities`.
 
@@ -312,7 +349,20 @@ treat absence of `validated` as stale.
 is no field-level merge — if a unit declares `freshness_policy`, all sub-fields come from the
 unit declaration only.
 
-### §3.3 `exclude_stale` Query Filter (RFC-0007 Extension)
+> **WARNING:** A partial unit-level `freshness_policy` replaces the root default entirely.
+> Writing `freshness_policy: {max_age_days: 30}` on a unit does NOT inherit `on_stale` or
+> `review_contact` from the root. Re-declare all sub-fields when tightening a specific unit.
+
+**Safety-critical contexts.** Agents operating in incident response or safety-critical
+workflows SHOULD treat `on_stale: block` as `on_stale: degrade` when no alternative
+non-stale unit is available for the same intent. The purpose of `block` is to prevent agents
+from silently trusting outdated information — not to make knowledge inaccessible during a
+crisis. Agents SHOULD surface the `review_contact` and staleness details to their operator
+in all cases where `on_stale: block` would otherwise halt action.
+
+### §3.3 `exclude_stale` Query Filter *(v0.12)*
+
+> **Deferred to v0.12.** Ships with the full RFC-0007 query baseline.
 
 The RFC-0007 query request object gains an optional `exclude_stale` boolean:
 
@@ -355,11 +405,11 @@ max_token_budget: 8000
 federation_scope: declared
 ```
 
-| Value | Meaning |
-|-------|---------|
-| `local` | Query only the local manifest. **Default.** Preserves full backward compatibility. |
-| `declared` | Query the local manifest and all manifests in its `manifests[]` block (one hop). |
-| `recursive` | Query the local manifest and all transitively declared manifests up to the federation fetch limit (50 manifests). |
+| Value | Meaning | Version |
+|-------|---------|---------|
+| `local` | Query only the local manifest. **Default.** | v0.12 |
+| `declared` | Query the local manifest and all manifests in its `manifests[]` block (one hop). | v0.12 |
+| `recursive` | Query the local manifest and all transitively declared manifests up to the federation fetch limit (50 manifests). | **v0.13 — deferred.** Performance and amplification characteristics require empirical validation against real federation graphs before standardising. |
 
 Implementations that do not support `federation_scope` MUST ignore it and behave as if `local`
 was specified.
@@ -401,9 +451,10 @@ Cross-manifest query completes the bootstrap chain introduced in §1.3. An agent
 2. Loaded the hub `knowledge.yaml`
 3. Read the federation graph from `manifests[]`
 
-...can now issue a single query with `federation_scope: recursive` and receive scored,
-ranked results from the entire knowledge network — with each result annotated with which
-sub-manifest it came from.
+...can issue a query with `federation_scope: declared` and receive scored, ranked results
+from the hub and all declared sub-manifests — with each result annotated with which
+sub-manifest it came from. Recursive traversal across deeper federation graphs ships in v0.13
+once performance characteristics are validated.
 
 ---
 
@@ -449,30 +500,27 @@ units:
       review_contact: "..."
 ```
 
-### `/.well-known/kcp.json` additions
+### `/.well-known/kcp.json` additions *(v0.11)*
 
 ```json
 {
   "network": {
     "role": "hub | leaf | standalone",
-    "manifest_count": 12,
     "entry_point": "/knowledge.yaml",
     "registry_label": "..."
   }
 }
 ```
 
-### Query request additions (RFC-0007 extension; no manifest schema change)
+### Query extensions *(v0.12 — deferred; no manifest schema change)*
 
 ```yaml
-federation_scope: local | declared | recursive
-has_capabilities: [string, ...]
+# Query request
+federation_scope: local | declared   # recursive deferred to v0.13
+has_capabilities: [tool:kubectl, permission:deploy-prod]
 exclude_stale: true | false
-```
 
-### Query response addition (RFC-0007 extension)
-
-```yaml
+# Query response
 results:
   - # ... existing fields ...
     source_manifest: null | "<manifests[].id>"
@@ -495,16 +543,20 @@ The following fixtures MUST be added under `conformance/fixtures/`:
 
 ## Open Questions
 
-1. **`requires_capabilities` vocabulary normalization** — opaque strings work for v0.11 but
-   real-world usage will surface common patterns (tool names, RBAC roles). A follow-on RFC
-   should define a recommended vocabulary once adoption data exists. Operators are encouraged
-   to use tool names from well-known CLIs (kubectl, helm, psql, aws-cli, flyway, etc.) as a
-   de-facto starting vocabulary.
+1. **`requires_capabilities` vocabulary normalization** — the `tool:` / `permission:` /
+   `role:` prefix convention reduces fragmentation but does not eliminate it. A follow-on RFC
+   should define a recommended vocabulary once adoption data exists. Community input welcome.
 
 2. **Full peer-to-peer federation** — `llms.txt` bootstrap solves cold discovery without a
    central registry. True peer-to-peer (manifest A references manifest B without either being
    a declared hub) requires resolving the trust propagation model. Deferred to v0.12.
 
-3. **`recursive` scope safety** — fetching up to 50 manifests on a single query is bounded
-   but potentially expensive. Implementations SHOULD support `federation_scope: declared`
-   (one hop) first and treat `recursive` as a SHOULD for v0.11.
+3. **`recursive` scope** — deferred to v0.13. Performance and SSRF amplification
+   characteristics (up to 50 outbound HTTPS fetches per query) need empirical validation
+   against real federated graphs before standardising. `federation_scope: declared` (one hop)
+   covers the vast majority of real-world hub+leaf topologies and ships in v0.12.
+
+4. **Trust-aware scoring in federated results** — RFC-0007 scoring treats all units equally
+   regardless of which manifest they come from. Units from `relationship: archive`
+   sub-manifests can outscore local current units. A v0.12 follow-on SHOULD add relationship-
+   aware scoring modifiers (e.g. halve the score for `archive`, +3 for `governs`).
