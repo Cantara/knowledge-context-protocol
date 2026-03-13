@@ -90,7 +90,7 @@ These five fields are enough for an agent to answer: "what knowledge exists, wha
 piece answer, and who is it for?"
 
 ```yaml
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: my-project
 version: 1.0.0
 

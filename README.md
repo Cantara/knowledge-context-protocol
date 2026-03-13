@@ -17,7 +17,7 @@ MCP solved the tool connectivity problem. KCP addresses the knowledge structure 
 Drop a `knowledge.yaml` at the root of any project. Agents stop guessing and start navigating.
 
 ```yaml
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: my-project
 version: 1.0.0
 units:
@@ -206,7 +206,7 @@ external_relationships:                # optional — cross-manifest relationshi
 Five fields per unit are enough to start:
 
 ```yaml
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: my-project
 version: 1.0.0
 units:
@@ -225,7 +225,7 @@ The standard allows complexity but does not demand it.
 
 ```yaml
 # knowledge.yaml
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: wiki.example.org
 version: 1.0.0
 updated: "2026-02-28"
@@ -401,7 +401,7 @@ Until formal acceptance, KCP remains an Apache 2.0 open specification proposed b
 
 ## Status
 
-**Current:** Draft specification — v0.9
+**Current:** Draft specification — v0.10
 
 This is an early proposal. The format is intentionally minimal. Feedback, use cases, and pull
 requests are welcome.

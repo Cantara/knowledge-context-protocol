@@ -2,7 +2,7 @@
 
 **Status:** Published (March 2026)
 **Audience:** Developers evaluating agentic web standards
-**Last verified:** WebMCP spec draft 5 March 2026 / KCP v0.9 draft 10 March 2026
+**Last verified:** WebMCP spec draft 5 March 2026 / KCP v0.10 draft 13 March 2026
 
 ---
 
@@ -114,7 +114,7 @@ structure to be queried. KCP provides the map.
 ### Core artifact
 
 ```yaml
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: acme-platform
 version: 2.1.0
 updated: "2026-03-01"
@@ -176,7 +176,7 @@ relationships:
 
 ### Current gaps (as of March 2026)
 
-- Cross-manifest federation (RFC-0003) was promoted to core in v0.9 (§3.6)
+- Cross-manifest federation (RFC-0003) was promoted to core in v0.9 (§3.6); federation version pinning added in v0.10
 - Content integrity verification (cryptographic signing) remains in RFC-0004
 - Payment/rate-limit details beyond `default_tier` remain in RFC-0005
 - Adoption is early: conformance tests pass in three languages (268 tests), but
@@ -275,7 +275,7 @@ console. Here is how WebMCP and KCP compose on `platform.example.com`:
 
 ```yaml
 # knowledge.yaml — at the root of the documentation site
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: example-platform
 version: 3.0.0
 updated: "2026-03-01"
@@ -500,8 +500,8 @@ Honesty requires noting where each standard is in its lifecycle:
 | Dimension | WebMCP | KCP |
 |-----------|--------|-----|
 | **First published** | August 2025 | February 2026 |
-| **Current version** | Draft CG Report (5 March 2026) | v0.9 draft (10 March 2026) |
-| **Spec completeness** | Imperative API defined; declarative API, security, privacy, accessibility marked TODO | Core spec complete (incl. federation in v0.9); content integrity, payment details in RFCs |
+| **Current version** | Draft CG Report (5 March 2026) | v0.10 draft (13 March 2026) |
+| **Spec completeness** | Imperative API defined; declarative API, security, privacy, accessibility marked TODO | Core spec complete (incl. federation in v0.9, version pinning and query vocabulary in v0.10); content integrity, payment details in RFCs |
 | **Standards body** | W3C Web ML Community Group | Submitted to AAIF (Linux Foundation); IANA well-known URI submitted |
 | **Implementations** | Chrome 146 Canary (behind flag) | Parsers in Python, Java, TypeScript; 268 conformance tests; MCP bridge |
 | **Corporate backing** | Google + Microsoft | eXOReaction / Cantara (independent) |
@@ -567,7 +567,7 @@ your use case.
 - [VentureBeat coverage](https://venturebeat.com/infrastructure/google-chrome-ships-webmcp-in-early-preview-turning-every-website-into-a/) — industry context
 
 **KCP:**
-- [SPEC.md](../../SPEC.md) — normative specification (v0.9)
+- [SPEC.md](../../SPEC.md) — normative specification (v0.10)
 - [PROPOSAL.md](../../PROPOSAL.md) — the case for a knowledge architecture standard
 - [README.md](../../README.md) — overview, comparison with MCP and llms.txt
 - [RFC-0001](../../RFC-0001-KCP-Extended.md) — ecosystem positioning and extended capabilities

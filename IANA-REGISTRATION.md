@@ -62,7 +62,7 @@ A GET to `/.well-known/kcp.json` returns `application/json` with at minimum:
 
 ```json
 {
-  "kcp_version": "0.9",
+  "kcp_version": "0.10",
   "manifest": "/knowledge.yaml"
 }
 ```

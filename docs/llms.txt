@@ -40,8 +40,8 @@ Example: "How do I validate a knowledge.yaml file?" → trigger `validation, sch
 
 ## Real-World Adopters
 
-- wiki.totto.org — personal knowledge wiki (KCP v0.9, 83 posts indexed)
-- wiki.cantara.no — Cantara open source community wiki (KCP v0.9)
+- wiki.totto.org — personal knowledge wiki (KCP v0.10, 83 posts indexed)
+- wiki.cantara.no — Cantara open source community wiki (KCP v0.10)
 - crewAI, microsoft/autogen, huggingface/smolagents, anomalyco/opencode — KCP manifests submitted (PRs open, March 2026)
 
 ## License

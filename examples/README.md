@@ -9,7 +9,7 @@ Reference implementations and runnable simulation scenarios — from the minimum
 The smallest valid `knowledge.yaml`. Start here if you are not sure whether you need KCP yet.
 
 ```yaml
-kcp_version: "0.9"
+kcp_version: "0.10"
 project: my-project
 version: 1.0.0
 units:
@@ -95,7 +95,7 @@ A NovaPlatform v1-to-v2 migration with 8 units exercising five of the six relati
 
 ## Simulation Scenarios
 
-Five runnable Java simulators that stress-test the A2A + KCP composition model at increasing complexity. Each surfaces specific spec behaviours and gaps, contributing to the v0.9+ roadmap.
+Five runnable Java simulators that stress-test the A2A + KCP composition model at increasing complexity. Each surfaces specific spec behaviours and gaps, contributing to the v0.9+ roadmap (now through v0.10).
 
 ### [scenario1-energy-metering/](./scenario1-energy-metering/)
 
