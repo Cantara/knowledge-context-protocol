@@ -422,6 +422,16 @@ requests are welcome.
 
 ---
 
+## Early Adopters
+
+KCP is being used in production by practitioners who independently discovered the same problems it solves.
+
+> *"A Norwegian public sector architect independently built a full KCP adoption framework — reference-quality `knowledge.yaml`, transition guide, snapshot-awareness pattern, LLM client protocol — and arrived at '2-4 files instead of 15-20' on his own."*
+
+If you are using KCP and want to be listed here, open an issue or reach out.
+
+---
+
 ## Contributing
 
 Open an issue to:
