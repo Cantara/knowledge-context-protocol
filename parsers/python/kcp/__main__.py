@@ -58,6 +58,10 @@ def _cmd_init(args: argparse.Namespace) -> int:
 
 
 def main() -> None:
+    # Backwards compat: `python -m kcp <file>` → `python -m kcp validate <file>`
+    if len(sys.argv) >= 2 and sys.argv[1] not in ("validate", "init", "-h", "--help"):
+        sys.argv.insert(1, "validate")
+
     parser = argparse.ArgumentParser(
         prog="kcp",
         description="Knowledge Context Protocol — parser, validator, and scaffolding tool",
@@ -102,14 +106,9 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # Backwards compatibility: if no subcommand but a positional arg, treat as validate
     if args.command is None:
-        if len(sys.argv) >= 2 and not sys.argv[1].startswith("-"):
-            args.command = "validate"
-            args.path = sys.argv[1]
-        else:
-            parser.print_help()
-            sys.exit(1)
+        parser.print_help()
+        sys.exit(1)
 
     if args.command == "validate":
         sys.exit(_cmd_validate(args))
