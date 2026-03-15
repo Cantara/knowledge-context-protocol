@@ -8,6 +8,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+---
+
+## [0.11.0] — 2026-03-15 — Agent Readiness Release
+
 ### Spec
 
 - **v0.11.0 — Agent Readiness Release** (RFC-0008 schema wave)
@@ -72,15 +76,6 @@ v0.10.0 adds federation version pinning, a query vocabulary RFC, an instruction 
 - Known limitations in section 3.6 updated: version pinning is now supported; only peer-to-peer limitation remains.
 - All conformance fixtures updated to `kcp_version: "0.10"`.
 
-### CLI
-
-- **`kcp reflect` subcommand** — session-end skill lifecycle reflection checklist.
-  - Scans `~/.claude/skills/` (or `--skills-dir`) for recently modified and stale skills.
-  - Prints a 4-item session-close checklist (repeated patterns, skill updates, overlap, dedup).
-  - Reminds the agent of the recommended skill template shape (narrow trigger, do_not_use_for, lessons_learned, owner).
-  - `--log` appends a timestamped entry to `.kcp/reflect-log.md` for audit trail.
-  - 12 new tests in `test_reflect.py`.
-
 ### Parsers
 
 - **Java parser**: `ManifestRef` record extended with `versionPin` and `versionPolicy` fields; validator adds `VALID_VERSION_POLICIES` set and version pin warnings.
@@ -114,15 +109,6 @@ v0.9.0 promotes federation (RFC-0003) to the core specification. This is the fir
 - RFC-0003 status updated to "Promoted to core -- see SPEC.md section 3.6 (v0.9.0)".
 - `governance` renamed to `governs` everywhere (verb form, consistent with relationship vocabulary).
 - Federation topology changed from hub-and-spoke (RFC-0003 original) to DAG with local authority.
-
-### CLI
-
-- **`kcp reflect` subcommand** — session-end skill lifecycle reflection checklist.
-  - Scans `~/.claude/skills/` (or `--skills-dir`) for recently modified and stale skills.
-  - Prints a 4-item session-close checklist (repeated patterns, skill updates, overlap, dedup).
-  - Reminds the agent of the recommended skill template shape (narrow trigger, do_not_use_for, lessons_learned, owner).
-  - `--log` appends a timestamped entry to `.kcp/reflect-log.md` for audit trail.
-  - 12 new tests in `test_reflect.py`.
 
 ### Parsers
 
