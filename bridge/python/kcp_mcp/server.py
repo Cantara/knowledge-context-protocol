@@ -174,6 +174,38 @@ def create_server(
     async def list_tools() -> list[Tool]:
         return [
             Tool(
+                name="search_knowledge",
+                description=(
+                    "Search knowledge units by query. Matches against triggers, intent, and id."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Search terms (space-separated)",
+                        },
+                        "audience": {
+                            "type": "string",
+                            "description": "Filter by audience: agent | developer | architect | operator | human",
+                        },
+                        "scope": {
+                            "type": "string",
+                            "description": "Filter by scope: global | project | module",
+                        },
+                        "sensitivity_max": {
+                            "type": "string",
+                            "description": "Maximum sensitivity to include: public | internal | confidential | restricted. Units above this level are excluded.",
+                        },
+                        "exclude_deprecated": {
+                            "type": "boolean",
+                            "description": "Exclude units marked deprecated: true. Default: true.",
+                        },
+                    },
+                    "required": ["query"],
+                },
+            ),
+            Tool(
                 name="list_manifests",
                 description=(
                     "List the sub-manifests declared in this knowledge.yaml federation block."
@@ -188,11 +220,116 @@ def create_server(
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+        if name == "search_knowledge":
+            return _handle_search_knowledge(unit_context, slug, arguments or {})
         if name == "list_manifests":
             return _handle_list_manifests(manifest)
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
     return server
+
+
+_SENSITIVITY_ORDER = {"public": 0, "internal": 1, "confidential": 2, "restricted": 3}
+
+
+def _score_unit(unit, terms: list[str], slug: str) -> dict:
+    """Score a unit against query terms (RFC-0007 algorithm)."""
+    score = 0
+    match_reason: list[str] = []
+    lower_triggers = [t.lower() for t in (unit.triggers or [])]
+    lower_intent = (unit.intent or "").lower()
+    lower_id = unit.id.lower()
+    lower_path = (unit.path or "").lower()
+
+    for term in terms:
+        lterm = term.lower()
+
+        # Trigger match — 5 pts per matching trigger
+        for trig in lower_triggers:
+            if lterm in trig:
+                score += 5
+                if "trigger" not in match_reason:
+                    match_reason.append("trigger")
+
+        if lterm in lower_intent:
+            score += 3
+            if "intent" not in match_reason:
+                match_reason.append("intent")
+
+        if lterm in lower_id:
+            score += 1
+            if "id" not in match_reason:
+                match_reason.append("id")
+
+        if lterm in lower_path:
+            score += 1
+            if "path" not in match_reason:
+                match_reason.append("path")
+
+    hints = unit.hints or {}
+    token_estimate = hints.get("token_estimate")
+    summary_unit = hints.get("summary_unit")
+
+    return {
+        "id": unit.id,
+        "intent": unit.intent,
+        "path": unit.path,
+        "uri": unit_uri(slug, unit.id),
+        "score": score,
+        "match_reason": match_reason,
+        "token_estimate": int(token_estimate) if token_estimate is not None else None,
+        "summary_unit": str(summary_unit) if summary_unit is not None else None,
+    }
+
+
+def _handle_search_knowledge(
+    unit_context: dict,
+    slug: str,
+    arguments: dict,
+) -> list[TextContent]:
+    """Search knowledge units by query (RFC-0007 query baseline)."""
+    query = arguments.get("query", "").strip()
+    if not query:
+        return [TextContent(type="text", text="Please provide a search query.")]
+
+    audience_filter = arguments.get("audience")
+    scope_filter = arguments.get("scope")
+    sensitivity_max = arguments.get("sensitivity_max")
+    exclude_deprecated = arguments.get("exclude_deprecated", True)
+
+    terms = query.split()
+    results = []
+
+    for unit_id, (unit, _unit_dir) in unit_context.items():
+        # Filter: audience
+        if audience_filter and audience_filter not in (unit.audience or []):
+            continue
+        # Filter: scope
+        if scope_filter and getattr(unit, "scope", None) != scope_filter:
+            continue
+        # Filter: exclude_deprecated (default True)
+        if exclude_deprecated and getattr(unit, "deprecated", None) is True:
+            continue
+        # Filter: sensitivity_max
+        if sensitivity_max is not None:
+            max_level = _SENSITIVITY_ORDER.get(sensitivity_max, 99)
+            unit_sensitivity = getattr(unit, "sensitivity", None) or "public"
+            unit_level = _SENSITIVITY_ORDER.get(unit_sensitivity, 0)
+            if unit_level > max_level:
+                continue
+
+        scored = _score_unit(unit, terms, slug)
+        if scored["score"] > 0:
+            results.append(scored)
+
+    if not results:
+        ids = ", ".join(unit_context.keys())
+        return [TextContent(type="text", text=f'No units matched query "{query}". Available units: {ids}')]
+
+    results.sort(key=lambda r: r["score"], reverse=True)
+    top5 = results[:5]
+
+    return [TextContent(type="text", text=json.dumps(top5, indent=2))]
 
 
 def _handle_list_manifests(manifest: KnowledgeManifest) -> list[TextContent]:

@@ -52,6 +52,13 @@ interface UnitContext {
 
 // ── Search scoring ───────────────────────────────────────────────────────────
 
+const SENSITIVITY_ORDER: Record<string, number> = {
+  public: 0,
+  internal: 1,
+  confidential: 2,
+  restricted: 3,
+};
+
 interface SearchResult {
   id: string;
   intent: string;
@@ -59,6 +66,9 @@ interface SearchResult {
   audience: string[];
   uri: string;
   score: number;
+  match_reason: string[];
+  token_estimate: number | null;
+  summary_unit: string | null;
 }
 
 /**
@@ -66,6 +76,7 @@ interface SearchResult {
  * - trigger match: 5 pts each
  * - intent match: 3 pts each
  * - id/path match: 1 pt each
+ * Returns match_reason, token_estimate, summary_unit per RFC-0007.
  */
 function scoreUnit(
   unit: KnowledgeUnit,
@@ -73,6 +84,7 @@ function scoreUnit(
   projectSlug: string
 ): SearchResult {
   let score = 0;
+  const matchReason = new Set<string>();
   const lowerTriggers = unit.triggers.map((t) => t.toLowerCase());
   const lowerIntent = unit.intent.toLowerCase();
   const lowerId = unit.id.toLowerCase();
@@ -83,18 +95,22 @@ function scoreUnit(
 
     // Trigger match — 5 pts per matching trigger
     for (const trig of lowerTriggers) {
-      if (trig.includes(lterm)) score += 5;
+      if (trig.includes(lterm)) { score += 5; matchReason.add("trigger"); }
     }
 
     // Intent match — 3 pts
-    if (lowerIntent.includes(lterm)) score += 3;
+    if (lowerIntent.includes(lterm)) { score += 3; matchReason.add("intent"); }
 
     // Id match — 1 pt
-    if (lowerId.includes(lterm)) score += 1;
+    if (lowerId.includes(lterm)) { score += 1; matchReason.add("id"); }
 
     // Path match — 1 pt
-    if (lowerPath.includes(lterm)) score += 1;
+    if (lowerPath.includes(lterm)) { score += 1; matchReason.add("path"); }
   }
+
+  const hints = unit.hints as Record<string, unknown> | undefined;
+  const tokenEstimate = hints?.token_estimate != null ? Number(hints.token_estimate) : null;
+  const summaryUnit = typeof hints?.summary_unit === "string" ? hints.summary_unit : null;
 
   return {
     id: unit.id,
@@ -103,6 +119,9 @@ function scoreUnit(
     audience: unit.audience,
     uri: buildUnitUri(projectSlug, unit.id),
     score,
+    match_reason: [...matchReason],
+    token_estimate: tokenEstimate,
+    summary_unit: summaryUnit,
   };
 }
 
@@ -303,6 +322,15 @@ export function createKcpServer(
             type: "string",
             description: "Filter by scope: global | project | module",
           },
+          sensitivity_max: {
+            type: "string",
+            description:
+              "Maximum sensitivity to include: public | internal | confidential | restricted. Units above this level are excluded.",
+          },
+          exclude_deprecated: {
+            type: "boolean",
+            description: "Exclude units marked deprecated: true. Default: true.",
+          },
         },
         required: ["query"],
       },
@@ -362,6 +390,8 @@ export function createKcpServer(
         const query = String(args?.["query"] ?? "");
         const audienceFilter = args?.["audience"] as string | undefined;
         const scopeFilter = args?.["scope"] as string | undefined;
+        const sensitivityMax = args?.["sensitivity_max"] as string | undefined;
+        const excludeDeprecated = args?.["exclude_deprecated"] !== false; // default true
 
         if (!query.trim()) {
           return {
@@ -386,6 +416,12 @@ export function createKcpServer(
             continue;
           }
           if (scopeFilter && unit.scope !== scopeFilter) continue;
+          if (excludeDeprecated && unit.deprecated === true) continue;
+          if (sensitivityMax !== undefined) {
+            const maxLevel = SENSITIVITY_ORDER[sensitivityMax] ?? 99;
+            const unitLevel = SENSITIVITY_ORDER[unit.sensitivity ?? "public"] ?? 0;
+            if (unitLevel > maxLevel) continue;
+          }
 
           const scored = scoreUnit(unit, terms, projectSlug);
           if (scored.score > 0) {

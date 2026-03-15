@@ -155,16 +155,23 @@ public final class KcpServer {
 
     // ── Search scoring (package-private for tests) ─────────────────────────────
 
-    record SearchResult(String id, String intent, String path, String uri, int score) {}
+    static final Map<String, Integer> SENSITIVITY_ORDER = Map.of(
+        "public", 0, "internal", 1, "confidential", 2, "restricted", 3);
+
+    record SearchResult(
+            String id, String intent, String path, String uri, int score,
+            List<String> matchReason, Integer tokenEstimate, String summaryUnit) {}
 
     /**
      * Score a unit against a set of query terms.
      * - trigger match: 5 pts each
      * - intent match: 3 pts each
      * - id/path match: 1 pt each
+     * Returns match_reason, token_estimate, summary_unit per RFC-0007.
      */
     static SearchResult scoreUnit(KnowledgeUnit unit, List<String> terms, String slug) {
         int score = 0;
+        Set<String> matchReason = new LinkedHashSet<>();
         List<String> lowerTriggers = unit.triggers() != null
             ? unit.triggers().stream().map(String::toLowerCase).toList()
             : List.of();
@@ -177,22 +184,33 @@ public final class KcpServer {
 
             // Trigger match — 5 pts per matching trigger
             for (String trig : lowerTriggers) {
-                if (trig.contains(lterm)) score += 5;
+                if (trig.contains(lterm)) { score += 5; matchReason.add("trigger"); }
             }
 
             // Intent match — 3 pts
-            if (lowerIntent.contains(lterm)) score += 3;
+            if (lowerIntent.contains(lterm)) { score += 3; matchReason.add("intent"); }
 
             // Id match — 1 pt
-            if (lowerId.contains(lterm)) score += 1;
+            if (lowerId.contains(lterm)) { score += 1; matchReason.add("id"); }
 
             // Path match — 1 pt
-            if (lowerPath.contains(lterm)) score += 1;
+            if (lowerPath.contains(lterm)) { score += 1; matchReason.add("path"); }
+        }
+
+        // hints: token_estimate and summary_unit
+        Integer tokenEstimate = null;
+        String summaryUnit = null;
+        if (unit.hints() instanceof Map<?, ?> hints) {
+            Object te = hints.get("token_estimate");
+            if (te instanceof Number n) tokenEstimate = n.intValue();
+            Object su = hints.get("summary_unit");
+            if (su instanceof String s) summaryUnit = s;
         }
 
         return new SearchResult(
             unit.id(), unit.intent(), unit.path(),
-            KcpMapper.unitUri(slug, unit.id()), score);
+            KcpMapper.unitUri(slug, unit.id()), score,
+            List.copyOf(matchReason), tokenEstimate, summaryUnit);
     }
 
     // ── Public factories ──────────────────────────────────────────────────────
@@ -301,7 +319,11 @@ public final class KcpServer {
                 "audience", Map.of("type", "string", "description",
                     "Filter by audience: agent | developer | architect | operator | human"),
                 "scope", Map.of("type", "string", "description",
-                    "Filter by scope: global | project | module")
+                    "Filter by scope: global | project | module"),
+                "sensitivity_max", Map.of("type", "string", "description",
+                    "Maximum sensitivity to include: public | internal | confidential | restricted. Units above this level are excluded."),
+                "exclude_deprecated", Map.of("type", "boolean", "description",
+                    "Exclude units marked deprecated: true. Default: true.")
             ),
             List.of("query"), null, null, null
         );
@@ -376,6 +398,11 @@ public final class KcpServer {
             ? String.valueOf(args.get("audience")) : null;
         String scopeFilter = args != null && args.get("scope") != null
             ? String.valueOf(args.get("scope")) : null;
+        String sensitivityMax = args != null && args.get("sensitivity_max") != null
+            ? String.valueOf(args.get("sensitivity_max")) : null;
+        // exclude_deprecated defaults to true
+        boolean excludeDeprecated = args == null || args.get("exclude_deprecated") == null
+            || Boolean.TRUE.equals(args.get("exclude_deprecated"));
 
         if (query.isBlank()) {
             return new McpSchema.CallToolResult(
@@ -396,6 +423,15 @@ public final class KcpServer {
             }
             if (scopeFilter != null && !scopeFilter.equals(unit.scope())) {
                 continue;
+            }
+            if (excludeDeprecated && Boolean.TRUE.equals(unit.deprecated())) {
+                continue;
+            }
+            if (sensitivityMax != null) {
+                int maxLevel = SENSITIVITY_ORDER.getOrDefault(sensitivityMax, 99);
+                int unitLevel = SENSITIVITY_ORDER.getOrDefault(
+                    unit.sensitivity() != null ? unit.sensitivity() : "public", 0);
+                if (unitLevel > maxLevel) continue;
             }
 
             SearchResult scored = scoreUnit(unit, terms, slug);
@@ -426,7 +462,27 @@ public final class KcpServer {
             sb.append("\"intent\":\"").append(escapeJson(r.intent())).append("\",");
             sb.append("\"path\":\"").append(escapeJson(r.path())).append("\",");
             sb.append("\"uri\":\"").append(escapeJson(r.uri())).append("\",");
-            sb.append("\"score\":").append(r.score());
+            sb.append("\"score\":").append(r.score()).append(",");
+            // match_reason
+            sb.append("\"match_reason\":[");
+            List<String> reasons = r.matchReason();
+            for (int j = 0; j < reasons.size(); j++) {
+                if (j > 0) sb.append(",");
+                sb.append("\"").append(escapeJson(reasons.get(j))).append("\"");
+            }
+            sb.append("],");
+            // token_estimate
+            if (r.tokenEstimate() != null) {
+                sb.append("\"token_estimate\":").append(r.tokenEstimate()).append(",");
+            } else {
+                sb.append("\"token_estimate\":null,");
+            }
+            // summary_unit
+            if (r.summaryUnit() != null) {
+                sb.append("\"summary_unit\":\"").append(escapeJson(r.summaryUnit())).append("\"");
+            } else {
+                sb.append("\"summary_unit\":null");
+            }
             sb.append("}");
         }
         sb.append("\n]");

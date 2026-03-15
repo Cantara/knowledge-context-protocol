@@ -36,10 +36,15 @@ class KcpServerToolsTest {
         return Paths.get(url.getPath()).getParent();
     }
 
+    private static KcpServer.ResourceSet rfc007Rs;
+    private static String rfc007Slug;
+
     @BeforeAll static void setUp() throws Exception {
         fullRs = KcpServer.buildResources(fixture("full"), false);
         fullSlug = KcpMapper.projectSlug(fullRs.primaryManifest().project());
         commandManifests = KcpCommands.loadCommandManifests(commandsFixture());
+        rfc007Rs = KcpServer.buildResources(fixture("rfc007"), false);
+        rfc007Slug = KcpMapper.projectSlug(rfc007Rs.primaryManifest().project());
     }
 
     // ── search_knowledge ──────────────────────────────────────────────────────
@@ -286,5 +291,72 @@ class KcpServerToolsTest {
         assertTrue(text.contains("\"id\":\"security\""));
         assertTrue(text.contains("\"label\":\"Security Team\""));
         assertTrue(text.contains("\"relationship\":\"governs\""));
+    }
+
+    // ── RFC-0007 query baseline ───────────────────────────────────────────────
+
+    @Test void searchKnowledgeReturnsMatchReason() {
+        McpSchema.CallToolRequest request = new McpSchema.CallToolRequest("search_knowledge",
+            Map.of("query", "authentication"));
+        McpSchema.CallToolResult result = KcpServer.handleSearchKnowledge(request, rfc007Rs, rfc007Slug);
+
+        assertFalse(result.isError());
+        String text = ((McpSchema.TextContent) result.content().get(0)).text();
+        // match_reason must be present and contain "trigger" (authentication is in triggers)
+        assertTrue(text.contains("\"match_reason\":"), "Expected match_reason field");
+        assertTrue(text.contains("\"trigger\""), "Expected trigger in match_reason");
+    }
+
+    @Test void searchKnowledgeReturnsTokenEstimateAndSummaryUnit() {
+        McpSchema.CallToolRequest request = new McpSchema.CallToolRequest("search_knowledge",
+            Map.of("query", "authentication"));
+        McpSchema.CallToolResult result = KcpServer.handleSearchKnowledge(request, rfc007Rs, rfc007Slug);
+
+        String text = ((McpSchema.TextContent) result.content().get(0)).text();
+        // auth-guide has hints.token_estimate: 4200 and hints.summary_unit: auth-tldr
+        assertTrue(text.contains("\"token_estimate\":4200"), "Expected token_estimate 4200");
+        assertTrue(text.contains("\"summary_unit\":\"auth-tldr\""), "Expected summary_unit auth-tldr");
+    }
+
+    @Test void searchKnowledgeExcludesDeprecatedByDefault() {
+        // old-api has deprecated: true and triggers [api, endpoints, legacy]
+        McpSchema.CallToolRequest request = new McpSchema.CallToolRequest("search_knowledge",
+            Map.of("query", "api endpoints legacy"));
+        McpSchema.CallToolResult result = KcpServer.handleSearchKnowledge(request, rfc007Rs, rfc007Slug);
+
+        String text = ((McpSchema.TextContent) result.content().get(0)).text();
+        assertFalse(text.contains("\"id\":\"old-api\""),
+            "Deprecated unit should be excluded by default");
+    }
+
+    @Test void searchKnowledgeIncludesDeprecatedWhenFlagFalse() {
+        McpSchema.CallToolRequest request = new McpSchema.CallToolRequest("search_knowledge",
+            Map.of("query", "api endpoints legacy", "exclude_deprecated", false));
+        McpSchema.CallToolResult result = KcpServer.handleSearchKnowledge(request, rfc007Rs, rfc007Slug);
+
+        String text = ((McpSchema.TextContent) result.content().get(0)).text();
+        assertTrue(text.contains("\"id\":\"old-api\""),
+            "Deprecated unit should appear when exclude_deprecated is false");
+    }
+
+    @Test void searchKnowledgeFiltersBySensitivityMax() {
+        // secret-config has sensitivity: confidential; sensitivity_max: internal should exclude it
+        McpSchema.CallToolRequest request = new McpSchema.CallToolRequest("search_knowledge",
+            Map.of("query", "config secrets credentials", "sensitivity_max", "internal"));
+        McpSchema.CallToolResult result = KcpServer.handleSearchKnowledge(request, rfc007Rs, rfc007Slug);
+
+        String text = ((McpSchema.TextContent) result.content().get(0)).text();
+        assertFalse(text.contains("\"id\":\"secret-config\""),
+            "Confidential unit should be excluded when sensitivity_max is internal");
+    }
+
+    @Test void searchKnowledgeIncludesConfidentialWhenCeilingIsConfidential() {
+        McpSchema.CallToolRequest request = new McpSchema.CallToolRequest("search_knowledge",
+            Map.of("query", "config secrets credentials", "sensitivity_max", "confidential"));
+        McpSchema.CallToolResult result = KcpServer.handleSearchKnowledge(request, rfc007Rs, rfc007Slug);
+
+        String text = ((McpSchema.TextContent) result.content().get(0)).text();
+        assertTrue(text.contains("\"id\":\"secret-config\""),
+            "Confidential unit should appear when sensitivity_max is confidential");
     }
 }

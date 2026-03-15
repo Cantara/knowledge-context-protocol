@@ -19,6 +19,7 @@ from kcp_mcp.server import create_server
 MINIMAL_DIR = Path(__file__).parent / "fixtures" / "minimal"
 FULL_DIR = Path(__file__).parent / "fixtures" / "full"
 SUB_DIR = Path(__file__).parent / "fixtures" / "sub"
+RFC007_DIR = Path(__file__).parent / "fixtures" / "rfc007"
 
 
 def get_server(fixture_dir: Path, agent_only: bool = False) -> Server:
@@ -312,3 +313,85 @@ async def test_list_manifests_returns_manifests_from_federation(tmp_path):
     assert entries[0]["update_frequency"] == "weekly"
     assert entries[1]["id"] == "security"
     assert entries[1]["relationship"] == "governs"
+
+
+# ── search_knowledge tool (RFC-0007) ─────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_list_tools_contains_search_knowledge():
+    server = get_server(RFC007_DIR)
+    tools = await call_list_tools(server)
+    names = [t.name for t in tools]
+    assert "search_knowledge" in names
+
+
+@pytest.mark.asyncio
+async def test_search_knowledge_returns_match_reason():
+    server = get_server(RFC007_DIR)
+    result = await call_tool(server, "search_knowledge", {"query": "authentication"})
+    results = json.loads(result.content[0].text)
+    assert isinstance(results, list)
+    assert len(results) > 0
+    assert "match_reason" in results[0]
+    assert "trigger" in results[0]["match_reason"]
+
+
+@pytest.mark.asyncio
+async def test_search_knowledge_returns_token_estimate_and_summary_unit():
+    server = get_server(RFC007_DIR)
+    result = await call_tool(server, "search_knowledge", {"query": "authentication"})
+    results = json.loads(result.content[0].text)
+    auth_guide = next((r for r in results if r["id"] == "auth-guide"), None)
+    assert auth_guide is not None
+    assert auth_guide["token_estimate"] == 4200
+    assert auth_guide["summary_unit"] == "auth-tldr"
+
+
+@pytest.mark.asyncio
+async def test_search_knowledge_excludes_deprecated_by_default():
+    server = get_server(RFC007_DIR)
+    result = await call_tool(server, "search_knowledge", {"query": "api endpoints legacy"})
+    text = result.content[0].text
+    if text.startswith("["):
+        results = json.loads(text)
+        ids = [r["id"] for r in results]
+        assert "old-api" not in ids
+
+
+@pytest.mark.asyncio
+async def test_search_knowledge_includes_deprecated_when_flag_false():
+    server = get_server(RFC007_DIR)
+    result = await call_tool(
+        server, "search_knowledge",
+        {"query": "api endpoints legacy", "exclude_deprecated": False},
+    )
+    results = json.loads(result.content[0].text)
+    ids = [r["id"] for r in results]
+    assert "old-api" in ids
+
+
+@pytest.mark.asyncio
+async def test_search_knowledge_filters_by_sensitivity_max():
+    server = get_server(RFC007_DIR)
+    # secret-config is confidential — should be excluded when sensitivity_max is internal
+    result = await call_tool(
+        server, "search_knowledge",
+        {"query": "config secrets credentials", "sensitivity_max": "internal"},
+    )
+    text = result.content[0].text
+    if text.startswith("["):
+        results = json.loads(text)
+        ids = [r["id"] for r in results]
+        assert "secret-config" not in ids
+
+
+@pytest.mark.asyncio
+async def test_search_knowledge_includes_confidential_at_matching_ceiling():
+    server = get_server(RFC007_DIR)
+    result = await call_tool(
+        server, "search_knowledge",
+        {"query": "config secrets credentials", "sensitivity_max": "confidential"},
+    )
+    results = json.loads(result.content[0].text)
+    ids = [r["id"] for r in results]
+    assert "secret-config" in ids

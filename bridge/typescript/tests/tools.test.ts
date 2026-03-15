@@ -154,6 +154,95 @@ describe("search_knowledge tool", () => {
     }
     await client.close();
   });
+
+  // ── RFC-0007 query baseline ─────────────────────────────────────────────
+
+  const RFC007_DIR = join(import.meta.dirname, "fixtures/rfc007");
+
+  it("returns match_reason in results", async () => {
+    const client = await connectClient(join(RFC007_DIR, "knowledge.yaml"));
+    const result = await client.callTool({
+      name: "search_knowledge",
+      arguments: { query: "authentication" },
+    });
+    const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+    const results = JSON.parse(text);
+    expect(results[0].match_reason).toBeInstanceOf(Array);
+    expect(results[0].match_reason).toContain("trigger");
+    await client.close();
+  });
+
+  it("returns token_estimate and summary_unit from hints", async () => {
+    const client = await connectClient(join(RFC007_DIR, "knowledge.yaml"));
+    const result = await client.callTool({
+      name: "search_knowledge",
+      arguments: { query: "authentication" },
+    });
+    const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+    const results = JSON.parse(text);
+    const authGuide = results.find((r: { id: string }) => r.id === "auth-guide");
+    expect(authGuide).toBeDefined();
+    expect(authGuide.token_estimate).toBe(4200);
+    expect(authGuide.summary_unit).toBe("auth-tldr");
+    await client.close();
+  });
+
+  it("excludes deprecated units by default", async () => {
+    const client = await connectClient(join(RFC007_DIR, "knowledge.yaml"));
+    const result = await client.callTool({
+      name: "search_knowledge",
+      arguments: { query: "api endpoints legacy" },
+    });
+    const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+    if (text.startsWith("[")) {
+      const results = JSON.parse(text);
+      const ids = results.map((r: { id: string }) => r.id);
+      expect(ids).not.toContain("old-api");
+    }
+    await client.close();
+  });
+
+  it("includes deprecated units when exclude_deprecated is false", async () => {
+    const client = await connectClient(join(RFC007_DIR, "knowledge.yaml"));
+    const result = await client.callTool({
+      name: "search_knowledge",
+      arguments: { query: "api endpoints legacy", exclude_deprecated: false },
+    });
+    const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+    const results = JSON.parse(text);
+    const ids = results.map((r: { id: string }) => r.id);
+    expect(ids).toContain("old-api");
+    await client.close();
+  });
+
+  it("filters by sensitivity_max", async () => {
+    const client = await connectClient(join(RFC007_DIR, "knowledge.yaml"));
+    // sensitivity_max: internal — should exclude confidential unit
+    const result = await client.callTool({
+      name: "search_knowledge",
+      arguments: { query: "config secrets", sensitivity_max: "internal" },
+    });
+    const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+    if (text.startsWith("[")) {
+      const results = JSON.parse(text);
+      const ids = results.map((r: { id: string }) => r.id);
+      expect(ids).not.toContain("secret-config");
+    }
+    await client.close();
+  });
+
+  it("includes confidential units when sensitivity_max is confidential", async () => {
+    const client = await connectClient(join(RFC007_DIR, "knowledge.yaml"));
+    const result = await client.callTool({
+      name: "search_knowledge",
+      arguments: { query: "config secrets credentials", sensitivity_max: "confidential" },
+    });
+    const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+    const results = JSON.parse(text);
+    const ids = results.map((r: { id: string }) => r.id);
+    expect(ids).toContain("secret-config");
+    await client.close();
+  });
 });
 
 describe("get_unit tool", () => {

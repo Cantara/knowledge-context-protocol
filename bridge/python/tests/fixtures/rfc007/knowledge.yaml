@@ -1,0 +1,42 @@
+kcp_version: "0.6"
+project: rfc007-test
+version: 1.0.0
+updated: "2026-03-15"
+language: en
+
+units:
+  - id: auth-guide
+    path: README.md
+    intent: "Authentication guide for OAuth2 integration"
+    scope: global
+    audience: [agent, developer]
+    triggers: [authentication, oauth2, login]
+    sensitivity: internal
+    hints:
+      token_estimate: 4200
+      summary_unit: auth-tldr
+
+  - id: auth-tldr
+    path: README.md
+    intent: "Summary of the authentication guide"
+    scope: global
+    audience: [agent]
+    triggers: [authentication, summary]
+    hints:
+      token_estimate: 400
+
+  - id: secret-config
+    path: README.md
+    intent: "Confidential configuration and secrets"
+    scope: global
+    audience: [agent]
+    triggers: [config, secrets, credentials]
+    sensitivity: confidential
+
+  - id: old-api
+    path: README.md
+    intent: "Deprecated old API endpoints"
+    scope: global
+    audience: [agent, developer]
+    triggers: [api, endpoints, legacy]
+    deprecated: true
