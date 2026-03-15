@@ -67,14 +67,14 @@ When adding any MCP capability:
 
 ---
 
-## Test counts (v0.14.0)
+## Test counts (v0.15.0)
 
 | Bridge | Tests |
 |--------|------:|
 | TypeScript (vitest) | 160 |
 | Java (JUnit) | 145 |
-| Python (pytest) | 61 |
-| **Total** | **366** |
+| Python (pytest) | 132 |
+| **Total** | **437** |
 
 ---
 

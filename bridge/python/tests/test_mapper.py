@@ -249,3 +249,209 @@ def test_build_manifest_json_omits_empty_manifests():
     body = json.loads(build_manifest_json(manifest, "no-fed"))
     assert "manifests" not in body
     assert "external_relationships" not in body
+
+
+def test_build_manifest_json_has_kcp_version():
+    import json
+    manifest = parse_dict({
+        "kcp_version": "0.11",
+        "project": "versioned",
+        "version": "2.0.0",
+        "units": [],
+    })
+    body = json.loads(build_manifest_json(manifest, "versioned"))
+    assert body["kcp_version"] == "0.11"
+
+
+def test_build_manifest_json_has_version_field():
+    import json
+    manifest = parse_dict({
+        "project": "versioned",
+        "version": "3.1.0",
+        "units": [],
+    })
+    body = json.loads(build_manifest_json(manifest, "versioned"))
+    assert body["version"] == "3.1.0"
+
+
+def test_build_manifest_json_unit_compliance_sensitivity():
+    import json
+    manifest = parse_dict({
+        "project": "comp",
+        "version": "1.0.0",
+        "units": [
+            {
+                "id": "secret",
+                "path": "s.md",
+                "intent": "confidential data",
+                "scope": "global",
+                "audience": ["agent"],
+                "compliance": {"sensitivity": "confidential"},
+            }
+        ],
+    })
+    body = json.loads(build_manifest_json(manifest, "comp"))
+    unit = body["units"][0]
+    assert unit["compliance"]["sensitivity"] == "confidential"
+
+
+def test_build_manifest_json_unit_kind_defaults_to_knowledge():
+    import json
+    manifest = parse_dict({
+        "project": "kind-test",
+        "version": "1.0.0",
+        "units": [
+            {"id": "u1", "path": "u.md", "intent": "a unit", "scope": "global", "audience": ["agent"]},
+        ],
+    })
+    body = json.loads(build_manifest_json(manifest, "kind-test"))
+    assert body["units"][0]["kind"] == "knowledge"
+
+
+def test_build_manifest_json_unit_triggers_present():
+    import json
+    manifest = parse_dict({
+        "project": "trig",
+        "version": "1.0.0",
+        "units": [
+            {"id": "u1", "path": "u.md", "intent": "x", "scope": "global",
+             "audience": ["agent"], "triggers": ["alpha", "beta"]},
+        ],
+    })
+    body = json.loads(build_manifest_json(manifest, "trig"))
+    assert body["units"][0]["triggers"] == ["alpha", "beta"]
+
+
+# ── resolve_mime: more extensions ────────────────────────────────────────────
+
+def test_extension_html():
+    assert resolve_mime(make_unit(path="index.html")) == "text/html"
+
+
+def test_extension_htm():
+    assert resolve_mime(make_unit(path="index.htm")) == "text/html"
+
+
+def test_extension_txt():
+    assert resolve_mime(make_unit(path="notes.txt")) == "text/plain"
+
+
+def test_extension_csv():
+    assert resolve_mime(make_unit(path="data.csv")) == "text/csv"
+
+
+def test_extension_rst():
+    assert resolve_mime(make_unit(path="readme.rst")) == "text/x-rst"
+
+
+def test_extension_adoc():
+    assert resolve_mime(make_unit(path="guide.adoc")) == "text/asciidoc"
+
+
+def test_extension_ipynb():
+    assert resolve_mime(make_unit(path="notebook.ipynb")) == "application/x-ipynb+json"
+
+
+def test_extension_vtt():
+    assert resolve_mime(make_unit(path="captions.vtt")) == "text/vtt"
+
+
+def test_extension_yml():
+    assert resolve_mime(make_unit(path="config.yml")) == "application/yaml"
+
+
+def test_format_csv():
+    assert resolve_mime(make_unit(format="csv")) == "text/csv"
+
+
+def test_format_vtt():
+    assert resolve_mime(make_unit(format="vtt")) == "text/vtt"
+
+
+def test_format_html():
+    assert resolve_mime(make_unit(format="html")) == "text/html"
+
+
+def test_format_text():
+    assert resolve_mime(make_unit(format="text")) == "text/plain"
+
+
+# ── project_slug: edge cases ─────────────────────────────────────────────────
+
+def test_slug_preserves_numbers():
+    assert project_slug("kcp2") == "kcp2"
+
+
+def test_slug_strips_trailing_dash():
+    # "kcp-" → strip("-") → "kcp"
+    assert project_slug("kcp-") == "kcp"
+
+
+def test_slug_empty_string_returns_project():
+    assert project_slug("") == "project"
+
+
+def test_slug_only_special_chars_returns_project():
+    assert project_slug("!!!") == "project"
+
+
+# ── is_binary_mime: more types ───────────────────────────────────────────────
+
+def test_image_jpeg_is_binary():
+    assert is_binary_mime("image/jpeg") is True
+
+
+def test_audio_mpeg_is_binary():
+    assert is_binary_mime("audio/mpeg") is True
+
+
+def test_video_mp4_is_binary():
+    assert is_binary_mime("video/mp4") is True
+
+
+def test_octet_stream_is_binary():
+    assert is_binary_mime("application/octet-stream") is True
+
+
+def test_yaml_is_not_binary():
+    assert is_binary_mime("application/yaml") is False
+
+
+# ── map_audience: additional roles ───────────────────────────────────────────
+
+def test_architect_maps_to_user():
+    assert map_audience(["architect"]) == ["user"]
+
+
+def test_multiple_non_agent_roles_no_duplicate_user():
+    result = map_audience(["human", "developer", "architect"])
+    assert result.count("user") == 1
+    assert "assistant" not in result
+
+
+# ── unit_resource_dict: more fields ──────────────────────────────────────────
+
+def test_unit_resource_project_priority():
+    unit = make_unit(scope="project")
+    r = unit_resource_dict("slug", unit)
+    assert r["annotations"]["priority"] == 0.7
+
+
+def test_unit_resource_mime_type_from_extension():
+    unit = make_unit(path="api.json")
+    r = unit_resource_dict("slug", unit)
+    assert r["mimeType"] == "application/json"
+
+
+def test_unit_resource_dict_title_equals_intent():
+    unit = make_unit(intent="How does auth work?")
+    r = unit_resource_dict("slug", unit)
+    assert r["title"] == "How does auth work?"
+
+
+# ── manifest_resource_dict: description content ──────────────────────────────
+
+def test_manifest_resource_dict_description_mentions_project():
+    manifest = parse_dict({"project": "my-proj", "version": "1.0.0", "units": []})
+    r = manifest_resource_dict("my-proj", manifest)
+    assert "my-proj" in r["description"]
