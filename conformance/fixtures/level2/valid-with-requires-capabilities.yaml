@@ -1,0 +1,34 @@
+# Level 2 — valid unit with requires_capabilities; varied prefix conventions
+kcp_version: "0.11"
+project: test-requires-capabilities
+version: "1.0.0"
+
+units:
+  - id: deployment-runbook
+    path: ops/deploy.md
+    intent: "How do I deploy a new release to production?"
+    scope: project
+    audience: [operator, agent]
+    kind: policy
+    requires_capabilities: [tool:kubectl, tool:helm, tool:aws-cli]
+
+  - id: database-migration-guide
+    path: db/migrations.md
+    intent: "How do I run database migrations safely?"
+    scope: module
+    audience: [developer, agent]
+    requires_capabilities: [tool:psql, tool:flyway, permission:deploy-prod]
+
+  - id: security-review-checklist
+    path: security/checklist.md
+    intent: "What security checks are required before release?"
+    scope: project
+    audience: [developer, agent]
+    requires_capabilities: [role:security-reviewer]
+
+  - id: architecture-overview
+    path: docs/architecture.md
+    intent: "What is the high-level system architecture?"
+    scope: global
+    audience: [developer, architect, agent]
+    # No requires_capabilities — any agent can read this usefully

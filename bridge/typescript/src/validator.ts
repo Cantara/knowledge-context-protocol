@@ -40,6 +40,7 @@ const KNOWN_KCP_VERSIONS = new Set([
   "0.8",
   "0.9",
   "0.10",
+  "0.11",
 ]);
 const VALID_MANIFEST_RELATIONSHIPS = new Set([
   "child",

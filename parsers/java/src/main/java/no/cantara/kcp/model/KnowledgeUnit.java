@@ -32,12 +32,15 @@ public record KnowledgeUnit(
         RateLimits rateLimits,
         Delegation delegation,
         Compliance compliance,
-        List<ExternalDependency> externalDependsOn
+        List<ExternalDependency> externalDependsOn,
+        List<String> requiresCapabilities,
+        FreshnessPolicy freshnessPolicy
 ) {
     public KnowledgeUnit {
         audience = audience != null ? List.copyOf(audience) : List.of();
         dependsOn = dependsOn != null ? List.copyOf(dependsOn) : List.of();
         triggers = triggers != null ? List.copyOf(triggers) : List.of();
         externalDependsOn = externalDependsOn != null ? List.copyOf(externalDependsOn) : List.of();
+        requiresCapabilities = requiresCapabilities != null ? List.copyOf(requiresCapabilities) : List.of();
     }
 }

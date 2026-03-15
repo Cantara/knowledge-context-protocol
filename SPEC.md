@@ -1,8 +1,8 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.10
+**Version:** 0.11
 **Status:** Draft
-**Date:** 2026-03-13
+**Date:** 2026-03-15
 **Repository:** github.com/cantara/knowledge-context-protocol
 
 ---
@@ -86,6 +86,7 @@ The document MAY include:
 | `title` | string | Human-readable name of the project or knowledge base. |
 | `description` | string | Brief summary of the knowledge available. |
 | `spec` | string | URL of the KCP specification document. |
+| `network` | object | Network topology hint. Fields: `role` (`hub`\|`leaf`\|`standalone`), `entry_point`, `registry_label`. See §3.7. |
 
 Example:
 
@@ -149,7 +150,7 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
-| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.9"` for conformance with this document. |
+| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.11"` for conformance with this document. |
 | `project` | REQUIRED | string | Human-readable name of the project or documentation site. |
 | `version` | RECOMMENDED | string | Semver version of this manifest. Increment when units are added or removed. |
 | `updated` | RECOMMENDED | string | ISO 8601 date (`YYYY-MM-DD`) when this manifest was last modified. |
@@ -164,6 +165,7 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 | `payment` | OPTIONAL | object | Default monetisation tier for all units. See §4.14. |
 | `manifests` | OPTIONAL | list | Federation declarations — sub-manifests this manifest has a relationship with. See §3.6. |
 | `external_relationships` | OPTIONAL | list | Cross-manifest relationship declarations. See §3.6. |
+| `freshness_policy` | OPTIONAL | object | Default staleness policy for all units. Unit-level declarations override. See §3.7. |
 | `units` | REQUIRED | list | Ordered list of knowledge unit declarations. MUST contain at least one unit. |
 | `relationships` | OPTIONAL | list | Explicit cross-unit relationship declarations. See §5. |
 
@@ -697,6 +699,44 @@ manifests:
 
 ---
 
+### 3.7 Agent Readiness (v0.11)
+
+v0.11 adds two fields that give agents pre-invocation signals about freshness and capabilities.
+
+#### `freshness_policy` block
+
+MAY appear at root level (default for all units) or unit level (override). Fields:
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `max_age_days` | OPTIONAL | integer | Days since `validated` after which the unit is stale. |
+| `on_stale` | OPTIONAL | string | `warn` (default) \| `degrade` \| `block`. Advisory action when stale. |
+| `review_contact` | OPTIONAL | string | Email or URL for requesting re-validation. |
+
+Unit-level `freshness_policy` fully replaces the root default — no field-level merge.
+If `validated` is absent, agents MUST NOT treat the unit as stale.
+
+#### `requires_capabilities` (unit-level)
+
+OPTIONAL list of strings naming capabilities the consuming agent SHOULD possess. Recommended
+prefix convention: `tool:kubectl`, `permission:deploy-prod`, `role:security-reviewer`.
+Bare strings are also valid. Parsers MUST NOT reject manifests for unknown capability values.
+
+#### `network` in `/.well-known/kcp.json`
+
+The discovery document (§1.4) MAY include a `network` object:
+
+| Field | Description |
+|-------|-------------|
+| `role` | `hub` \| `leaf` \| `standalone` (default). |
+| `entry_point` | Root-relative path or URL to the hub manifest (meaningful when `role: leaf`). |
+| `registry_label` | Human-readable name for the network as a whole. |
+
+`kcp init` generates `/.well-known/kcp.json` with `network.role: standalone` and prints a
+suggested `llms.txt` snippet (`> knowledge: /knowledge.yaml`) for the operator to add.
+
+---
+
 ## 4. Knowledge Units
 
 Each entry in `units` describes a self-contained piece of knowledge.
@@ -727,6 +767,8 @@ Each entry in `units` describes a self-contained piece of knowledge.
 | `sensitivity` | OPTIONAL | string | Information classification level. One of: `public`, `internal`, `confidential`, `restricted`. See §4.12. |
 | `deprecated` | OPTIONAL | boolean | If `true`, this unit is present but should not be used for new development. See §4.13. |
 | `payment` | OPTIONAL | object | Monetisation tier for this unit. Overrides root-level `payment` default. See §4.14. |
+| `requires_capabilities` | OPTIONAL | list of strings | Capabilities the consuming agent SHOULD possess to act on this unit. See §3.7. |
+| `freshness_policy` | OPTIONAL | object | Staleness policy for this unit. Overrides root-level `freshness_policy` default. See §3.7. |
 
 #### 4.1.1 Date Fields
 
@@ -1455,9 +1497,9 @@ Unknown relationship types MUST be silently ignored.
 ### 6.1 Spec Version (`kcp_version`)
 
 `kcp_version` identifies which version of this specification the manifest conforms to. Current
-valid value: `"0.9"`. The values `"0.1"` through `"0.8"` refer to prior drafts (January–March
-2026); parsers SHOULD treat these manifests as conformant with this version, as v0.9 is a
-strict superset of v0.8 (new fields only, no removals or breaking changes). Parsers
+valid value: `"0.11"`. The values `"0.1"` through `"0.10"` refer to prior drafts (January–March
+2026); parsers SHOULD treat these manifests as conformant with this version, as v0.11 is a
+strict superset of v0.10 (new fields only, no removals or breaking changes). Parsers
 encountering an unknown `kcp_version` SHOULD process the manifest using the closest known
 version and SHOULD emit a warning.
 

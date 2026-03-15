@@ -267,7 +267,7 @@ def generate_manifest(
 
     # Build YAML manually for clean formatting
     lines: list[str] = []
-    lines.append(f'kcp_version: "0.10"')
+    lines.append(f'kcp_version: "0.11"')
     lines.append(f"project: {project_name}")
     if description:
         lines.append(f"description: {_yaml_str(description)}")
@@ -328,5 +328,25 @@ def run_init(
     print(f"Generated knowledge.yaml with {len(artifacts)} units (Level {level}).")
     print("Review and update the 'intent' fields, then validate:")
     print("  kcp validate knowledge.yaml")
+
+    # Generate .well-known/kcp.json (RFC-0008 §1.4)
+    well_known_dir = directory / ".well-known"
+    well_known_dir.mkdir(exist_ok=True)
+    well_known_path = well_known_dir / "kcp.json"
+    if not well_known_path.exists() or force:
+        well_known_content = json.dumps({
+            "kcp_version": "0.11",
+            "manifest": "/knowledge.yaml",
+            "network": {"role": "standalone"}
+        }, indent=2)
+        well_known_path.write_text(well_known_content + "\n", encoding="utf-8")
+        print(f"Generated .well-known/kcp.json (role: standalone).")
+
+    # Print llms.txt snippet (RFC-0008 §1.2) — never overwrite automatically
+    print()
+    print("Add this to your llms.txt to enable cold discovery (RFC-0008):")
+    print()
+    print("  > knowledge: /knowledge.yaml")
+    print()
 
     return 0

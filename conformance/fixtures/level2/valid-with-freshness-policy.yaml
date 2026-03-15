@@ -1,0 +1,30 @@
+# Level 2 — valid unit with freshness_policy; no root default
+kcp_version: "0.11"
+project: test-freshness-policy
+version: "1.0.0"
+
+units:
+  - id: gdpr-guide
+    path: compliance/gdpr.md
+    intent: "What GDPR obligations apply to our data processing?"
+    scope: project
+    audience: [developer, agent]
+    kind: policy
+    validated: "2026-01-15"
+    update_frequency: monthly
+    freshness_policy:
+      max_age_days: 90
+      on_stale: warn
+      review_contact: "compliance@example.com"
+
+  - id: api-reference
+    path: api/reference.md
+    intent: "What endpoints does the API expose?"
+    scope: project
+    audience: [developer, agent]
+    kind: schema
+    validated: "2026-03-01"
+    update_frequency: weekly
+    freshness_policy:
+      max_age_days: 14
+      on_stale: degrade

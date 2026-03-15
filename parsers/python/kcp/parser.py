@@ -6,7 +6,7 @@ import yaml
 
 from .model import (
     Auth, AuthMethod, Compliance, Delegation, ExternalDependency,
-    ExternalRelationship, KnowledgeManifest, KnowledgeUnit, ManifestRef,
+    ExternalRelationship, FreshnessPolicy, KnowledgeManifest, KnowledgeUnit, ManifestRef,
     RateLimit, RateLimits, Relationship, Trust, TrustAudit, TrustProvenance,
 )
 
@@ -122,6 +122,17 @@ def _parse_rate_limits(data: Optional[dict]) -> Optional[RateLimits]:
     )
 
 
+def _parse_freshness_policy(data: Optional[dict]) -> Optional[FreshnessPolicy]:
+    """Parse a freshness_policy block (root-level or per-unit). See SPEC.md §3.7 (v0.11)."""
+    if data is None:
+        return None
+    return FreshnessPolicy(
+        max_age_days=data.get("max_age_days"),
+        on_stale=data.get("on_stale"),
+        review_contact=data.get("review_contact"),
+    )
+
+
 def _parse_external_dependency(data: dict) -> ExternalDependency:
     """Parse an external_depends_on entry."""
     return ExternalDependency(
@@ -190,6 +201,8 @@ def parse_dict(data: dict) -> KnowledgeManifest:
                 _parse_external_dependency(ed)
                 for ed in u.get("external_depends_on", [])
             ],
+            requires_capabilities=u.get("requires_capabilities", []),
+            freshness_policy=_parse_freshness_policy(u.get("freshness_policy")),
         )
         for u in data.get("units", [])
     ]
@@ -224,4 +237,5 @@ def parse_dict(data: dict) -> KnowledgeManifest:
         relationships=relationships,
         manifests=manifests,
         external_relationships=external_relationships,
+        freshness_policy=_parse_freshness_policy(data.get("freshness_policy")),
     )

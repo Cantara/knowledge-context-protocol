@@ -29,6 +29,15 @@ class ExternalDependency:
     on_failure: str = "skip"
 
 
+
+@dataclass
+class FreshnessPolicy:
+    """Freshness policy for a knowledge unit or manifest default. See SPEC.md §3.7 (v0.11)."""
+    max_age_days: Optional[int] = None
+    on_stale: Optional[str] = None  # "warn" | "degrade" | "block"
+    review_contact: Optional[str] = None
+
+
 @dataclass
 class KnowledgeUnit:
     id: str
@@ -57,6 +66,8 @@ class KnowledgeUnit:
     delegation: Optional[Delegation] = None
     compliance: Optional[Compliance] = None
     external_depends_on: list[ExternalDependency] = field(default_factory=list)
+    requires_capabilities: list[str] = field(default_factory=list)
+    freshness_policy: Optional["FreshnessPolicy"] = None
 
 
 @dataclass
@@ -161,3 +172,4 @@ class KnowledgeManifest:
     relationships: list[Relationship] = field(default_factory=list)
     manifests: list[ManifestRef] = field(default_factory=list)
     external_relationships: list[ExternalRelationship] = field(default_factory=list)
+    freshness_policy: Optional[FreshnessPolicy] = None

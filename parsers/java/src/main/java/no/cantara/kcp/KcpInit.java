@@ -82,6 +82,27 @@ public class KcpInit {
         System.out.println("Review and update the 'intent' fields, then validate:");
         System.out.println("  kcp validate knowledge.yaml");
 
+        // Generate .well-known/kcp.json (RFC-0008 §1.4)
+        Path wellKnownDir = directory.resolve(".well-known");
+        Path wellKnownPath = wellKnownDir.resolve("kcp.json");
+        if (!Files.exists(wellKnownPath) || force) {
+            try {
+                Files.createDirectories(wellKnownDir);
+                String wellKnownContent = "{\n  \"kcp_version\": \"0.11\",\n  \"manifest\": \"/knowledge.yaml\",\n  \"network\": {\n    \"role\": \"standalone\"\n  }\n}\n";
+                Files.writeString(wellKnownPath, wellKnownContent);
+                System.out.println("Generated .well-known/kcp.json (role: standalone).");
+            } catch (IOException e) {
+                System.err.println("Warning: could not write .well-known/kcp.json: " + e.getMessage());
+            }
+        }
+
+        // Print llms.txt snippet (RFC-0008 §1.2) — never overwrite automatically
+        System.out.println();
+        System.out.println("Add this to your llms.txt to enable cold discovery (RFC-0008):");
+        System.out.println();
+        System.out.println("  > knowledge: /knowledge.yaml");
+        System.out.println();
+
         return 0;
     }
 
@@ -332,7 +353,7 @@ public class KcpInit {
     private static String formatYaml(String projectName, String description, String today,
                                      List<Map<String, Object>> units, int level) {
         StringBuilder sb = new StringBuilder();
-        sb.append("kcp_version: \"0.10\"\n");
+        sb.append("kcp_version: \"0.11\"\n");
         sb.append("project: ").append(projectName).append('\n');
         if (description != null && !description.isEmpty()) {
             sb.append("description: ").append(yamlStr(description)).append('\n');

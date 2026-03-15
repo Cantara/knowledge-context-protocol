@@ -41,7 +41,7 @@ public class KcpValidator {
     private static final Set<String> VALID_ACCESS_VALUES = Set.of("public", "authenticated", "restricted");
     private static final Set<String> VALID_SENSITIVITY_VALUES = Set.of("public", "internal", "confidential", "restricted");
     private static final Set<String> VALID_HITL_MECHANISMS = Set.of("oauth_consent", "uma", "custom");
-    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10");
+    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11");
     private static final Set<String> VALID_MANIFEST_RELATIONSHIPS = Set.of("child", "foundation", "governs", "peer", "archive");
     private static final Set<String> VALID_ON_FAILURE_VALUES = Set.of("skip", "warn", "degrade");
     private static final Set<String> VALID_VERSION_POLICIES = Set.of("exact", "minimum", "compatible");

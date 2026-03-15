@@ -1,0 +1,55 @@
+# Level 3 — root freshness_policy default with per-unit override
+kcp_version: "0.11"
+project: test-freshness-root-default
+version: "1.0.0"
+
+# Root default: 180 days, warn on stale
+freshness_policy:
+  max_age_days: 180
+  on_stale: warn
+  review_contact: "knowledge@example.com"
+
+units:
+  - id: gdpr-compliance-guide
+    path: compliance/gdpr.md
+    intent: "What GDPR obligations apply to our data processing?"
+    scope: project
+    audience: [developer, agent]
+    kind: policy
+    validated: "2026-01-15"
+    update_frequency: monthly
+    # Inherits root freshness_policy (180 days, warn)
+
+  - id: security-incident-playbook
+    path: security/incident-response.md
+    intent: "How do I respond to a security incident?"
+    scope: project
+    audience: [operator, agent]
+    kind: policy
+    validated: "2026-02-01"
+    update_frequency: quarterly
+    freshness_policy:
+      max_age_days: 30
+      on_stale: block
+      review_contact: "security@example.com"
+
+  - id: api-reference
+    path: api/reference.md
+    intent: "What endpoints does the API expose?"
+    scope: project
+    audience: [developer, agent]
+    kind: schema
+    validated: "2026-03-01"
+    update_frequency: weekly
+    freshness_policy:
+      max_age_days: 14
+      on_stale: degrade
+
+  - id: onboarding-guide
+    path: docs/onboarding.md
+    intent: "How do I get started as a new developer?"
+    scope: project
+    audience: [developer]
+    kind: knowledge
+    requires_capabilities: [tool:git, tool:docker]
+    # Inherits root freshness_policy

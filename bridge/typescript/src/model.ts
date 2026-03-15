@@ -3,6 +3,13 @@
 export type LicenseValue = string | Record<string, unknown>;
 export type IndexingValue = string | Record<string, unknown>;
 
+/** Freshness policy for a unit or manifest default. See SPEC.md §3.7 (v0.11). */
+export interface FreshnessPolicy {
+  max_age_days?: number;
+  on_stale?: string;     // "warn" | "degrade" | "block"
+  review_contact?: string;
+}
+
 export interface KnowledgeUnit {
   id: string;
   path: string;
@@ -30,6 +37,8 @@ export interface KnowledgeUnit {
   delegation?: Delegation;
   compliance?: Compliance;
   external_depends_on: ExternalDependency[];  // defaults to []
+  requires_capabilities?: string[];
+  freshness_policy?: FreshnessPolicy;
 }
 
 export interface Relationship {
@@ -153,6 +162,7 @@ export interface KnowledgeManifest {
   relationships: Relationship[];  // defaults to []
   manifests: ManifestRef[];       // defaults to []
   external_relationships: ExternalRelationship[];  // defaults to []
+  freshness_policy?: FreshnessPolicy;
 }
 
 export interface ValidationResult {

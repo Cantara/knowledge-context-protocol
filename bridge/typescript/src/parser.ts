@@ -10,6 +10,7 @@ import type {
   Delegation,
   ExternalDependency,
   ExternalRelationship,
+  FreshnessPolicy,
   KnowledgeManifest,
   KnowledgeUnit,
   ManifestRef,
@@ -127,6 +128,10 @@ function parseUnit(raw: RawMap): KnowledgeUnit {
     external_depends_on: ((raw["external_depends_on"] as RawMap[]) ?? []).map(
       parseExternalDependency
     ),
+    requires_capabilities: raw["requires_capabilities"] !== undefined
+      ? (raw["requires_capabilities"] as string[])
+      : undefined,
+    freshness_policy: parseFreshnessPolicy(raw["freshness_policy"]),
   };
 }
 
@@ -244,6 +249,16 @@ function parseRateLimits(raw: unknown): RateLimits | undefined {
   };
 }
 
+function parseFreshnessPolicy(raw: unknown): FreshnessPolicy | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const d = raw as RawMap;
+  return {
+    max_age_days: d["max_age_days"] !== undefined ? Number(d["max_age_days"]) : undefined,
+    on_stale: d["on_stale"] !== undefined ? String(d["on_stale"]) : undefined,
+    review_contact: d["review_contact"] !== undefined ? String(d["review_contact"]) : undefined,
+  };
+}
+
 // --- Federation parsing (§3.6) ---
 
 function parseExternalDependency(raw: RawMap): ExternalDependency {
@@ -319,6 +334,7 @@ export function parseDict(data: RawMap): KnowledgeManifest {
     relationships: rawRels.map(parseRelationship),
     manifests: rawManifests.map(parseManifestRef),
     external_relationships: rawExtRels.map(parseExternalRelationship),
+    freshness_policy: parseFreshnessPolicy(data["freshness_policy"]),
   };
 }
 

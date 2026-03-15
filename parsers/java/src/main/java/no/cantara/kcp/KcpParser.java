@@ -5,6 +5,7 @@ import no.cantara.kcp.model.AuthMethod;
 import no.cantara.kcp.model.Compliance;
 import no.cantara.kcp.model.Delegation;
 import no.cantara.kcp.model.ExternalDependency;
+import no.cantara.kcp.model.FreshnessPolicy;
 import no.cantara.kcp.model.ExternalRelationship;
 import no.cantara.kcp.model.HumanInTheLoop;
 import no.cantara.kcp.model.KnowledgeManifest;
@@ -79,7 +80,8 @@ public class KcpParser {
         List<Map<String, Object>> extRelMaps = (List<Map<String, Object>>) data.getOrDefault("external_relationships", List.of());
         List<ExternalRelationship> externalRelationships = extRelMaps.stream().map(KcpParser::parseExternalRelationship).toList();
 
-        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, rateLimits, units, relationships, manifests, externalRelationships);
+        FreshnessPolicy freshnessPolicy = parseFreshnessPolicy((Map<String, Object>) data.get("freshness_policy"));
+        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, rateLimits, units, relationships, manifests, externalRelationships, freshnessPolicy);
     }
 
     /**
@@ -135,7 +137,9 @@ public class KcpParser {
                 parseRateLimits((Map<String, Object>) u.get("rate_limits")),
                 parseDelegation((Map<String, Object>) u.get("delegation")),
                 parseCompliance((Map<String, Object>) u.get("compliance")),
-                externalDependsOn
+                externalDependsOn,
+                (List<String>) u.getOrDefault("requires_capabilities", List.of()),
+                parseFreshnessPolicy((Map<String, Object>) u.get("freshness_policy"))
         );
     }
 
@@ -278,6 +282,17 @@ public class KcpParser {
                 (String) e.get("to_manifest"),
                 (String) e.get("to_unit"),
                 (String) e.get("type")
+        );
+    }
+
+
+    @SuppressWarnings("unchecked")
+    private static FreshnessPolicy parseFreshnessPolicy(Map<String, Object> fp) {
+        if (fp == null) return null;
+        return new FreshnessPolicy(
+                fp.get("max_age_days") instanceof Number n ? n.intValue() : null,
+                (String) fp.get("on_stale"),
+                (String) fp.get("review_contact")
         );
     }
 

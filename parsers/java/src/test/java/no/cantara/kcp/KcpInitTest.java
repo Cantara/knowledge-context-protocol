@@ -101,7 +101,7 @@ class KcpInitTest {
         String content = KcpInit.generateManifest(dir, artifacts, 1);
 
         Map<String, Object> data = YAML.load(content);
-        assertEquals("0.10", data.get("kcp_version"));
+        assertEquals("0.11", data.get("kcp_version"));
         assertEquals("0.1.0", data.get("version"));
 
         List<Map<String, Object>> units = (List<Map<String, Object>>) data.get("units");
@@ -220,7 +220,7 @@ class KcpInitTest {
         KcpInit.run(dir, 2, false, false);
         String content = Files.readString(dir.resolve("knowledge.yaml"));
         Map<String, Object> data = YAML.load(content);
-        assertEquals("0.10", data.get("kcp_version"));
+        assertEquals("0.11", data.get("kcp_version"));
         List<Map<String, Object>> units = (List<Map<String, Object>>) data.get("units");
         assertFalse(units.isEmpty());
     }

@@ -8,6 +8,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Spec
+
+- **v0.11.0 — Agent Readiness Release** (RFC-0008 schema wave)
+  - `freshness_policy` block on root and units (§3.7): `max_age_days`, `on_stale` (`warn`/`degrade`/`block`), `review_contact`.
+  - `requires_capabilities` on units (§3.7): advisory capability list with `tool:` / `permission:` / `role:` prefix convention.
+  - `network` field in `/.well-known/kcp.json` (§3.7): `role` (`hub`|`leaf`|`standalone`), `entry_point`, `registry_label`.
+  - `kcp init` extended: generates `.well-known/kcp.json` with `network.role: standalone`; prints `llms.txt` snippet to stdout.
+  - `KNOWN_KCP_VERSIONS` updated to include `"0.11"` in all three validators.
+  - 4 new conformance fixtures: `level2/valid-with-freshness-policy`, `level2/valid-with-requires-capabilities`, `level3/valid-with-freshness-policy-root-default`, `level3/valid-with-freshness-and-capabilities`.
+
+### Parsers
+
+- **Java parser**: `FreshnessPolicy` record added; `KnowledgeUnit` and `KnowledgeManifest` extended; `KcpParser.parseFreshnessPolicy()` added.
+- **Python parser**: `FreshnessPolicy` dataclass added; `KnowledgeUnit` and `KnowledgeManifest` extended; `_parse_freshness_policy()` added.
+- **TypeScript bridge model**: `FreshnessPolicy` interface added; `KnowledgeUnit` and `KnowledgeManifest` extended; `parseFreshnessPolicy()` added.
+
 ---
 
 ## [0.14.0] — 2026-03-15 — Query Baseline Release

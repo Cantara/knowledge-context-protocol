@@ -18,7 +18,7 @@ VALID_INDEXING_SHORTHANDS = {"open", "read-only", "no-train", "none"}
 VALID_ACCESS_VALUES = {"public", "authenticated", "restricted"}
 VALID_SENSITIVITY_VALUES = {"public", "internal", "confidential", "restricted"}
 # human_in_the_loop is an object per spec §3.4 — no HITL enum, validation done inline
-KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10"}
+KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11"}
 VALID_MANIFEST_RELATIONSHIPS = {"child", "foundation", "governs", "peer", "archive"}
 VALID_ON_FAILURE_VALUES = {"skip", "warn", "degrade"}
 VALID_VERSION_POLICIES = {"exact", "minimum", "compatible"}

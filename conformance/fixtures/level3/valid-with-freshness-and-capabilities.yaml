@@ -1,0 +1,50 @@
+# Level 3 — combined freshness_policy + requires_capabilities + manifests[] federation
+kcp_version: "0.11"
+project: test-agent-readiness
+version: "1.0.0"
+
+freshness_policy:
+  max_age_days: 90
+  on_stale: warn
+  review_contact: "platform@example.com"
+
+manifests:
+  - id: security-manifest
+    url: /security/knowledge.yaml
+    label: Security & Compliance Knowledge
+    relationship: child
+    update_frequency: weekly
+
+units:
+  - id: platform-overview
+    path: docs/overview.md
+    intent: "What does the platform do and how is it structured?"
+    scope: global
+    audience: [developer, architect, agent]
+    kind: knowledge
+    validated: "2026-03-01"
+
+  - id: deployment-guide
+    path: ops/deployment.md
+    intent: "How do I deploy services to the platform?"
+    scope: project
+    audience: [operator, agent]
+    kind: policy
+    validated: "2026-02-15"
+    requires_capabilities: [tool:kubectl, tool:helm, permission:deploy-prod]
+    freshness_policy:
+      max_age_days: 30
+      on_stale: degrade
+      review_contact: "ops@example.com"
+
+  - id: api-gateway-reference
+    path: api/gateway.md
+    intent: "What are the API gateway endpoints and rate limits?"
+    scope: module
+    audience: [developer, agent]
+    kind: schema
+    validated: "2026-03-10"
+    update_frequency: weekly
+    freshness_policy:
+      max_age_days: 14
+      on_stale: warn

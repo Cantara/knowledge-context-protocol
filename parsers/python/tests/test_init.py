@@ -91,7 +91,7 @@ class TestGenerateManifest:
     def test_level1_generates_valid_yaml(self, project_dir):
         content, artifacts = generate_manifest(project_dir, level=1)
         data = yaml.safe_load(content)
-        assert data["kcp_version"] == "0.10"
+        assert data["kcp_version"] == "0.11"
         assert data["version"] == "0.1.0"
         assert len(data["units"]) == len(artifacts)
         for unit in data["units"]:
@@ -176,7 +176,7 @@ class TestRunInit:
     def test_output_is_parseable(self, project_dir):
         run_init(project_dir, level=2)
         data = yaml.safe_load((project_dir / "knowledge.yaml").read_text())
-        assert data["kcp_version"] == "0.10"
+        assert data["kcp_version"] == "0.11"
         assert len(data["units"]) > 0
 
 
