@@ -102,7 +102,7 @@
   <section class="hero" id="hero">
     <div class="container">
       <div class="hero__badge">
-        <span>v0.10 Draft Spec</span>
+        <span>v0.11 Spec</span>
         &middot;
         <span>Open Standard</span>
         &middot;
@@ -644,7 +644,7 @@ relationships:
               <pre><code id="ex-minimal" class="language-yaml"># Minimal KCP example — five minutes to add.
 # This is a valid knowledge.yaml at Level 1 conformance.
 
-kcp_version: "0.9"
+kcp_version: "0.11"
 project: my-project
 version: 1.0.0
 
@@ -672,7 +672,7 @@ units:
               <pre><code id="ex-personal" class="language-yaml"># Personal site / portfolio example
 # Shows: audience differentiation, freshness, depends_on
 
-kcp_version: "0.9"
+kcp_version: "0.11"
 project: wiki.example.org
 version: 1.0.0
 updated: "2026-02-28"
@@ -746,7 +746,7 @@ relationships:
 # Dependency chains across architecture layers
 # Freshness: archived (2022) vs active (2026) content
 
-kcp_version: "0.9"
+kcp_version: "0.11"
 project: community-wiki
 version: 1.0.0
 updated: "2026-02-28"
@@ -1803,7 +1803,7 @@ units:
               </button>
             </div>
             <div class="code-block__body">
-              <pre><code id="qs-code-l1" class="language-yaml">kcp_version: "0.9"
+              <pre><code id="qs-code-l1" class="language-yaml">kcp_version: "0.11"
 project: my-project
 version: 1.0.0
 
@@ -1840,7 +1840,7 @@ units:
               </button>
             </div>
             <div class="code-block__body">
-              <pre><code id="qs-code-l2" class="language-yaml">kcp_version: "0.9"
+              <pre><code id="qs-code-l2" class="language-yaml">kcp_version: "0.11"
 project: my-project
 version: 1.0.0
 updated: "2026-01-01"
@@ -1894,7 +1894,7 @@ units:
               </button>
             </div>
             <div class="code-block__body">
-              <pre><code id="qs-code-l3" class="language-yaml">kcp_version: "0.9"
+              <pre><code id="qs-code-l3" class="language-yaml">kcp_version: "0.11"
 project: my-project
 version: 1.0.0
 updated: "2026-01-01"
@@ -2004,7 +2004,7 @@ relationships:
       <div class="adopters-cta-box reveal">
         <h3>Add your project</h3>
         <p>Using KCP in a public repository? Open an issue and we'll add you to this list. You can also add a badge to your own README.</p>
-        <div class="adopter-snippet">[![KCP](https://img.shields.io/badge/KCP-v0.10-2563eb?style=flat-square&logo=yaml&logoColor=white)](https://cantara.github.io/knowledge-context-protocol/)</div>
+        <div class="adopter-snippet">[![KCP](https://img.shields.io/badge/KCP-v0.11-2563eb?style=flat-square&logo=yaml&logoColor=white)](https://cantara.github.io/knowledge-context-protocol/)</div>
         <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
           <a href="https://github.com/Cantara/knowledge-context-protocol/issues/new?title=Add+adopter:+[your+project]&body=Project+name:%0ARepository+URL:%0ABrief+description:" target="_blank" rel="noopener" class="btn btn--primary">Open issue to add your project</a>
           <a href="https://github.com/Cantara/knowledge-context-protocol" target="_blank" rel="noopener" class="btn btn--outline">View on GitHub</a>
@@ -2013,7 +2013,7 @@ relationships:
 
       <div class="adopters-badges reveal">
         <img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License: Apache 2.0" height="20">
-        <img src="https://img.shields.io/badge/KCP-v0.10-22c55e?style=flat-square&logo=yaml&logoColor=white" alt="KCP v0.9" height="20">
+        <img src="https://img.shields.io/badge/KCP-v0.11-22c55e?style=flat-square&logo=yaml&logoColor=white" alt="KCP v0.9" height="20">
         <img src="https://img.shields.io/badge/spec-stable-22c55e?style=flat-square" alt="Spec: Stable" height="20">
       </div>
 
@@ -2070,7 +2070,7 @@ relationships:
       <div class="section-header reveal">
         <span class="section-label">Roadmap</span>
         <h2>Where KCP is headed</h2>
-        <p>v0.10 is the current draft. Fields are promoted from RFC proposals to core as they accumulate real-world validation. Remaining RFCs are open for community feedback through 2026.</p>
+        <p>v0.11 is the current release. Fields are promoted from RFC proposals to core as they accumulate real-world validation. Remaining RFCs are open for community feedback through 2026.</p>
       </div>
 
       <div class="roadmap-core reveal">
@@ -2191,7 +2191,7 @@ relationships:
 
       <div class="roadmap-core reveal">
         <div class="roadmap-core__info">
-          <span class="roadmap-core__badge">v0.10 — Current</span>
+          <span class="roadmap-core__badge">v0.10 — Shipped</span>
           <h3>Discovery &amp; Versioning</h3>
           <p>Federation version pinning (<code>version_pin</code>, <code>version_policy</code>), RFC-0007 Query Vocabulary for pre-invocation capability discovery, instruction file bridge guide, and <code>kcp init</code> specification. Zero breaking changes.</p>
         </div>
@@ -2201,6 +2201,21 @@ relationships:
           <span class="roadmap-field-pill">RFC-0007 Query Vocabulary</span>
           <span class="roadmap-field-pill">kcp init</span>
           <span class="roadmap-field-pill">instruction file bridge</span>
+        </div>
+      </div>
+
+      <div class="roadmap-core reveal">
+        <div class="roadmap-core__info">
+          <span class="roadmap-core__badge">v0.11 — Current</span>
+          <h3>Agent Readiness</h3>
+          <p>Three new fields make knowledge manifests self-describing for autonomous agents: <code>freshness_policy</code> (staleness threshold + reaction), <code>requires_capabilities</code> (advisory tool/permission/role hints), and <code>network</code> topology in <code>/.well-known/kcp.json</code>. Plus <code>kcp reflect</code> CLI for session-end skill lifecycle guardrails. Zero breaking changes.</p>
+        </div>
+        <div class="roadmap-core__fields">
+          <span class="roadmap-field-pill">freshness_policy</span>
+          <span class="roadmap-field-pill">requires_capabilities</span>
+          <span class="roadmap-field-pill">network (well-known)</span>
+          <span class="roadmap-field-pill">kcp reflect</span>
+          <span class="roadmap-field-pill">RFC-0008</span>
         </div>
       </div>
 
