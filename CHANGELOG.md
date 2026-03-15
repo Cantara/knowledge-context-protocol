@@ -6,6 +6,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased]
+
+### Bridges
+
+- **RFC-0007 query baseline — all three bridges now at full parity.**
+  - `search_knowledge` tool added to Python bridge (was absent).
+  - `sensitivity_max` filter: excludes units whose sensitivity exceeds the declared ceiling (`public < internal < confidential < restricted`).
+  - `exclude_deprecated` filter: excludes units with `deprecated: true` by default (pass `false` to include).
+  - `match_reason` field in results: list of scoring rules that fired (`trigger`, `intent`, `id`, `path`).
+  - `token_estimate` field in results: exposes `hints.token_estimate` for budget-aware selection without a second lookup.
+  - `summary_unit` field in results: exposes `hints.summary_unit` for budget-constrained substitution.
+  - 14 new tests across all three bridges covering the new filters and result fields.
+
+---
+
 ## [0.10.0] — 2026-03-13 — Discovery & Versioning Release
 
 v0.10.0 adds federation version pinning, a query vocabulary RFC, an instruction file bridge guide, and `kcp init` specification. Zero breaking changes.
