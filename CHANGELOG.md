@@ -8,6 +8,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+---
+
+## [0.14.0] — 2026-03-15 — Query Baseline Release
+
 ### Bridges
 
 - **RFC-0007 query baseline — all three bridges now at full parity.**
@@ -18,6 +22,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - `token_estimate` field in results: exposes `hints.token_estimate` for budget-aware selection without a second lookup.
   - `summary_unit` field in results: exposes `hints.summary_unit` for budget-constrained substitution.
   - 14 new tests across all three bridges covering the new filters and result fields.
+
+- **TypeScript bridge** (kcp-mcp 0.14.0): 160 tests passing.
+- **Java bridge** (kcp-mcp 0.14.0): 145 tests passing.
+- **Python bridge** (kcp-mcp 0.14.0): 61 tests passing.
 
 ---
 
