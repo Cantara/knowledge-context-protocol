@@ -10,6 +10,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.11.1] — 2026-03-17 — Housekeeping
+
+### Fixed
+
+- `docs/.well-known/kcp.json` `kcp_version` corrected from `"0.9"` to `"0.11"` — discovery endpoint now reflects the current spec version.
+- `knowledge.yaml` (the KCP repo's own dogfood manifest) updated from `kcp_version: "0.10"` to `"0.11"`, version bumped to `0.11.0`.
+
+### Infrastructure
+
+- Node 24 upgrade merged (Renovate PR #42).
+- vitest v4 PR #48 closed with note — will re-open automatically once Node 24 is active in CI.
+
+---
+
 ## [0.11.0] — 2026-03-15 — Agent Readiness Release
 
 ### Spec
