@@ -1,0 +1,114 @@
+# Example: Regulated Data — Authority and Compliance
+# Project: compliance-platform
+#
+# Demonstrates KCP v0.12 authority block (SPEC.md §3.8, §4.17):
+#   - Manifest-wide safe defaults: read/summarize=initiative, all others=denied
+#   - Unit-level overrides for different permission profiles
+#   - Custom domain actions (submit_to_regulator, export_to_pdf)
+#   - Pairing with compliance.sensitivity and trust.audit
+
+kcp_version: "0.12"
+project: compliance-platform
+version: "2.0.0"
+updated: "2026-03-19"
+language: en
+
+compliance:
+  sensitivity: confidential
+  regulations: [GDPR, NIS2]
+  data_residency: [EU]
+
+trust:
+  audit:
+    agent_must_log: true
+    require_trace_context: true
+
+auth:
+  methods:
+    - type: oauth2
+      issuer: "https://auth.compliance.example.com"
+      scopes: [compliance:read, compliance:write, audit:read, report:submit]
+
+# Manifest-wide authority defaults — agents may read/summarize freely,
+# everything else is denied unless explicitly overridden per unit
+authority:
+  read: initiative
+  summarize: initiative
+  modify: denied
+  share_externally: denied
+  execute: denied
+
+units:
+  # Public overview — no restrictions
+  - id: platform-overview
+    path: docs/overview.md
+    intent: "What is the compliance platform and what regulations does it support?"
+    scope: global
+    audience: [agent, developer, human]
+    compliance:
+      sensitivity: public
+    authority:
+      read: initiative
+      summarize: initiative
+      share_externally: initiative    # may be shared freely
+
+  # Control catalog — read freely, modifications require approval
+  - id: control-catalog
+    path: docs/controls/catalog.md
+    intent: "What compliance controls are defined and what do they require?"
+    scope: global
+    audience: [agent, developer, operator]
+    compliance:
+      sensitivity: internal
+    authority:
+      read: initiative
+      summarize: initiative
+      modify: requires_approval       # changes must be reviewed
+      share_externally: denied
+
+  # Evidence records — high sensitivity, most actions require approval
+  - id: evidence-records
+    path: docs/evidence/README.md
+    intent: "How are compliance evidence records structured and stored?"
+    scope: module
+    audience: [operator, agent]
+    compliance:
+      sensitivity: confidential
+    authority:
+      read: initiative
+      summarize: initiative
+      modify: requires_approval
+      share_externally: requires_approval   # may share with auditor, but ask first
+      submit_to_regulator: requires_approval  # custom domain action
+
+  # Audit log — read-only for agents, no modification ever
+  - id: audit-log
+    path: docs/audit/log.md
+    intent: "How do I access and interpret the agent action audit log?"
+    scope: module
+    audience: [operator, security_auditor]
+    compliance:
+      sensitivity: restricted
+      regulations: [GDPR, NIS2]
+    authority:
+      read: initiative
+      summarize: initiative
+      modify: denied                  # audit log is immutable
+      share_externally: denied
+      export_to_pdf: requires_approval  # custom domain action for regulators
+
+  # Processor agreements — restricted, submit only with explicit approval
+  - id: processor-agreements
+    path: docs/legal/processor-agreements.md
+    intent: "What data processor agreements are in place and what do they permit?"
+    scope: module
+    audience: [operator]
+    compliance:
+      sensitivity: restricted
+      regulations: [GDPR]
+    authority:
+      read: initiative
+      summarize: denied               # summaries of legal text require legal review
+      modify: denied
+      share_externally: denied
+      submit_to_regulator: denied     # must go through legal team only

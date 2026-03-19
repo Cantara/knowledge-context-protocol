@@ -1,0 +1,124 @@
+# Example: Environment Visibility — Conditional Access by Context
+# Project: api-platform
+#
+# Demonstrates KCP v0.12 visibility block (SPEC.md §3.8, §4.16):
+#   - Units that expose different sensitivity based on environment
+#   - First-match-wins condition evaluation
+#   - agent_role conditions (security_auditor, platform_admin, developer)
+#   - Manifest-wide visibility default
+#   - MUST NOT assume most permissive condition when environment is unknown
+
+kcp_version: "0.12"
+project: api-platform
+version: "1.5.0"
+updated: "2026-03-19"
+language: en
+
+auth:
+  methods:
+    - type: oauth2
+      issuer: "https://auth.api-platform.example.com"
+      scopes: [api:read, api:admin, infra:read]
+
+# Manifest-wide default: treat all units as internal unless stated otherwise
+visibility:
+  default: internal
+
+units:
+  # Always public — no conditions needed
+  - id: public-api-docs
+    path: docs/api/public.md
+    intent: "What public REST APIs does api-platform expose?"
+    scope: global
+    audience: [developer, agent, human]
+    sensitivity: public               # overrides visibility.default
+
+  # Development-friendly: full schema visible locally, restricted in prod
+  - id: database-schema
+    path: docs/schema/database.md
+    intent: "What is the full database schema for api-platform?"
+    scope: project
+    audience: [developer, agent]
+    visibility:
+      default: restricted             # fallback if no condition matches
+      conditions:
+        - when:
+            environment: [local, development]
+          then:
+            sensitivity: internal
+            requires_auth: false      # local dev: no auth needed
+        - when:
+            environment: [staging]
+            agent_role: [developer, platform_admin]
+          then:
+            sensitivity: internal
+            requires_auth: true
+        - when:
+            environment: [production]
+            agent_role: [platform_admin, security_auditor]
+          then:
+            sensitivity: confidential
+            requires_auth: true
+        - when:
+            environment: [production]
+          then:
+            sensitivity: restricted
+            requires_auth: true
+
+  # Internal service config — visible to admins and auditors, hidden otherwise
+  - id: service-config
+    path: docs/ops/service-config.md
+    intent: "What are the runtime configuration parameters for api-platform services?"
+    scope: project
+    audience: [operator, agent]
+    visibility:
+      default: restricted
+      conditions:
+        - when:
+            agent_role: [platform_admin]
+          then:
+            sensitivity: confidential
+            requires_auth: true
+        - when:
+            agent_role: [security_auditor]
+            environment: [staging, production]
+          then:
+            sensitivity: confidential
+            requires_auth: true
+
+  # Incident runbooks — always visible to on-call, restricted otherwise
+  - id: incident-runbooks
+    path: docs/ops/runbooks.md
+    intent: "What are the incident response runbooks for api-platform?"
+    scope: project
+    audience: [operator, agent]
+    visibility:
+      default: confidential
+      conditions:
+        - when:
+            agent_role: [on_call_engineer, platform_admin]
+          then:
+            sensitivity: internal
+            requires_auth: true
+            authority:
+              read: initiative        # on-call may read immediately, no waiting
+              execute: initiative     # may trigger runbook actions
+
+  # Secrets reference — always restricted, no conditions relax this
+  - id: secrets-reference
+    path: docs/security/secrets.md
+    intent: "Where are api-platform secrets stored and how are they rotated?"
+    scope: project
+    audience: [operator]
+    visibility:
+      default: restricted
+      conditions:
+        - when:
+            agent_role: [security_auditor]
+            environment: [production]
+          then:
+            sensitivity: restricted   # still restricted even for auditors
+            requires_auth: true
+            authority:
+              read: requires_approval  # auditor must request access explicitly
+              summarize: denied

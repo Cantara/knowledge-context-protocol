@@ -1,0 +1,227 @@
+# Scenario 7: Governed API Platform — Full v0.12 Feature Set
+# Project: nova-api-platform
+#
+# Demonstrates all three KCP v0.12 governance blocks together:
+#   - discovery (§3.9, §4.18): provenance for auto-discovered units
+#   - authority (§3.8, §4.17): fine-grained action permissions
+#   - visibility (§3.8, §4.16): environment- and role-aware access
+#
+# Scenario: Nova Corp's internal API platform. Some APIs are well-documented
+# (verified), others were discovered by automated crawling (observed/rumored).
+# Access rules differ between staging and production, and some operations
+# require human approval before an agent may proceed.
+
+kcp_version: "0.12"
+project: nova-api-platform
+version: "4.2.0"
+updated: "2026-03-19"
+language: en
+license: "proprietary"
+
+trust:
+  provenance:
+    publisher: "Nova Corp Platform Engineering"
+    publisher_url: "https://platform.nova.example.com"
+    contact: "platform-team@nova.example.com"
+  audit:
+    agent_must_log: true
+    require_trace_context: true
+
+auth:
+  methods:
+    - type: oauth2
+      issuer: "https://auth.nova.example.com"
+      scopes: [platform:read, platform:write, admin:read, payments:execute]
+
+# Manifest-wide defaults
+authority:
+  read: initiative
+  summarize: initiative
+  modify: requires_approval
+  share_externally: denied
+  execute: denied
+
+visibility:
+  default: internal
+
+# Root-level discovery: this manifest was partially auto-generated
+discovery:
+  source: web_traversal
+  observed_at: "2026-03-19T09:00:00Z"
+
+rate_limits:
+  default:
+    requests_per_minute: 120
+    requests_per_day: 10000
+
+units:
+
+  # ── Verified documentation ─────────────────────────────────────────────────
+
+  - id: platform-overview
+    path: docs/overview.md
+    intent: "What is Nova API Platform and how do teams integrate with it?"
+    scope: global
+    audience: [agent, developer, human]
+    sensitivity: public               # overrides visibility default
+    authority:
+      read: initiative
+      summarize: initiative
+      share_externally: initiative    # public docs may be shared freely
+    discovery:
+      verification_status: verified
+      source: manual
+      confidence: 1.0
+      verified_at: "2026-03-15T00:00:00Z"
+
+  - id: authentication-guide
+    path: docs/auth/README.md
+    intent: "How does an agent authenticate with Nova API Platform?"
+    scope: global
+    audience: [agent, developer]
+    depends_on: [platform-overview]
+    triggers: [authenticate, token, oauth, api key, bearer]
+    discovery:
+      verification_status: verified
+      source: manual
+      confidence: 1.0
+      verified_at: "2026-03-15T00:00:00Z"
+
+  # ── Observed — seen in crawl, high confidence ──────────────────────────────
+
+  - id: order-api
+    path: docs/api/orders.md
+    intent: "How do I create and manage orders via the Nova order API?"
+    scope: module
+    audience: [agent, developer]
+    depends_on: [authentication-guide]
+    triggers: [order, create order, order status, fulfillment]
+    visibility:
+      default: internal
+      conditions:
+        - when:
+            environment: [production]
+            agent_role: [platform_admin, order_manager]
+          then:
+            sensitivity: confidential
+            requires_auth: true
+        - when:
+            environment: [staging, development]
+          then:
+            sensitivity: internal
+            requires_auth: true
+    authority:
+      read: initiative
+      summarize: initiative
+      modify: requires_approval       # order mutations require approval
+      execute: requires_approval      # order execution (submit) requires approval
+    discovery:
+      verification_status: observed
+      source: web_traversal
+      confidence: 0.91
+      observed_at: "2026-03-19T09:15:00Z"
+
+  - id: inventory-api
+    path: docs/api/inventory.md
+    intent: "How do I query and update inventory via the Nova inventory API?"
+    scope: module
+    audience: [agent, developer]
+    depends_on: [authentication-guide]
+    triggers: [inventory, stock, product catalog, SKU]
+    discovery:
+      verification_status: observed
+      source: web_traversal
+      confidence: 0.78
+      observed_at: "2026-03-19T09:18:00Z"
+
+  # ── Observed — lower confidence, environment-gated ─────────────────────────
+
+  - id: payments-api
+    path: docs/api/payments.md
+    intent: "How do I initiate and track payments via the Nova payments API?"
+    scope: module
+    audience: [agent, developer]
+    depends_on: [authentication-guide]
+    triggers: [payment, charge, refund, invoice, billing]
+    visibility:
+      default: confidential
+      conditions:
+        - when:
+            environment: [production]
+            agent_role: [platform_admin, finance_operator]
+          then:
+            sensitivity: confidential
+            requires_auth: true
+        - when:
+            environment: [staging]
+            agent_role: [developer, platform_admin]
+          then:
+            sensitivity: internal
+            requires_auth: true
+        - when:
+            environment: [development, local]
+          then:
+            sensitivity: internal
+            requires_auth: false
+    authority:
+      read: initiative
+      summarize: initiative
+      modify: denied                  # no agent may modify payment records
+      execute: requires_approval      # payment execution always needs approval
+      share_externally: denied
+    discovery:
+      verification_status: observed
+      source: web_traversal
+      confidence: 0.63
+      observed_at: "2026-03-19T09:22:00Z"
+
+  # ── Rumored — inferred, MUST have confidence < 0.5 ────────────────────────
+
+  - id: analytics-export-api
+    path: unknowns/analytics-export.md
+    intent: "Does Nova API Platform expose a bulk analytics export endpoint?"
+    scope: module
+    audience: [developer]
+    hints:
+      load_strategy: lazy
+      priority: reference
+    authority:
+      read: initiative
+      summarize: initiative
+      execute: denied                 # do not attempt to call unverified endpoints
+    discovery:
+      verification_status: rumored
+      source: llm_inference
+      confidence: 0.38
+      observed_at: "2026-03-19T09:25:00Z"
+
+  # ── Deprecated ─────────────────────────────────────────────────────────────
+
+  - id: legacy-soap-api
+    path: docs/api/legacy-soap.md
+    intent: "What was the legacy SOAP API (retired 2024)?"
+    scope: module
+    audience: [developer]
+    hints:
+      load_strategy: never
+      priority: reference
+    discovery:
+      verification_status: deprecated
+      source: manual
+      confidence: 1.0
+      verified_at: "2024-01-01T00:00:00Z"
+      contradicted_by: [order-api, inventory-api]  # replaced by REST APIs
+
+relationships:
+  - from: authentication-guide
+    to: order-api
+    type: enables
+  - from: authentication-guide
+    to: inventory-api
+    type: enables
+  - from: authentication-guide
+    to: payments-api
+    type: enables
+  - from: order-api
+    to: inventory-api
+    type: context
