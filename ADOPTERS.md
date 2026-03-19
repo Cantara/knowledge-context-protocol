@@ -25,3 +25,10 @@ To add your project: [open an issue](https://github.com/Cantara/knowledge-contex
 | microsoft/autogen | [#7329](https://github.com/microsoft/autogen/pull/7329) | 80% fewer tool calls |
 | huggingface/smolagents | [#2026](https://github.com/huggingface/smolagents/pull/2026) | 73% fewer tool calls |
 | anomalyco/opencode | [#15839](https://github.com/anomalyco/opencode/pull/15839) | via opencode-kcp-plugin |
+
+## Community Tools
+
+| Project | Repo | Description |
+|---------|------|-------------|
+| kcp-basis-oppsett | https://github.com/StigLau/kcp-basis-oppsett | Reference KCP setup framework by Stig Lau (Skatteetaten) — templates, transition guide, snapshot-awareness pattern, component registry |
+| kcp-triage | https://github.com/StigLau/kcp-triage | Automated KCP artifact generator — crawls a website and produces knowledge.yaml (v0.10), CLAUDE.md, skills, and API docs via LLM pipeline |
