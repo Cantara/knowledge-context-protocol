@@ -1423,4 +1423,403 @@ class KcpParserTest {
         KcpValidator.ValidationResult result = KcpValidator.validate(m);
         assertTrue(result.isValid(), "Expected valid: " + result.errors());
     }
+
+    // -----------------------------------------------------------------------
+    // RFC-0009 Authority block tests
+    // -----------------------------------------------------------------------
+
+    @Test
+    void parsesAuthorityBlock() {
+        Map<String, Object> authorityData = new HashMap<>();
+        authorityData.put("read", "initiative");
+        authorityData.put("summarize", "initiative");
+        authorityData.put("modify", "requires_approval");
+        authorityData.put("share_externally", "denied");
+        authorityData.put("execute", "denied");
+
+        Map<String, Object> unitData = new HashMap<>();
+        unitData.put("id", "spec-doc");
+        unitData.put("path", "spec.md");
+        unitData.put("intent", "Core specification document.");
+        unitData.put("scope", "global");
+        unitData.put("audience", List.of("agent"));
+        unitData.put("authority", authorityData);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("kcp_version", "0.12");
+        data.put("project", "authority-test");
+        data.put("version", "1.0.0");
+        data.put("units", List.of(unitData));
+
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KnowledgeUnit unit = m.units().get(0);
+
+        assertNotNull(unit.authority());
+        assertEquals("initiative", unit.authority().read());
+        assertEquals("initiative", unit.authority().summarize());
+        assertEquals("requires_approval", unit.authority().modify());
+        assertEquals("denied", unit.authority().shareExternally());
+        assertEquals("denied", unit.authority().execute());
+
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid(), "Expected valid: " + result.errors());
+        assertTrue(result.warnings().isEmpty(), "Expected no warnings: " + result.warnings());
+    }
+
+    @Test
+    void authorityBlockInvalidValueProducesWarning() {
+        Map<String, Object> authorityData = new HashMap<>();
+        authorityData.put("read", "initiative");
+        authorityData.put("modify", "allowed"); // invalid value
+
+        Map<String, Object> unitData = new HashMap<>();
+        unitData.put("id", "spec-doc");
+        unitData.put("path", "spec.md");
+        unitData.put("intent", "Core specification document.");
+        unitData.put("scope", "global");
+        unitData.put("audience", List.of("agent"));
+        unitData.put("authority", authorityData);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("kcp_version", "0.12");
+        data.put("project", "authority-test");
+        data.put("version", "1.0.0");
+        data.put("units", List.of(unitData));
+
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+
+        assertTrue(result.isValid(), "Expected valid: " + result.errors());
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("authority.modify") && w.contains("allowed")),
+                "Expected warning about invalid authority.modify value, got: " + result.warnings());
+    }
+
+    @Test
+    void parsesRootLevelAuthorityBlock() {
+        Map<String, Object> authorityData = new HashMap<>();
+        authorityData.put("read", "initiative");
+        authorityData.put("summarize", "initiative");
+        authorityData.put("modify", "denied");
+        authorityData.put("share_externally", "denied");
+        authorityData.put("execute", "denied");
+
+        Map<String, Object> data = new HashMap<>(MINIMAL);
+        data.put("kcp_version", "0.12");
+        data.put("authority", authorityData);
+
+        KnowledgeManifest m = KcpParser.fromMap(data);
+
+        assertNotNull(m.authority());
+        assertEquals("initiative", m.authority().read());
+        assertEquals("denied", m.authority().modify());
+        assertNull(m.units().get(0).authority());
+    }
+
+    // -----------------------------------------------------------------------
+    // RFC-0012 Discovery block tests
+    // -----------------------------------------------------------------------
+
+    @Test
+    void parsesDiscoveryBlockVerified() {
+        Map<String, Object> discoveryData = new HashMap<>();
+        discoveryData.put("verification_status", "verified");
+        discoveryData.put("source", "manual");
+        discoveryData.put("observed_at", "2026-01-10T08:00:00Z");
+        discoveryData.put("verified_at", "2026-02-01T09:00:00Z");
+        discoveryData.put("confidence", 0.95);
+
+        Map<String, Object> unitData = new HashMap<>();
+        unitData.put("id", "api-spec");
+        unitData.put("path", "api/openapi.yaml");
+        unitData.put("intent", "OpenAPI specification for the public API.");
+        unitData.put("scope", "global");
+        unitData.put("audience", List.of("agent", "developer"));
+        unitData.put("discovery", discoveryData);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("kcp_version", "0.12");
+        data.put("project", "discovery-test");
+        data.put("version", "1.0.0");
+        data.put("units", List.of(unitData));
+
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KnowledgeUnit unit = m.units().get(0);
+
+        assertNotNull(unit.discovery());
+        assertEquals("verified", unit.discovery().verificationStatus());
+        assertEquals("manual", unit.discovery().source());
+        assertEquals("2026-01-10T08:00:00Z", unit.discovery().observedAt());
+        assertEquals("2026-02-01T09:00:00Z", unit.discovery().verifiedAt());
+        assertEquals(0.95, unit.discovery().confidence(), 0.001);
+        assertNull(unit.discovery().contradictedBy());
+
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid(), "Expected valid: " + result.errors());
+        assertTrue(result.warnings().isEmpty(), "Expected no warnings: " + result.warnings());
+    }
+
+    @Test
+    void parsesDiscoveryBlockRumored() {
+        Map<String, Object> discoveryData = new HashMap<>();
+        discoveryData.put("verification_status", "rumored");
+        discoveryData.put("source", "llm_inference");
+        discoveryData.put("confidence", 0.3);
+
+        Map<String, Object> unitData = new HashMap<>();
+        unitData.put("id", "legacy-endpoint");
+        unitData.put("path", "docs/legacy.md");
+        unitData.put("intent", "Possibly deprecated legacy endpoint docs.");
+        unitData.put("scope", "project");
+        unitData.put("audience", List.of("developer"));
+        unitData.put("discovery", discoveryData);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("kcp_version", "0.12");
+        data.put("project", "discovery-test");
+        data.put("version", "1.0.0");
+        data.put("units", List.of(unitData));
+
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KnowledgeUnit unit = m.units().get(0);
+
+        assertNotNull(unit.discovery());
+        assertEquals("rumored", unit.discovery().verificationStatus());
+        assertEquals("llm_inference", unit.discovery().source());
+        assertEquals(0.3, unit.discovery().confidence(), 0.001);
+
+        // confidence < 0.5 for rumored: no warning
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid(), "Expected valid: " + result.errors());
+        assertTrue(result.warnings().isEmpty(), "Expected no warnings for valid rumored confidence: " + result.warnings());
+    }
+
+    @Test
+    void discoveryRumoredWithHighConfidenceProducesWarning() {
+        Map<String, Object> discoveryData = new HashMap<>();
+        discoveryData.put("verification_status", "rumored");
+        discoveryData.put("confidence", 0.8); // violates: rumored MUST have confidence < 0.5
+
+        Map<String, Object> unitData = new HashMap<>();
+        unitData.put("id", "legacy-endpoint");
+        unitData.put("path", "docs/legacy.md");
+        unitData.put("intent", "Possibly deprecated legacy endpoint docs.");
+        unitData.put("scope", "project");
+        unitData.put("audience", List.of("developer"));
+        unitData.put("discovery", discoveryData);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("kcp_version", "0.12");
+        data.put("project", "discovery-test");
+        data.put("version", "1.0.0");
+        data.put("units", List.of(unitData));
+
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+
+        assertTrue(result.isValid(), "Expected valid (warnings only): " + result.errors());
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("rumored") && w.contains("0.8")),
+                "Expected warning about rumored+high confidence, got: " + result.warnings());
+    }
+
+    @Test
+    void discoveryVerifiedWithLowConfidenceProducesWarning() {
+        Map<String, Object> discoveryData = new HashMap<>();
+        discoveryData.put("verification_status", "verified");
+        discoveryData.put("confidence", 0.6); // violates: verified SHOULD have confidence >= 0.8
+
+        Map<String, Object> unitData = new HashMap<>();
+        unitData.put("id", "api-spec");
+        unitData.put("path", "api/openapi.yaml");
+        unitData.put("intent", "API specification.");
+        unitData.put("scope", "global");
+        unitData.put("audience", List.of("agent"));
+        unitData.put("discovery", discoveryData);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("kcp_version", "0.12");
+        data.put("project", "discovery-test");
+        data.put("version", "1.0.0");
+        data.put("units", List.of(unitData));
+
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+
+        assertTrue(result.isValid(), "Expected valid (warnings only): " + result.errors());
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("verified") && w.contains("0.6")),
+                "Expected warning about verified+low confidence, got: " + result.warnings());
+    }
+
+    @Test
+    void discoveryVerifiedAtOnRumoredProducesWarning() {
+        Map<String, Object> discoveryData = new HashMap<>();
+        discoveryData.put("verification_status", "rumored");
+        discoveryData.put("confidence", 0.2);
+        discoveryData.put("verified_at", "2026-01-01T00:00:00Z"); // should not be set for rumored
+
+        Map<String, Object> unitData = new HashMap<>();
+        unitData.put("id", "some-unit");
+        unitData.put("path", "docs/some.md");
+        unitData.put("intent", "Some unit.");
+        unitData.put("scope", "global");
+        unitData.put("audience", List.of("agent"));
+        unitData.put("discovery", discoveryData);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("kcp_version", "0.12");
+        data.put("project", "discovery-test");
+        data.put("version", "1.0.0");
+        data.put("units", List.of(unitData));
+
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("verified_at") && w.contains("rumored")),
+                "Expected warning about verified_at set on rumored unit, got: " + result.warnings());
+    }
+
+    @Test
+    void discoveryContradictedByUnknownUnitProducesWarning() {
+        Map<String, Object> discoveryData = new HashMap<>();
+        discoveryData.put("verification_status", "observed");
+        discoveryData.put("confidence", 0.6);
+        discoveryData.put("contradicted_by", "non-existent-unit");
+
+        Map<String, Object> unitData = new HashMap<>();
+        unitData.put("id", "api-spec");
+        unitData.put("path", "api/openapi.yaml");
+        unitData.put("intent", "API specification.");
+        unitData.put("scope", "global");
+        unitData.put("audience", List.of("agent"));
+        unitData.put("discovery", discoveryData);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("kcp_version", "0.12");
+        data.put("project", "discovery-test");
+        data.put("version", "1.0.0");
+        data.put("units", List.of(unitData));
+
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+
+        assertTrue(result.isValid(), "Expected valid (warnings only): " + result.errors());
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("contradicted_by") && w.contains("non-existent-unit")),
+                "Expected warning about unknown contradicted_by, got: " + result.warnings());
+    }
+
+    // -----------------------------------------------------------------------
+    // RFC-0009 Visibility block tests
+    // -----------------------------------------------------------------------
+
+    @Test
+    void parsesVisibilityBlock() {
+        Map<String, Object> conditionWhen = Map.of("environment", "production");
+        Map<String, Object> conditionThen = Map.of("sensitivity", "confidential", "requires_auth", true);
+        Map<String, Object> condition = Map.of("when", conditionWhen, "then", conditionThen);
+
+        Map<String, Object> visibilityData = new HashMap<>();
+        visibilityData.put("default", "internal");
+        visibilityData.put("conditions", List.of(condition));
+
+        Map<String, Object> unitData = new HashMap<>();
+        unitData.put("id", "env-config");
+        unitData.put("path", "config/env.md");
+        unitData.put("intent", "Environment configuration reference.");
+        unitData.put("scope", "global");
+        unitData.put("audience", List.of("operator"));
+        unitData.put("visibility", visibilityData);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("kcp_version", "0.12");
+        data.put("project", "visibility-test");
+        data.put("version", "1.0.0");
+        data.put("units", List.of(unitData));
+
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KnowledgeUnit unit = m.units().get(0);
+
+        assertNotNull(unit.visibility());
+        assertEquals("internal", unit.visibility().defaultSensitivity());
+        assertEquals(1, unit.visibility().conditions().size());
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> parsedCondition = unit.visibility().conditions().get(0);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> when = (Map<String, Object>) parsedCondition.get("when");
+        assertEquals("production", when.get("environment"));
+
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.isValid(), "Expected valid: " + result.errors());
+        assertTrue(result.warnings().isEmpty(), "Expected no warnings: " + result.warnings());
+    }
+
+    @Test
+    void parsesVisibilityWithConditionsAndAgentRole() {
+        Map<String, Object> conditionWhen = Map.of("agent_role", "auditor");
+        Map<String, Object> conditionThen = Map.of("sensitivity", "restricted");
+        Map<String, Object> condition = Map.of("when", conditionWhen, "then", conditionThen);
+
+        Map<String, Object> visibilityData = new HashMap<>();
+        visibilityData.put("default", "public");
+        visibilityData.put("conditions", List.of(condition));
+
+        Map<String, Object> unitData = new HashMap<>();
+        unitData.put("id", "audit-log");
+        unitData.put("path", "logs/audit.md");
+        unitData.put("intent", "Audit log reference.");
+        unitData.put("scope", "project");
+        unitData.put("audience", List.of("operator"));
+        unitData.put("visibility", visibilityData);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("kcp_version", "0.12");
+        data.put("project", "visibility-test");
+        data.put("version", "1.0.0");
+        data.put("units", List.of(unitData));
+
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KnowledgeUnit unit = m.units().get(0);
+
+        assertNotNull(unit.visibility());
+        assertEquals("public", unit.visibility().defaultSensitivity());
+        assertEquals(1, unit.visibility().conditions().size());
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> when = (Map<String, Object>) unit.visibility().conditions().get(0).get("when");
+        assertEquals("auditor", when.get("agent_role"));
+    }
+
+    @Test
+    void visibilityInvalidDefaultProducesWarning() {
+        Map<String, Object> visibilityData = new HashMap<>();
+        visibilityData.put("default", "top-secret"); // not a valid value
+
+        Map<String, Object> unitData = new HashMap<>();
+        unitData.put("id", "env-config");
+        unitData.put("path", "config/env.md");
+        unitData.put("intent", "Environment configuration reference.");
+        unitData.put("scope", "global");
+        unitData.put("audience", List.of("operator"));
+        unitData.put("visibility", visibilityData);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("kcp_version", "0.12");
+        data.put("project", "visibility-test");
+        data.put("version", "1.0.0");
+        data.put("units", List.of(unitData));
+
+        KnowledgeManifest m = KcpParser.fromMap(data);
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+
+        assertTrue(result.isValid(), "Expected valid (warnings only): " + result.errors());
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("visibility.default") && w.contains("top-secret")),
+                "Expected warning about invalid visibility.default, got: " + result.warnings());
+    }
+
+    @Test
+    void kcpVersion012IsKnown() {
+        KnowledgeManifest m = KcpParser.fromMap(minimalWith("kcp_version", "0.12"));
+        KcpValidator.ValidationResult result = KcpValidator.validate(m);
+        assertTrue(result.warnings().stream().noneMatch(w -> w.contains("unknown kcp_version")),
+                "Expected 0.12 to be a known version, got warnings: " + result.warnings());
+    }
 }

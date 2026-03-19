@@ -7,7 +7,7 @@
 # Root default: 30/min, 1000/day
 # Units override: from generous (120/min) to very tight (2/min)
 
-kcp_version: "0.9"
+kcp_version: "0.12"
 project: rate-limit-demo
 version: "1.0.0"
 updated: "2026-03-09"

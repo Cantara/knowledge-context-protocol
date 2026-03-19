@@ -1,0 +1,34 @@
+# Level 3 — valid authority block at root and unit level (RFC-0009 / §4.17)
+kcp_version: "0.12"
+project: test-authority
+version: "1.0.0"
+
+# Root-level authority default: conservative — all modifications require approval
+authority:
+  read: initiative
+  summarize: initiative
+  modify: requires_approval
+  share_externally: denied
+  execute: denied
+
+units:
+  - id: internal-architecture-guide
+    path: docs/architecture.md
+    intent: "What is the internal system architecture and component responsibilities?"
+    scope: project
+    audience: [agent, developer, architect]
+    # Inherits root authority: read/summarize initiative, modify requires_approval,
+    # share_externally/execute denied
+
+  - id: public-api-docs
+    path: docs/api/public.md
+    intent: "What public APIs does the platform expose and how are they called?"
+    scope: global
+    audience: [human, agent, developer]
+    # Override: public docs may be shared freely
+    authority:
+      read: initiative
+      summarize: initiative
+      modify: denied
+      share_externally: initiative
+      execute: denied

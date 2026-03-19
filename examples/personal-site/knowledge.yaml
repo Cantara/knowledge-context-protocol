@@ -3,7 +3,7 @@
 # Shows: intent targeting, audience differentiation, freshness, and
 # a clean separation between human-only content and agent-accessible content.
 
-kcp_version: "0.9"
+kcp_version: "0.12"
 project: wiki.example.org
 version: 1.0.0
 updated: "2026-03-09"

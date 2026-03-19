@@ -4,6 +4,50 @@ from typing import Any, Optional, Union
 
 
 @dataclass
+class Discovery:
+    """Discovery metadata for a knowledge unit or manifest default. See SPEC.md §RFC-0012 (v0.12).
+
+    Normative rules:
+    - ``rumored`` MUST have confidence < 0.5
+    - ``verified`` SHOULD have confidence >= 0.8
+    - ``deprecated`` SHOULD NOT be loaded for live operation
+    """
+    verification_status: Optional[str] = None  # rumored | observed | verified | deprecated
+    source: Optional[str] = None  # manual | web_traversal | openapi | llm_inference
+    observed_at: Optional[str] = None  # ISO 8601 datetime
+    verified_at: Optional[str] = None  # ISO 8601 datetime
+    confidence: Optional[float] = None  # 0.0–1.0, default 1.0
+    contradicted_by: Optional[str] = None  # unit id
+
+
+@dataclass
+class Authority:
+    """Authority block declaring action permissions. See SPEC.md §RFC-0009 (v0.12).
+
+    Each action value is one of: ``initiative`` | ``requires_approval`` | ``denied``.
+    Safe defaults: read=initiative, summarize=initiative, all others=denied.
+    """
+    read: Optional[str] = None           # initiative | requires_approval | denied
+    summarize: Optional[str] = None      # initiative | requires_approval | denied
+    modify: Optional[str] = None         # initiative | requires_approval | denied
+    share_externally: Optional[str] = None  # initiative | requires_approval | denied
+    execute: Optional[str] = None        # initiative | requires_approval | denied
+
+
+@dataclass
+class Visibility:
+    """Visibility block for conditional access control. See SPEC.md §RFC-0009 (v0.12).
+
+    The YAML field ``default`` maps to ``default_sensitivity`` to avoid collision with
+    the Python built-in ``default`` keyword in some contexts; however Python does allow
+    ``default`` as an attribute name — we use ``default_sensitivity`` for clarity,
+    consistent with the Java parser's ``defaultSensitivity``.
+    """
+    default_sensitivity: Optional[str] = None  # public | internal | confidential | restricted
+    conditions: list[dict] = field(default_factory=list)
+
+
+@dataclass
 class Delegation:
     """Delegation constraints block — root-level and per-unit override. See SPEC.md §3.4."""
     max_depth: Optional[int] = None
@@ -68,6 +112,9 @@ class KnowledgeUnit:
     external_depends_on: list[ExternalDependency] = field(default_factory=list)
     requires_capabilities: list[str] = field(default_factory=list)
     freshness_policy: Optional["FreshnessPolicy"] = None
+    visibility: Optional[Visibility] = None
+    authority: Optional[Authority] = None
+    discovery: Optional[Discovery] = None
 
 
 @dataclass
@@ -173,3 +220,6 @@ class KnowledgeManifest:
     manifests: list[ManifestRef] = field(default_factory=list)
     external_relationships: list[ExternalRelationship] = field(default_factory=list)
     freshness_policy: Optional[FreshnessPolicy] = None
+    visibility: Optional[Visibility] = None
+    authority: Optional[Authority] = None
+    discovery: Optional[Discovery] = None

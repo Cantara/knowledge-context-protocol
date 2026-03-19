@@ -9,7 +9,7 @@
 #   - external_relationships (governs) across manifest boundaries
 #   - archive manifest detection and skip
 
-kcp_version: "0.9"
+kcp_version: "0.12"
 project: payments-gateway
 version: "3.1.0"
 updated: "2026-03-10"

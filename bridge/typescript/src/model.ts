@@ -3,6 +3,45 @@
 export type LicenseValue = string | Record<string, unknown>;
 export type IndexingValue = string | Record<string, unknown>;
 
+/** Conditional access block. See SPEC.md §4.16 (v0.12). */
+export interface VisibilityConditionWhen {
+  environment?: string | string[];
+  agent_role?: string | string[];
+}
+export interface VisibilityConditionThen {
+  sensitivity?: string;
+  requires_auth?: boolean;
+  authority?: Authority;
+}
+export interface VisibilityCondition {
+  when: VisibilityConditionWhen;
+  then: VisibilityConditionThen;
+}
+export interface Visibility {
+  default?: string;
+  conditions?: VisibilityCondition[];
+}
+
+/** Action permission block. See SPEC.md §4.17 (v0.12). */
+export interface Authority {
+  read?: string;           // initiative | requires_approval | denied
+  summarize?: string;
+  modify?: string;
+  share_externally?: string;
+  execute?: string;
+  [key: string]: string | undefined;  // custom actions
+}
+
+/** Discovery provenance block. See SPEC.md §4.18 (v0.12). */
+export interface Discovery {
+  verification_status?: string;  // rumored | observed | verified | deprecated
+  source?: string;               // manual | web_traversal | openapi | llm_inference
+  observed_at?: string;
+  verified_at?: string;
+  confidence?: number;
+  contradicted_by?: string;
+}
+
 /** Freshness policy for a unit or manifest default. See SPEC.md §3.7 (v0.11). */
 export interface FreshnessPolicy {
   max_age_days?: number;
@@ -39,6 +78,9 @@ export interface KnowledgeUnit {
   external_depends_on: ExternalDependency[];  // defaults to []
   requires_capabilities?: string[];
   freshness_policy?: FreshnessPolicy;
+  visibility?: Visibility;
+  authority?: Authority;
+  discovery?: Discovery;
 }
 
 export interface Relationship {
@@ -163,6 +205,9 @@ export interface KnowledgeManifest {
   manifests: ManifestRef[];       // defaults to []
   external_relationships: ExternalRelationship[];  // defaults to []
   freshness_policy?: FreshnessPolicy;
+  visibility?: Visibility;
+  authority?: Authority;
+  discovery?: Discovery;
 }
 
 export interface ValidationResult {

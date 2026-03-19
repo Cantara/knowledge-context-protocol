@@ -9,8 +9,8 @@
   "properties": {
     "kcp_version": {
       "type": "string",
-      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.10\". Prior drafts \"0.1\" through \"0.9\" are also accepted for backward compatibility.",
-      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10"]
+      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.12\". Prior drafts \"0.1\" through \"0.11\" are also accepted for backward compatibility.",
+      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12"]
     },
     "project": {
       "type": "string",
@@ -90,7 +90,10 @@
       "type": "array",
       "description": "Explicit typed relationships between units across manifest boundaries. OPTIONAL. See SPEC.md §3.6.",
       "items": { "$ref": "#/definitions/external_relationship" }
-    }
+    },
+    "visibility": { "$ref": "#/definitions/visibility_object" },
+    "authority": { "$ref": "#/definitions/authority_object" },
+    "discovery": { "$ref": "#/definitions/discovery_object" }
   },
   "definitions": {
     "license_object": {
@@ -275,7 +278,10 @@
           "type": "array",
           "description": "Cross-manifest dependencies for this unit. OPTIONAL. See SPEC.md §3.6.",
           "items": { "$ref": "#/definitions/external_dependency" }
-        }
+        },
+        "visibility": { "$ref": "#/definitions/visibility_object" },
+        "authority": { "$ref": "#/definitions/authority_object" },
+        "discovery": { "$ref": "#/definitions/discovery_object" }
       }
     },
     "unit_hints": {
@@ -700,6 +706,139 @@
         "type": {
           "type": "string",
           "description": "Relationship type. Same vocabulary as §5: enables, context, supersedes, contradicts, depends_on, governs."
+        }
+      }
+    },
+    "visibility_object": {
+      "type": "object",
+      "description": "Conditional access declarations. Can appear at root level (as manifest-wide default) or at unit level (as override). See SPEC.md §4.16 and RFC-0009.",
+      "additionalProperties": true,
+      "properties": {
+        "default": {
+          "type": "string",
+          "description": "Baseline sensitivity when no condition matches. Values: public, internal, confidential, restricted.",
+          "enum": ["public", "internal", "confidential", "restricted"]
+        },
+        "conditions": {
+          "type": "array",
+          "description": "Ordered list of condition objects. First matching condition wins.",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "when": {
+                "type": "object",
+                "description": "Matching criteria. A condition matches when ALL when keys match the agent's declared context.",
+                "additionalProperties": true,
+                "properties": {
+                  "environment": {
+                    "description": "Match when the agent's environment equals this value or appears in this list.",
+                    "oneOf": [
+                      { "type": "string" },
+                      { "type": "array", "items": { "type": "string" } }
+                    ]
+                  },
+                  "agent_role": {
+                    "description": "Match when the agent's declared role equals this value or appears in this list.",
+                    "oneOf": [
+                      { "type": "string" },
+                      { "type": "array", "items": { "type": "string" } }
+                    ]
+                  }
+                }
+              },
+              "then": {
+                "type": "object",
+                "description": "Overrides to apply when this condition matches.",
+                "additionalProperties": true,
+                "properties": {
+                  "sensitivity": {
+                    "type": "string",
+                    "description": "Sensitivity override. Values: public, internal, confidential, restricted.",
+                    "enum": ["public", "internal", "confidential", "restricted"]
+                  },
+                  "requires_auth": {
+                    "type": "boolean",
+                    "description": "Whether authentication is required to access this unit under this condition."
+                  },
+                  "authority": { "$ref": "#/definitions/authority_object" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "authority_object": {
+      "type": "object",
+      "description": "Action permission declarations. Can appear at root level (as manifest-wide default) or at unit level (as override). See SPEC.md §4.17 and RFC-0009.",
+      "additionalProperties": true,
+      "properties": {
+        "read": {
+          "type": "string",
+          "description": "Permission to load and reason over this unit's content. Default: initiative.",
+          "enum": ["initiative", "requires_approval", "denied"]
+        },
+        "summarize": {
+          "type": "string",
+          "description": "Permission to produce summaries or extracts of this unit. Default: initiative.",
+          "enum": ["initiative", "requires_approval", "denied"]
+        },
+        "modify": {
+          "type": "string",
+          "description": "Permission to modify files, records, or code described by or in this unit. Default: denied.",
+          "enum": ["initiative", "requires_approval", "denied"]
+        },
+        "share_externally": {
+          "type": "string",
+          "description": "Permission to include this content in external communications or outputs sent outside the agent's working context. Default: denied.",
+          "enum": ["initiative", "requires_approval", "denied"]
+        },
+        "execute": {
+          "type": "string",
+          "description": "Permission to run commands, scripts, or instructions contained in this unit. Default: denied.",
+          "enum": ["initiative", "requires_approval", "denied"]
+        }
+      }
+    },
+    "discovery_object": {
+      "type": "object",
+      "description": "Provenance metadata for how a unit was discovered. Can appear at root level (as manifest-wide default) or at unit level. See SPEC.md §4.18 and RFC-0012.",
+      "additionalProperties": true,
+      "properties": {
+        "verification_status": {
+          "type": "string",
+          "description": "The current verification state of this capability declaration. Values: rumored, observed, verified, deprecated. Default (when absent): verified.",
+          "enum": ["rumored", "observed", "verified", "deprecated"]
+        },
+        "source": {
+          "type": "string",
+          "description": "How this unit was discovered. Values: manual, web_traversal, openapi, llm_inference. Default: manual.",
+          "enum": ["manual", "web_traversal", "openapi", "llm_inference"]
+        },
+        "observed_at": {
+          "type": "string",
+          "description": "ISO 8601 datetime when this capability was first observed or inferred."
+        },
+        "verified_at": {
+          "description": "ISO 8601 datetime when this capability was independently confirmed. MUST be null if verification_status is rumored or observed.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "confidence": {
+          "type": "number",
+          "description": "Confidence in this capability declaration. Range 0.0–1.0. Rumored units MUST have confidence < 0.5. Verified units SHOULD have confidence >= 0.8.",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "contradicted_by": {
+          "description": "The id of another unit in this manifest that provides a conflicting description of the same capability.",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
         }
       }
     }

@@ -1,8 +1,8 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.11
+**Version:** 0.12
 **Status:** Draft
-**Date:** 2026-03-15
+**Date:** 2026-03-17
 **Repository:** github.com/cantara/knowledge-context-protocol
 
 ---
@@ -92,7 +92,7 @@ Example:
 
 ```json
 {
-  "kcp_version": "0.9",
+  "kcp_version": "0.12",
   "manifest": "/knowledge.yaml",
   "title": "My Project Knowledge Base",
   "description": "Architecture decisions, API reference, and onboarding guides.",
@@ -123,7 +123,7 @@ version.
 ## 3. Root Manifest Structure
 
 ```yaml
-kcp_version: "0.9"          # RECOMMENDED
+kcp_version: "0.12"         # RECOMMENDED
 project: <string>            # REQUIRED
 version: <semver string>     # RECOMMENDED
 updated: "<ISO date>"        # RECOMMENDED; quote the value (see §4.1.1)
@@ -138,6 +138,9 @@ compliance: <object>         # OPTIONAL; compliance classification and processin
 payment: <object>            # OPTIONAL; default monetisation tier for all units (see §4.14)
 manifests: <list>            # OPTIONAL; federation declarations (see §3.6)
 external_relationships: <list>  # OPTIONAL; cross-manifest relationship declarations (see §3.6)
+visibility: <object>         # OPTIONAL; manifest-wide visibility default for all units (see §3.8)
+authority: <object>          # OPTIONAL; manifest-wide authority default for all units (see §3.8)
+discovery: <object>          # OPTIONAL; manifest-wide discovery defaults for all units (see §3.9)
 
 units:                       # REQUIRED; list of knowledge units
   - ...
@@ -150,7 +153,7 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
-| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.11"` for conformance with this document. |
+| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.12"` for conformance with this document. |
 | `project` | REQUIRED | string | Human-readable name of the project or documentation site. |
 | `version` | RECOMMENDED | string | Semver version of this manifest. Increment when units are added or removed. |
 | `updated` | RECOMMENDED | string | ISO 8601 date (`YYYY-MM-DD`) when this manifest was last modified. |
@@ -166,6 +169,9 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 | `manifests` | OPTIONAL | list | Federation declarations — sub-manifests this manifest has a relationship with. See §3.6. |
 | `external_relationships` | OPTIONAL | list | Cross-manifest relationship declarations. See §3.6. |
 | `freshness_policy` | OPTIONAL | object | Default staleness policy for all units. Unit-level declarations override. See §3.7. |
+| `visibility` | OPTIONAL | object | Manifest-wide visibility default. Units without their own `visibility` block inherit this. See §3.8. |
+| `authority` | OPTIONAL | object | Manifest-wide authority default. Units without their own `authority` block inherit this. See §3.8. |
+| `discovery` | OPTIONAL | object | Manifest-wide discovery defaults. Units inherit fields not declared at unit level. See §3.9. |
 | `units` | REQUIRED | list | Ordered list of knowledge unit declarations. MUST contain at least one unit. |
 | `relationships` | OPTIONAL | list | Explicit cross-unit relationship declarations. See §5. |
 
@@ -737,6 +743,72 @@ suggested `llms.txt` snippet (`> knowledge: /knowledge.yaml`) for the operator t
 
 ---
 
+### 3.8 Governance Defaults (v0.12)
+
+v0.12 adds two optional root-level blocks that declare manifest-wide defaults for access
+governance (`visibility`) and action permissions (`authority`). Both blocks may also be
+declared on individual units to override the root default for that unit.
+
+#### Root-level `visibility`
+
+A root-level `visibility` block sets the manifest-wide default sensitivity level. All units
+that do not declare their own `visibility` block inherit this default.
+
+```yaml
+kcp_version: "0.12"
+project: enterprise-platform
+
+visibility:
+  default: internal          # all units are internal unless overridden at unit level
+```
+
+Unit-level `visibility` blocks fully replace the root default for that unit — no field-level
+merge. See §4.16 for the complete `visibility` field reference, condition evaluation
+semantics, and examples.
+
+#### Root-level `authority`
+
+A root-level `authority` block declares manifest-wide action permission defaults. All units
+that do not declare their own `authority` block inherit this default.
+
+```yaml
+kcp_version: "0.12"
+project: regulated-platform
+
+authority:
+  read: initiative
+  summarize: initiative
+  modify: requires_approval   # all modifications require approval by default
+  share_externally: denied
+  execute: denied
+```
+
+Unit-level `authority` blocks fully replace the root default — no action-level merge across
+root and unit. See §4.17 for the complete `authority` field reference and safe defaults.
+
+---
+
+### 3.9 Discovery Defaults (v0.12)
+
+A root-level `discovery` block declares manifest-wide defaults for the `source` and
+`verification_status` fields. Unit-level `discovery` blocks inherit root fields they do
+not override.
+
+```yaml
+kcp_version: "0.12"
+project: acme-hr-portal-discovered
+
+discovery:
+  source: web_traversal
+  verification_status: observed
+  observed_at: "2026-03-10T14:00:00Z"
+```
+
+See §4.18 for the complete `discovery` field reference, verification vocabulary, and
+examples. Unit-level `discovery` fields override root defaults field-by-field.
+
+---
+
 ## 4. Knowledge Units
 
 Each entry in `units` describes a self-contained piece of knowledge.
@@ -769,6 +841,9 @@ Each entry in `units` describes a self-contained piece of knowledge.
 | `payment` | OPTIONAL | object | Monetisation tier for this unit. Overrides root-level `payment` default. See §4.14. |
 | `requires_capabilities` | OPTIONAL | list of strings | Capabilities the consuming agent SHOULD possess to act on this unit. See §3.7. |
 | `freshness_policy` | OPTIONAL | object | Staleness policy for this unit. Overrides root-level `freshness_policy` default. See §3.7. |
+| `visibility` | OPTIONAL | object | Conditional access by environment or agent role. Overrides root-level `visibility` default. See §4.16. |
+| `authority` | OPTIONAL | object | Action permission declarations for this unit. Overrides root-level `authority` default. See §4.17. |
+| `discovery` | OPTIONAL | object | Provenance of how this capability was discovered and how confidently. Inherits root-level `discovery` defaults. See §4.18. |
 
 #### 4.1.1 Date Fields
 
@@ -1461,6 +1536,283 @@ promoted in a future version.
 
 ---
 
+### 4.16 `visibility`
+
+The `visibility` block on a unit declares when and to whom the unit is accessible. It
+replaces the flat `sensitivity` + `access` combination for units where the answer depends
+on the agent's environment or role.
+
+```yaml
+units:
+  - id: production-db-schema
+    path: docs/schema/production.md
+    intent: "What is the production database schema?"
+    scope: project
+    audience: [developer, operator, agent]
+
+    visibility:
+      default: confidential
+      conditions:
+        - when:
+            environment: [development, local]
+          then:
+            sensitivity: internal
+            requires_auth: false
+        - when:
+            environment: [production]
+            agent_role: [platform_admin, security_auditor]
+          then:
+            sensitivity: confidential
+            requires_auth: true
+        - when:
+            environment: [production]
+          then:
+            sensitivity: restricted
+            requires_auth: true
+```
+
+#### `visibility` field reference
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `visibility.default` | OPTIONAL | string | Baseline sensitivity when no condition matches. Uses the §4.12 vocabulary: `public` \| `internal` \| `confidential` \| `restricted`. |
+| `visibility.conditions` | OPTIONAL | list | Ordered list of condition objects. First match wins. |
+| `visibility.conditions[].when` | REQUIRED | object | Matching criteria. Keys: `environment`, `agent_role`. |
+| `visibility.conditions[].when.environment` | OPTIONAL | string or list | Match when the agent's environment equals this value or appears in this list. |
+| `visibility.conditions[].when.agent_role` | OPTIONAL | string or list | Match when the agent's declared role equals this value or appears in this list. |
+| `visibility.conditions[].then` | REQUIRED | object | Overrides to apply when this condition matches. |
+| `visibility.conditions[].then.sensitivity` | OPTIONAL | string | Sensitivity override. Same vocabulary as §4.12. |
+| `visibility.conditions[].then.requires_auth` | OPTIONAL | boolean | Whether authentication is required under this condition. |
+| `visibility.conditions[].then.authority` | OPTIONAL | object | Authority override within this condition. See §4.17. |
+
+#### Evaluation semantics
+
+- Conditions are evaluated in declaration order. **First matching condition wins.**
+- A condition matches when ALL `when` keys match. Within a key, list values use OR semantics.
+- If no condition matches, `visibility.default` applies.
+- If `visibility` is absent, the flat `sensitivity` (§4.12) and `access` (§4.11) fields apply.
+- If an agent cannot determine its environment or role, it MUST treat `visibility.default` as
+  the effective visibility and MUST NOT assume the most permissive condition.
+
+#### Precedence
+
+```
+visibility.conditions[].then.sensitivity  (highest — first match)
+    ↓
+visibility.default
+    ↓
+unit-level sensitivity (§4.12)
+    ↓
+root compliance.sensitivity (§3.5)         (lowest)
+```
+
+When both `visibility` and `sensitivity` are declared on a unit, `visibility` takes
+precedence. The flat `sensitivity` is the fallback if `visibility` is absent or no condition
+matches and `visibility.default` is unset.
+
+KCP does not define how an agent determines its environment or role. Common approaches:
+environment variables (`KCP_ENVIRONMENT`, `NODE_ENV`), agent framework configuration, or
+OAuth token claims (`kcp_role`).
+
+#### Suggested role vocabulary
+
+The following role names are RECOMMENDED. Manifest authors MAY use any string.
+
+| Role | Meaning |
+|------|---------|
+| `developer` | Software development tasks |
+| `operator` | Infrastructure and operations |
+| `security_auditor` | Security review and compliance assessment |
+| `dpo` | Data Protection Officer |
+| `platform_admin` | Broad administrative access |
+| `data_analyst` | Data access and analysis |
+| `ci_cd` | Automated build and deployment pipelines |
+| `external_agent` | Agents from outside the organisation's trust boundary |
+
+#### Suggested environment vocabulary
+
+| Value | Meaning |
+|-------|---------|
+| `local` | Developer's local machine |
+| `development` | Shared development environment |
+| `staging` | Pre-production, production-like configuration |
+| `production` | Live production environment |
+| `dr` | Disaster recovery environment |
+
+---
+
+### 4.17 `authority`
+
+The `authority` block on a unit declares what actions an agent may take with the unit's
+content. For each action, the author declares whether the agent acts on its own initiative,
+must first obtain human approval, or is denied entirely.
+
+```yaml
+units:
+  - id: gdpr-processing-records
+    path: compliance/gdpr-processing.md
+    intent: "What personal data does the organisation process and under what legal basis?"
+    scope: project
+    audience: [developer, operator, agent, security_auditor]
+
+    authority:
+      read: initiative           # agent reads without asking
+      summarize: initiative      # agent may summarize without asking
+      modify: denied             # no agent may modify this content
+      share_externally: requires_approval  # must ask a human before sharing
+      execute: denied            # no executable instructions in this unit
+```
+
+#### Action vocabulary
+
+| Action | Default | Meaning |
+|--------|---------|---------|
+| `read` | `initiative` | Load and reason over this unit's content. |
+| `summarize` | `initiative` | Produce summaries or extracts of this unit for context. |
+| `modify` | `denied` | Modify files, records, or code described by or in this unit. |
+| `share_externally` | `denied` | Include this content in external communications or outputs. |
+| `execute` | `denied` | Run commands, scripts, or instructions contained in this unit. |
+
+#### Permission values
+
+| Value | Meaning |
+|-------|---------|
+| `initiative` | The agent may take this action without human approval. |
+| `requires_approval` | The agent SHOULD request human approval before taking this action. The `delegation.human_in_the_loop` block (§3.4) provides the approval mechanism. |
+| `denied` | The agent MUST NOT take this action. If the task requires the action, the agent SHOULD surface this constraint to its operator. |
+
+#### Safe defaults
+
+When the `authority` block is absent, these defaults apply:
+
+```yaml
+authority:
+  read: initiative
+  summarize: initiative
+  modify: denied
+  share_externally: denied
+  execute: denied
+```
+
+These defaults are intentionally conservative. Agents may read and summarize freely; all
+write, share, and execute actions require explicit grant.
+
+#### Extensibility
+
+Manifest authors MAY declare additional custom actions:
+
+```yaml
+authority:
+  read: initiative
+  export_to_pdf: requires_approval   # custom action
+  submit_to_regulator: denied        # domain-specific action
+```
+
+Parsers MUST NOT reject manifests for unknown action names. Agents that do not recognise a
+custom action SHOULD treat it as `denied` (safe default).
+
+---
+
+### 4.18 `discovery`
+
+The `discovery` block records how, when, and how confidently a capability was identified.
+It enables automated tooling (web traversal, OpenAPI introspection, LLM inference) to
+express the epistemic state of each declared unit.
+
+The `discovery` block answers: *"How do we know this unit is real, and how sure are we?"*
+
+```yaml
+units:
+  - id: submit-expense-report
+    path: capabilities/expense-submit.md
+    intent: "How do I submit an expense report via the HR portal?"
+    scope: project
+    audience: [agent]
+
+    discovery:
+      verification_status: observed
+      source: web_traversal
+      observed_at: "2026-03-10T14:22:00Z"
+      verified_at: null
+      confidence: 0.72
+      contradicted_by: null
+```
+
+#### `discovery` field reference
+
+| Field | Required | Type | Default | Description |
+|-------|----------|------|---------|-------------|
+| `discovery.verification_status` | OPTIONAL | enum | `verified` | The current verification state. See vocabulary below. |
+| `discovery.source` | OPTIONAL | enum | `manual` | How this unit was discovered. See vocabulary below. |
+| `discovery.observed_at` | OPTIONAL | ISO 8601 datetime | null | When this capability was first observed or inferred. |
+| `discovery.verified_at` | OPTIONAL | ISO 8601 datetime | null | When this capability was independently confirmed. MUST be null if `verification_status` is `rumored` or `observed`. |
+| `discovery.confidence` | OPTIONAL | float 0.0–1.0 | 1.0 | Confidence in this capability declaration. |
+| `discovery.contradicted_by` | OPTIONAL | string | null | The `id` of another unit in this manifest that provides a conflicting description of the same capability. |
+
+#### `verification_status` vocabulary
+
+| Value | Meaning |
+|-------|---------|
+| `rumored` | Capability mentioned in an indirect source (marketing copy, third-party description, LLM inference). Not yet observed directly. |
+| `observed` | Capability found via direct technical observation (web traversal, API call, screenshot) but not yet cross-confirmed against a canonical source. |
+| `verified` | Capability confirmed against a canonical source (OpenAPI spec, official documentation, successful live API call). |
+| `deprecated` | Capability was previously `verified` or `observed` but is no longer present or functional. Retained for audit. |
+
+**Normative rules:**
+
+- A unit with `verification_status: rumored` MUST declare `confidence < 0.5`.
+- A unit with `verification_status: verified` SHOULD declare `confidence >= 0.8`.
+- A unit with `verification_status: deprecated` SHOULD NOT be loaded by agents for live
+  operation. It MAY be loaded by audit tooling.
+- If `verification_status` is absent, agents MUST treat the unit as `verified` — this
+  preserves the semantics of all existing hand-authored manifests.
+
+#### `source` vocabulary
+
+| Value | Meaning |
+|-------|---------|
+| `manual` | Declared by a human author with direct knowledge of the capability. Default. |
+| `web_traversal` | Discovered by automated web or UI traversal (Playwright, headless browser). |
+| `openapi` | Derived from an OpenAPI, AsyncAPI, or equivalent machine-readable API description. |
+| `llm_inference` | Inferred by an LLM from natural-language content (documentation, marketing pages). |
+
+Unknown `source` values MUST be silently ignored.
+
+#### `contradicted_by`
+
+When two observations of the same capability disagree, both units SHOULD be preserved with
+`contradicted_by` pointing at each other. The serving layer SHOULD surface a
+`discovery_conflict` warning alongside both units and MUST NOT silently discard either.
+
+```yaml
+units:
+  - id: expense-api-v2
+    intent: "Submit expense report via REST API at /api/v2/expenses"
+    discovery:
+      verification_status: observed
+      confidence: 0.71
+      contradicted_by: expense-api-v1
+
+  - id: expense-api-v1
+    intent: "Submit expense report via REST API at /api/v1/expenses"
+    discovery:
+      verification_status: observed
+      source: openapi
+      confidence: 0.85
+      contradicted_by: expense-api-v2
+```
+
+#### Relationship to RFC-0010 (Bi-Temporal Unit Validity)
+
+| Field | Question answered |
+|-------|-------------------|
+| `temporal.recorded_at` (RFC-0010) | When did the manifest author write this version down? |
+| `discovery.observed_at` (RFC-0012) | When was the capability first encountered by the discovery tool? |
+
+Both blocks may be declared together on the same unit.
+
+---
+
 ## 5. Relationships
 
 The optional `relationships` section declares explicit directional relationships between units.
@@ -1497,9 +1849,9 @@ Unknown relationship types MUST be silently ignored.
 ### 6.1 Spec Version (`kcp_version`)
 
 `kcp_version` identifies which version of this specification the manifest conforms to. Current
-valid value: `"0.11"`. The values `"0.1"` through `"0.10"` refer to prior drafts (January–March
-2026); parsers SHOULD treat these manifests as conformant with this version, as v0.11 is a
-strict superset of v0.10 (new fields only, no removals or breaking changes). Parsers
+valid value: `"0.12"`. The values `"0.1"` through `"0.11"` refer to prior drafts (January–March
+2026); parsers SHOULD treat these manifests as conformant with this version, as v0.12 is a
+strict superset of v0.11 (new fields only, no removals or breaking changes). Parsers
 encountering an unknown `kcp_version` SHOULD process the manifest using the closest known
 version and SHOULD emit a warning.
 
@@ -1530,6 +1882,12 @@ manifest:
 - Duplicate `id` values (parsers SHOULD use the first occurrence)
 - `auth_scope` present on a unit whose `access` is not `restricted`
 - `auth.methods` containing no recognised `type` values
+- `discovery.verification_status: rumored` with `confidence >= 0.5` (violates normative rule §4.18)
+- `discovery.verification_status: verified` with `confidence < 0.8` (advisory)
+- `discovery.verified_at` set when `verification_status` is `rumored` or `observed`
+- `discovery.contradicted_by` referencing an unknown unit `id`
+- A `visibility.conditions[]` entry missing a `when` or `then` key
+- An `authority` action value not in `{initiative, requires_approval, denied}` (unknown values MUST be silently ignored at runtime but SHOULD warn at validation time)
 
 The following conditions MUST cause the parser to reject the manifest:
 
@@ -1574,12 +1932,14 @@ each piece answer, and who is it for?" Parsers SHOULD supply default values when
 Extends Level 1 with `validated`, `depends_on`, `kind`, `format`, `language`, the core
 `hints` fields (`token_estimate`, `load_strategy`, `summary_available`, `summary_unit`,
 `summary_of`), the access and classification fields (`access`, `auth_scope`, `sensitivity`,
-`deprecated`, `payment`), and the root-level `trust.provenance` block. A Level 2 manifest
-supports freshness-aware retrieval, dependency-ordered loading, artifact type classification,
-content format awareness, multilingual navigation, basic context-budget planning (agents know
-unit sizes and can prefer summaries over full documents), access-tier routing (agents skip
-units they cannot or should not load), scope-based access qualification, and basic publisher
-attribution.
+`deprecated`, `payment`), the root-level `trust.provenance` block, the `authority` block
+(§4.17) on units and at root level (manifest-wide action permission defaults), and the
+`discovery` block (§4.18) on units with `verification_status`, `source`, `confidence`, and
+`contradicted_by`. A Level 2 manifest supports freshness-aware retrieval, dependency-ordered
+loading, artifact type classification, content format awareness, multilingual navigation,
+basic context-budget planning, access-tier routing, action governance (agents know which
+operations require human approval or are denied), and discovery provenance (consuming agents
+can filter by confidence and verification state).
 
 **Level 3 — Full**
 Extends Level 2 with `triggers`, `supersedes`, `license`, `update_frequency`, `indexing`,
@@ -1588,11 +1948,12 @@ advanced `hints` (`priority`, `density`, chunking fields), root-level `hints`, a
 descriptions, the `trust.audit` sub-block (§3.2) with access logging and trace context
 requirements, the `manifests` block (§3.6) with federation declarations, `external_depends_on`
 (unit-level cross-manifest dependencies), `external_relationships` (root-level cross-manifest
-relationship declarations), and `local_mirror` for air-gapped federation. A Level 3 manifest
+relationship declarations), `local_mirror` for air-gapped federation, and the `visibility`
+block (§4.16) with environment and role-based conditional access. A Level 3 manifest
 supports task-based routing, knowledge graph navigation, drift detection, usage rights
 declaration, cache management, AI crawling permissions, context eviction ordering,
-large-document chunked access, authentication discovery, auditable knowledge access, and
-federated multi-manifest knowledge graphs.
+large-document chunked access, authentication discovery, auditable knowledge access,
+federated multi-manifest knowledge graphs, and environment-aware conditional access control.
 
 All three levels are valid KCP. A tool MUST NOT reject a manifest for being below the
 level it was designed for — graceful degradation is required.
@@ -1853,7 +2214,7 @@ MUST apply the following constraints:
 ## Appendix A: Minimal Example
 
 ```yaml
-kcp_version: "0.9"
+kcp_version: "0.12"
 project: my-project
 version: 1.0.0
 units:
@@ -1869,7 +2230,7 @@ units:
 ## Appendix B: Full Example
 
 ```yaml
-kcp_version: "0.9"
+kcp_version: "0.12"
 project: wiki.example.org
 version: 2.3.0
 updated: "2026-03-07"

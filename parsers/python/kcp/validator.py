@@ -18,8 +18,12 @@ VALID_INDEXING_SHORTHANDS = {"open", "read-only", "no-train", "none"}
 VALID_ACCESS_VALUES = {"public", "authenticated", "restricted"}
 VALID_SENSITIVITY_VALUES = {"public", "internal", "confidential", "restricted"}
 # human_in_the_loop is an object per spec §3.4 — no HITL enum, validation done inline
-KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11"}
+KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12"}
 VALID_MANIFEST_RELATIONSHIPS = {"child", "foundation", "governs", "peer", "archive"}
+VALID_VERIFICATION_STATUSES = {"rumored", "observed", "verified", "deprecated"}
+VALID_DISCOVERY_SOURCES = {"manual", "web_traversal", "openapi", "llm_inference"}
+VALID_AUTHORITY_VALUES = {"initiative", "requires_approval", "denied"}
+VALID_VISIBILITY_DEFAULTS = {"public", "internal", "confidential", "restricted"}
 VALID_ON_FAILURE_VALUES = {"skip", "warn", "degrade"}
 VALID_VERSION_POLICIES = {"exact", "minimum", "compatible"}
 _ID_PATTERN = re.compile(r"^[a-z0-9.\-]+$")
@@ -261,6 +265,15 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
             if h.get("chunk_index") is not None and not h.get("chunk_of"):
                 warnings.append(f"{p}: chunk_index is present without chunk_of")
 
+        # discovery validation (§RFC-0012)
+        _validate_discovery(unit.discovery, unit_ids, p, warnings)
+
+        # authority validation (§RFC-0009)
+        _validate_authority(unit.authority, p, warnings)
+
+        # visibility validation (§RFC-0009)
+        _validate_visibility(unit.visibility, p, warnings)
+
     # Root-level delegation validation
     if manifest.delegation is not None:
         hitl = manifest.delegation.human_in_the_loop
@@ -284,6 +297,15 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
                 f"manifest: compliance.sensitivity must be one of "
                 f"{sorted(VALID_SENSITIVITY_VALUES)}, got '{manifest.compliance.sensitivity}'"
             )
+
+    # Root-level discovery validation (§RFC-0012)
+    _validate_discovery(manifest.discovery, unit_ids, "manifest", warnings)
+
+    # Root-level authority validation (§RFC-0009)
+    _validate_authority(manifest.authority, "manifest", warnings)
+
+    # Root-level visibility validation (§RFC-0009)
+    _validate_visibility(manifest.visibility, "manifest", warnings)
 
     # Warn if any unit requires auth but no root-level auth block is present (§7)
     has_protected = any(
@@ -370,3 +392,83 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
             )
 
     return ValidationResult(errors=errors, warnings=warnings)
+
+
+def _validate_discovery(discovery, unit_ids: set[str], prefix: str, warnings: list[str]) -> None:
+    """Validate a discovery block against the normative rules in §RFC-0012."""
+    if discovery is None:
+        return
+    status = discovery.verification_status
+    confidence = discovery.confidence
+
+    # verification_status must be a known value
+    if status is not None and status not in VALID_VERIFICATION_STATUSES:
+        warnings.append(
+            f"{prefix}: discovery.verification_status must be one of "
+            f"{sorted(VALID_VERIFICATION_STATUSES)}, got '{status}'"
+        )
+
+    # source must be a known value
+    if discovery.source is not None and discovery.source not in VALID_DISCOVERY_SOURCES:
+        warnings.append(
+            f"{prefix}: discovery.source must be one of "
+            f"{sorted(VALID_DISCOVERY_SOURCES)}, got '{discovery.source}'"
+        )
+
+    # rumored MUST have confidence < 0.5 (normative)
+    if status == "rumored" and confidence is not None and confidence >= 0.5:
+        warnings.append(
+            f"{prefix}: discovery.verification_status=rumored but confidence={confidence} "
+            f"(MUST be < 0.5)"
+        )
+
+    # verified SHOULD have confidence >= 0.8 (normative)
+    if status == "verified" and confidence is not None and confidence < 0.8:
+        warnings.append(
+            f"{prefix}: discovery.verification_status=verified but confidence={confidence} "
+            f"(SHOULD be >= 0.8)"
+        )
+
+    # verified_at SHOULD NOT be set when status is rumored or observed
+    if discovery.verified_at is not None and status in ("rumored", "observed"):
+        warnings.append(
+            f"{prefix}: discovery.verified_at is set but verification_status='{status}' "
+            f"(SHOULD only be set for verified units)"
+        )
+
+    # contradicted_by must reference a known unit id
+    if discovery.contradicted_by is not None and discovery.contradicted_by not in unit_ids:
+        warnings.append(
+            f"{prefix}: discovery.contradicted_by references unknown unit '{discovery.contradicted_by}'"
+        )
+
+
+def _validate_authority(authority, prefix: str, warnings: list[str]) -> None:
+    """Validate an authority block against the normative rules in §RFC-0009."""
+    if authority is None:
+        return
+    actions = {
+        "read": authority.read,
+        "summarize": authority.summarize,
+        "modify": authority.modify,
+        "share_externally": authority.share_externally,
+        "execute": authority.execute,
+    }
+    for action, value in actions.items():
+        if value is not None and value not in VALID_AUTHORITY_VALUES:
+            warnings.append(
+                f"{prefix}: authority.{action} must be one of "
+                f"{sorted(VALID_AUTHORITY_VALUES)}, got '{value}'"
+            )
+
+
+def _validate_visibility(visibility, prefix: str, warnings: list[str]) -> None:
+    """Validate a visibility block against the normative rules in §RFC-0009."""
+    if visibility is None:
+        return
+    if (visibility.default_sensitivity is not None
+            and visibility.default_sensitivity not in VALID_VISIBILITY_DEFAULTS):
+        warnings.append(
+            f"{prefix}: visibility.default must be one of "
+            f"{sorted(VALID_VISIBILITY_DEFAULTS)}, got '{visibility.default_sensitivity}'"
+        )

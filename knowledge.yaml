@@ -1,9 +1,9 @@
 # KCP eats its own dogfood.
 # This manifest describes the Knowledge Context Protocol repository itself.
 
-kcp_version: "0.11"
+kcp_version: "0.12"
 project: knowledge-context-protocol
-version: 0.11.0
+version: 0.12.0
 updated: "2026-03-17"
 language: en
 license: "Apache-2.0"
@@ -88,6 +88,15 @@ units:
     validated: "2026-03-01"
     depends_on: [spec]
     triggers: [context window, token estimate, hints, chunking, summary, load strategy, eager, lazy, context budget, rfc-0006]
+
+  - id: rfc-0012
+    path: RFC-0012-Capability-Discovery-Provenance.md
+    intent: "How should KCP manifests express the provenance, confidence, and verification status of discovered capabilities? The discovery block and its verification_status, source, confidence, and contradicted_by fields."
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-03-17"
+    depends_on: [spec, rfc-0004]
+    triggers: [discovery, provenance, confidence, verification, web traversal, openapi, llm inference, automated discovery, rumored, observed, verified, deprecated, contradiction]
 
   - id: readme
     path: README.md
@@ -433,5 +442,8 @@ relationships:
 
   # The RFC extends the spec
   - from: rfc-0001
+    to: spec
+    type: enables
+  - from: rfc-0012
     to: spec
     type: enables

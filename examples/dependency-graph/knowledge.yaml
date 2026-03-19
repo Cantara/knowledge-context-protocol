@@ -6,7 +6,7 @@
 # the old v1 architecture, the new v2 APIs, deployment guides, security
 # policy evolution, and troubleshooting.
 
-kcp_version: "0.9"
+kcp_version: "0.12"
 project: novaplatform-migration
 version: "2.0.0"
 updated: "2026-03-09"

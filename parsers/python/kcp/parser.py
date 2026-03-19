@@ -5,9 +5,9 @@ from typing import Optional, Union
 import yaml
 
 from .model import (
-    Auth, AuthMethod, Compliance, Delegation, ExternalDependency,
+    Auth, AuthMethod, Authority, Compliance, Delegation, Discovery, ExternalDependency,
     ExternalRelationship, FreshnessPolicy, KnowledgeManifest, KnowledgeUnit, ManifestRef,
-    RateLimit, RateLimits, Relationship, Trust, TrustAudit, TrustProvenance,
+    RateLimit, RateLimits, Relationship, Trust, TrustAudit, TrustProvenance, Visibility,
 )
 
 
@@ -133,6 +133,43 @@ def _parse_freshness_policy(data: Optional[dict]) -> Optional[FreshnessPolicy]:
     )
 
 
+def _parse_visibility(data: Optional[dict]) -> Optional[Visibility]:
+    """Parse a visibility block (root-level or per-unit). See SPEC.md §RFC-0009 (v0.12)."""
+    if data is None:
+        return None
+    return Visibility(
+        default_sensitivity=data.get("default"),
+        conditions=data.get("conditions", []),
+    )
+
+
+def _parse_authority(data: Optional[dict]) -> Optional[Authority]:
+    """Parse an authority block (root-level or per-unit). See SPEC.md §RFC-0009 (v0.12)."""
+    if data is None:
+        return None
+    return Authority(
+        read=data.get("read"),
+        summarize=data.get("summarize"),
+        modify=data.get("modify"),
+        share_externally=data.get("share_externally"),
+        execute=data.get("execute"),
+    )
+
+
+def _parse_discovery(data: Optional[dict]) -> Optional[Discovery]:
+    """Parse a discovery block (root-level or per-unit). See SPEC.md §RFC-0012 (v0.12)."""
+    if data is None:
+        return None
+    return Discovery(
+        verification_status=data.get("verification_status"),
+        source=data.get("source"),
+        observed_at=data.get("observed_at"),
+        verified_at=data.get("verified_at"),
+        confidence=data.get("confidence"),
+        contradicted_by=data.get("contradicted_by"),
+    )
+
+
 def _parse_external_dependency(data: dict) -> ExternalDependency:
     """Parse an external_depends_on entry."""
     return ExternalDependency(
@@ -203,6 +240,9 @@ def parse_dict(data: dict) -> KnowledgeManifest:
             ],
             requires_capabilities=u.get("requires_capabilities", []),
             freshness_policy=_parse_freshness_policy(u.get("freshness_policy")),
+            visibility=_parse_visibility(u.get("visibility")),
+            authority=_parse_authority(u.get("authority")),
+            discovery=_parse_discovery(u.get("discovery")),
         )
         for u in data.get("units", [])
     ]
@@ -238,4 +278,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
         manifests=manifests,
         external_relationships=external_relationships,
         freshness_policy=_parse_freshness_policy(data.get("freshness_policy")),
+        visibility=_parse_visibility(data.get("visibility")),
+        authority=_parse_authority(data.get("authority")),
+        discovery=_parse_discovery(data.get("discovery")),
     )

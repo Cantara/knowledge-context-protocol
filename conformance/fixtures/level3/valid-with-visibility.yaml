@@ -1,0 +1,34 @@
+# Level 3 — valid visibility block with environment conditions and authority block (RFC-0009 / §4.16)
+kcp_version: "0.12"
+project: test-visibility
+version: "1.0.0"
+
+units:
+  - id: production-db-schema
+    path: docs/schema/production.md
+    intent: "What is the production database schema and field definitions?"
+    scope: project
+    audience: [developer, operator, agent]
+
+    # Conditional access: sensitivity varies by environment
+    visibility:
+      default: confidential          # baseline when no condition matches
+      conditions:
+        - when:
+            environment: [development, local]
+          then:
+            sensitivity: internal
+            requires_auth: false
+        - when:
+            environment: [production]
+          then:
+            sensitivity: confidential
+            requires_auth: true
+
+    # Action permissions on this unit
+    authority:
+      read: initiative
+      summarize: initiative
+      modify: requires_approval
+      share_externally: denied
+      execute: denied

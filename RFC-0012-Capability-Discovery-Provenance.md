@@ -1,11 +1,11 @@
 # RFC-0012: Capability Discovery Provenance
 
-**Status:** Request for Comments
+**Status:** Accepted — promoted to SPEC.md v0.12
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-03-17
 **Discussion:** [#50 KCP Treasure Map Service](https://github.com/Cantara/knowledge-context-protocol/discussions/50)
 **Related:** [RFC-0010 Bi-Temporal Unit Validity](./RFC-0010-Bi-Temporal-Unit-Validity.md) · [RFC-0004 Trust and Compliance](./RFC-0004-Trust-and-Compliance.md) · [RFC-0011 Org Federation](./RFC-0011-Org-Federation.md)
-**Spec:** [SPEC.md](./SPEC.md) (current: v0.11)
+**Spec:** [SPEC.md](./SPEC.md) (current: v0.12)
 
 ---
 

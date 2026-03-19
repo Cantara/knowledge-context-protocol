@@ -2,6 +2,7 @@ package no.cantara.kcp;
 
 import no.cantara.kcp.model.Compliance;
 import no.cantara.kcp.model.Delegation;
+import no.cantara.kcp.model.Discovery;
 import no.cantara.kcp.model.ExternalDependency;
 import no.cantara.kcp.model.ExternalRelationship;
 import no.cantara.kcp.model.HumanInTheLoop;
@@ -41,7 +42,11 @@ public class KcpValidator {
     private static final Set<String> VALID_ACCESS_VALUES = Set.of("public", "authenticated", "restricted");
     private static final Set<String> VALID_SENSITIVITY_VALUES = Set.of("public", "internal", "confidential", "restricted");
     private static final Set<String> VALID_HITL_MECHANISMS = Set.of("oauth_consent", "uma", "custom");
-    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11");
+    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12");
+    private static final Set<String> VALID_VERIFICATION_STATUSES = Set.of("rumored", "observed", "verified", "deprecated");
+    private static final Set<String> VALID_DISCOVERY_SOURCES = Set.of("manual", "web_traversal", "openapi", "llm_inference");
+    private static final Set<String> VALID_AUTHORITY_VALUES = Set.of("initiative", "requires_approval", "denied");
+    private static final Set<String> VALID_VISIBILITY_DEFAULTS = Set.of("public", "internal", "confidential", "restricted");
     private static final Set<String> VALID_MANIFEST_RELATIONSHIPS = Set.of("child", "foundation", "governs", "peer", "archive");
     private static final Set<String> VALID_ON_FAILURE_VALUES = Set.of("skip", "warn", "degrade");
     private static final Set<String> VALID_VERSION_POLICIES = Set.of("exact", "minimum", "compatible");
@@ -225,6 +230,15 @@ public class KcpValidator {
                     warnings.add(p + ": chunk_index is present without chunk_of");
                 }
             }
+
+            // discovery validation (§RFC-0012)
+            validateDiscovery(unit.discovery(), unitIds, p, warnings);
+
+            // authority validation (§RFC-0009)
+            validateAuthority(unit.authority(), p, warnings);
+
+            // visibility validation (§RFC-0009)
+            validateVisibility(unit.visibility(), p, warnings);
         }
 
         // Root-level delegation validation
@@ -232,6 +246,15 @@ public class KcpValidator {
 
         // Root-level compliance validation
         validateCompliance(manifest.compliance(), "manifest", errors, warnings);
+
+        // Root-level discovery validation (§RFC-0012)
+        validateDiscovery(manifest.discovery(), unitIds, "manifest", warnings);
+
+        // Root-level authority validation (§RFC-0009)
+        validateAuthority(manifest.authority(), "manifest", warnings);
+
+        // Root-level visibility validation (§RFC-0009)
+        validateVisibility(manifest.visibility(), "manifest", warnings);
 
         // Warn if any unit requires auth but no root-level auth block is present (§7)
         boolean hasProtectedUnits = manifest.units().stream()
@@ -397,6 +420,78 @@ public class KcpValidator {
         if (compliance.sensitivity() != null && !VALID_SENSITIVITY_VALUES.contains(compliance.sensitivity())) {
             errors.add(prefix + ": compliance.sensitivity must be one of " +
                     sorted(VALID_SENSITIVITY_VALUES) + ", got '" + compliance.sensitivity() + "'");
+        }
+    }
+
+    private static void validateDiscovery(Discovery discovery, Set<String> unitIds,
+                                          String prefix, List<String> warnings) {
+        if (discovery == null) return;
+        String status = discovery.verificationStatus();
+        Double confidence = discovery.confidence();
+
+        // verification_status must be a known value
+        if (status != null && !VALID_VERIFICATION_STATUSES.contains(status)) {
+            warnings.add(prefix + ": discovery.verification_status must be one of " +
+                    sorted(VALID_VERIFICATION_STATUSES) + ", got '" + status + "'");
+        }
+
+        // source must be a known value
+        if (discovery.source() != null && !VALID_DISCOVERY_SOURCES.contains(discovery.source())) {
+            warnings.add(prefix + ": discovery.source must be one of " +
+                    sorted(VALID_DISCOVERY_SOURCES) + ", got '" + discovery.source() + "'");
+        }
+
+        // rumored MUST have confidence < 0.5 (normative)
+        if ("rumored".equals(status) && confidence != null && confidence >= 0.5) {
+            warnings.add(prefix + ": discovery.verification_status=rumored but confidence=" +
+                    confidence + " (MUST be < 0.5)");
+        }
+
+        // verified SHOULD have confidence >= 0.8 (normative)
+        if ("verified".equals(status) && confidence != null && confidence < 0.8) {
+            warnings.add(prefix + ": discovery.verification_status=verified but confidence=" +
+                    confidence + " (SHOULD be >= 0.8)");
+        }
+
+        // verified_at SHOULD NOT be set when status is rumored or observed
+        if (discovery.verifiedAt() != null &&
+                ("rumored".equals(status) || "observed".equals(status))) {
+            warnings.add(prefix + ": discovery.verified_at is set but verification_status='" +
+                    status + "' (SHOULD only be set for verified units)");
+        }
+
+        // contradicted_by must reference a known unit id
+        if (discovery.contradictedBy() != null && !unitIds.contains(discovery.contradictedBy())) {
+            warnings.add(prefix + ": discovery.contradicted_by references unknown unit '" +
+                    discovery.contradictedBy() + "'");
+        }
+    }
+
+    private static void validateAuthority(no.cantara.kcp.model.Authority authority,
+                                          String prefix, List<String> warnings) {
+        if (authority == null) return;
+        Map<String, String> actions = Map.of(
+                "read", authority.read() != null ? authority.read() : "",
+                "summarize", authority.summarize() != null ? authority.summarize() : "",
+                "modify", authority.modify() != null ? authority.modify() : "",
+                "share_externally", authority.shareExternally() != null ? authority.shareExternally() : "",
+                "execute", authority.execute() != null ? authority.execute() : ""
+        );
+        actions.forEach((action, value) -> {
+            if (!value.isEmpty() && !VALID_AUTHORITY_VALUES.contains(value)) {
+                warnings.add(prefix + ": authority." + action + " must be one of " +
+                        sorted(VALID_AUTHORITY_VALUES) + ", got '" + value + "'");
+            }
+        });
+    }
+
+    private static void validateVisibility(no.cantara.kcp.model.Visibility visibility,
+                                           String prefix, List<String> warnings) {
+        if (visibility == null) return;
+        if (visibility.defaultSensitivity() != null &&
+                !VALID_VISIBILITY_DEFAULTS.contains(visibility.defaultSensitivity())) {
+            warnings.add(prefix + ": visibility.default must be one of " +
+                    sorted(VALID_VISIBILITY_DEFAULTS) + ", got '" + visibility.defaultSensitivity() + "'");
         }
     }
 

@@ -10,7 +10,7 @@
 #   A2A  = front door  (capabilities, authentication to the agent)
 #   KCP  = filing cabinet (knowledge inventory, per-unit access controls)
 
-kcp_version: "0.9"
+kcp_version: "0.12"
 project: clinical-research-agent
 version: 1.0.0
 updated: "2026-03-08"

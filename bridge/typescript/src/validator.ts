@@ -41,6 +41,7 @@ const KNOWN_KCP_VERSIONS = new Set([
   "0.9",
   "0.10",
   "0.11",
+  "0.12",
 ]);
 const VALID_MANIFEST_RELATIONSHIPS = new Set([
   "child",
@@ -182,6 +183,56 @@ export function validate(
       if (h.chunk_index != null && !h.chunk_of) {
         warnings.push(
           `${ctx}: chunk_index is present without chunk_of`
+        );
+      }
+    }
+
+    // authority validation (§4.17)
+    if (unit.authority) {
+      const KNOWN_AUTHORITY_ACTIONS = new Set([
+        "read", "summarize", "modify", "share_externally", "execute",
+      ]);
+      const VALID_AUTHORITY_VALUES = new Set([
+        "initiative", "requires_approval", "denied",
+      ]);
+      for (const [action, value] of Object.entries(unit.authority)) {
+        if (value !== undefined && !VALID_AUTHORITY_VALUES.has(value)) {
+          if (KNOWN_AUTHORITY_ACTIONS.has(action)) {
+            warnings.push(
+              `${ctx}: authority.${action} has unknown value '${value}'; expected initiative, requires_approval, or denied`
+            );
+          } else {
+            warnings.push(
+              `${ctx}: authority custom action '${action}' has unknown value '${value}'; expected initiative, requires_approval, or denied`
+            );
+          }
+        }
+      }
+    }
+
+    // discovery validation (§4.18)
+    if (unit.discovery) {
+      const disc = unit.discovery;
+      if (
+        disc.verification_status === "rumored" &&
+        disc.confidence !== undefined &&
+        disc.confidence >= 0.5
+      ) {
+        warnings.push(
+          `${ctx}: discovery.verification_status is 'rumored' but confidence is ${disc.confidence} (>=0.5); consider upgrading status to 'observed'`
+        );
+      }
+      if (
+        disc.verified_at !== undefined &&
+        (disc.verification_status === "rumored" || disc.verification_status === "observed")
+      ) {
+        warnings.push(
+          `${ctx}: discovery.verified_at is set but verification_status is '${disc.verification_status}'; verified_at implies status should be 'verified'`
+        );
+      }
+      if (disc.contradicted_by !== undefined && !unitIds.has(disc.contradicted_by)) {
+        warnings.push(
+          `${ctx}: discovery.contradicted_by references unknown unit id '${disc.contradicted_by}'`
         );
       }
     }

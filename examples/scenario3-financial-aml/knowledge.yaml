@@ -14,7 +14,7 @@
 #   - regulations, data_residency, restrictions
 #   - Remaining RFC-0004 scope (content integrity, attestation) not yet in core
 
-kcp_version: "0.9"
+kcp_version: "0.12"
 project: transaction-intelligence-agent
 version: 1.0.0
 updated: "2026-03-08"

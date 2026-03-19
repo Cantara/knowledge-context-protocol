@@ -1,0 +1,21 @@
+# Level 3 — INVALID: rumored unit with confidence >= 0.5 (RFC-0012 normative rule violation)
+#
+# Normative rule: a unit with verification_status: rumored MUST declare confidence < 0.5.
+# This fixture violates that rule (confidence: 0.7) and MUST be rejected by validators.
+kcp_version: "0.12"
+project: test-invalid-discovery
+version: "1.0.0"
+
+units:
+  - id: bulk-export-feature
+    path: capabilities/bulk-export.md
+    intent: "Export all customer data in bulk via the admin API"
+    scope: project
+    audience: [agent]
+    discovery:
+      verification_status: rumored
+      source: llm_inference
+      observed_at: "2026-03-10T14:30:00Z"
+      verified_at: null
+      confidence: 0.7        # INVALID: rumored MUST have confidence < 0.5
+      contradicted_by: null

@@ -10,6 +10,35 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.12.0] — 2026-03-17 — Governance Release
+
+### Spec
+
+- **v0.12.0 — Governance Release** (RFC-0009 schema wave + RFC-0012 full promotion)
+  - `visibility` block on units and root (§3.8, §4.16): conditional access by `environment` and `agent_role`. First-match-wins condition evaluation. Replaces flat `sensitivity` for units where access depends on context.
+  - `authority` block on units and root (§3.8, §4.17): action permission declarations (`read`, `summarize`, `modify`, `share_externally`, `execute`) with values `initiative` | `requires_approval` | `denied`. Safe defaults: read/summarize=initiative, all others=denied. Custom actions supported.
+  - `discovery` block on units and root (§3.9, §4.18): capability provenance tracking. Fields: `verification_status` (rumored/observed/verified/deprecated), `source` (manual/web_traversal/openapi/llm_inference), `confidence` (0.0–1.0), `contradicted_by`, `observed_at`, `verified_at`. Enables automated manifest generators to express epistemic state.
+  - Normative rule: `verification_status: rumored` MUST declare `confidence < 0.5`.
+  - Normative rule: `verification_status: deprecated` SHOULD NOT be loaded for live operation.
+  - `KNOWN_KCP_VERSIONS` updated to include `"0.12"` in all three validators.
+  - 4 new conformance fixtures: `level3/valid-with-authority`, `level3/valid-with-discovery`, `level3/valid-with-visibility`, `level3/invalid-discovery-rumored-high-confidence`.
+  - 7 new §7 validation warnings: discovery confidence normative rules, verified_at misuse, contradicted_by unknown reference, visibility condition shape, unknown authority values.
+  - §8 Conformance: `authority` + `discovery` added to Level 2; `visibility` (with conditions) added to Level 3.
+  - Appendix examples updated to `kcp_version: "0.12"`.
+
+### RFC Status
+
+- **RFC-0009 (Visibility and Authority):** Status updated to "Accepted — promoted to SPEC.md v0.12". Query extensions (agent_role, environment, authority_filter filters) remain deferred to v0.13.
+- **RFC-0012 (Capability Discovery Provenance):** Status updated to "Accepted — promoted to SPEC.md v0.12".
+
+### Parsers
+
+- **Java parser**: `Visibility`, `Authority`, `Discovery` records added. `KnowledgeUnit` and `KnowledgeManifest` extended. `KcpParser` and `KcpValidator` updated.
+- **Python parser**: `Visibility`, `Authority`, `Discovery` dataclasses added. `KnowledgeUnit` and `KnowledgeManifest` extended. Parser and validator updated.
+- **TypeScript bridge model**: `Visibility`, `Authority`, `Discovery` interfaces added. `KnowledgeUnit` and `KnowledgeManifest` extended. Parser, validator, and mapper updated.
+
+---
+
 ## [0.11.1] — 2026-03-17 — Housekeeping
 
 ### Fixed

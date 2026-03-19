@@ -2,7 +2,7 @@
 # Historical billing system documentation, retired in Q4 2025.
 # Agents SHOULD skip this manifest unless specifically requested.
 
-kcp_version: "0.9"
+kcp_version: "0.12"
 project: legacy-billing
 version: "1.0.0"
 updated: "2025-09-15"

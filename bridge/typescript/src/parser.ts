@@ -6,8 +6,10 @@ import yaml from "js-yaml";
 import type {
   Auth,
   AuthMethod,
+  Authority,
   Compliance,
   Delegation,
+  Discovery,
   ExternalDependency,
   ExternalRelationship,
   FreshnessPolicy,
@@ -19,6 +21,8 @@ import type {
   Trust,
   TrustAudit,
   TrustProvenance,
+  Visibility,
+  VisibilityCondition,
   LicenseValue,
   IndexingValue,
 } from "./model.js";
@@ -132,6 +136,9 @@ function parseUnit(raw: RawMap): KnowledgeUnit {
       ? (raw["requires_capabilities"] as string[])
       : undefined,
     freshness_policy: parseFreshnessPolicy(raw["freshness_policy"]),
+    visibility: parseVisibility(raw["visibility"]),
+    authority: parseAuthority(raw["authority"]),
+    discovery: parseDiscovery(raw["discovery"]),
   };
 }
 
@@ -259,6 +266,65 @@ function parseFreshnessPolicy(raw: unknown): FreshnessPolicy | undefined {
   };
 }
 
+function parseAuthority(raw: unknown): Authority | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const d = raw as RawMap;
+  const result: Authority = {};
+  for (const key of Object.keys(d)) {
+    if (d[key] !== undefined) {
+      result[key] = String(d[key]);
+    }
+  }
+  return result;
+}
+
+function parseVisibility(raw: unknown): Visibility | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const d = raw as RawMap;
+  const conditions: VisibilityCondition[] | undefined = (() => {
+    const rawConds = d["conditions"];
+    if (!Array.isArray(rawConds)) return undefined;
+    return (rawConds as RawMap[]).map((c) => {
+      const when = c["when"] as RawMap | undefined ?? {};
+      const then = c["then"] as RawMap | undefined ?? {};
+      const envRaw = when["environment"];
+      const roleRaw = when["agent_role"];
+      return {
+        when: {
+          environment: envRaw !== undefined
+            ? (Array.isArray(envRaw) ? envRaw.map(String) : String(envRaw))
+            : undefined,
+          agent_role: roleRaw !== undefined
+            ? (Array.isArray(roleRaw) ? roleRaw.map(String) : String(roleRaw))
+            : undefined,
+        },
+        then: {
+          sensitivity: then["sensitivity"] !== undefined ? String(then["sensitivity"]) : undefined,
+          requires_auth: then["requires_auth"] !== undefined ? Boolean(then["requires_auth"]) : undefined,
+          authority: parseAuthority(then["authority"]),
+        },
+      };
+    });
+  })();
+  return {
+    default: d["default"] !== undefined ? String(d["default"]) : undefined,
+    conditions,
+  };
+}
+
+function parseDiscovery(raw: unknown): Discovery | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const d = raw as RawMap;
+  return {
+    verification_status: d["verification_status"] !== undefined ? String(d["verification_status"]) : undefined,
+    source: d["source"] !== undefined ? String(d["source"]) : undefined,
+    observed_at: d["observed_at"] !== undefined ? String(d["observed_at"]) : undefined,
+    verified_at: d["verified_at"] !== undefined ? String(d["verified_at"]) : undefined,
+    confidence: d["confidence"] !== undefined ? Number(d["confidence"]) : undefined,
+    contradicted_by: d["contradicted_by"] !== undefined ? String(d["contradicted_by"]) : undefined,
+  };
+}
+
 // --- Federation parsing (§3.6) ---
 
 function parseExternalDependency(raw: RawMap): ExternalDependency {
@@ -335,6 +401,9 @@ export function parseDict(data: RawMap): KnowledgeManifest {
     manifests: rawManifests.map(parseManifestRef),
     external_relationships: rawExtRels.map(parseExternalRelationship),
     freshness_policy: parseFreshnessPolicy(data["freshness_policy"]),
+    visibility: parseVisibility(data["visibility"]),
+    authority: parseAuthority(data["authority"]),
+    discovery: parseDiscovery(data["discovery"]),
   };
 }
 

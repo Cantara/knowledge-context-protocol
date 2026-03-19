@@ -1,11 +1,11 @@
 # RFC-0009: Visibility and Authority Declarations
 
-**Status:** Request for Comments
+**Status:** Accepted — promoted to SPEC.md v0.12
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-03-14
 **Discussion:** [#50 KCP Treasure Map Service](https://github.com/Cantara/knowledge-context-protocol/discussions/50)
 **Related:** [Dimitri Geelen — Agentic Engineering Framework thread](https://www.linkedin.com/in/dimitrigeelen/)
-**Spec:** [SPEC.md](./SPEC.md) (current: v0.10)
+**Spec:** [SPEC.md](./SPEC.md) (current: v0.12)
 
 ---
 

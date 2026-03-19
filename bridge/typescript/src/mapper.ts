@@ -1,7 +1,7 @@
 // KCP → MCP resource mapping — pure functions, no I/O
 // The mapping is identical across Python, Java, and TypeScript bridges.
 
-import type { KnowledgeManifest, KnowledgeUnit } from "./model.js";
+import type { Authority, Discovery, KnowledgeManifest, KnowledgeUnit, Visibility } from "./model.js";
 
 // --- MIME type resolution ---
 
@@ -204,6 +204,49 @@ export function buildManifestResource(
   };
 }
 
+// --- RFC-0009 / RFC-0012 mapping helpers ---
+
+export function mapAuthority(authority: Authority): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(authority)) {
+    if (value !== undefined) {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+export function mapDiscovery(discovery: Discovery): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  if (discovery.verification_status !== undefined)
+    result["verification_status"] = discovery.verification_status;
+  if (discovery.source !== undefined) result["source"] = discovery.source;
+  if (discovery.observed_at !== undefined) result["observed_at"] = discovery.observed_at;
+  if (discovery.verified_at !== undefined) result["verified_at"] = discovery.verified_at;
+  if (discovery.confidence !== undefined) result["confidence"] = discovery.confidence;
+  if (discovery.contradicted_by !== undefined)
+    result["contradicted_by"] = discovery.contradicted_by;
+  return result;
+}
+
+export function mapVisibility(visibility: Visibility): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  if (visibility.default !== undefined) result["default"] = visibility.default;
+  if (visibility.conditions !== undefined && visibility.conditions.length > 0) {
+    result["conditions"] = visibility.conditions.map((c) => {
+      const when: Record<string, unknown> = {};
+      if (c.when.environment !== undefined) when["environment"] = c.when.environment;
+      if (c.when.agent_role !== undefined) when["agent_role"] = c.when.agent_role;
+      const then: Record<string, unknown> = {};
+      if (c.then.sensitivity !== undefined) then["sensitivity"] = c.then.sensitivity;
+      if (c.then.requires_auth !== undefined) then["requires_auth"] = c.then.requires_auth;
+      if (c.then.authority !== undefined) then["authority"] = mapAuthority(c.then.authority);
+      return { when, then };
+    });
+  }
+  return result;
+}
+
 // --- Manifest JSON serialization ---
 
 export function manifestToJson(
@@ -255,6 +298,9 @@ export function manifestToJson(
         if (u.compliance.restrictions?.length) c["restrictions"] = u.compliance.restrictions;
         if (Object.keys(c).length > 0) entry["compliance"] = c;
       }
+      if (u.authority) entry["authority"] = mapAuthority(u.authority);
+      if (u.discovery) entry["discovery"] = mapDiscovery(u.discovery);
+      if (u.visibility) entry["visibility"] = mapVisibility(u.visibility);
       return entry;
     }),
     relationships: manifest.relationships.map((r) => ({
@@ -291,6 +337,9 @@ export function manifestToJson(
     ...(manifest.delegation ? { delegation: manifest.delegation } : {}),
     ...(manifest.compliance ? { compliance: manifest.compliance } : {}),
     ...(manifest.payment ? { payment: manifest.payment } : {}),
+    ...(manifest.authority ? { authority: mapAuthority(manifest.authority) } : {}),
+    ...(manifest.discovery ? { discovery: mapDiscovery(manifest.discovery) } : {}),
+    ...(manifest.visibility ? { visibility: mapVisibility(manifest.visibility) } : {}),
   };
   return JSON.stringify(payload, null, 2);
 }

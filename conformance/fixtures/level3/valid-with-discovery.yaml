@@ -1,0 +1,68 @@
+# Level 3 — valid discovery block at root and unit level (RFC-0012 / §4.18)
+kcp_version: "0.12"
+project: test-discovery
+version: "1.0.0"
+
+# Root-level discovery default: all units assumed web_traversal / observed
+# unless overridden at unit level
+discovery:
+  source: web_traversal
+  verification_status: observed
+
+units:
+  - id: login-endpoint
+    path: capabilities/login.md
+    intent: "How do I authenticate to the portal?"
+    scope: project
+    audience: [agent]
+    # Verified unit: confirmed against OpenAPI spec
+    discovery:
+      verification_status: verified
+      source: openapi
+      observed_at: "2026-03-10T14:00:00Z"
+      verified_at: "2026-03-10T14:05:00Z"
+      confidence: 0.95
+      contradicted_by: null
+
+  - id: submit-expense-report
+    path: capabilities/expense-submit.md
+    intent: "How do I submit an expense report via the HR portal?"
+    scope: project
+    audience: [agent]
+    # Observed unit: found via web traversal, not yet cross-confirmed
+    discovery:
+      verification_status: observed
+      observed_at: "2026-03-10T14:22:00Z"
+      verified_at: null
+      confidence: 0.72
+      contradicted_by: null
+
+  - id: bulk-export-salaries
+    path: capabilities/salary-export.md
+    intent: "Export salary data in bulk from the HR portal"
+    scope: project
+    audience: [agent]
+    # Rumored unit: inferred from marketing copy, not yet directly observed.
+    # confidence MUST be < 0.5 per normative rule for rumored.
+    discovery:
+      verification_status: rumored
+      source: llm_inference
+      observed_at: "2026-03-10T14:30:00Z"
+      verified_at: null
+      confidence: 0.31
+      contradicted_by: null
+
+  - id: submit-expense-report-legacy
+    path: capabilities/expense-submit-legacy.md
+    intent: "Submit expense report via legacy /api/v1/expenses endpoint (deprecated)"
+    scope: project
+    audience: [agent]
+    deprecated: true
+    # Deprecated unit: was previously observed but superseded by submit-expense-report
+    discovery:
+      verification_status: deprecated
+      source: openapi
+      observed_at: "2026-02-01T00:00:00Z"
+      verified_at: null
+      confidence: 0.0
+      contradicted_by: submit-expense-report

@@ -34,7 +34,10 @@ public record KnowledgeUnit(
         Compliance compliance,
         List<ExternalDependency> externalDependsOn,
         List<String> requiresCapabilities,
-        FreshnessPolicy freshnessPolicy
+        FreshnessPolicy freshnessPolicy,
+        Visibility visibility,
+        Authority authority,
+        Discovery discovery
 ) {
     public KnowledgeUnit {
         audience = audience != null ? List.copyOf(audience) : List.of();

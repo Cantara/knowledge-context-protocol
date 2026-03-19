@@ -11,6 +11,9 @@ import {
   buildManifestResource,
   scopePriority,
   manifestToJson,
+  mapAuthority,
+  mapDiscovery,
+  mapVisibility,
 } from "../src/mapper.js";
 import { parseDict } from "../src/parser.js";
 import type { KnowledgeUnit } from "../src/model.js";
@@ -249,5 +252,208 @@ describe("manifestToJson", () => {
     expect(json.units[0].id).toBe("spec");
     expect(json.units[0].validated).toBe("2026-02-27");
     expect(json.relationships[0].from).toBe("spec");
+  });
+});
+
+describe("mapAuthority", () => {
+  it("maps all known action fields", () => {
+    const result = mapAuthority({
+      read: "initiative",
+      summarize: "initiative",
+      modify: "requires_approval",
+      share_externally: "denied",
+      execute: "denied",
+    });
+    expect(result["read"]).toBe("initiative");
+    expect(result["summarize"]).toBe("initiative");
+    expect(result["modify"]).toBe("requires_approval");
+    expect(result["share_externally"]).toBe("denied");
+    expect(result["execute"]).toBe("denied");
+  });
+
+  it("maps custom action fields", () => {
+    const result = mapAuthority({ read: "initiative", export_pdf: "requires_approval" });
+    expect(result["export_pdf"]).toBe("requires_approval");
+  });
+
+  it("omits undefined values", () => {
+    const result = mapAuthority({ read: "initiative", modify: undefined });
+    expect(Object.keys(result)).toEqual(["read"]);
+  });
+});
+
+describe("mapDiscovery", () => {
+  it("maps a fully populated discovery block", () => {
+    const result = mapDiscovery({
+      verification_status: "observed",
+      source: "web_traversal",
+      observed_at: "2026-03-01T10:00:00Z",
+      verified_at: "2026-03-10T00:00:00Z",
+      confidence: 0.72,
+      contradicted_by: "other-unit",
+    });
+    expect(result["verification_status"]).toBe("observed");
+    expect(result["source"]).toBe("web_traversal");
+    expect(result["observed_at"]).toBe("2026-03-01T10:00:00Z");
+    expect(result["verified_at"]).toBe("2026-03-10T00:00:00Z");
+    expect(result["confidence"]).toBe(0.72);
+    expect(result["contradicted_by"]).toBe("other-unit");
+  });
+
+  it("omits absent optional fields", () => {
+    const result = mapDiscovery({
+      verification_status: "observed",
+      confidence: 0.72,
+    });
+    expect(Object.keys(result)).toEqual(["verification_status", "confidence"]);
+  });
+});
+
+describe("mapVisibility", () => {
+  it("maps a visibility block with default and conditions", () => {
+    const result = mapVisibility({
+      default: "internal",
+      conditions: [
+        {
+          when: { environment: "production", agent_role: "auditor" },
+          then: { sensitivity: "confidential", requires_auth: true },
+        },
+      ],
+    });
+    expect(result["default"]).toBe("internal");
+    const conditions = result["conditions"] as Array<Record<string, unknown>>;
+    expect(conditions).toHaveLength(1);
+    const when = conditions[0]["when"] as Record<string, unknown>;
+    expect(when["environment"]).toBe("production");
+    expect(when["agent_role"]).toBe("auditor");
+    const then = conditions[0]["then"] as Record<string, unknown>;
+    expect(then["sensitivity"]).toBe("confidential");
+    expect(then["requires_auth"]).toBe(true);
+  });
+
+  it("maps nested authority within a visibility condition then block", () => {
+    const result = mapVisibility({
+      conditions: [
+        {
+          when: { environment: "production" },
+          then: { authority: { read: "initiative", modify: "denied" } },
+        },
+      ],
+    });
+    const conditions = result["conditions"] as Array<Record<string, unknown>>;
+    const then = conditions[0]["then"] as Record<string, unknown>;
+    const authority = then["authority"] as Record<string, string>;
+    expect(authority["read"]).toBe("initiative");
+    expect(authority["modify"]).toBe("denied");
+  });
+
+  it("omits conditions key when conditions array is empty", () => {
+    const result = mapVisibility({ default: "public", conditions: [] });
+    expect(Object.keys(result)).toEqual(["default"]);
+  });
+});
+
+describe("manifestToJson — authority, discovery, visibility in unit output", () => {
+  it("includes authority in unit JSON output", () => {
+    const manifest = parseDict({
+      project: "test",
+      version: "1.0.0",
+      units: [
+        {
+          id: "u",
+          path: "f.md",
+          intent: "i",
+          scope: "global",
+          audience: ["agent"],
+          authority: { read: "initiative", modify: "requires_approval" },
+        },
+      ],
+    });
+    const json = JSON.parse(manifestToJson(manifest, "test"));
+    expect(json.units[0].authority).toBeDefined();
+    expect(json.units[0].authority.read).toBe("initiative");
+    expect(json.units[0].authority.modify).toBe("requires_approval");
+  });
+
+  it("includes discovery in unit JSON output", () => {
+    const manifest = parseDict({
+      project: "test",
+      version: "1.0.0",
+      units: [
+        {
+          id: "u",
+          path: "f.md",
+          intent: "i",
+          scope: "global",
+          audience: ["agent"],
+          discovery: {
+            verification_status: "observed",
+            source: "web_traversal",
+            confidence: 0.72,
+          },
+        },
+      ],
+    });
+    const json = JSON.parse(manifestToJson(manifest, "test"));
+    expect(json.units[0].discovery).toBeDefined();
+    expect(json.units[0].discovery.verification_status).toBe("observed");
+    expect(json.units[0].discovery.confidence).toBe(0.72);
+  });
+
+  it("includes visibility in unit JSON output", () => {
+    const manifest = parseDict({
+      project: "test",
+      version: "1.0.0",
+      units: [
+        {
+          id: "u",
+          path: "f.md",
+          intent: "i",
+          scope: "global",
+          audience: ["agent"],
+          visibility: {
+            default: "internal",
+            conditions: [
+              {
+                when: { environment: "production" },
+                then: { sensitivity: "confidential" },
+              },
+            ],
+          },
+        },
+      ],
+    });
+    const json = JSON.parse(manifestToJson(manifest, "test"));
+    expect(json.units[0].visibility).toBeDefined();
+    expect(json.units[0].visibility.default).toBe("internal");
+    expect(json.units[0].visibility.conditions[0].when.environment).toBe("production");
+  });
+
+  it("includes authority and discovery at manifest level in JSON output", () => {
+    const manifest = parseDict({
+      project: "test",
+      version: "1.0.0",
+      authority: { read: "initiative", modify: "denied" },
+      discovery: { verification_status: "verified", confidence: 1.0 },
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    const json = JSON.parse(manifestToJson(manifest, "test"));
+    expect(json.authority.read).toBe("initiative");
+    expect(json.discovery.verification_status).toBe("verified");
+    expect(json.discovery.confidence).toBe(1.0);
+  });
+
+  it("omits authority, discovery, visibility when absent", () => {
+    const manifest = parseDict({
+      project: "test",
+      version: "1.0.0",
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    const json = JSON.parse(manifestToJson(manifest, "test"));
+    expect(json.units[0].authority).toBeUndefined();
+    expect(json.units[0].discovery).toBeUndefined();
+    expect(json.units[0].visibility).toBeUndefined();
+    expect(json.authority).toBeUndefined();
+    expect(json.discovery).toBeUndefined();
   });
 });

@@ -25,7 +25,10 @@ public record KnowledgeManifest(
         List<Relationship> relationships,
         List<ManifestRef> manifests,
         List<ExternalRelationship> externalRelationships,
-        FreshnessPolicy freshnessPolicy
+        FreshnessPolicy freshnessPolicy,
+        Visibility visibility,
+        Authority authority,
+        Discovery discovery
 ) {
     public KnowledgeManifest {
         units = units != null ? List.copyOf(units) : List.of();

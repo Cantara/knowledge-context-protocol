@@ -387,6 +387,257 @@ describe("path traversal (#12)", () => {
   });
 });
 
+describe("parseAuthority", () => {
+  it("parses a unit authority block with known actions", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      units: [{
+        id: "u",
+        path: "f.md",
+        intent: "i",
+        scope: "global",
+        audience: ["agent"],
+        authority: {
+          read: "initiative",
+          summarize: "initiative",
+          modify: "requires_approval",
+          share_externally: "denied",
+          execute: "denied",
+        },
+      }],
+    });
+    const u = manifest.units[0];
+    expect(u.authority).toBeDefined();
+    expect(u.authority?.read).toBe("initiative");
+    expect(u.authority?.summarize).toBe("initiative");
+    expect(u.authority?.modify).toBe("requires_approval");
+    expect(u.authority?.share_externally).toBe("denied");
+    expect(u.authority?.execute).toBe("denied");
+  });
+
+  it("parses a unit authority block with a custom action", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      units: [{
+        id: "u",
+        path: "f.md",
+        intent: "i",
+        scope: "global",
+        audience: ["agent"],
+        authority: { read: "initiative", export_pdf: "requires_approval" },
+      }],
+    });
+    expect(manifest.units[0].authority?.export_pdf).toBe("requires_approval");
+  });
+
+  it("parses root-level authority block", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      authority: { read: "initiative", modify: "denied" },
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    expect(manifest.authority).toBeDefined();
+    expect(manifest.authority?.read).toBe("initiative");
+    expect(manifest.authority?.modify).toBe("denied");
+  });
+
+  it("absent authority is undefined", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    expect(manifest.authority).toBeUndefined();
+    expect(manifest.units[0].authority).toBeUndefined();
+  });
+});
+
+describe("parseDiscovery", () => {
+  it("parses a unit discovery block with observed status and confidence", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      units: [{
+        id: "u",
+        path: "f.md",
+        intent: "i",
+        scope: "global",
+        audience: ["agent"],
+        discovery: {
+          verification_status: "observed",
+          source: "web_traversal",
+          observed_at: "2026-03-01T10:00:00Z",
+          confidence: 0.72,
+        },
+      }],
+    });
+    const disc = manifest.units[0].discovery;
+    expect(disc).toBeDefined();
+    expect(disc?.verification_status).toBe("observed");
+    expect(disc?.source).toBe("web_traversal");
+    expect(disc?.observed_at).toBe("2026-03-01T10:00:00Z");
+    expect(disc?.confidence).toBe(0.72);
+    expect(disc?.verified_at).toBeUndefined();
+    expect(disc?.contradicted_by).toBeUndefined();
+  });
+
+  it("parses a fully populated discovery block", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      units: [{
+        id: "u",
+        path: "f.md",
+        intent: "i",
+        scope: "global",
+        audience: ["agent"],
+        discovery: {
+          verification_status: "verified",
+          source: "openapi",
+          observed_at: "2026-01-15T08:00:00Z",
+          verified_at: "2026-02-01T12:00:00Z",
+          confidence: 1.0,
+          contradicted_by: "other-unit",
+        },
+      }],
+    });
+    const disc = manifest.units[0].discovery;
+    expect(disc?.verification_status).toBe("verified");
+    expect(disc?.verified_at).toBe("2026-02-01T12:00:00Z");
+    expect(disc?.confidence).toBe(1.0);
+    expect(disc?.contradicted_by).toBe("other-unit");
+  });
+
+  it("parses root-level discovery block", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      discovery: { verification_status: "manual", source: "manual", confidence: 0.9 },
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    expect(manifest.discovery).toBeDefined();
+    expect(manifest.discovery?.source).toBe("manual");
+  });
+
+  it("absent discovery is undefined", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    expect(manifest.discovery).toBeUndefined();
+    expect(manifest.units[0].discovery).toBeUndefined();
+  });
+});
+
+describe("parseVisibility", () => {
+  it("parses a unit visibility block with conditions", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      units: [{
+        id: "u",
+        path: "f.md",
+        intent: "i",
+        scope: "global",
+        audience: ["agent"],
+        visibility: {
+          default: "internal",
+          conditions: [
+            {
+              when: { environment: "production", agent_role: "auditor" },
+              then: { sensitivity: "confidential", requires_auth: true },
+            },
+          ],
+        },
+      }],
+    });
+    const vis = manifest.units[0].visibility;
+    expect(vis).toBeDefined();
+    expect(vis?.default).toBe("internal");
+    expect(vis?.conditions).toHaveLength(1);
+    expect(vis?.conditions?.[0].when.environment).toBe("production");
+    expect(vis?.conditions?.[0].when.agent_role).toBe("auditor");
+    expect(vis?.conditions?.[0].then.sensitivity).toBe("confidential");
+    expect(vis?.conditions?.[0].then.requires_auth).toBe(true);
+  });
+
+  it("parses visibility with array environment and agent_role", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      units: [{
+        id: "u",
+        path: "f.md",
+        intent: "i",
+        scope: "global",
+        audience: ["agent"],
+        visibility: {
+          conditions: [
+            {
+              when: { environment: ["staging", "production"], agent_role: ["auditor", "admin"] },
+              then: { requires_auth: true },
+            },
+          ],
+        },
+      }],
+    });
+    const cond = manifest.units[0].visibility?.conditions?.[0];
+    expect(Array.isArray(cond?.when.environment)).toBe(true);
+    expect(cond?.when.environment).toEqual(["staging", "production"]);
+    expect(cond?.when.agent_role).toEqual(["auditor", "admin"]);
+  });
+
+  it("parses visibility condition with nested authority in then", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      units: [{
+        id: "u",
+        path: "f.md",
+        intent: "i",
+        scope: "global",
+        audience: ["agent"],
+        visibility: {
+          conditions: [
+            {
+              when: { environment: "production" },
+              then: { authority: { read: "initiative", modify: "denied" } },
+            },
+          ],
+        },
+      }],
+    });
+    const then = manifest.units[0].visibility?.conditions?.[0].then;
+    expect(then?.authority?.read).toBe("initiative");
+    expect(then?.authority?.modify).toBe("denied");
+  });
+
+  it("parses root-level visibility block", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      visibility: { default: "public" },
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    expect(manifest.visibility).toBeDefined();
+    expect(manifest.visibility?.default).toBe("public");
+  });
+
+  it("absent visibility is undefined", () => {
+    const manifest = parseDict({
+      project: "p",
+      version: "1.0.0",
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    expect(manifest.visibility).toBeUndefined();
+    expect(manifest.units[0].visibility).toBeUndefined();
+  });
+});
+
 describe("parseFile", () => {
   it("parses the minimal fixture", () => {
     const manifest = parseFile(join(MINIMAL_DIR, "knowledge.yaml"));

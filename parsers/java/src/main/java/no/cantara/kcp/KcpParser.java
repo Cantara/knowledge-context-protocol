@@ -2,8 +2,10 @@ package no.cantara.kcp;
 
 import no.cantara.kcp.model.Auth;
 import no.cantara.kcp.model.AuthMethod;
+import no.cantara.kcp.model.Authority;
 import no.cantara.kcp.model.Compliance;
 import no.cantara.kcp.model.Delegation;
+import no.cantara.kcp.model.Discovery;
 import no.cantara.kcp.model.ExternalDependency;
 import no.cantara.kcp.model.FreshnessPolicy;
 import no.cantara.kcp.model.ExternalRelationship;
@@ -17,6 +19,7 @@ import no.cantara.kcp.model.Relationship;
 import no.cantara.kcp.model.Trust;
 import no.cantara.kcp.model.TrustAudit;
 import no.cantara.kcp.model.TrustProvenance;
+import no.cantara.kcp.model.Visibility;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
@@ -81,7 +84,10 @@ public class KcpParser {
         List<ExternalRelationship> externalRelationships = extRelMaps.stream().map(KcpParser::parseExternalRelationship).toList();
 
         FreshnessPolicy freshnessPolicy = parseFreshnessPolicy((Map<String, Object>) data.get("freshness_policy"));
-        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, rateLimits, units, relationships, manifests, externalRelationships, freshnessPolicy);
+        Visibility visibility = parseVisibility((Map<String, Object>) data.get("visibility"));
+        Authority authority = parseAuthority((Map<String, Object>) data.get("authority"));
+        Discovery discovery = parseDiscovery((Map<String, Object>) data.get("discovery"));
+        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, rateLimits, units, relationships, manifests, externalRelationships, freshnessPolicy, visibility, authority, discovery);
     }
 
     /**
@@ -139,7 +145,10 @@ public class KcpParser {
                 parseCompliance((Map<String, Object>) u.get("compliance")),
                 externalDependsOn,
                 (List<String>) u.getOrDefault("requires_capabilities", List.of()),
-                parseFreshnessPolicy((Map<String, Object>) u.get("freshness_policy"))
+                parseFreshnessPolicy((Map<String, Object>) u.get("freshness_policy")),
+                parseVisibility((Map<String, Object>) u.get("visibility")),
+                parseAuthority((Map<String, Object>) u.get("authority")),
+                parseDiscovery((Map<String, Object>) u.get("discovery"))
         );
     }
 
@@ -293,6 +302,44 @@ public class KcpParser {
                 fp.get("max_age_days") instanceof Number n ? n.intValue() : null,
                 (String) fp.get("on_stale"),
                 (String) fp.get("review_contact")
+        );
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Visibility parseVisibility(Map<String, Object> v) {
+        if (v == null) return null;
+        List<Map<String, Object>> conditions = (List<Map<String, Object>>) v.get("conditions");
+        return new Visibility(
+                (String) v.get("default"),
+                conditions
+        );
+    }
+
+    private static Authority parseAuthority(Map<String, Object> a) {
+        if (a == null) return null;
+        return new Authority(
+                (String) a.get("read"),
+                (String) a.get("summarize"),
+                (String) a.get("modify"),
+                (String) a.get("share_externally"),
+                (String) a.get("execute")
+        );
+    }
+
+    private static Discovery parseDiscovery(Map<String, Object> d) {
+        if (d == null) return null;
+        Double confidence = null;
+        Object rawConfidence = d.get("confidence");
+        if (rawConfidence instanceof Number n) {
+            confidence = n.doubleValue();
+        }
+        return new Discovery(
+                (String) d.get("verification_status"),
+                (String) d.get("source"),
+                (String) d.get("observed_at"),
+                (String) d.get("verified_at"),
+                confidence,
+                (String) d.get("contradicted_by")
         );
     }
 
