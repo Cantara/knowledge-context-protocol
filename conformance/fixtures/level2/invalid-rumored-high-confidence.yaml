@@ -1,0 +1,16 @@
+# Level 2 — INVALID: rumored unit with confidence >= 0.5 violates RFC-0012
+# Normative rule: "A unit with verification_status: rumored MUST declare confidence < 0.5"
+kcp_version: "0.12"
+project: test-invalid-discovery
+version: "1.0.0"
+
+units:
+  - id: maybe-api
+    path: apis/maybe.md
+    intent: "Possibly an API endpoint"
+    scope: module
+    audience: [developer]
+    discovery:
+      verification_status: rumored
+      source: llm_inference
+      confidence: 0.75

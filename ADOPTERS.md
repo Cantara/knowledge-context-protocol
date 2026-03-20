@@ -31,4 +31,4 @@ To add your project: [open an issue](https://github.com/Cantara/knowledge-contex
 | Project | Repo | Description |
 |---------|------|-------------|
 | kcp-basis-oppsett | https://github.com/StigLau/kcp-basis-oppsett | Reference KCP setup framework by Stig Lau (Skatteetaten) — templates, transition guide, snapshot-awareness pattern, component registry |
-| kcp-triage | https://github.com/StigLau/kcp-triage | Automated KCP artifact generator — crawls a website and produces knowledge.yaml (v0.10), CLAUDE.md, skills, and API docs via LLM pipeline |
+| kcp-triage | https://github.com/StigLau/kcp-triage | Automated KCP artifact generator — crawls a website and produces knowledge.yaml (v0.12 with RFC-0012 discovery blocks), CLAUDE.md, skills, and API docs via LLM pipeline. Reference implementation for discovery provenance. |
