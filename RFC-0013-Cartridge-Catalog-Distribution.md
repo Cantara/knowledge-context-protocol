@@ -1,11 +1,11 @@
 # RFC-0013: Cartridge Catalog and Distribution
 
-**Status:** Request for Comments
+**Status:** Accepted — promoted to [CATALOG-SPEC.md](./CATALOG-SPEC.md) v0.1 + SPEC.md §1.5 (v0.13)
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-03-25
-**Discussion:** TBD — open after posting
+**Discussion:** [#57 RFC-0013: Cartridge Catalog and Distribution](https://github.com/Cantara/knowledge-context-protocol/discussions/57)
 **Related:** [RFC-0003 Federation](./RFC-0003-Federation.md) · [RFC-0011 Org Federation](./RFC-0011-Org-Federation.md) · [RFC-0012 Capability Discovery Provenance](./RFC-0012-Capability-Discovery-Provenance.md)
-**Spec:** [SPEC.md](./SPEC.md) (current: v0.12)
+**Spec:** [SPEC.md](./SPEC.md) (current: v0.13) · [CATALOG-SPEC.md](./CATALOG-SPEC.md) (v0.1)
 
 ---
 
@@ -87,7 +87,7 @@ entries:
     version: 0.4.1
     generated: "2026-03-20"
     source_commit: a3f91bc
-    requires:
+    depends_on:
       - myproject-auth
 
   - name: myproject-auth
@@ -106,10 +106,10 @@ entries:
 |-------|----------|------|-------------|
 | `name` | REQUIRED | string | Unique identifier for this manifest within the catalog. Used for dependency references. |
 | `source` | REQUIRED | string | Where to fetch the manifest. Supports local paths, raw HTTPS URLs, and git repository references. |
-| `version` | RECOMMENDED | semver string | The declared version of the manifest at the time it was added to the catalog. |
+| `version` | RECOMMENDED | semver string | The declared version of the manifest at the time it was added to the catalog. Compared using semver as defined by [SemVer 2.0.0](https://semver.org/). |
 | `generated` | OPTIONAL | ISO 8601 date | When this manifest was generated or last verified against its source. Enables staleness detection. |
 | `source_commit` | OPTIONAL | string | Git commit SHA of the source repository at generation time. Enables precise staleness detection when the source is a git repo. |
-| `requires` | OPTIONAL | list of `name` strings | Names of other catalog entries that MUST be installed before this manifest is useful. |
+| `depends_on` | OPTIONAL | list of `name` strings | Names of other catalog entries that MUST be installed before this manifest is useful. References MUST be catalog-local; cross-catalog dependencies are out of scope. |
 
 ### `source` URL types
 
@@ -118,7 +118,22 @@ entries:
 | Local path (relative) | `./cartridges/auth/knowledge.yaml` | Resolved relative to the `catalog.yaml` file location. |
 | Local path (absolute) | `/home/user/.kcp/cartridges/auth/knowledge.yaml` | Absolute path on the local filesystem. |
 | Raw HTTPS | `https://raw.githubusercontent.com/org/repo/main/kcp/knowledge.yaml` | Fetched directly. No authentication beyond what the HTTP client provides. |
-| Git repository | `git+https://github.com/org/repo.git//path/to/knowledge.yaml@v0.4.1` | Fetched from a specific git ref. The `@ref` suffix is OPTIONAL; defaults to the default branch. |
+| Git repository | `git+https://github.com/org/repo.git//path/to/knowledge.yaml@v0.4.1` | Fetched from a specific git ref. Grammar defined below. |
+
+**Git source URL grammar:**
+
+```
+git-source  = "git+" https-url "//" file-path [ "@" ref ]
+https-url   = "https://" host "/" repo-path ".git"
+file-path   = path to knowledge.yaml within the repository
+ref         = branch-name | tag-name | full-commit-sha
+```
+
+- The `//` separator delimits the repository URL from the file path within the repository.
+- `@ref` is OPTIONAL. If absent, the implementation MUST use the repository's default branch.
+- `ref` MAY be a branch name, tag name, or 40-character full commit SHA. Short SHAs are NOT RECOMMENDED due to ambiguity.
+
+Example: `git+https://github.com/acme/kcps.git//api/knowledge.yaml@v0.4.1`
 
 Implementations MUST support local paths and raw HTTPS URLs. Git repository sources are
 RECOMMENDED for production use. Unknown source schemes MUST be reported as errors, not
@@ -126,25 +141,23 @@ silently ignored.
 
 ### Dependency resolution
 
-When installing a catalog entry that declares `requires`, all named dependencies MUST be
+When installing a catalog entry that declares `depends_on`, all named dependencies MUST be
 installed first. Circular dependencies MUST be detected and reported as an error.
 
 ```yaml
-# This declares that consuming agents should load myproject-auth
-# before loading myproject-internal-api.
+# myproject-auth is installed before myproject-internal-api.
 entries:
   - name: myproject-internal-api
     source: ...
-    requires:
+    depends_on:
       - myproject-auth
 
   - name: myproject-auth
     source: ...
 ```
 
-`requires` entries MUST reference names declared elsewhere in the same catalog.
-Cross-catalog dependencies (referencing entries in a remote catalog) are out of scope
-for this RFC.
+`depends_on` entries MUST reference `name` values declared elsewhere in the same catalog.
+Cross-catalog dependencies are out of scope.
 
 ### Catalog location convention
 
@@ -166,7 +179,8 @@ An entry is considered **stale** when any of the following conditions hold:
   path differs from `source_commit`.
 - `generated` is set and the source file's modification time is newer than `generated`.
 - The installed manifest's `version` field (from SPEC.md §2) is lower than the
-  `version` declared in the catalog entry.
+  `version` declared in the catalog entry, as determined by semver comparison
+  per [SemVer 2.0.0](https://semver.org/).
 
 Implementations SHOULD surface a staleness warning. They MUST NOT refuse to use a
 stale manifest — the operator decides whether to update.
@@ -234,7 +248,7 @@ established*.
 | `catalog.yaml` parsing | Level 1 | Tooling that installs manifests from a catalog MUST implement this. |
 | Local path source resolution | Level 1 | MUST be supported. |
 | Raw HTTPS source fetch | Level 1 | MUST be supported. |
-| `requires` dependency resolution | Level 1 | MUST detect and report circular dependencies. |
+| `depends_on` dependency resolution | Level 1 | MUST detect and report circular dependencies. |
 | Staleness detection via `version` | Level 2 | RECOMMENDED. |
 | Staleness detection via `source_commit` | Level 2 | RECOMMENDED for git-backed sources. |
 | Git repository sources | Level 2 | RECOMMENDED for production catalogs. |
@@ -252,26 +266,19 @@ SHOULD mirror this version for staleness comparison.
 
 ---
 
-## Open Questions
+## Decisions Made During Review
 
-**1. Should cross-catalog dependencies be in scope?**
+**Cross-catalog dependencies:** Out of scope for this RFC. A `depends_on` entry MUST
+reference a name within the same catalog. Cross-catalog dependency resolution implies a
+hosted registry and belongs in a future RFC.
 
-Allowing `requires` to reference entries in a remote catalog (by URL) would enable
-a public KCP cartridge registry pattern. The cost is resolution complexity and the risk
-of cascading fetch failures. An explicit second RFC may be more appropriate.
+**`registry:` field:** Out of scope. Named registry lookup implies a hosted registry
+service. Deferred to a future RFC.
 
-**2. Should `catalog.yaml` declare a `registry` entry point?**
-
-A `registry: https://kcp.example.com/catalog` field would enable `name`-based lookup
-without requiring the caller to know the source URL. This is the package-manager model.
-It implies a hosted registry service, which is out of scope here but may be a natural
-RFC-0014.
-
-**3. Lock file?**
-
-A `catalog.lock` recording the exact resolved sources and commit SHAs at install time
-(analogous to `package-lock.json`) would make installs reproducible across machines and
-in CI. Is this spec-level or purely tooling-level?
+**Lock file (`catalog.lock`):** Tooling-level, not spec-level. A lock file recording
+exact resolved sources and commit SHAs at install time is an implementation artifact.
+Two implementations with different lock file formats are still interoperable if they
+both parse `catalog.yaml` correctly. No spec entry required.
 
 ---
 

@@ -1,8 +1,8 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.12
+**Version:** 0.13
 **Status:** Draft
-**Date:** 2026-03-17
+**Date:** 2026-03-25
 **Repository:** github.com/cantara/knowledge-context-protocol
 
 ---
@@ -107,6 +107,26 @@ MUST NOT require the manifest to also be present at the repository root.
 This discovery path complements §1.1 (root placement) and §1.2 (llms.txt declaration).
 An origin MAY support all three; agents SHOULD prefer `/.well-known/kcp.json` when
 performing HTTP-based discovery on a live site.
+
+### 1.5 Distribution via Catalog
+
+A `catalog.yaml` file MAY be used to declare, version, and distribute collections of KCP
+manifests as static artifacts — independently of any running service. The catalog format
+is defined in the companion specification: [CATALOG-SPEC.md](./CATALOG-SPEC.md).
+
+A catalog entry's `source` field references a `knowledge.yaml` file. Every manifest
+referenced by a catalog entry MUST conform to this specification.
+
+Implementations that support catalog-based distribution SHOULD resolve catalog entries
+before federation (§3.6): **distribution is the write path; federation is the read path.**
+A manifest installed via a catalog MAY also declare `manifests[]` federation links — the
+two mechanisms compose without conflict.
+
+Well-known catalog locations, in order of preference:
+
+1. `.kcp/catalog.yaml` — project-local, co-located with source code
+2. `~/.kcp/catalog.yaml` — user-global, for practitioner rigs and tooling
+3. Any path passed explicitly via tooling configuration
 
 ---
 
