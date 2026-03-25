@@ -2426,6 +2426,137 @@ topologies.
 - **`has_capabilities`** reveals the querying agent's capability set to the query processor.
   Implementations that proxy queries to third-party servers SHOULD document this disclosure.
 
+### 15.10 Worked Examples
+
+#### 15.10.1 End-to-end query and response (budget + staleness + audience)
+
+An HR-bot agent queries for expense-reporting guidance for EU employees. Token budget: 4000.
+Stale units are excluded. The third result exceeds the remaining budget, so its summary unit
+is substituted.
+
+```yaml
+# Query request
+terms: ["expense report", "reimbursement"]
+audience: agent
+sensitivity_max: internal
+max_token_budget: 4000
+include_summaries: true
+exclude_deprecated: true
+exclude_stale: true
+
+# Query response
+results:
+  - unit_id: submit-expense-report
+    score: 10            # trigger("expense report")=5 + trigger("reimbursement")=5
+    path: capabilities/expense-submit.md
+    token_estimate: 1800
+    summary_unit: null
+    match_reason: [trigger]
+    source_manifest: null
+
+  - unit_id: expense-policy-eu
+    score: 5             # trigger("expense report")=5
+    path: policies/expense-eu.md
+    token_estimate: 1200
+    summary_unit: null
+    match_reason: [trigger]
+    source_manifest: null
+
+  - unit_id: expense-approval-workflow-tldr   # summary substituted — original (6000 tokens)
+    score: 3             # intent("expense")=3                exceeded remaining budget (1000)
+    path: workflows/approval-tldr.md
+    token_estimate: 600
+    summary_unit: null
+    match_reason: [intent]
+    source_manifest: null
+
+# Budget consumed: 1800 + 1200 + 600 = 3600 of 4000. Remaining candidates skipped.
+```
+
+#### 15.10.2 Capability filter (`has_capabilities`)
+
+The agent has `tool:kubectl` but not `permission:deploy-prod`. The deployment runbook unit
+requires both — it is excluded. The documentation unit has no capability requirements and
+is returned.
+
+```yaml
+# Manifest units (excerpt)
+units:
+  - id: deploy-to-prod
+    path: runbooks/deploy-prod.md
+    intent: "How do I deploy the service to the production Kubernetes cluster?"
+    triggers: [deploy, production, kubernetes, rollout]
+    requires_capabilities: [tool:kubectl, permission:deploy-prod]
+    hints:
+      token_estimate: 3200
+
+  - id: deploy-overview
+    path: docs/deploy-overview.md
+    intent: "What is the deployment architecture and release process?"
+    triggers: [deploy, release, architecture]
+    hints:
+      token_estimate: 1400
+
+# Query request
+terms: ["deploy"]
+has_capabilities: [tool:kubectl]      # agent lacks permission:deploy-prod
+
+# Query response
+results:
+  - unit_id: deploy-overview           # included: no requires_capabilities
+    score: 6                           # trigger("deploy")=5 + path("deploy")=1
+    path: docs/deploy-overview.md
+    token_estimate: 1400
+    match_reason: [trigger, path]
+    source_manifest: null
+
+# deploy-to-prod excluded: requires permission:deploy-prod, not in has_capabilities
+```
+
+#### 15.10.3 Federation scope (`federation_scope: declared` + `source_manifest`)
+
+A hub manifest federates two sub-manifests. A query with `federation_scope: declared`
+returns results from all three; each result carries `source_manifest` so the agent knows
+which base URL to resolve paths against.
+
+```yaml
+# Hub manifest (excerpt)
+manifests:
+  - id: payments-service
+    url: "https://payments.acme.internal/knowledge.yaml"
+    relationship: component
+  - id: identity-service
+    url: "https://identity.acme.internal/knowledge.yaml"
+    relationship: component
+
+# Query request
+terms: ["api-key", "authentication"]
+federation_scope: declared
+
+# Query response
+results:
+  - unit_id: api-key-rotation
+    score: 6                           # trigger("api-key")=5 + id("api-key")=1
+    path: docs/api-keys.md             # resolve relative to payments-service base URL
+    token_estimate: 2100
+    match_reason: [trigger, id]
+    source_manifest: payments-service  # from sub-manifest
+
+  - unit_id: oauth2-token-exchange
+    score: 5                           # trigger("authentication")=5
+    path: docs/oauth2.md               # resolve relative to identity-service base URL
+    token_estimate: 3800
+    match_reason: [trigger]
+    source_manifest: identity-service  # from sub-manifest
+
+  - unit_id: portal-getting-started
+    score: 1                           # path("api-key")=1 substring match
+    path: docs/getting-started.md
+    token_estimate: 900
+    match_reason: [path]
+    source_manifest: null              # local unit — resolve relative to hub manifest
+```
+
 ---
 
 ## Appendix A: Minimal Example

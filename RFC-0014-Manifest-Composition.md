@@ -149,6 +149,109 @@ Implementations MUST NOT silently produce an infinite loop.
 
 ---
 
+## Examples
+
+### Platform base manifest + compliance overlay
+
+ACME's platform team maintains a manifest with 80 units covering APIs, runbooks, and
+onboarding guides. The EU compliance team ships an overlay that adds GDPR-specific
+triggers, tightens sensitivity on one unit, and suppresses three US-only units — without
+forking the platform manifest.
+
+```yaml
+# eu-compliance/knowledge.yaml
+kcp_version: "0.14"
+project: acme-platform-eu
+
+composition:
+  includes:
+    - source: https://platform.acme.internal/knowledge.yaml
+
+  overrides:
+    - id: data-retention-policy
+      triggers:
+        - "GDPR"
+        - "data retention"
+        - "right to erasure"
+      sensitivity: confidential          # was: internal
+
+    - id: user-consent-flow
+      audience: [agent, compliance-officer]
+      intent: "How does user consent work under GDPR Article 7?"
+
+  excludes:
+    - id: us-state-tax-calculation
+    - id: us-hipaa-audit-log
+    - id: us-ccpa-opt-out
+
+units:
+  - id: gdpr-data-map
+    path: compliance/gdpr-data-map.md
+    intent: "What personal data does the platform process and under what GDPR legal basis?"
+    triggers: [GDPR, data map, legal basis, Article 6]
+    audience: [agent, compliance-officer]
+    sensitivity: confidential
+```
+
+When the platform team adds unit #81, all regional overlays inherit it automatically.
+No copy-paste. No fork drift.
+
+### Namespace collision avoidance (`as` prefix)
+
+Two included manifests both declare a unit named `overview`. Without namespacing, the
+second include silently overwrites the first. With `as` prefixes, both are preserved.
+
+```yaml
+kcp_version: "0.14"
+project: acme-combined-docs
+
+composition:
+  includes:
+    - source: ./billing/knowledge.yaml
+      as: billing            # units become billing/<id>, e.g. billing/overview
+    - source: ./shipping/knowledge.yaml
+      as: shipping           # units become shipping/<id>, e.g. shipping/overview
+
+  overrides:
+    - id: billing/overview   # namespace-qualified — only the billing overview is affected
+      audience: [agent, finance-team]
+
+  excludes:
+    - id: shipping/overview-legacy    # namespace-qualified
+
+# Both billing/overview and shipping/overview are present in the composed result.
+# Without 'as', the shipping include would have silently overwritten billing/overview.
+```
+
+### Enterprise narrative: 80 units, 3 regional overlays
+
+```
+acme/platform/knowledge.yaml   — 80 units, maintained by platform team
+
+eu/knowledge.yaml
+├─ includes: ../platform/knowledge.yaml
+├─ overrides: data-retention-policy (GDPR triggers), user-consent-flow (Article 7 intent)
+├─ excludes: us-state-tax-calculation, us-hipaa-audit-log, us-ccpa-opt-out
+└─ local units: gdpr-data-map, schrems-ii-transfer-rules
+
+us/knowledge.yaml
+├─ includes: ../platform/knowledge.yaml
+├─ excludes: eu-vat-calculation, gdpr-consent-flow
+└─ local units: ccpa-consumer-rights, hipaa-phi-handling
+
+apac/knowledge.yaml
+├─ includes: ../platform/knowledge.yaml
+├─ overrides: data-residency-guide (APAC data-sovereignty intent)
+└─ local units: pdpa-singapore-guide, china-pipl-transfer
+```
+
+Each overlay is a thin file — 15–20 lines of composition plus a handful of local units.
+When the platform team adds unit #81, all three overlays inherit it. When the EU team
+needs to suppress a US-only unit, they add one line to `excludes` rather than maintaining
+a 200-unit fork.
+
+---
+
 ## Relationship to Federation
 
 Federation (`manifests[]`, RFC-0003, RFC-0011) is a **runtime read path**: a running agent
