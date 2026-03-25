@@ -1,10 +1,10 @@
 # RFC-0008: Agent-Readiness
 
-**Status:** Request for Comments
+**Status:** Fully Accepted — manifest fields (`freshness_policy`, `requires_capabilities`, `/.well-known/kcp.json`) promoted in SPEC.md §§4,5,13 (v0.11–v0.12); query extensions (`has_capabilities`, `exclude_stale`, `federation_scope`, `source_manifest`) promoted in SPEC.md §15 (v0.14)
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-03-13
 **Discussion:** [#50 KCP Treasure Map Service](https://github.com/Cantara/knowledge-context-protocol/discussions/50)
-**Spec:** [SPEC.md](./SPEC.md) (current: v0.10)
+**Spec:** [SPEC.md](./SPEC.md) (current: v0.14)
 
 ---
 

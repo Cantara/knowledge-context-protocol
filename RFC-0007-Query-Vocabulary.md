@@ -1,11 +1,11 @@
 # RFC-0007: Query Vocabulary
 
-**Status:** Request for Comments
+**Status:** Accepted — promoted to [SPEC.md](./SPEC.md) §15 (v0.14)
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-03-13
 **Issues:** [#7 (query vocabulary)](https://github.com/Cantara/knowledge-context-protocol/issues)
 **Discussion:** [GitHub Issues](https://github.com/Cantara/knowledge-context-protocol/issues)
-**Spec:** [SPEC.md](./SPEC.md) (current: v0.10)
+**Spec:** [SPEC.md](./SPEC.md) (current: v0.14)
 
 ---
 

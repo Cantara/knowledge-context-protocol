@@ -1,6 +1,6 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.13
+**Version:** 0.14
 **Status:** Draft
 **Date:** 2026-03-25
 **Repository:** github.com/cantara/knowledge-context-protocol
@@ -2228,6 +2228,203 @@ MUST apply the following constraints:
 - Trust does NOT propagate transitively across federation boundaries. A manifest is
   authoritative only over the sub-manifests it directly declares. Trust escalation
   through transitive chains MUST NOT be assumed.
+
+---
+
+## 15. Query Vocabulary
+
+### 15.1 Purpose
+
+KCP manifests are designed for agents to navigate knowledge without loading everything at once.
+But navigation without a query standard requires each consumer to implement its own filtering
+logic — and requires agents to parse entire manifests before they know which units are relevant.
+
+This section defines a normative query vocabulary that lets tools, orchestrators, and agents ask:
+*"Which units match my current task, fit my context budget, and require capabilities I have?"*
+— and receive scored, budget-aware results without loading any unit content.
+
+The query vocabulary is a **consumer-side convention**, not a manifest-side addition. No
+changes to `knowledge.yaml` are required. All fields in this section are evaluated against
+existing manifest fields defined in §3 and §4.
+
+---
+
+### 15.2 Query Request Shape
+
+A query is a structured object. All fields are OPTIONAL — an empty query matches all units.
+
+```yaml
+# Full query example
+terms: ["authentication", "oauth2"]
+audience: agent
+scope: module
+sensitivity_max: internal
+max_token_budget: 8000
+include_summaries: true
+exclude_deprecated: true
+has_capabilities: [tool:kubectl, permission:deploy-prod]
+exclude_stale: true
+federation_scope: declared
+```
+
+#### Request field reference
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `terms` | `list[string]` | `[]` | Free-text search terms. Matched against `triggers`, `intent`, `id`, and `path`. |
+| `audience` | `string` | absent | If set, only return units whose `audience` list includes this value. |
+| `scope` | `string` | absent | If set, only return units whose `scope` equals this value. |
+| `sensitivity_max` | `string` | absent | Maximum sensitivity ceiling. Ordering: `public` < `internal` < `confidential` < `restricted`. Units above the ceiling are excluded. |
+| `max_token_budget` | `integer` | absent | Maximum total `hints.token_estimate` across all returned results. |
+| `include_summaries` | `boolean` | `true` | When `true` and `max_token_budget` is set, substitute `summary_unit` for units that exceed the remaining budget. |
+| `exclude_deprecated` | `boolean` | `true` | When `true`, units with `deprecated: true` are excluded. |
+| `has_capabilities` | `list[string]` | absent | Agent-declared capability set. Units whose `requires_capabilities` contains values not in this list are excluded. See §15.5. |
+| `exclude_stale` | `boolean` | `false` | When `true`, exclude units that compute as stale per their `freshness_policy`. See §15.6. |
+| `federation_scope` | `string` | `local` | Controls cross-manifest query range. See §15.7. |
+
+---
+
+### 15.3 Query Response Shape
+
+```yaml
+results:
+  - unit_id: auth-guide
+    score: 13
+    path: docs/api/authentication.md
+    token_estimate: 4200
+    summary_unit: auth-guide-tldr
+    match_reason: [trigger, intent]
+    source_manifest: null
+
+  - unit_id: sso-integration-guide
+    score: 8
+    path: docs/sso.md
+    token_estimate: 3100
+    match_reason: [intent]
+    source_manifest: identity-service
+```
+
+#### Response field reference
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `unit_id` | `string` | The `id` of the matching unit. |
+| `score` | `integer` | Relevance score. Higher is more relevant. |
+| `path` | `string` | The unit's `path` field (convenience — avoids a second lookup). |
+| `token_estimate` | `integer` or `null` | The unit's `hints.token_estimate`, if declared. |
+| `summary_unit` | `string` or `null` | The unit's `hints.summary_unit`, if declared. |
+| `match_reason` | `list[string]` | Scoring rules that contributed. Values: `trigger`, `intent`, `id`, `path`. |
+| `source_manifest` | `string` or `null` | `null` for units in the local manifest. When `federation_scope: declared`, the `manifests[].id` value of the sub-manifest the unit came from. Agents MUST resolve the unit path relative to the sub-manifest's base URL when `source_manifest` is non-null. |
+
+---
+
+### 15.4 Scoring Algorithm
+
+Implementations SHOULD score units using the following rules. Alternative scoring algorithms
+are permitted but the default SHOULD produce equivalent ordering for identical inputs.
+
+| Rule | Points | Condition |
+|------|--------|-----------|
+| Trigger match | 5 | Per search term that matches any entry in `triggers` (§4.9), case-insensitive substring. |
+| Intent match | 3 | Per search term that appears as a substring in `intent` (§4.5), case-insensitive. |
+| ID/path match | 1 | Per search term that appears as a substring in `id` or `path`, case-insensitive. |
+
+**Sorting:** Results are sorted descending by `score`. Ties are broken by declaration order in
+the manifest (earlier units first).
+
+**Top-N:** Implementations SHOULD return the top 5 results by default. The limit MAY be
+configurable by the caller.
+
+---
+
+### 15.5 Budget-Constrained Selection
+
+When `max_token_budget` is set, the scorer MUST apply the following algorithm after scoring:
+
+1. Sort candidates by score (descending).
+2. Walk the sorted list. For each candidate unit:
+   a. If `hints.token_estimate` fits in the remaining budget, include it and decrement the budget.
+   b. If `include_summaries: true` and the unit has `hints.summary_unit`, check whether the summary unit's `token_estimate` fits. If so, include the summary unit (not the original) and decrement the budget accordingly.
+   c. Otherwise, skip the unit.
+3. Stop when the budget is exhausted or all candidates have been evaluated.
+
+Units without `hints.token_estimate` are treated as having an estimate of 0 — they are always
+included, since their cost is unknown and presumed small.
+
+---
+
+### 15.6 Capability Filter (`has_capabilities`)
+
+When `has_capabilities` is set, units whose `requires_capabilities` (§4) contains values
+not present in the `has_capabilities` list are excluded from results.
+
+**Prefix normalization:** Implementations SHOULD treat bare values and `tool:`-prefixed values
+as equivalent (e.g. `kubectl` and `tool:kubectl` are the same). Unknown prefixes are treated as
+opaque strings and matched literally.
+
+**Absent `requires_capabilities`:** Units with no `requires_capabilities` declaration are
+always included regardless of the `has_capabilities` filter.
+
+---
+
+### 15.7 Freshness Filter (`exclude_stale`)
+
+When `exclude_stale: true`, units that compute as stale are excluded from results.
+
+A unit is **stale** when all of the following hold:
+
+- `validated` is declared on the unit.
+- `freshness_policy.max_age_days` is declared on the unit or root.
+- `(today − validated_date) > max_age_days` (using semver date comparison).
+
+Units without `validated` or without `freshness_policy.max_age_days` are **not** excluded —
+absence of a freshness declaration is not the same as stale.
+
+---
+
+### 15.8 Federation Scope
+
+The `federation_scope` field controls whether the query is evaluated against the local manifest
+only or also against federated sub-manifests declared in `manifests[]` (§3.6).
+
+| Value | Meaning |
+|-------|---------|
+| `local` | Query the local manifest only. **Default.** |
+| `declared` | Query the local manifest and all manifests listed in its `manifests[]` block (one hop). Results include `source_manifest` to identify origin. |
+
+`recursive` scope (transitively following sub-manifests across multiple hops) is deferred.
+Performance and SSRF amplification characteristics require empirical validation against real
+federation graphs before standardising. `declared` covers the vast majority of hub+leaf
+topologies.
+
+**Normative rules for `declared` scope:**
+
+- Implementations MUST fetch all `manifests[]` entries before scoring.
+- Implementations MUST apply all active filters (`audience`, `sensitivity_max`,
+  `has_capabilities`, `exclude_stale`, etc.) to sub-manifest units identically to local units.
+- Implementations MUST set `source_manifest` to the `manifests[].id` value of the origin
+  sub-manifest on each result that comes from a sub-manifest.
+- Implementations MUST apply the federation security constraints of §14.3 to all fetches
+  triggered by `federation_scope: declared`.
+- Implementations that do not support `federation_scope: declared` MUST treat it as `local`
+  and MUST NOT return an error.
+
+---
+
+### 15.9 Security Considerations for Queries
+
+- **`sensitivity_max` is advisory**, not access control. An agent MUST NOT treat query results
+  as a security boundary. The filter is for navigation efficiency, not authorization. See §14.1.
+
+- **`federation_scope: declared`** triggers outbound HTTPS fetches. All constraints of §14.3
+  (SSRF prevention, private address blocking, cycle detection, depth limits) apply.
+
+- **`source_manifest`** in responses discloses which sub-manifests were queried. This is
+  equivalent information to what is already declared in `manifests[]` and does not constitute
+  additional information disclosure.
+
+- **`has_capabilities`** reveals the querying agent's capability set to the query processor.
+  Implementations that proxy queries to third-party servers SHOULD document this disclosure.
 
 ---
 
