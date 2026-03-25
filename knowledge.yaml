@@ -1,10 +1,10 @@
 # KCP eats its own dogfood.
 # This manifest describes the Knowledge Context Protocol repository itself.
 
-kcp_version: "0.12"
+kcp_version: "0.14"
 project: knowledge-context-protocol
-version: 0.12.0
-updated: "2026-03-17"
+version: 0.14.0
+updated: "2026-03-25"
 language: en
 license: "Apache-2.0"
 indexing: open
@@ -88,6 +88,33 @@ units:
     validated: "2026-03-01"
     depends_on: [spec]
     triggers: [context window, token estimate, hints, chunking, summary, load strategy, eager, lazy, context budget, rfc-0006]
+
+  - id: rfc-0007
+    path: RFC-0007-Query-Vocabulary.md
+    intent: "RFC-0007 (accepted): query vocabulary — how agents declare task, audience, token budget, capability requirements, and staleness filters to select units from a manifest. Promoted to SPEC.md §15 in v0.14."
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-03-25"
+    depends_on: [spec]
+    triggers: [query, query vocabulary, terms, audience filter, token budget, has_capabilities, exclude_stale, federation_scope, scored results, rfc-0007]
+
+  - id: rfc-0008
+    path: RFC-0008-Budget-Constrained-Selection.md
+    intent: "RFC-0008 (accepted): budget-constrained selection — how manifest responses rank and filter units by score within a declared token budget. Promoted to SPEC.md §15 in v0.14."
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-03-25"
+    depends_on: [spec, rfc-0007]
+    triggers: [budget, token budget, max_token_budget, selection, scoring, ranked results, budget-aware, rfc-0008]
+
+  - id: rfc-0014
+    path: RFC-0014-Manifest-Composition.md
+    intent: "RFC-0014 (open RFC): manifest composition — how teams inherit base manifests without forking, using includes, overrides, and excludes primitives. Open for community input; not yet promoted to SPEC.md."
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-03-25"
+    depends_on: [spec, rfc-0003]
+    triggers: [composition, manifest composition, includes, overrides, excludes, fork, inherit, overlay, regional, base manifest, rfc-0014]
 
   - id: rfc-0012
     path: RFC-0012-Capability-Discovery-Provenance.md
@@ -443,6 +470,15 @@ relationships:
   # The RFC extends the spec
   - from: rfc-0001
     to: spec
+    type: enables
+  - from: rfc-0007
+    to: spec
+    type: enables
+  - from: rfc-0008
+    to: rfc-0007
+    type: enables
+  - from: rfc-0014
+    to: rfc-0003
     type: enables
   - from: rfc-0012
     to: spec

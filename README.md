@@ -17,7 +17,7 @@ MCP solved the tool connectivity problem. KCP addresses the knowledge structure 
 Drop a `knowledge.yaml` at the root of any project. Agents stop guessing and start navigating.
 
 ```yaml
-kcp_version: "0.10"
+kcp_version: "0.14"
 project: my-project
 version: 1.0.0
 units:
@@ -206,7 +206,7 @@ external_relationships:                # optional — cross-manifest relationshi
 Five fields per unit are enough to start:
 
 ```yaml
-kcp_version: "0.10"
+kcp_version: "0.14"
 project: my-project
 version: 1.0.0
 units:
@@ -225,7 +225,7 @@ The standard allows complexity but does not demand it.
 
 ```yaml
 # knowledge.yaml
-kcp_version: "0.10"
+kcp_version: "0.14"
 project: wiki.example.org
 version: 1.0.0
 updated: "2026-02-28"
@@ -401,10 +401,9 @@ Until formal acceptance, KCP remains an Apache 2.0 open specification proposed b
 
 ## Status
 
-**Current:** Draft specification — v0.10
+**Current:** Draft specification — v0.14
 
-This is an early proposal. The format is intentionally minimal. Feedback, use cases, and pull
-requests are welcome.
+The format is intentionally minimal and builds incrementally through promoted RFCs. Feedback, use cases, and pull requests are welcome.
 
 - **[SPEC.md](./SPEC.md)** — Normative specification (field definitions, validation rules, conformance levels)
 - **[PROPOSAL.md](./PROPOSAL.md)** — The case for a knowledge architecture standard
@@ -414,6 +413,10 @@ requests are welcome.
 - **[RFC-0004](./RFC-0004-Trust-and-Compliance.md)** — Trust, provenance, and compliance metadata (`trust.provenance`, `sensitivity` promoted in v0.5; `trust.audit` promoted in v0.6; `compliance` promoted to core in v0.7)
 - **[RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md)** — Payment and rate-limit metadata proposal (`payment.default_tier` promoted to core in v0.5; `rate_limits` promoted to core in v0.8; payment methods and x402 remain RFC)
 - **[RFC-0006](./RFC-0006-Context-Window-Hints.md)** — Context window hints (accepted; promoted to SPEC.md §4.10 in v0.4)
+- **[RFC-0007](./RFC-0007-Query-Vocabulary.md)** — Query vocabulary (accepted; promoted to SPEC.md §15 in v0.14): `terms`, `audience`, `max_token_budget`, `has_capabilities`, `exclude_stale`, `federation_scope`
+- **[RFC-0008](./RFC-0008-Budget-Constrained-Selection.md)** — Budget-constrained selection (accepted; promoted to SPEC.md §15 in v0.14): scored results, token-budget-aware ranking
+- **[RFC-0012](./RFC-0012-Capability-Discovery-Provenance.md)** — Capability discovery provenance (accepted; promoted to SPEC.md v0.12): `discovery` block with `verification_status`, `confidence`, `source`, `contradicted_by`
+- **[RFC-0014](./RFC-0014-Manifest-Composition.md)** — Manifest composition (open RFC): `includes`, `overrides`, `excludes` — inherit base manifests without forking. Open for discussion.
 - **parsers/** — Reference parser/validator implementations (Python, Java) — 401 tests passing
 - **bridge/** — MCP servers: expose any `knowledge.yaml` as MCP resources (TypeScript · Python · Java). The TypeScript parser, validator, and mapper live in `bridge/typescript/src/` (parser.ts, validator.ts, mapper.ts).
 - **plugins/opencode/** — OpenCode plugin (`opencode-kcp-plugin` on npm)

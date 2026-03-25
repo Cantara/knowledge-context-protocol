@@ -10,6 +10,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.14.0] — 2026-03-25 — Query Vocabulary Release
+
+### Spec
+
+- **v0.14.0 — Query Vocabulary Release** (RFC-0007 + RFC-0008 promoted, RFC-0014 published)
+  - `query` block (§15): normative query vocabulary for agent manifest selection. Fields: `terms` (keyword match against triggers/intent), `audience` (filter by audience), `max_token_budget` (budget-constrained selection), `has_capabilities` (exclude units requiring capabilities the agent lacks), `exclude_stale` (drop units past `freshness_policy.max_age_days`), `federation_scope: declared` (expand to all sub-manifests in `manifests[]` in one hop).
+  - `query_response` structure: scored results with `score`, `path`, `token_estimate`, `match_reason`, and `source_manifest` for federated results.
+  - Normative rule: empty query matches all units.
+  - Normative rule: `federation_scope: declared` results MUST include `source_manifest` field.
+  - `KNOWN_KCP_VERSIONS` updated to include `"0.14"` in all three validators.
+  - Appendix examples updated to `kcp_version: "0.14"`.
+
+### RFC Status
+
+- **RFC-0007 (Query Vocabulary):** Status updated to "Accepted — promoted to SPEC.md v0.14 §15".
+- **RFC-0008 (Budget-Constrained Selection):** Status updated to "Accepted — promoted to SPEC.md v0.14 §15".
+- **RFC-0014 (Manifest Composition):** Published as open RFC. Proposes `composition` block with three primitives: `includes` (pull base manifest by reference), `overrides` (modify unit-level metadata locally), `excludes` (suppress units by id). Open for community input — not yet promoted.
+
+---
+
 ## [0.12.0] — 2026-03-17 — Governance Release
 
 ### Spec
