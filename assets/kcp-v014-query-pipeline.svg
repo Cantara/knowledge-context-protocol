@@ -1,0 +1,94 @@
+<svg width="920" height="260" viewBox="0 0 920 260" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#9ca3af"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="920" height="260" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="460" y="30" text-anchor="middle" font-family="'Courier New', monospace" font-size="13" font-weight="bold" fill="#111827">KCP v0.14 — §15 Query Pipeline</text>
+
+  <!-- ── Box 1: Query Request ── -->
+  <rect x="16" y="48" width="152" height="164" rx="5" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+  <rect x="16" y="48" width="152" height="28" rx="5" fill="#3b82f6"/>
+  <rect x="16" y="62" width="152" height="14" fill="#3b82f6"/>
+  <text x="92" y="67" text-anchor="middle" font-family="'Courier New', monospace" font-size="10.5" font-weight="bold" fill="#ffffff">Query Request</text>
+  <text x="92" y="94"  text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#1e40af">terms: [...]</text>
+  <text x="92" y="110" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#374151">audience</text>
+  <text x="92" y="125" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#374151">sensitivity_max</text>
+  <text x="92" y="140" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#1e40af">has_capabilities</text>
+  <text x="92" y="155" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#1e40af">exclude_stale</text>
+  <text x="92" y="170" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#374151">max_token_budget</text>
+  <text x="92" y="185" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#1e40af">federation_scope</text>
+  <text x="92" y="200" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#374151">include_summaries</text>
+
+  <!-- Arrow 1 -->
+  <line x1="168" y1="130" x2="192" y2="130" stroke="#9ca3af" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+  <!-- ── Box 2: Filters ── -->
+  <rect x="196" y="48" width="152" height="164" rx="5" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+  <rect x="196" y="48" width="152" height="28" rx="5" fill="#f59e0b"/>
+  <rect x="196" y="62" width="152" height="14" fill="#f59e0b"/>
+  <text x="272" y="67" text-anchor="middle" font-family="'Courier New', monospace" font-size="10.5" font-weight="bold" fill="#ffffff">Filters</text>
+  <text x="272" y="94"  text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#92400e">● capability gate</text>
+  <text x="272" y="108" text-anchor="middle" font-family="'Courier New', monospace" font-size="8.5" fill="#9ca3af">requires_capabilities</text>
+  <text x="272" y="128" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#92400e">● freshness gate</text>
+  <text x="272" y="142" text-anchor="middle" font-family="'Courier New', monospace" font-size="8.5" fill="#9ca3af">freshness_policy</text>
+  <text x="272" y="162" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#92400e">● audience gate</text>
+  <text x="272" y="182" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#92400e">● sensitivity gate</text>
+  <text x="272" y="202" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#92400e">● deprecated gate</text>
+
+  <!-- Arrow 2 -->
+  <line x1="348" y1="130" x2="372" y2="130" stroke="#9ca3af" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+  <!-- ── Box 3: Scorer ── -->
+  <rect x="376" y="48" width="152" height="164" rx="5" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5"/>
+  <rect x="376" y="48" width="152" height="28" rx="5" fill="#22c55e"/>
+  <rect x="376" y="62" width="152" height="14" fill="#22c55e"/>
+  <text x="452" y="67" text-anchor="middle" font-family="'Courier New', monospace" font-size="10.5" font-weight="bold" fill="#ffffff">Scorer</text>
+  <text x="452" y="94"  text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#14532d">trigger match</text>
+  <text x="452" y="108" text-anchor="middle" font-family="'Courier New', monospace" font-size="9" fill="#9ca3af">5 pts per term</text>
+  <text x="452" y="128" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#14532d">intent match</text>
+  <text x="452" y="142" text-anchor="middle" font-family="'Courier New', monospace" font-size="9" fill="#9ca3af">3 pts per term</text>
+  <text x="452" y="162" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#14532d">id / path match</text>
+  <text x="452" y="176" text-anchor="middle" font-family="'Courier New', monospace" font-size="9" fill="#9ca3af">1 pt per term</text>
+  <text x="452" y="198" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#14532d">sort ↓ score</text>
+
+  <!-- Arrow 3 -->
+  <line x1="528" y1="130" x2="552" y2="130" stroke="#9ca3af" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+  <!-- ── Box 4: Budget ── -->
+  <rect x="556" y="48" width="152" height="164" rx="5" fill="#fdf4ff" stroke="#a855f7" stroke-width="1.5"/>
+  <rect x="556" y="48" width="152" height="28" rx="5" fill="#a855f7"/>
+  <rect x="556" y="62" width="152" height="14" fill="#a855f7"/>
+  <text x="632" y="67" text-anchor="middle" font-family="'Courier New', monospace" font-size="10.5" font-weight="bold" fill="#ffffff">Budget Selector</text>
+  <text x="632" y="94"  text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#581c87">walk sorted list</text>
+  <text x="632" y="112" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#581c87">unit fits budget?</text>
+  <text x="632" y="126" text-anchor="middle" font-family="'Courier New', monospace" font-size="8.5" fill="#9ca3af">↳ include, decrement</text>
+  <text x="632" y="146" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#581c87">summary available?</text>
+  <text x="632" y="160" text-anchor="middle" font-family="'Courier New', monospace" font-size="8.5" fill="#9ca3af">↳ sub summary unit</text>
+  <text x="632" y="180" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#581c87">budget exhausted?</text>
+  <text x="632" y="194" text-anchor="middle" font-family="'Courier New', monospace" font-size="8.5" fill="#9ca3af">↳ stop</text>
+
+  <!-- Arrow 4 -->
+  <line x1="708" y1="130" x2="732" y2="130" stroke="#9ca3af" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+  <!-- ── Box 5: Results ── -->
+  <rect x="736" y="48" width="152" height="164" rx="5" fill="#f9fafb" stroke="#6b7280" stroke-width="1.5"/>
+  <rect x="736" y="48" width="152" height="28" rx="5" fill="#6b7280"/>
+  <rect x="736" y="62" width="152" height="14" fill="#6b7280"/>
+  <text x="812" y="67" text-anchor="middle" font-family="'Courier New', monospace" font-size="10.5" font-weight="bold" fill="#ffffff">Ranked Results</text>
+  <text x="812" y="94"  text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#374151">unit_id</text>
+  <text x="812" y="110" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#374151">score</text>
+  <text x="812" y="126" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#374151">path</text>
+  <text x="812" y="142" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#374151">token_estimate</text>
+  <text x="812" y="158" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#374151">match_reason</text>
+  <text x="812" y="174" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#1e40af">source_manifest</text>
+  <text x="812" y="192" text-anchor="middle" font-family="'Courier New', monospace" font-size="9.5" fill="#374151">summary_unit</text>
+
+  <!-- Footer -->
+  <text x="460" y="242" text-anchor="middle" font-family="'Courier New', monospace" font-size="9" fill="#9ca3af">Knowledge Context Protocol — github.com/cantara/knowledge-context-protocol</text>
+</svg>
