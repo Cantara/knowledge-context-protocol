@@ -1,0 +1,46 @@
+{
+  "name": "kcp",
+  "version": "0.14.0",
+  "description": "Developer CLI for the Knowledge Context Protocol — init, validate, and query knowledge.yaml manifests",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "dist/cli.js",
+  "bin": {
+    "kcp": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^4.0.0"
+  },
+  "keywords": [
+    "kcp",
+    "knowledge-context-protocol",
+    "knowledge-yaml",
+    "ai-agents",
+    "developer-tools",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Cantara/knowledge-context-protocol"
+  },
+  "homepage": "https://github.com/Cantara/knowledge-context-protocol/tree/main/cli"
+}
