@@ -10,6 +10,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.14.3] — 2026-03-27 — Observability + Content Structure + Negative Space
+
+### RFC
+
+- **RFC-0015 (Negative Space Declarations):** `not_for` — list of strings declaring what a unit does NOT address. `not_for_strict: true` for hard exclusion on match. First subtractive field in the spec. Open RFC.
+- **RFC-0016 (Content Structure Declaration):** `content_structure` block on knowledge units: `primary` (dominant modality: prose/table/code/list/diagram/reference/mixed), `contains` (all modalities present), `density` (sparse/normal/dense). Lets RAG pipelines route before fetching. Open RFC.
+- **RFC-0017 (Observability Hooks):** Local-first usage event schema in `~/.kcp/usage.db` (SQLite). Bridges MAY log `search` and `get_unit` events. Fields: `timestamp`, `event_type`, `project`, `query`, `unit_id`, `result_count`, `token_estimate`, `manifest_token_total`. Enables `kcp stats`. WAL mode required. Open RFC.
+
+### Bridge (Java)
+
+- `UsageLogger.java`: async SQLite logger (CompletableFuture, never blocks MCP responses). Schema init with WAL + indexes on startup.
+- `KcpServer.java`: `manifestTokenTotal` computed once in `buildResources()`. `logSearch()` called in `handleSearchKnowledge()`, `logGetUnit()` called in `handleGetUnit()`.
+- `ResourceSet` record: added `manifestTokenTotal` field.
+- `sqlite-jdbc 3.49.1.0` added as production dependency.
+
+### CLI (`kcp`) — v0.15.0
+
+- `kcp stats` — new command showing queries served, units fetched, tokens saved, top units, top queries. Reads `~/.kcp/usage.db`. Flags: `--days N`, `--json`, `--project <name>`.
+- `better-sqlite3` added as dependency (native addon, ships prebuilts for all platforms).
+
+### Bug Fixes
+
+- Python validator: `discovery.contradicted_by` now checked for type before set membership test — fixes `TypeError: unhashable type: 'list'` crash when value is a list.
+- Example `scenario7`: `contradicted_by` corrected to single string (per spec).
+
+---
+
 ## [0.14.0] — 2026-03-25 — Query Vocabulary Release
 
 ### Spec

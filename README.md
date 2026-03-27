@@ -417,8 +417,12 @@ The format is intentionally minimal and builds incrementally through promoted RF
 - **[RFC-0008](./RFC-0008-Budget-Constrained-Selection.md)** — Budget-constrained selection (accepted; promoted to SPEC.md §15 in v0.14): scored results, token-budget-aware ranking
 - **[RFC-0012](./RFC-0012-Capability-Discovery-Provenance.md)** — Capability discovery provenance (accepted; promoted to SPEC.md v0.12): `discovery` block with `verification_status`, `confidence`, `source`, `contradicted_by`
 - **[RFC-0014](./RFC-0014-Manifest-Composition.md)** — Manifest composition (open RFC): `includes`, `overrides`, `excludes` — inherit base manifests without forking. Open for discussion.
+- **[RFC-0015](./RFC-0015-Negative-Space-Declarations.md)** — Negative space declarations (open RFC): `not_for` declares what a unit does NOT answer. `not_for_strict: true` for hard exclusion. First subtractive field in the spec.
+- **[RFC-0016](./RFC-0016-Content-Structure-Declaration.md)** — Content structure declaration (open RFC): `content_structure.primary` (prose/table/code/list/diagram/reference/mixed), `contains`, `density` (sparse/normal/dense). Lets RAG pipelines route before fetching.
+- **[RFC-0017](./RFC-0017-Observability-Hooks.md)** — Observability hooks (open RFC): local-first usage event schema at `~/.kcp/usage.db`. Bridges log `search` and `get_unit` events. Powers `kcp stats`.
 - **parsers/** — Reference parser/validator implementations (Python, Java) — 401 tests passing
 - **bridge/** — MCP servers: expose any `knowledge.yaml` as MCP resources (TypeScript · Python · Java). The TypeScript parser, validator, and mapper live in `bridge/typescript/src/` (parser.ts, validator.ts, mapper.ts).
+- **cli/** — Developer CLI (`npx kcp`): `init`, `validate`, `query`, `stats`. Run `kcp stats` to see queries served, tokens saved, and top units from your local usage log.
 - **plugins/opencode/** — OpenCode plugin (`opencode-kcp-plugin` on npm)
 - **examples/** — Reference manifests at four adoption levels plus 4 simulation scenarios (150 adversarial tests: A2A+KCP clinical research, energy metering HITL, legal delegation chains, financial AML)
 - **[kcp-memory](https://github.com/Cantara/kcp-memory)** — Episodic memory daemon for Claude Code (separate repo)
