@@ -422,7 +422,7 @@ The format is intentionally minimal and builds incrementally through promoted RF
 - **[RFC-0017](./RFC-0017-Observability-Hooks.md)** — Observability hooks (open RFC): local-first usage event schema at `~/.kcp/usage.db`. Bridges log `search` and `get_unit` events. Powers `kcp stats`.
 - **parsers/** — Reference parser/validator implementations (Python, Java) — 401 tests passing
 - **bridge/** — MCP servers: expose any `knowledge.yaml` as MCP resources (TypeScript · Python · Java). The TypeScript parser, validator, and mapper live in `bridge/typescript/src/` (parser.ts, validator.ts, mapper.ts).
-- **cli/** — Developer CLI (`npx kcp`): `init`, `validate`, `query`, `stats`. Run `kcp stats` to see queries served, tokens saved, and top units from your local usage log.
+- **cli/** — Developer CLI: `init`, `validate`, `query`, `stats`. Installed automatically by [kcp-commands](https://github.com/Cantara/kcp-commands) — run `kcp stats` to see queries served, tokens saved, and top units from your local usage log.
 - **plugins/opencode/** — OpenCode plugin (`opencode-kcp-plugin` on npm)
 - **examples/** — Reference manifests at four adoption levels plus 4 simulation scenarios (150 adversarial tests: A2A+KCP clinical research, energy metering HITL, legal delegation chains, financial AML)
 - **[kcp-memory](https://github.com/Cantara/kcp-memory)** — Episodic memory daemon for Claude Code (separate repo)
