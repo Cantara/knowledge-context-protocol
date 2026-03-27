@@ -210,7 +210,7 @@ units:
       source: manual
       confidence: 1.0
       verified_at: "2024-01-01T00:00:00Z"
-      contradicted_by: [order-api, inventory-api]  # replaced by REST APIs
+      contradicted_by: order-api  # replaced by REST APIs (spec: single unit id)
 
 relationships:
   - from: authentication-guide

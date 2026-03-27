@@ -436,11 +436,16 @@ def _validate_discovery(discovery, unit_ids: set[str], prefix: str, warnings: li
             f"(SHOULD only be set for verified units)"
         )
 
-    # contradicted_by must reference a known unit id
-    if discovery.contradicted_by is not None and discovery.contradicted_by not in unit_ids:
-        warnings.append(
-            f"{prefix}: discovery.contradicted_by references unknown unit '{discovery.contradicted_by}'"
-        )
+    # contradicted_by must be a string unit id (not a list)
+    if discovery.contradicted_by is not None:
+        if not isinstance(discovery.contradicted_by, str):
+            warnings.append(
+                f"{prefix}: discovery.contradicted_by must be a single unit id (string), got {type(discovery.contradicted_by).__name__}"
+            )
+        elif discovery.contradicted_by not in unit_ids:
+            warnings.append(
+                f"{prefix}: discovery.contradicted_by references unknown unit '{discovery.contradicted_by}'"
+            )
 
 
 def _validate_authority(authority, prefix: str, warnings: list[str]) -> None:
