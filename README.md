@@ -371,6 +371,16 @@ MCP server (6 tools: `kcp_memory_search`, `kcp_memory_events_search`, `kcp_memor
 for near-real-time indexing. v0.4.0 — proactive session-start context via `PWD` detection.
 Install: `curl -fsSL https://raw.githubusercontent.com/Cantara/kcp-memory/main/bin/install.sh | bash`
 
+**[kcp-dashboard](https://github.com/Cantara/kcp-dashboard)** is a live terminal dashboard for
+KCP usage statistics. Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) +
+[Lip Gloss](https://github.com/charmbracelet/lipgloss) (Go). Shows queries served, units fetched,
+tokens saved, top units (bar chart), and recent queries — auto-refreshed every 2 seconds from
+`~/.kcp/usage.db` (RFC-0017). Keyboard: `q` quit · `d` cycle day range · `r` force refresh.
+Single binary, no runtime deps. Install:
+```bash
+curl -fsSL https://github.com/Cantara/kcp-dashboard/releases/latest/download/kcp-dashboard-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') -o ~/.local/bin/kcp-dashboard && chmod +x ~/.local/bin/kcp-dashboard
+```
+
 ---
 
 ## Blog series
@@ -426,6 +436,7 @@ The format is intentionally minimal and builds incrementally through promoted RF
 - **plugins/opencode/** — OpenCode plugin (`opencode-kcp-plugin` on npm)
 - **examples/** — Reference manifests at four adoption levels plus 4 simulation scenarios (150 adversarial tests: A2A+KCP clinical research, energy metering HITL, legal delegation chains, financial AML)
 - **[kcp-memory](https://github.com/Cantara/kcp-memory)** — Episodic memory daemon for Claude Code (separate repo)
+- **[kcp-dashboard](https://github.com/Cantara/kcp-dashboard)** — Live terminal dashboard for KCP usage stats (Go + Bubble Tea, single binary)
 
 ---
 
