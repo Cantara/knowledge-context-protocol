@@ -52,6 +52,13 @@
             <artifactId>mcp</artifactId>
         </dependency>
 
+        <!-- SQLite for local usage logging (RFC-0017) -->
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>3.49.1.0</version>
+        </dependency>
+
         <!-- SLF4J no-op: suppress SDK logging noise in CLI -->
         <dependency>
             <groupId>org.slf4j</groupId>

@@ -1,6 +1,6 @@
 {
   "name": "kcp",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "Developer CLI for the Knowledge Context Protocol — init, validate, and query knowledge.yaml manifests",
   "license": "Apache-2.0",
   "type": "module",
@@ -22,9 +22,11 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
+    "better-sqlite3": "^11.0.0",
     "js-yaml": "^4.1.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.0.0",
     "typescript": "^5.4.0",

@@ -36,7 +36,8 @@ public final class KcpServer {
         Map<String, KnowledgeUnit> units,
         Map<String, Path> unitDirs,
         KnowledgeManifest primaryManifest,
-        int totalUnits
+        int totalUnits,
+        int manifestTokenTotal
     ) {}
 
     @FunctionalInterface
@@ -150,7 +151,14 @@ public final class KcpServer {
             });
         }
 
-        return new ResourceSet(resources, handlers, unitMap, dirMap, manifest, unitMap.size());
+        int manifestTokenTotal = 0;
+        for (KnowledgeUnit u : unitMap.values()) {
+            if (u.hints() instanceof Map<?, ?> h) {
+                Object te = h.get("token_estimate");
+                if (te instanceof Number n) manifestTokenTotal += n.intValue();
+            }
+        }
+        return new ResourceSet(resources, handlers, unitMap, dirMap, manifest, unitMap.size(), manifestTokenTotal);
     }
 
     // ── Search scoring (package-private for tests) ─────────────────────────────
@@ -487,6 +495,8 @@ public final class KcpServer {
         }
         sb.append("\n]");
 
+        UsageLogger.logSearch(rs.primaryManifest().project(), query, top5.size(), rs.manifestTokenTotal());
+
         return new McpSchema.CallToolResult(
             List.of(new McpSchema.TextContent(sb.toString())),
             false, null, null);
@@ -515,6 +525,14 @@ public final class KcpServer {
 
         try {
             KcpContent.ContentResult content = KcpContent.read(unitDir, unit.path(), mime);
+
+            Integer tokenEstimate = null;
+            if (unit.hints() instanceof Map<?, ?> h) {
+                Object te = h.get("token_estimate");
+                if (te instanceof Number n) tokenEstimate = n.intValue();
+            }
+            UsageLogger.logGetUnit(rs.primaryManifest().project(), unitId, tokenEstimate, rs.manifestTokenTotal());
+
             if (content.binary()) {
                 return new McpSchema.CallToolResult(
                     List.of(new McpSchema.TextContent(
