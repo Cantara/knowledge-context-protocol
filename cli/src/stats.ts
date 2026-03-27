@@ -4,6 +4,9 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
+
+const _require = createRequire(import.meta.url);
 
 export interface StatsOptions {
   json: boolean;
@@ -39,8 +42,7 @@ export function runStats(options: StatsOptions): void {
   }
 
   // Lazy-load better-sqlite3 — keeps startup fast for other commands
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const Database = require("better-sqlite3") as typeof import("better-sqlite3");
+  const Database = _require("better-sqlite3") as typeof import("better-sqlite3");
   const db = new Database(DB_PATH, { readonly: true });
 
   const sinceDate = new Date();
