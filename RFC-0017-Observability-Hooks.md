@@ -52,12 +52,12 @@ Each usage event is a row in the `usage_events` table:
 |--------|------|----------|-------------|
 | `id` | INTEGER | yes | Auto-increment row id |
 | `timestamp` | TEXT | yes | ISO 8601 UTC (e.g. `2026-03-27T14:30:00Z`) |
-| `event_type` | TEXT | yes | One of: `search`, `get_unit` |
-| `project` | TEXT | yes | Manifest `project` field value |
+| `event_type` | TEXT | yes | One of: `search`, `get_unit`, `inject` |
+| `project` | TEXT | yes | Manifest `project` field value (or basename of working directory) |
 | `query` | TEXT | no | The search query string (`search` events only) |
-| `unit_id` | TEXT | no | The unit id fetched (`get_unit` events only) |
+| `unit_id` | TEXT | no | The unit id fetched (`get_unit`) or manifest key injected (`inject`) |
 | `result_count` | INTEGER | no | Number of results returned (`search` events only) |
-| `token_estimate` | INTEGER | no | Token estimate of the fetched unit (`hints.token_estimate`) |
+| `token_estimate` | INTEGER | no | Token estimate of the fetched/injected content (chars / 4) |
 | `manifest_token_total` | INTEGER | no | Sum of `hints.token_estimate` across all units in the manifest |
 | `session_id` | TEXT | no | Opaque session identifier, if available |
 
@@ -87,8 +87,20 @@ CREATE INDEX IF NOT EXISTS idx_usage_unit_id   ON usage_events(unit_id);
 - **Default path:** `~/.kcp/usage.db`
 - **Override:** Via `KCP_USAGE_DB` environment variable or bridge flag
 - **Format:** SQLite 3, WAL journal mode (allows concurrent readers)
-- **Writers:** KCP bridge implementations
-- **Readers:** `kcp stats` CLI, `kcp_memory_stats` MCP tool, user tooling
+- **Writers:** KCP bridge implementations (kcp-mcp: `search`/`get_unit`; kcp-commands: `inject`)
+- **Readers:** `kcp stats` CLI, `kcp_memory_stats` MCP tool, `kcp-dashboard`, user tooling
+
+### Event type semantics
+
+| Event type | Emitted by | Trigger |
+|------------|-----------|---------|
+| `search` | kcp-mcp bridge | Agent calls `search_knowledge` tool |
+| `get_unit` | kcp-mcp bridge | Agent calls `get_unit` tool |
+| `inject` | kcp-commands daemon | Manifest hit served to Claude Code PreToolUse hook |
+
+For `inject` events: `unit_id` is the resolved manifest key (e.g. `git`, `git-log`, `docker-run`),
+`token_estimate` is `max(1, contextLength / 4)` where `contextLength` is the character length of the
+injected `additionalContext` string, and `project` is the basename of the working directory (`cwd`).
 
 ### `tokens_saved` calculation
 
