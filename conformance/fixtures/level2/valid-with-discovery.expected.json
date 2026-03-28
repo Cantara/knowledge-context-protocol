@@ -1,0 +1,20 @@
+{
+  "valid": true,
+  "level": 2,
+  "units": 7,
+  "discovery_root_defaults": {
+    "source": "web_traversal",
+    "verification_status": "observed",
+    "observed_at": "2026-03-20T10:00:00Z"
+  },
+  "discovery_statuses": {
+    "observed": 4,
+    "verified": 1,
+    "rumored": 1,
+    "deprecated": 1
+  },
+  "contradictions": [
+    ["payments-v2", "payments-v1"]
+  ],
+  "notes": "All rumored units have confidence < 0.5. Verified units have confidence >= 0.8. Deprecated unit has load_strategy: never implied."
+}
