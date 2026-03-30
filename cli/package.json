@@ -16,6 +16,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "bundle": "esbuild src/cli.ts --bundle --platform=node --format=esm --external:better-sqlite3 --outfile=dist/kcp-user-cli.js",
     "dev": "tsc --watch",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -29,6 +30,7 @@
     "@types/better-sqlite3": "^7.6.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.0.0",
+    "esbuild": "^0.24.0",
     "typescript": "^5.4.0",
     "vitest": "^4.0.0"
   },
