@@ -30,7 +30,7 @@
     "@types/better-sqlite3": "^7.6.0",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.0.0",
-    "esbuild": "^0.24.0",
+    "esbuild": "^0.28.0",
     "typescript": "^5.4.0",
     "vitest": "^4.0.0"
   },
