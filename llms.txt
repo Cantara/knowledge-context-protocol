@@ -1,0 +1,54 @@
+# Knowledge Context Protocol (KCP)
+
+> A structured metadata standard that makes knowledge navigable by AI agents.
+> KCP is to knowledge what MCP is to tools.
+
+KCP defines how to add a `knowledge.yaml` manifest to any project or documentation site
+so AI agents can navigate it efficiently — without exploring by trial and error.
+Where llms.txt gives agents a flat list, KCP gives agents a map: intents, dependency
+chains, audience targeting, freshness dating, signing, and federation — all in YAML.
+
+Validated benchmark: 53–80% fewer agent tool calls vs unguided exploration (5 frameworks).
+Apache-2.0. Maintained by the Cantara Norwegian Software Development Foundation.
+
+## Structured Navigation (for AI agents)
+
+This repository ships a KCP v0.14 manifest, Ed25519-signed:
+https://cantara.github.io/knowledge-context-protocol/knowledge.yaml
+
+Signing public key: https://cantara.github.io/knowledge-context-protocol/.well-known/kcp-signing-key.pub
+
+To use: fetch the manifest → parse YAML → match query against each unit's `triggers`
+(keyword list) and `intent` (natural language) → fetch the `path` of the best match.
+Use `relationships` to navigate related content.
+
+Example: "How do I validate a knowledge.yaml?" → trigger `validation, schema`
+→ unit `json-schema` → fetch schema/knowledge-schema.json
+
+## Key Files
+
+- [SPEC.md](SPEC.md) — Normative specification: all fields, validation rules, conformance levels
+- [PROPOSAL.md](PROPOSAL.md) — Why KCP exists and what problem it solves
+- [README.md](README.md) — Overview, MCP/llms.txt comparison, getting started
+- [guides/adopting-kcp-in-existing-projects.md](guides/adopting-kcp-in-existing-projects.md) — Add KCP in under 30 minutes
+- [examples/README.md](examples/README.md) — Example manifests + simulation scenarios
+- [RFC-0001-KCP-Extended.md](RFC-0001-KCP-Extended.md) — Extensions: payments, compliance, federation
+- [RFC-0003-Federation.md](RFC-0003-Federation.md) — Cross-manifest federation
+- [RFC-0007-Query-Vocabulary.md](RFC-0007-Query-Vocabulary.md) — Agent query vocabulary (promoted v0.14)
+
+## KCP Toolchain
+
+- [kcp-commands](https://github.com/Cantara/kcp-commands) — Claude Code hook, saves 33% context window
+- [kcp-memory](https://github.com/Cantara/kcp-memory) — Episodic memory hub for agent networks
+- [kcp-triage](https://github.com/Cantara/kcp-triage) — Automated site triage, builds KCP manifests
+- [kcp-dashboard](https://github.com/Cantara/kcp-dashboard) — Terminal TUI for KCP observability
+
+## How KCP Relates to llms.txt and MCP
+
+- **llms.txt** — flat URL index. KCP extends this with structure, intent, and federation.
+- **MCP** — connects agents to tools. KCP structures the knowledge those tools serve.
+- They compose: a project can have llms.txt for breadth, knowledge.yaml for agents that understand structure.
+
+## License
+
+Apache-2.0 — specification and all reference implementations

@@ -1,10 +1,37 @@
 # KCP eats its own dogfood.
 # This manifest describes the Knowledge Context Protocol repository itself.
+# Served via GitHub Pages — canonical: https://cantara.github.io/knowledge-context-protocol/knowledge.yaml
+version: "0.14"
 
-kcp_version: "0.11"
+entity:
+  name: Knowledge Context Protocol (KCP)
+  domain: cantara.github.io/knowledge-context-protocol
+  type: open-standard
+  description: >
+    A structured metadata standard that makes knowledge navigable by AI agents.
+    KCP is to knowledge what MCP is to tools.
+
+authority:
+  owner: Cantara — Norwegian Software Development Foundation
+  repo: https://github.com/Cantara/knowledge-context-protocol
+  license: Apache-2.0
+  website: https://cantara.github.io/knowledge-context-protocol/
+
+discovery:
+  provenance: canonical
+  confidence: high
+  staleness_days: 14
+
+signing:
+  scheme: ed25519
+  scope: this-manifest
+  public_key: https://cantara.github.io/knowledge-context-protocol/.well-known/kcp-signing-key.pub
+  signature: https://cantara.github.io/knowledge-context-protocol/knowledge.yaml.sig
+
+kcp_version: "0.14"
 project: knowledge-context-protocol
-version: 0.11.0
-updated: "2026-03-15"
+spec_version: 0.14.0
+updated: "2026-03-25"
 language: en
 license: "Apache-2.0"
 indexing: open
