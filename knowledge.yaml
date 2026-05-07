@@ -17,6 +17,7 @@ authority:
   repo: https://github.com/Cantara/knowledge-context-protocol
   license: Apache-2.0
   website: https://cantara.github.io/knowledge-context-protocol/
+  org_manifest: https://wiki.cantara.no/knowledge/projects/kcp.yaml
 
 discovery:
   provenance: canonical
