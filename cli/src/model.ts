@@ -42,6 +42,13 @@ export interface Discovery {
   contradicted_by?: string;
 }
 
+/** Content structure block. See RFC-0016 (v0.17). */
+export interface ContentStructure {
+  primary?: string;        // prose | table | code | list | diagram | reference | mixed
+  contains?: string[];     // list of modalities
+  density?: string;        // sparse | normal | dense
+}
+
 /** Freshness policy for a unit or manifest default. See SPEC.md §3.7 (v0.11). */
 export interface FreshnessPolicy {
   max_age_days?: number;
@@ -81,6 +88,9 @@ export interface KnowledgeUnit {
   visibility?: Visibility;
   authority?: Authority;
   discovery?: Discovery;
+  not_for?: string[];      // RFC-0015 (v0.17) — negative-space declarations
+  not_for_strict?: boolean;  // RFC-0015 (v0.17) — default false
+  content_structure?: ContentStructure;  // RFC-0016 (v0.17)
 }
 
 export interface Relationship {
@@ -208,6 +218,7 @@ export interface KnowledgeManifest {
   visibility?: Visibility;
   authority?: Authority;
   discovery?: Discovery;
+  not_for?: string[];      // RFC-0015 (v0.17) — manifest-level negative-space declarations
 }
 
 export interface ValidationResult {

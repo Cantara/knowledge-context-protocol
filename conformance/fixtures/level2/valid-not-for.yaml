@@ -1,0 +1,14 @@
+# Level 2 — valid: unit with not_for negative-space declarations (RFC-0015, v0.17)
+kcp_version: "0.17"
+project: test-not-for
+version: "1.0.0"
+
+units:
+  - id: api-reference
+    path: docs/api.md
+    intent: "Complete API reference for the billing service"
+    scope: project
+    audience: [developer]
+    not_for:
+      - "end-user onboarding"
+      - "marketing copy"
