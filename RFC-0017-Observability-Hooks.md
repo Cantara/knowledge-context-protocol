@@ -1,6 +1,6 @@
 # RFC-0017: Observability Hooks
 
-**Status:** Request for Comments
+**Status:** Accepted — promoted to [SPEC.md](./SPEC.md) §17 (v0.16). v0.16 also adds the `render_events` and `quarantine_events` tables (RFC-0018 §8) alongside `usage_events`.
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-03-27
 **Discussion:** [GitHub Discussions](https://github.com/Cantara/knowledge-context-protocol/discussions)

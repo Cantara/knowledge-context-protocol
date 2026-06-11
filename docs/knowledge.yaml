@@ -1,7 +1,7 @@
 # KCP eats its own dogfood.
 # This manifest describes the Knowledge Context Protocol repository itself.
 # Served via GitHub Pages — canonical: https://cantara.github.io/knowledge-context-protocol/knowledge.yaml
-version: "0.14"
+version: "0.17"
 
 entity:
   name: Knowledge Context Protocol (KCP)
@@ -28,10 +28,10 @@ signing:
   public_key: https://cantara.github.io/knowledge-context-protocol/.well-known/kcp-signing-key.pub
   signature: https://cantara.github.io/knowledge-context-protocol/knowledge.yaml.sig
 
-kcp_version: "0.14"
+kcp_version: "0.17"
 project: knowledge-context-protocol
-spec_version: 0.14.0
-updated: "2026-03-25"
+spec_version: 0.17.0
+updated: "2026-06-11"
 language: en
 license: "Apache-2.0"
 indexing: open
@@ -115,6 +115,42 @@ units:
     validated: "2026-03-01"
     depends_on: [spec]
     triggers: [context window, token estimate, hints, chunking, summary, load strategy, eager, lazy, context budget, rfc-0006]
+
+  - id: rfc-0018
+    path: RFC-0018-Trusted-Render-Pipeline.md
+    intent: "RFC-0018 (accepted): trusted render pipeline — kcp render emits a sanitized, trust-tiered artifact so execution-capable agents never ingest raw manifest prose. Threat model T1-T8, trust tiers, scope pinning, imperative-mood lint. Promoted to SPEC.md section 16 in v0.16."
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-06-11"
+    depends_on: [spec, rfc-0004]
+    triggers: [render, trusted render, trust tier, prompt injection, sanitization, quarantine, signing, pinning, kcp render, rfc-0018]
+
+  - id: rfc-0017
+    path: RFC-0017-Observability-Hooks.md
+    intent: "RFC-0017 (accepted): observability hooks — local-first usage event store at ~/.kcp/usage.db with render and quarantine event tables. Powers kcp stats. Promoted to SPEC.md section 17 in v0.16."
+    scope: global
+    audience: [human, agent, developer, operator]
+    validated: "2026-06-11"
+    depends_on: [spec]
+    triggers: [observability, usage, stats, events, sqlite, quarantine events, render events, rfc-0017]
+
+  - id: rfc-0015
+    path: RFC-0015-Negative-Space-Declarations.md
+    intent: "RFC-0015 (accepted): negative space declarations — not_for and not_for_strict declare what a unit does NOT address; the spec's first subtractive field, with soft demotion and strict exclusion query semantics. Promoted to SPEC.md section 4.20 in v0.17."
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-06-11"
+    depends_on: [spec]
+    triggers: [negative space, not_for, not for, exclusion, demotion, caution, scope boundary, rfc-0015]
+
+  - id: rfc-0016
+    path: RFC-0016-Content-Structure-Declaration.md
+    intent: "RFC-0016 (accepted): content structure declaration — the content_structure block (primary, contains, density) declares a unit's internal modality composition so RAG pipelines route before fetching. Promoted to SPEC.md section 4.19 in v0.17."
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-06-11"
+    depends_on: [spec]
+    triggers: [content structure, modality, density, table, prose, code, diagram, rag routing, rfc-0016]
 
   - id: readme
     path: README.md

@@ -35,16 +35,20 @@ jobs:
               | base64 -w0 > "$sigpath"
             echo "  signed: $f → $sigpath"
           }
-          # Root manifest — sig goes to docs/ so GitHub Pages serves it
-          sign_manifest knowledge.yaml docs/knowledge.yaml.sig
-          # docs/ manifest
+          # Each manifest gets its OWN signature file. (Both previously wrote
+          # to docs/knowledge.yaml.sig, so the root manifest's signature was
+          # always overwritten by the docs one — and the two files differ.)
+          # Root manifest — adjacent .sig for git-clone consumers (SPEC §16)
+          sign_manifest knowledge.yaml knowledge.yaml.sig
+          # docs/ manifest — served by GitHub Pages; this is the sig that
+          # entity.signature and llms.txt point at
           sign_manifest docs/knowledge.yaml docs/knowledge.yaml.sig
 
       - name: Commit and push
         run: |
           git config user.name  "kcp-bot[bot]"
           git config user.email "actions@cantara.no"
-          git add docs/knowledge.yaml.sig
+          git add knowledge.yaml.sig docs/knowledge.yaml.sig
           if git diff --staged --quiet; then
             echo "Nothing changed — skipping commit"
           else

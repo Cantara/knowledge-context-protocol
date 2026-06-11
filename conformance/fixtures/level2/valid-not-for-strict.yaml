@@ -1,0 +1,15 @@
+# Level 2 — valid: not_for with not_for_strict:true (RFC-0015, v0.17)
+kcp_version: "0.17"
+project: test-not-for-strict
+version: "1.0.0"
+
+units:
+  - id: internal-runbook
+    path: ops/runbook.md
+    intent: "Incident response runbook for the on-call rotation"
+    scope: project
+    audience: [operator]
+    not_for:
+      - "external sharing"
+      - "training data"
+    not_for_strict: true

@@ -1,0 +1,15 @@
+# Level 2 — valid: unit with content_structure block (RFC-0016, v0.17)
+kcp_version: "0.17"
+project: test-content-structure
+version: "1.0.0"
+
+units:
+  - id: pricing-table
+    path: docs/pricing.md
+    intent: "Pricing tiers and feature comparison"
+    scope: project
+    audience: [developer, agent]
+    content_structure:
+      primary: table
+      contains: [table, prose]
+      density: dense

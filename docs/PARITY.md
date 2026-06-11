@@ -5,6 +5,12 @@ Static generation CLI flags (Tier 2) are currently TS + Java only — Python sup
 
 **Current version:** 0.14.0 (all three bridges)
 
+> Scope note: the `kcp` developer CLI (`cli/` — init, validate, query, stats, and as of
+> spec v0.16 `render`) versions independently of the bridges and is outside this parity
+> contract. Bridges surface knowledge over MCP; the render pipeline (SPEC.md §16) is a
+> consumer-side CLI concern. If bridges later gain render-aware behaviour (e.g. serving
+> rendered artifacts), that feature becomes parity-required and belongs in Tier 1.
+
 ---
 
 ## Rule

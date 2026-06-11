@@ -5,9 +5,10 @@ from typing import Optional, Union
 import yaml
 
 from .model import (
-    Auth, AuthMethod, Authority, Compliance, Delegation, Discovery, ExternalDependency,
-    ExternalRelationship, FreshnessPolicy, KnowledgeManifest, KnowledgeUnit, ManifestRef,
-    RateLimit, RateLimits, Relationship, Trust, TrustAudit, TrustProvenance, Visibility,
+    Auth, AuthMethod, Authority, Compliance, ContentStructure, Delegation, Discovery,
+    ExternalDependency, ExternalRelationship, FreshnessPolicy, KnowledgeManifest,
+    KnowledgeUnit, ManifestRef, RateLimit, RateLimits, Relationship, Trust, TrustAudit,
+    TrustProvenance, Visibility,
 )
 
 
@@ -170,6 +171,35 @@ def _parse_discovery(data: Optional[dict]) -> Optional[Discovery]:
     )
 
 
+def _as_string_list(raw, default=None):
+    """Coerce a YAML value to a list of strings: a list passes through
+    (elements stringified), a scalar becomes a single-element list, None
+    yields ``default``. Mirrors the TypeScript parsers' asStringArray so a
+    common authoring mistake (scalar where a list is expected) degrades
+    identically across implementations instead of iterating characters.
+    """
+    if raw is None:
+        return default
+    if isinstance(raw, list):
+        return [str(x) for x in raw if x is not None]
+    return [str(raw)]
+
+
+def _parse_content_structure(data) -> Optional[ContentStructure]:
+    """Parse a content_structure block (per-unit). See RFC-0016 (v0.17).
+
+    A non-mapping value (scalar, list) is treated as absent rather than
+    crashing the parse — forward-compat, mirroring the TypeScript parsers.
+    """
+    if not isinstance(data, dict):
+        return None
+    return ContentStructure(
+        primary=data.get("primary"),
+        contains=_as_string_list(data.get("contains"), default=[]),
+        density=data.get("density"),
+    )
+
+
 def _parse_external_dependency(data: dict) -> ExternalDependency:
     """Parse an external_depends_on entry."""
     return ExternalDependency(
@@ -243,6 +273,9 @@ def parse_dict(data: dict) -> KnowledgeManifest:
             visibility=_parse_visibility(u.get("visibility")),
             authority=_parse_authority(u.get("authority")),
             discovery=_parse_discovery(u.get("discovery")),
+            not_for=_as_string_list(u.get("not_for"), default=[]),
+            not_for_strict=None if u.get("not_for_strict") is None else bool(u.get("not_for_strict")),
+            content_structure=_parse_content_structure(u.get("content_structure")),
         )
         for u in data.get("units", [])
     ]
@@ -281,4 +314,5 @@ def parse_dict(data: dict) -> KnowledgeManifest:
         visibility=_parse_visibility(data.get("visibility")),
         authority=_parse_authority(data.get("authority")),
         discovery=_parse_discovery(data.get("discovery")),
+        not_for=_as_string_list(data.get("not_for"), default=[]),
     )
