@@ -26,14 +26,17 @@ no timestamp in default output (C1).
 ## Layout
 
 ```
-prototype/render.js        prototype renderer (tiering, pinning, lint,
-                           schema whitelist, fail-closed) — experiment
-                           code, NOT the reference implementation
-prototype/verify-render.js §3.4 consumer-side artifact check (C10)
-prototype/lint.js          imperative-lint-0.2 rule set
+prototype/verify-render.js §3.4 consumer-side artifact check (C10) —
+                           the one piece with no CLI equivalent
 fixtures/                  legit-* and hostile-* manifests
 run.js                     experiment matrix + runner, writes RESULTS.md
 ```
+
+The renderer under test is the **shipping** `kcp render` (`../../cli`),
+built on demand by `run.js` — there is no separate prototype renderer, so
+these experiments certify the code that actually ships rather than a copy
+that can drift from it. (Earlier drafts carried a prototype renderer; it
+was retired once the CLI implementation existed.)
 
 Signatures: the runner generates fresh Ed25519 keypairs per run (an
 allowlisted "org" key scoped to `github.com/Cantara` + `cantara.no`, and
@@ -53,7 +56,10 @@ confirm the harness still bites.
 - The lint corpus is small (3 imperative variants, 3 descriptive
   controls, 1 bypass). Real precision/recall numbers need the
   `conformance/` adversarial corpus ported over.
-- Origin is injected via `--origin`; deriving origin from a real git
-  checkout is unspecified in the RFC (open issue) and untested here.
+- Origin is injected via `--origin`. Derivation from a real git checkout
+  is now normative (RFC-0018 §4.1, SPEC §16.2) and implemented in
+  `cli/src/render.ts`; these experiments exercise the tiering logic over
+  injected origins, not the git-remote derivation itself (the CLI unit
+  tests cover that).
 - No experiment covers RFC-0017 event-store writes (§8) — observability
   is asserted by the RFC but not yet exercised.

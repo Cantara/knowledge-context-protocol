@@ -1,10 +1,14 @@
 #!/usr/bin/env node
-// RFC-0018 (draft-02) experiment runner.
+// RFC-0018 experiment runner.
 //
 // Builds a fresh work dir, generates real Ed25519 keys, signs fixtures
-// per-case, runs the prototype renderer, and checks each case against the
-// RFC's normative claims (tiers, fail-closed, sanitization, C1–C10 where
-// machine-checkable). Writes RESULTS.md.
+// per-case, and drives the SHIPPING renderer (`kcp render` in ../../cli)
+// against the RFC's normative claims (tiers, fail-closed, sanitization,
+// C1–C10 where machine-checkable). Writes RESULTS.md.
+//
+// The experiments validate the production CLI, not a separate prototype:
+// there is one renderer, so the conformance claims here describe the code
+// that actually ships. The CLI is built on demand if its dist is missing.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -15,12 +19,32 @@ import yaml from 'js-yaml';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const WORK = path.join(ROOT, '.work');
-const RENDER = path.join(ROOT, 'prototype', 'render.js');
+const CLI_DIR = path.resolve(ROOT, '..', '..', 'cli');
+const CLI = path.join(CLI_DIR, 'dist', 'cli.js');
 const VERIFY = path.join(ROOT, 'prototype', 'verify-render.js');
 
 const ORIGIN_PINNED = 'github.com/Cantara/lib-pcb';
 const ORIGIN_UNPINNED = 'github.com/example/sandbox';
 const ORIGIN_TYPOSQUAT = 'github.com/CantaraEvil/lib-pcb';
+
+// Build the CLI if its compiled entrypoint is missing, so `npm run run`
+// always exercises current source. Requires cli/ dependencies installed.
+function ensureCliBuilt() {
+  if (fs.existsSync(CLI)) return;
+  if (!fs.existsSync(path.join(CLI_DIR, 'node_modules'))) {
+    console.error(`CLI not built and cli/node_modules missing.\n` +
+      `Run: (cd ${CLI_DIR} && npm install && npm run build)`);
+    process.exit(1);
+  }
+  console.error('Building kcp CLI (dist missing)…');
+  execFileSync('npm', ['run', 'build'], { cwd: CLI_DIR, stdio: 'inherit' });
+}
+
+// Invoke the shipping renderer: `node cli/dist/cli.js render <manifest> ...`.
+function runRenderCli(manifest, allowlistPath, origin, out) {
+  return execFileSync('node', [CLI, 'render', manifest, '--keys', allowlistPath,
+    '--origin', origin, '--out', out], { encoding: 'utf8' });
+}
 
 // ---------------------------------------------------------------- keys --
 function makeKey(keyId) {
@@ -55,8 +79,7 @@ function renderCase(c, keys, allowlistPath) {
   let exitCode = 0;
   let stderr = '';
   try {
-    execFileSync('node', [RENDER, manifest, '--keys', allowlistPath,
-      '--origin', c.origin, '--out', out], { encoding: 'utf8' });
+    runRenderCli(manifest, allowlistPath, c.origin, out);
   } catch (e) {
     exitCode = e.status ?? 1;
     stderr = (e.stderr || '').toString().trim();
@@ -68,7 +91,7 @@ const ALLOWED_TOP = ['render', 'trust', 'discovery', 'project', 'units',
   'relationships', 'federation', 'sanitization'];
 const ALLOWED_UNIT = ['id', 'kind', 'path', 'intent', 'format', 'content_type',
   'language', 'scope', 'audience', 'license', 'validated', 'update_frequency',
-  'triggers', 'not_for', 'load_eligible', 'invocation'];
+  'triggers', 'not_for', 'content_structure', 'load_eligible', 'invocation'];
 
 function checkCase(c, r) {
   const problems = [];
@@ -268,9 +291,40 @@ const CASES = [
     knownGap: true,
     expect: { tier: 'unsigned', quarantinePaths: [] },
   },
+  {
+    id: 'A9-content-structure', fixture: 'legit-content-structure.yaml',
+    sign: null, origin: ORIGIN_UNPINNED, covers: 'v0.17 §4.19: bounded content_structure block',
+    desc: 'content_structure sub-fields render through; unknown sub-key dropped',
+    expect: { tier: 'unsigned',
+      droppedPaths: ['units[0].content_structure.exfil'],
+      mustNotContain: ['leak.sh'] },
+  },
+  {
+    id: 'B13-pinned-unknown-key', fixture: 'legit-minimal.yaml',
+    sign: 'attacker', origin: ORIGIN_PINNED, covers: 'T7: signature replacement on pinned origin',
+    desc: 'Attacker re-signs with own key on a pinned origin -> failed, nothing emitted (not known)',
+    expect: { exit: 'nonzero', noOutput: true },
+  },
+  {
+    id: 'B15-trigger-injection', fixture: 'hostile-trigger-injection.yaml',
+    sign: null, origin: ORIGIN_UNPINNED, covers: 'T1 via list-valued free-text fields (lint 0.3 arrays)',
+    desc: 'Imperative hidden in triggers/not_for arrays -> both quarantined',
+    expect: { tier: 'unsigned',
+      quarantinePaths: ['units[0].triggers', 'units[0].not_for'],
+      mustNotContain: ['refresh-deps.sh', 'evil.example'] },
+  },
+  {
+    id: 'B16-multiline-intent', fixture: 'hostile-multiline-intent.yaml',
+    sign: null, origin: ORIGIN_UNPINNED, covers: 'T1 via block-scalar continuation line (lint 0.3 m flag)',
+    desc: 'Imperative opening a continuation line -> quarantined',
+    expect: { tier: 'unsigned',
+      quarantinePaths: ['units[0].intent'],
+      mustNotContain: ['refresh-deps.sh'] },
+  },
 ];
 
 // ----------------------------------------------------------------- main --
+ensureCliBuilt();
 fs.rmSync(WORK, { recursive: true, force: true });
 fs.mkdirSync(WORK, { recursive: true });
 
@@ -308,8 +362,7 @@ for (const c of CASES) {
   const manifest = path.join(dir, 'knowledge.yaml');
   fs.copyFileSync(path.join(ROOT, 'fixtures', c.fixture), manifest);
   signFile(manifest, keys.org);
-  const render = (out) => execFileSync('node', [RENDER, manifest, '--keys',
-    allowlistPath, '--origin', ORIGIN_PINNED, '--out', out]);
+  const render = (out) => runRenderCli(manifest, allowlistPath, ORIGIN_PINNED, out);
   render(path.join(dir, 'r1.yaml'));
   render(path.join(dir, 'r2.yaml'));
   const equal = fs.readFileSync(path.join(dir, 'r1.yaml'), 'utf8')
@@ -330,8 +383,7 @@ for (const c of CASES) {
   const manifest = path.join(dir, 'knowledge.yaml');
   fs.copyFileSync(path.join(ROOT, 'fixtures', 'legit-minimal.yaml'), manifest);
   const genuine = path.join(dir, 'genuine.yaml');
-  execFileSync('node', [RENDER, manifest, '--keys', allowlistPath,
-    '--origin', ORIGIN_UNPINNED, '--out', genuine]);
+  runRenderCli(manifest, allowlistPath, ORIGIN_UNPINNED, genuine);
 
   const forged = path.join(dir, 'kcp-rendered.yaml');
   fs.writeFileSync(forged, yaml.dump({
@@ -366,7 +418,7 @@ const failed = results.filter((r) => r.status === 'FAIL');
 const lines = [];
 lines.push('# RFC-0018 Render Pipeline — Experiment Results');
 lines.push('');
-lines.push(`Generated by \`run.js\` against \`prototype/render.js\` (rfc-0018-draft-02 experiment), Node ${process.version}.`);
+lines.push(`Generated by \`run.js\` driving the shipping \`kcp render\` CLI (\`cli/dist/cli.js\`), Node ${process.version}.`);
 lines.push('Regenerate with: `npm install && npm run run` in `experiments/rfc-0018-render/`.');
 lines.push('');
 lines.push(`**${results.length} experiments — ${results.filter((r) => r.status === 'PASS').length} pass, ${failed.length} fail, ${results.filter((r) => r.status.startsWith('KNOWN-GAP')).length} known-gap (expected).**`);

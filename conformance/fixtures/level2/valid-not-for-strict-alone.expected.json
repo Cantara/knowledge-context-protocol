@@ -1,0 +1,8 @@
+{
+  "valid": true,
+  "errors": [],
+  "warnings": ["not_for_strict is set but not_for is empty"],
+  "unit_count": 1,
+  "relationship_count": 0,
+  "_note": "§7: not_for_strict without not_for is a SHOULD-warn, not an error. Runners only assert warnings are non-empty."
+}

@@ -1,0 +1,13 @@
+# §7 warning: not_for_strict present without not_for. Valid, but warns in
+# all implementations — this fixture locks the warning in cross-language.
+kcp_version: "0.17"
+project: test-not-for-strict-alone
+version: "1.0.0"
+
+units:
+  - id: orphan-strict
+    path: docs/orphan.md
+    intent: "A unit declaring strict exclusion with nothing to match against"
+    scope: project
+    audience: [developer]
+    not_for_strict: true

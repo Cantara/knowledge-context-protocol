@@ -224,7 +224,7 @@ function writeManifest(
   const today = new Date().toISOString().slice(0, 10);
 
   const lines: string[] = [
-    `kcp_version: "0.14"`,
+    `kcp_version: "0.16"`,
     `project: "${projectName}"`,
     `version: "1.0.0"`,
     `updated: "${today}"`,
