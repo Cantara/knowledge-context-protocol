@@ -158,6 +158,29 @@ This reverse discovery is what `kcp init --scan` performs (see the
 
 ---
 
+## Trusted ingestion (v0.16)
+
+Everything above is **producer-side**: a project generating its *own* instruction files from
+its *own* manifest. That is first-party content and carries no new trust risk.
+
+The **consumer side** is different. As of spec v0.16 (§16, RFC-0018), an execution-capable
+agent SHOULD NOT ingest a third-party `knowledge.yaml` — or instruction files generated from
+one — as raw instructions. Free-text manifest fields are an indirect prompt-injection channel.
+Instead:
+
+- Agents consume the output of `kcp render`: a sanitized, trust-tiered artifact in which
+  manifest content is framed as claims, imperative free text is quarantined, and
+  `executable`/`service` units are never auto-loaded.
+- An instruction-file line such as "Run `kcp render` and read its output" is a cooperative
+  convention only. Enforcement belongs in the consumer's runtime (e.g. tool-call hooks that
+  block raw manifest reads) — text in a repository-authored file cannot be the security
+  mechanism, because that file is itself repository-controlled.
+
+Generation rules in this guide are unaffected; what changes is how *other people's* agents
+should read what you generate.
+
+---
+
 ## Limitations
 
 - **Content transformation:** This guide covers mapping metadata, not content transformation.

@@ -1,0 +1,31 @@
+# A3 — legitimate manifest that DESCRIBES commands. The lint must not
+# quarantine descriptive mentions of build tooling (§6.2 false-positive
+# boundary: describing vs instructing).
+kcp_version: "0.14"
+project: lib-pcb
+version: "1.4.2"
+
+units:
+  - id: build-docs
+    path: docs/building.md
+    kind: knowledge
+    intent: "Build documentation. The build uses `mvn package`; CI validates the output with `kcp validate` on every push."
+    scope: project
+    audience: [developer]
+    triggers: [build, maven]
+
+  - id: deploy-docs
+    path: docs/deploy.md
+    kind: knowledge
+    intent: "Deployment process documentation, covering how CI applies infrastructure changes via terraform during the release stage."
+    scope: project
+    audience: [developer, operator]
+    triggers: [deploy, release]
+
+  - id: troubleshooting
+    path: docs/troubleshooting.md
+    kind: knowledge
+    intent: "Common failures and their causes. Stale dependency errors are usually resolved when the refresh script has run as part of CI."
+    scope: project
+    audience: [developer]
+    triggers: [errors, troubleshooting]
