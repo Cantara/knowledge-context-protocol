@@ -88,7 +88,7 @@ public class KcpParser {
         Visibility visibility = parseVisibility((Map<String, Object>) data.get("visibility"));
         Authority authority = parseAuthority((Map<String, Object>) data.get("authority"));
         Discovery discovery = parseDiscovery((Map<String, Object>) data.get("discovery"));
-        List<String> notFor = (List<String>) data.get("not_for");
+        List<String> notFor = asStringList(data.get("not_for"));
         return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, rateLimits, units, relationships, manifests, externalRelationships, freshnessPolicy, visibility, authority, discovery, notFor);
     }
 
@@ -151,9 +151,9 @@ public class KcpParser {
                 parseVisibility((Map<String, Object>) u.get("visibility")),
                 parseAuthority((Map<String, Object>) u.get("authority")),
                 parseDiscovery((Map<String, Object>) u.get("discovery")),
-                (List<String>) u.get("not_for"),
-                (Boolean) u.get("not_for_strict"),
-                parseContentStructure((Map<String, Object>) u.get("content_structure"))
+                asStringList(u.get("not_for")),
+                asBoolean(u.get("not_for_strict")),
+                parseContentStructure(u.get("content_structure"))
         );
     }
 
@@ -349,13 +349,43 @@ public class KcpParser {
     }
 
     @SuppressWarnings("unchecked")
-    private static ContentStructure parseContentStructure(Map<String, Object> c) {
-        if (c == null) return null;
+    private static ContentStructure parseContentStructure(Object raw) {
+        // A non-mapping value (scalar, list) is treated as absent rather than
+        // crashing the parse — forward-compat, mirroring the TypeScript parsers.
+        if (!(raw instanceof Map)) return null;
+        Map<String, Object> c = (Map<String, Object>) raw;
         return new ContentStructure(
-                (String) c.get("primary"),
-                (List<String>) c.get("contains"),
-                (String) c.get("density")
+                c.get("primary") == null ? null : c.get("primary").toString(),
+                asStringList(c.get("contains")),
+                c.get("density") == null ? null : c.get("density").toString()
         );
+    }
+
+    /**
+     * Coerce a YAML value to a string list: a list passes through (elements
+     * stringified), a scalar becomes a single-element list, null stays null.
+     * Mirrors the TypeScript parsers' asStringArray so a common authoring
+     * mistake (scalar where a list is expected) degrades identically across
+     * implementations instead of crashing.
+     */
+    private static List<String> asStringList(Object raw) {
+        if (raw == null) return null;
+        if (raw instanceof List<?> list) {
+            return list.stream().filter(java.util.Objects::nonNull).map(Object::toString).toList();
+        }
+        return List.of(raw.toString());
+    }
+
+    /**
+     * Coerce a YAML value to a boolean, mirroring TypeScript Boolean()
+     * truthiness exactly (any non-empty string is true — YAML itself already
+     * resolves unquoted true/false before this code sees them).
+     */
+    private static Boolean asBoolean(Object raw) {
+        if (raw == null) return null;
+        if (raw instanceof Boolean b) return b;
+        if (raw instanceof Number n) return n.doubleValue() != 0;
+        return !raw.toString().isEmpty();
     }
 
     private static LocalDate parseDate(Object value) {

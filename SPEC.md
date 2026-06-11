@@ -2530,6 +2530,7 @@ results:
 | `token_estimate` | `integer` or `null` | The unit's `hints.token_estimate`, if declared. |
 | `summary_unit` | `string` or `null` | The unit's `hints.summary_unit`, if declared. |
 | `match_reason` | `list[string]` | Scoring rules that contributed. Values: `trigger`, `intent`, `id`, `path`. |
+| `caution` | `string` or `null` | Present when a `not_for` entry matched the query (soft demotion, §15.11): the matching negative-space phrase, e.g. `"not_for match: 'end-user login'"`. Absent/`null` when no `not_for` entry matched. v0.17. |
 | `source_manifest` | `string` or `null` | `null` for units in the local manifest. When `federation_scope: declared`, the `manifests[].id` value of the sub-manifest the unit came from. Agents MUST resolve the unit path relative to the sub-manifest's base URL when `source_manifest` is non-null. |
 
 ---
