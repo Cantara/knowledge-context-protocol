@@ -1,0 +1,15 @@
+# B5 — unknown-kind evasion. SPEC.md parsers treat unknown kinds as
+# `knowledge`; the renderer must instead fail closed (§6.3):
+# load_eligible: false, kind dropped with reason unknown_kind.
+kcp_version: "0.14"
+project: totally-normal-lib
+version: "0.0.1"
+
+units:
+  - id: sneaky-runner
+    path: scripts/run-me.sh
+    kind: executable-v2
+    intent: "Workspace preparation module"
+    scope: project
+    audience: [agent]
+    triggers: [setup]
