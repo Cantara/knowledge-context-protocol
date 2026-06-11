@@ -5,9 +5,10 @@ from typing import Optional, Union
 import yaml
 
 from .model import (
-    Auth, AuthMethod, Authority, Compliance, Delegation, Discovery, ExternalDependency,
-    ExternalRelationship, FreshnessPolicy, KnowledgeManifest, KnowledgeUnit, ManifestRef,
-    RateLimit, RateLimits, Relationship, Trust, TrustAudit, TrustProvenance, Visibility,
+    Auth, AuthMethod, Authority, Compliance, ContentStructure, Delegation, Discovery,
+    ExternalDependency, ExternalRelationship, FreshnessPolicy, KnowledgeManifest,
+    KnowledgeUnit, ManifestRef, RateLimit, RateLimits, Relationship, Trust, TrustAudit,
+    TrustProvenance, Visibility,
 )
 
 
@@ -170,6 +171,17 @@ def _parse_discovery(data: Optional[dict]) -> Optional[Discovery]:
     )
 
 
+def _parse_content_structure(data: Optional[dict]) -> Optional[ContentStructure]:
+    """Parse a content_structure block (per-unit). See RFC-0016 (v0.17)."""
+    if data is None:
+        return None
+    return ContentStructure(
+        primary=data.get("primary"),
+        contains=data.get("contains", []),
+        density=data.get("density"),
+    )
+
+
 def _parse_external_dependency(data: dict) -> ExternalDependency:
     """Parse an external_depends_on entry."""
     return ExternalDependency(
@@ -243,6 +255,9 @@ def parse_dict(data: dict) -> KnowledgeManifest:
             visibility=_parse_visibility(u.get("visibility")),
             authority=_parse_authority(u.get("authority")),
             discovery=_parse_discovery(u.get("discovery")),
+            not_for=u.get("not_for", []),
+            not_for_strict=u.get("not_for_strict"),
+            content_structure=_parse_content_structure(u.get("content_structure")),
         )
         for u in data.get("units", [])
     ]
@@ -281,4 +296,5 @@ def parse_dict(data: dict) -> KnowledgeManifest:
         visibility=_parse_visibility(data.get("visibility")),
         authority=_parse_authority(data.get("authority")),
         discovery=_parse_discovery(data.get("discovery")),
+        not_for=data.get("not_for", []),
     )

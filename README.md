@@ -17,7 +17,7 @@ MCP solved the tool connectivity problem. KCP addresses the knowledge structure 
 Drop a `knowledge.yaml` at the root of any project. Agents stop guessing and start navigating.
 
 ```yaml
-kcp_version: "0.16"
+kcp_version: "0.17"
 project: my-project
 version: 1.0.0
 units:
@@ -206,7 +206,7 @@ external_relationships:                # optional — cross-manifest relationshi
 Five fields per unit are enough to start:
 
 ```yaml
-kcp_version: "0.16"
+kcp_version: "0.17"
 project: my-project
 version: 1.0.0
 units:
@@ -225,7 +225,7 @@ The standard allows complexity but does not demand it.
 
 ```yaml
 # knowledge.yaml
-kcp_version: "0.16"
+kcp_version: "0.17"
 project: wiki.example.org
 version: 1.0.0
 updated: "2026-02-28"
@@ -411,7 +411,7 @@ Until formal acceptance, KCP remains an Apache 2.0 open specification proposed b
 
 ## Status
 
-**Current:** Draft specification — v0.16 (there is no v0.15 spec; the number was skipped to re-sync with the `kcp` CLI release train)
+**Current:** Draft specification — v0.17 (there is no v0.15 spec; the number was skipped to re-sync with the `kcp` CLI release train)
 
 The format is intentionally minimal and builds incrementally through promoted RFCs. Feedback, use cases, and pull requests are welcome.
 
@@ -427,10 +427,10 @@ The format is intentionally minimal and builds incrementally through promoted RF
 - **[RFC-0008](./RFC-0008-Budget-Constrained-Selection.md)** — Budget-constrained selection (accepted; promoted to SPEC.md §15 in v0.14): scored results, token-budget-aware ranking
 - **[RFC-0012](./RFC-0012-Capability-Discovery-Provenance.md)** — Capability discovery provenance (accepted; promoted to SPEC.md v0.12): `discovery` block with `verification_status`, `confidence`, `source`, `contradicted_by`
 - **[RFC-0014](./RFC-0014-Manifest-Composition.md)** — Manifest composition (open RFC): `includes`, `overrides`, `excludes` — inherit base manifests without forking. Open for discussion.
-- **[RFC-0015](./RFC-0015-Negative-Space-Declarations.md)** — Negative space declarations (open RFC): `not_for` declares what a unit does NOT answer. `not_for_strict: true` for hard exclusion. First subtractive field in the spec.
-- **[RFC-0016](./RFC-0016-Content-Structure-Declaration.md)** — Content structure declaration (open RFC): `content_structure.primary` (prose/table/code/list/diagram/reference/mixed), `contains`, `density` (sparse/normal/dense). Lets RAG pipelines route before fetching.
+- **[RFC-0015](./RFC-0015-Negative-Space-Declarations.md)** — Negative space declarations (accepted; promoted to SPEC.md in v0.17): `not_for` declares what a unit does NOT answer. `not_for_strict: true` for hard exclusion. First subtractive field in the spec.
+- **[RFC-0016](./RFC-0016-Content-Structure-Declaration.md)** — Content structure declaration (accepted; promoted to SPEC.md in v0.17): `content_structure.primary` (prose/table/code/list/diagram/reference/mixed), `contains`, `density` (sparse/normal/dense). Lets RAG pipelines route before fetching.
 - **[RFC-0017](./RFC-0017-Observability-Hooks.md)** — Observability hooks (accepted; promoted to SPEC.md §17 in v0.16): local-first usage event schema at `~/.kcp/usage.db`, extended with `render_events`/`quarantine_events`. Powers `kcp stats`.
-- **[RFC-0018](./RFC-0018-Trusted-Render-Pipeline.md)** — Trusted render pipeline (accepted; promoted to SPEC.md §16 in v0.16): `kcp render` emits a sanitized, trust-tiered artifact so execution-capable agents never ingest raw manifest prose. Activates RFC-0004 `content_integrity` (EdDSA/JWS); adds `declared` to the RFC-0012 vocabulary. Validated by 21 executable experiments (`experiments/rfc-0018-render/`).
+- **[RFC-0018](./RFC-0018-Trusted-Render-Pipeline.md)** — Trusted render pipeline (accepted; promoted to SPEC.md §16 in v0.16): `kcp render` emits a sanitized, trust-tiered artifact so execution-capable agents never ingest raw manifest prose. Activates RFC-0004 `content_integrity` (EdDSA/JWS); adds `declared` to the RFC-0012 vocabulary. Validated by 22 executable experiments (`experiments/rfc-0018-render/`).
 - **parsers/** — Reference parser/validator implementations (Python, Java) — 401 tests passing
 - **bridge/** — MCP servers: expose any `knowledge.yaml` as MCP resources (TypeScript · Python · Java). The TypeScript parser, validator, and mapper live in `bridge/typescript/src/` (parser.ts, validator.ts, mapper.ts).
 - **cli/** — Developer CLI: `init`, `validate`, `query`, `stats`. Installed automatically by [kcp-commands](https://github.com/Cantara/kcp-commands) — run `kcp stats` to see queries served, tokens saved, and top units from your local usage log.

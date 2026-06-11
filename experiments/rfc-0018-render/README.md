@@ -26,14 +26,17 @@ no timestamp in default output (C1).
 ## Layout
 
 ```
-prototype/render.js        prototype renderer (tiering, pinning, lint,
-                           schema whitelist, fail-closed) — experiment
-                           code, NOT the reference implementation
-prototype/verify-render.js §3.4 consumer-side artifact check (C10)
-prototype/lint.js          imperative-lint-0.3 rule set
+prototype/verify-render.js §3.4 consumer-side artifact check (C10) —
+                           the one piece with no CLI equivalent
 fixtures/                  legit-* and hostile-* manifests
 run.js                     experiment matrix + runner, writes RESULTS.md
 ```
+
+The renderer under test is the **shipping** `kcp render` (`../../cli`),
+built on demand by `run.js` — there is no separate prototype renderer, so
+these experiments certify the code that actually ships rather than a copy
+that can drift from it. (Earlier drafts carried a prototype renderer; it
+was retired once the CLI implementation existed.)
 
 Signatures: the runner generates fresh Ed25519 keypairs per run (an
 allowlisted "org" key scoped to `github.com/Cantara` + `cantara.no`, and

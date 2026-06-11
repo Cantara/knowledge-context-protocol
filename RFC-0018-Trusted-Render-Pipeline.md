@@ -719,7 +719,7 @@ simulation tests provide a starting seed for (a).
 ## Appendix B: Changes from draft-02 (experimental validation)
 
 Driven by the executable experiments in `experiments/rfc-0018-render/`
-(21 cases over T1–T8 plus the legitimate use cases; see `RESULTS.md`
+(22 cases over T1–T8 plus the legitimate use cases; see `RESULTS.md`
 there):
 
 | # | Change | Driver |

@@ -2235,7 +2235,7 @@ relationships:
 
       <div class="roadmap-core reveal">
         <div class="roadmap-core__info">
-          <span class="roadmap-core__badge">v0.16 — Current</span>
+          <span class="roadmap-core__badge">v0.16 — Shipped</span>
           <h3>Trusted Ingestion</h3>
           <p>The trusted render pipeline (<code>kcp render</code>, SPEC §16): a deterministic, LLM-free, fail-closed renderer emits a sanitized, trust-tiered artifact so execution-capable agents never ingest raw third-party manifest prose. Activates Ed25519/JWS content integrity, promotes local-first observability (SPEC §17), and adds the <code>declared</code> discovery status. There is no v0.15 spec — the number was skipped to re-sync with the CLI release train.</p>
         </div>
@@ -2245,6 +2245,21 @@ relationships:
           <span class="roadmap-field-pill">content_integrity</span>
           <span class="roadmap-field-pill">render_events</span>
           <span class="roadmap-field-pill">RFC-0018</span>
+        </div>
+      </div>
+
+      <div class="roadmap-core reveal">
+        <div class="roadmap-core__info">
+          <span class="roadmap-core__badge">v0.17 — Current</span>
+          <h3>Content Wave</h3>
+          <p>Two unit-level routing signals promoted to core. <code>content_structure</code> (SPEC §4.19) declares the internal modality composition and density of a unit (<code>primary</code>, <code>contains</code>, <code>density</code>) so RAG pipelines route and pick an extraction strategy before fetching. <code>not_for</code> (SPEC §4.20) is the spec's first <em>subtractive</em> field — it declares what a unit does NOT answer, with soft demotion by default and <code>not_for_strict</code> for hard exclusion. Promoted from RFC-0016 and RFC-0015.</p>
+        </div>
+        <div class="roadmap-core__fields">
+          <span class="roadmap-field-pill">content_structure</span>
+          <span class="roadmap-field-pill">not_for</span>
+          <span class="roadmap-field-pill">not_for_strict</span>
+          <span class="roadmap-field-pill">RFC-0015</span>
+          <span class="roadmap-field-pill">RFC-0016</span>
         </div>
       </div>
 

@@ -35,6 +35,8 @@ Example: "How do I validate a knowledge.yaml?" → trigger `validation, schema`
 - [RFC-0001-KCP-Extended.md](RFC-0001-KCP-Extended.md) — Extensions: payments, compliance, federation
 - [RFC-0003-Federation.md](RFC-0003-Federation.md) — Cross-manifest federation
 - [RFC-0007-Query-Vocabulary.md](RFC-0007-Query-Vocabulary.md) — Agent query vocabulary (promoted v0.14)
+- [RFC-0015-Negative-Space-Declarations.md](RFC-0015-Negative-Space-Declarations.md) — Negative-space declarations: `not_for` / `not_for_strict` (promoted v0.17)
+- [RFC-0016-Content-Structure-Declaration.md](RFC-0016-Content-Structure-Declaration.md) — Content structure: `content_structure` modality + density (promoted v0.17)
 - [RFC-0018-Trusted-Render-Pipeline.md](RFC-0018-Trusted-Render-Pipeline.md) — Trusted render pipeline: `kcp render` (promoted v0.16)
 
 ## KCP Toolchain

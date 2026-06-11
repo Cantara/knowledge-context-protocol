@@ -10,6 +10,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.17.0] — 2026-06-11 — Content Wave
+
+### Spec
+
+- **v0.17.0 — Content Wave** (RFC-0015 + RFC-0016 promoted)
+  - **`content_structure` (§4.19)**: unit-level block promoted from RFC-0016 declaring the internal modality composition and density of a unit's content — `primary` (dominant modality: `prose` | `table` | `code` | `list` | `diagram` | `reference` | `mixed`), `contains` (all modalities present, same vocabulary), `density` (`sparse` | `normal` | `dense`). Lets retrieval agents and RAG pipelines route queries and choose an extraction strategy before fetching. Parsers MUST read and expose all sub-fields; vocabulary values MUST come from the defined sets, with unknown values passed through (warn, not reject) for forward compatibility.
+  - **`not_for` / `not_for_strict` (§4.20)**: unit-level negative-space declaration promoted from RFC-0015. `not_for` is a list of natural-language strings describing contexts the unit does NOT address — the spec's first **subtractive** matching field. Default behaviour is soft demotion with a `caution` annotation on a query match; `not_for_strict: true` makes a bridge MUST-exclude the unit from results on a match. Parsers MUST read and expose both fields and MUST NOT silently ignore `not_for` when scoring.
+  - **Manifest-level `not_for` (§3.10)**: advisory root-level scope boundary for federation decisions — does NOT support `not_for_strict` (federation routing is always advisory).
+  - **Query vocabulary (§15.11)**: negative-space filtering semantics — soft demotion vs strict exclusion evaluated after scoring (§15.4) and before the top-N cut; new `caution` response field; root-level `not_for` informs federation routing only. Subtractive filtering is a navigation convenience, not access control (§14.1).
+  - New §7 advisory warnings for unknown `content_structure.primary`/`contains[]`/`density` values and for `not_for_strict` present without `not_for`. Level 2 conformance (§8) extended with both blocks.
+  - `KNOWN_KCP_VERSIONS` updated to include `"0.17"` in all validators. Appendix examples updated to `kcp_version: "0.17"`.
+
+### RFC Status
+
+- **RFC-0015 (Negative Space Declarations):** Accepted — promoted to SPEC.md §4.20 (v0.17).
+- **RFC-0016 (Content Structure Declaration):** Accepted — promoted to SPEC.md §4.19 (v0.17).
+
+---
+
 ## [0.16.0] — 2026-06-11 — Trusted Ingestion Release
 
 > Note: there is no 0.15 spec version. The `kcp` CLI release train had already used 0.15.0;
@@ -26,7 +45,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### RFC Status
 
-- **RFC-0018 (Trusted Render Pipeline):** Accepted — promoted to SPEC.md §16 (v0.16). Validated by 21 executable experiments (20 pass, 1 documented known-gap) over threats T1–T8 in `experiments/rfc-0018-render/` (see RESULTS.md there; the known-gap is descriptive-mood injection passing the lint by design — C8 data-framing is the load-bearing control).
+- **RFC-0018 (Trusted Render Pipeline):** Accepted — promoted to SPEC.md §16 (v0.16). Validated by 22 executable experiments (21 pass, 1 documented known-gap) over threats T1–T8 in `experiments/rfc-0018-render/` (see RESULTS.md there; the known-gap is descriptive-mood injection passing the lint by design — C8 data-framing is the load-bearing control).
 - **RFC-0017 (Observability Hooks):** Accepted — promoted to SPEC.md §17 (v0.16) with the two new render tables.
 - **RFC-0004 (Trust and Compliance):** `trust.content_integrity` activated and promoted to SPEC.md §3.2; remaining blocks (access receipts, agent attestation, `publisher_did`) stay RFC-only.
 - **RFC-0012 (Capability Discovery Provenance):** amended — `declared` added to the `verification_status` vocabulary.
@@ -37,7 +56,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Experiments
 
-- `experiments/rfc-0018-render/` — executable validation harness for the render pipeline: prototype renderer, 21-case experiment matrix (legitimate use cases + threats T1–T8) with real per-run Ed25519 keys, mutation-tested expectations, generated RESULTS.md.
+- `experiments/rfc-0018-render/` — executable validation harness for the render pipeline: drives the shipping `kcp render` over a 22-case experiment matrix (legitimate use cases + threats T1–T8) with real per-run Ed25519 keys, mutation-tested expectations, generated RESULTS.md.
 
 ---
 

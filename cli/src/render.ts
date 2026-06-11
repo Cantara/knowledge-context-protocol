@@ -43,6 +43,9 @@ const UNIT_FIELDS = [
 // Free-text fields subject to the imperative lint (§6.2). `triggers` and
 // `not_for` are list-valued; lintFreeText handles arrays element-wise.
 const UNIT_FREE_TEXT_FIELDS = ["intent", "triggers", "not_for"];
+// §4.19 content_structure is a bounded block: only these sub-fields pass,
+// sub-whitelisted separately so unknown nested keys cannot smuggle (T5).
+const CONTENT_STRUCTURE_FIELDS = ["primary", "contains", "density"];
 const RELATIONSHIP_FIELDS = ["from", "to", "type"];
 const FEDERATION_FIELDS = ["id", "url", "relationship"];
 const PROVENANCE_FIELDS = ["publisher", "publisher_url", "contact"];
@@ -363,7 +366,33 @@ export function renderManifest(options: RenderOptions): RenderResult {
     }
     const rest: RawMap = { ...unit };
     if (unknownKind) delete rest.kind;
+    // content_structure (§4.19) is handled separately so its bounded
+    // sub-fields can be sub-whitelisted rather than copied verbatim.
+    const cs = rest.content_structure;
+    delete rest.content_structure;
     take(rest, UNIT_FIELDS, base, out, UNIT_FREE_TEXT_FIELDS);
+    if (cs !== undefined) {
+      const csOut: RawMap = {};
+      if (cs !== null && typeof cs === "object" && !Array.isArray(cs)) {
+        for (const [k, v] of Object.entries(cs as RawMap)) {
+          const n = countLeaves(v);
+          fieldsIn += n;
+          if (CONTENT_STRUCTURE_FIELDS.includes(k)) {
+            csOut[k] = v;
+            fieldsRendered += n;
+          } else {
+            dropped.push({ path: `${base}content_structure.${k}`, reason: "not_in_schema" });
+            fieldsDropped += n;
+          }
+        }
+        if (Object.keys(csOut).length > 0) out.content_structure = csOut;
+      } else {
+        // malformed (non-object) content_structure: drop wholesale
+        fieldsIn += countLeaves(cs);
+        fieldsDropped += countLeaves(cs);
+        dropped.push({ path: `${base}content_structure`, reason: "not_in_schema" });
+      }
+    }
     // §6.3 load eligibility — unconditional, even at trusted tier (C4)
     if (unknownKind || NEVER_LOAD_KINDS.includes(kind)) {
       out.load_eligible = false;

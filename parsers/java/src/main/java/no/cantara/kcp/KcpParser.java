@@ -4,6 +4,7 @@ import no.cantara.kcp.model.Auth;
 import no.cantara.kcp.model.AuthMethod;
 import no.cantara.kcp.model.Authority;
 import no.cantara.kcp.model.Compliance;
+import no.cantara.kcp.model.ContentStructure;
 import no.cantara.kcp.model.Delegation;
 import no.cantara.kcp.model.Discovery;
 import no.cantara.kcp.model.ExternalDependency;
@@ -87,7 +88,8 @@ public class KcpParser {
         Visibility visibility = parseVisibility((Map<String, Object>) data.get("visibility"));
         Authority authority = parseAuthority((Map<String, Object>) data.get("authority"));
         Discovery discovery = parseDiscovery((Map<String, Object>) data.get("discovery"));
-        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, rateLimits, units, relationships, manifests, externalRelationships, freshnessPolicy, visibility, authority, discovery);
+        List<String> notFor = (List<String>) data.get("not_for");
+        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, rateLimits, units, relationships, manifests, externalRelationships, freshnessPolicy, visibility, authority, discovery, notFor);
     }
 
     /**
@@ -148,7 +150,10 @@ public class KcpParser {
                 parseFreshnessPolicy((Map<String, Object>) u.get("freshness_policy")),
                 parseVisibility((Map<String, Object>) u.get("visibility")),
                 parseAuthority((Map<String, Object>) u.get("authority")),
-                parseDiscovery((Map<String, Object>) u.get("discovery"))
+                parseDiscovery((Map<String, Object>) u.get("discovery")),
+                (List<String>) u.get("not_for"),
+                (Boolean) u.get("not_for_strict"),
+                parseContentStructure((Map<String, Object>) u.get("content_structure"))
         );
     }
 
@@ -340,6 +345,16 @@ public class KcpParser {
                 (String) d.get("verified_at"),
                 confidence,
                 (String) d.get("contradicted_by")
+        );
+    }
+
+    @SuppressWarnings("unchecked")
+    private static ContentStructure parseContentStructure(Map<String, Object> c) {
+        if (c == null) return null;
+        return new ContentStructure(
+                (String) c.get("primary"),
+                (List<String>) c.get("contains"),
+                (String) c.get("density")
         );
     }
 

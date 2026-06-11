@@ -18,7 +18,10 @@ VALID_INDEXING_SHORTHANDS = {"open", "read-only", "no-train", "none"}
 VALID_ACCESS_VALUES = {"public", "authenticated", "restricted"}
 VALID_SENSITIVITY_VALUES = {"public", "internal", "confidential", "restricted"}
 # human_in_the_loop is an object per spec §3.4 — no HITL enum, validation done inline
-KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16"}
+KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17"}
+# content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
+VALID_CONTENT_MODALITIES = {"prose", "table", "code", "list", "diagram", "reference", "mixed"}
+VALID_DENSITY = {"sparse", "normal", "dense"}
 VALID_MANIFEST_RELATIONSHIPS = {"child", "foundation", "governs", "peer", "archive"}
 VALID_VERIFICATION_STATUSES = {"rumored", "declared", "observed", "verified", "deprecated"}
 VALID_DISCOVERY_SOURCES = {"manual", "web_traversal", "openapi", "llm_inference", "manifest-self-description"}
@@ -274,6 +277,13 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
         # visibility validation (§RFC-0009)
         _validate_visibility(unit.visibility, p, warnings)
 
+        # not_for validation (RFC-0015, v0.17)
+        if unit.not_for_strict is not None and not unit.not_for:
+            warnings.append(f"{p}: 'not_for_strict' is set but 'not_for' is empty or absent")
+
+        # content_structure validation (RFC-0016, v0.17) — warn on unknown values, pass through
+        _validate_content_structure(unit.content_structure, p, warnings)
+
     # Root-level delegation validation
     if manifest.delegation is not None:
         hitl = manifest.delegation.human_in_the_loop
@@ -472,6 +482,33 @@ def _validate_authority(authority, prefix: str, warnings: list[str]) -> None:
                 f"{prefix}: authority.{action} must be one of "
                 f"{sorted(VALID_AUTHORITY_VALUES)}, got '{value}'"
             )
+
+
+def _validate_content_structure(content_structure, prefix: str, warnings: list[str]) -> None:
+    """Validate a content_structure block (RFC-0016, v0.17).
+
+    Unknown vocabulary values SHOULD warn but MUST pass through (forward-compat).
+    """
+    if content_structure is None:
+        return
+    if (content_structure.primary is not None
+            and content_structure.primary not in VALID_CONTENT_MODALITIES):
+        warnings.append(
+            f"{prefix}: content_structure.primary has unknown value "
+            f"'{content_structure.primary}'; expected one of {sorted(VALID_CONTENT_MODALITIES)}"
+        )
+    for modality in content_structure.contains:
+        if modality not in VALID_CONTENT_MODALITIES:
+            warnings.append(
+                f"{prefix}: content_structure.contains has unknown value "
+                f"'{modality}'; expected one of {sorted(VALID_CONTENT_MODALITIES)}"
+            )
+    if (content_structure.density is not None
+            and content_structure.density not in VALID_DENSITY):
+        warnings.append(
+            f"{prefix}: content_structure.density has unknown value "
+            f"'{content_structure.density}'; expected one of {sorted(VALID_DENSITY)}"
+        )
 
 
 def _validate_visibility(visibility, prefix: str, warnings: list[str]) -> None:

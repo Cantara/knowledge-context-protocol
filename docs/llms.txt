@@ -33,6 +33,8 @@ Example: "How do I validate a knowledge.yaml file?" → trigger `validation, sch
 - /guides/adopting-kcp-in-existing-projects.md — How to add KCP to your project in under 30 minutes
 - /examples/README.md — Example manifests at four adoption levels plus simulation scenarios (A2A+KCP, energy metering, legal delegation, financial AML)
 - /RFC-0001-KCP-Extended.md — Extensions: payments, compliance, federation, context hints
+- /RFC-0015-Negative-Space-Declarations.md — Negative-space declarations: `not_for` / `not_for_strict` (promoted to SPEC.md §4.20 in v0.17)
+- /RFC-0016-Content-Structure-Declaration.md — Content structure: `content_structure` modality + density (promoted to SPEC.md §4.19 in v0.17)
 - /RFC-0018-Trusted-Render-Pipeline.md — Trusted render pipeline: `kcp render` emits a sanitized, trust-tiered artifact (promoted to SPEC.md §16 in v0.16)
 - /docs/ecosystem/webmcp-comparison.md — WebMCP vs KCP: Google+Microsoft browser-action standard vs KCP knowledge layer (complementary, not competing)
 

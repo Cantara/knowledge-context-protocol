@@ -1,6 +1,7 @@
 package no.cantara.kcp;
 
 import no.cantara.kcp.model.Compliance;
+import no.cantara.kcp.model.ContentStructure;
 import no.cantara.kcp.model.Delegation;
 import no.cantara.kcp.model.Discovery;
 import no.cantara.kcp.model.ExternalDependency;
@@ -42,7 +43,10 @@ public class KcpValidator {
     private static final Set<String> VALID_ACCESS_VALUES = Set.of("public", "authenticated", "restricted");
     private static final Set<String> VALID_SENSITIVITY_VALUES = Set.of("public", "internal", "confidential", "restricted");
     private static final Set<String> VALID_HITL_MECHANISMS = Set.of("oauth_consent", "uma", "custom");
-    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16");
+    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17");
+    // content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
+    private static final Set<String> VALID_CONTENT_MODALITIES = Set.of("prose", "table", "code", "list", "diagram", "reference", "mixed");
+    private static final Set<String> VALID_DENSITY = Set.of("sparse", "normal", "dense");
     private static final Set<String> VALID_VERIFICATION_STATUSES = Set.of("rumored", "declared", "observed", "verified", "deprecated");
     private static final Set<String> VALID_DISCOVERY_SOURCES = Set.of("manual", "web_traversal", "openapi", "llm_inference", "manifest-self-description");
     private static final Set<String> VALID_AUTHORITY_VALUES = Set.of("initiative", "requires_approval", "denied");
@@ -239,6 +243,14 @@ public class KcpValidator {
 
             // visibility validation (§RFC-0009)
             validateVisibility(unit.visibility(), p, warnings);
+
+            // not_for validation (RFC-0015, v0.17)
+            if (unit.notForStrict() != null && unit.notFor().isEmpty()) {
+                warnings.add(p + ": 'not_for_strict' is set but 'not_for' is empty or absent");
+            }
+
+            // content_structure validation (RFC-0016, v0.17) — warn on unknown values, pass through
+            validateContentStructure(unit.contentStructure(), p, warnings);
         }
 
         // Root-level delegation validation
@@ -498,6 +510,24 @@ public class KcpValidator {
                 !VALID_VISIBILITY_DEFAULTS.contains(visibility.defaultSensitivity())) {
             warnings.add(prefix + ": visibility.default must be one of " +
                     sorted(VALID_VISIBILITY_DEFAULTS) + ", got '" + visibility.defaultSensitivity() + "'");
+        }
+    }
+
+    private static void validateContentStructure(ContentStructure cs, String prefix, List<String> warnings) {
+        if (cs == null) return;
+        if (cs.primary() != null && !VALID_CONTENT_MODALITIES.contains(cs.primary())) {
+            warnings.add(prefix + ": content_structure.primary has unknown value '" +
+                    cs.primary() + "'; expected one of " + sorted(VALID_CONTENT_MODALITIES));
+        }
+        for (String modality : cs.contains()) {
+            if (!VALID_CONTENT_MODALITIES.contains(modality)) {
+                warnings.add(prefix + ": content_structure.contains has unknown value '" +
+                        modality + "'; expected one of " + sorted(VALID_CONTENT_MODALITIES));
+            }
+        }
+        if (cs.density() != null && !VALID_DENSITY.contains(cs.density())) {
+            warnings.add(prefix + ": content_structure.density has unknown value '" +
+                    cs.density() + "'; expected one of " + sorted(VALID_DENSITY));
         }
     }
 

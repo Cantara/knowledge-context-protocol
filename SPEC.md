@@ -1,6 +1,6 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.16
+**Version:** 0.17
 **Status:** Draft
 **Date:** 2026-06-11
 **Repository:** github.com/cantara/knowledge-context-protocol
@@ -92,7 +92,7 @@ Example:
 
 ```json
 {
-  "kcp_version": "0.16",
+  "kcp_version": "0.17",
   "manifest": "/knowledge.yaml",
   "title": "My Project Knowledge Base",
   "description": "Architecture decisions, API reference, and onboarding guides.",
@@ -143,10 +143,11 @@ version.
 ## 3. Root Manifest Structure
 
 ```yaml
-kcp_version: "0.16"         # RECOMMENDED
+kcp_version: "0.17"         # RECOMMENDED
 project: <string>            # REQUIRED
 version: <semver string>     # RECOMMENDED
 updated: "<ISO date>"        # RECOMMENDED; quote the value (see §4.1.1)
+not_for: <list>              # OPTIONAL; advisory manifest-wide scope boundary (see §3.10)
 language: <BCP 47 tag>       # OPTIONAL; default language for all units (see §4.4c)
 license: <string or object>  # OPTIONAL; default license for all units (see §4.6a)
 indexing: <string or object>  # OPTIONAL; default indexing permissions (see §4.6c)
@@ -173,7 +174,7 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
-| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.16"` for conformance with this document. |
+| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.17"` for conformance with this document. |
 | `project` | REQUIRED | string | Human-readable name of the project or documentation site. |
 | `version` | RECOMMENDED | string | Semver version of this manifest. Increment when units are added or removed. |
 | `updated` | RECOMMENDED | string | ISO 8601 date (`YYYY-MM-DD`) when this manifest was last modified. |
@@ -192,6 +193,7 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 | `visibility` | OPTIONAL | object | Manifest-wide visibility default. Units without their own `visibility` block inherit this. See §3.8. |
 | `authority` | OPTIONAL | object | Manifest-wide authority default. Units without their own `authority` block inherit this. See §3.8. |
 | `discovery` | OPTIONAL | object | Manifest-wide discovery defaults. Units inherit fields not declared at unit level. See §3.9. |
+| `not_for` | OPTIONAL | list | Advisory manifest-wide scope boundary — contexts this manifest does NOT cover. Used for federation decisions. See §3.10. |
 | `units` | REQUIRED | list | Ordered list of knowledge unit declarations. MUST contain at least one unit. |
 | `relationships` | OPTIONAL | list | Explicit cross-unit relationship declarations. See §5. |
 
@@ -866,6 +868,35 @@ examples. Unit-level `discovery` fields override root defaults field-by-field.
 
 ---
 
+### 3.10 Manifest-level `not_for` (v0.17)
+
+A root-level `not_for` block declares contexts, domains, or questions that this manifest as
+a whole does NOT cover. It is an advisory scope boundary that helps an agent decide whether
+to federate to another manifest (§3.6) rather than searching this one at all.
+
+```yaml
+kcp_version: "0.17"
+project: "Payments Service Docs"
+
+not_for:
+  - "Identity and authentication"
+  - "Notification delivery"
+  - "Reporting and analytics"
+```
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `not_for` | OPTIONAL | list of strings | Natural-language descriptions of contexts the manifest does NOT address. Advisory only. |
+
+Manifest-level `not_for` is purely advisory: it does NOT support the `not_for_strict` opt-in
+(§4.20). Federation decisions are always advisory, so a root `not_for` match informs an agent's
+routing but never hard-excludes the manifest. Parsers MUST read and expose root-level `not_for`.
+
+The unit-level `not_for` and `not_for_strict` fields, which influence per-unit query scoring,
+are defined in §4.20.
+
+---
+
 ## 4. Knowledge Units
 
 Each entry in `units` describes a self-contained piece of knowledge.
@@ -901,6 +932,9 @@ Each entry in `units` describes a self-contained piece of knowledge.
 | `visibility` | OPTIONAL | object | Conditional access by environment or agent role. Overrides root-level `visibility` default. See §4.16. |
 | `authority` | OPTIONAL | object | Action permission declarations for this unit. Overrides root-level `authority` default. See §4.17. |
 | `discovery` | OPTIONAL | object | Provenance of how this capability was discovered and how confidently. Inherits root-level `discovery` defaults. See §4.18. |
+| `content_structure` | OPTIONAL | object | Internal modality composition and density of the unit's content. See §4.19. |
+| `not_for` | OPTIONAL | list of strings | Contexts or questions this unit explicitly does NOT address. Subtractive matching signal. See §4.20. |
+| `not_for_strict` | OPTIONAL | boolean | When `true`, bridges MUST exclude this unit from results on a `not_for` match. Default: `false`. See §4.20. |
 
 #### 4.1.1 Date Fields
 
@@ -1875,6 +1909,133 @@ Both blocks may be declared together on the same unit.
 
 ---
 
+### 4.19 `content_structure`
+
+The `content_structure` block declares the internal structure of a unit's content — what
+content modalities it contains and how information-dense it is. `format` and `content_type`
+describe the file's *encoding*; `content_structure` describes what is *inside* it. This lets
+retrieval agents and RAG pipelines route queries to the right units and choose an extraction
+strategy before loading a file.
+
+```yaml
+units:
+  - id: compliance-matrix
+    path: docs/compliance-matrix.md
+    intent: "What are our NIS2 compliance control mappings?"
+    content_structure:
+      primary: table
+      contains: [table, prose]
+      density: dense
+```
+
+#### `content_structure` field reference
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `primary` | OPTIONAL | string | The dominant content modality. One of the modality vocabulary below. |
+| `contains` | OPTIONAL | list of strings | All modalities present in the unit, including minor ones. Same vocabulary as `primary`. |
+| `density` | OPTIONAL | string | Information density of the content. One of: `sparse`, `normal`, `dense`. |
+
+#### Modality vocabulary
+
+`primary` and each entry in `contains` use the following values:
+
+| Value | Meaning |
+|-------|---------|
+| `prose` | Running text, paragraphs, narrative. |
+| `table` | Structured rows/columns (markdown tables, HTML tables, CSV-like). |
+| `code` | Source code, shell commands, configuration snippets. |
+| `list` | Enumerated or bulleted items without dense prose. |
+| `diagram` | Visual structure (ASCII art, Mermaid, PlantUML, embedded images). |
+| `reference` | Lookup content: glossaries, API parameter lists, field definitions. |
+| `mixed` | No single modality dominates. |
+
+#### Density vocabulary
+
+| Value | Meaning |
+|-------|---------|
+| `sparse` | Long document, low information per token (e.g. narrative tutorial). |
+| `normal` | Typical documentation density. |
+| `dense` | High information per token (e.g. API reference, data table, config file). |
+
+`content_structure` complements `kind`: a unit may have `kind: reference` and
+`content_structure.primary: table` — both signals are useful and non-redundant.
+
+`content_structure` is OPTIONAL. Parsers MUST read and expose all sub-fields. Vocabulary
+values for `primary`, `contains`, and `density` MUST be drawn from the defined sets above;
+parsers SHOULD warn on an unknown value but MUST pass it through rather than reject it, to
+preserve forward compatibility as new modalities are introduced.
+
+```yaml
+content_structure:
+  primary: prose
+  contains: [prose, code, list]
+  density: sparse
+```
+
+---
+
+### 4.20 `not_for` and `not_for_strict`
+
+The `not_for` field declares contexts or questions a unit explicitly does NOT address — a
+negative-space declaration that lets agents distinguish "this unit cannot help you" from
+"this unit hasn't been searched yet." Where `intent` and `triggers` declare what a unit
+answers, `not_for` declares what it does not.
+
+`not_for` is the spec's first **subtractive** field. All prior matching signals (`intent`,
+`triggers`, `audience`) are additive — they opt a unit *into* matching. `not_for` opts a unit
+*out of* matching for contexts it should not serve.
+
+```yaml
+units:
+  - id: api-security
+    path: docs/security/api-auth.md
+    intent: "How do we authenticate API clients?"
+    not_for:
+      - "Frontend authentication flows"
+      - "End-user login and session management"
+      - "Database access control"
+```
+
+#### `not_for` field reference
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `not_for` | OPTIONAL | list of strings | Natural-language descriptions of contexts or questions this unit does NOT address. |
+| `not_for_strict` | OPTIONAL | boolean | Opt-in to hard exclusion. Default: `false`. Only meaningful when `not_for` is also present. |
+
+#### Matching behaviour
+
+When a query matches a `not_for` entry, the consuming bridge applies one of two behaviours,
+controlled by `not_for_strict`:
+
+- **Soft demotion (default — `not_for_strict` absent or `false`):** the unit remains in
+  results but its score is demoted and the result is annotated with a caution flag indicating
+  which `not_for` phrase matched. The agent is informed but not prevented from loading the unit.
+- **Strict exclusion (`not_for_strict: true`):** the bridge MUST exclude the unit from results
+  entirely when any `not_for` entry matches the query. Use only with precise, unambiguous
+  `not_for` phrases.
+
+The full interaction with query scoring is defined in §15.11.
+
+```yaml
+units:
+  - id: v1-migration-guide
+    path: migration/v1-to-v2.md
+    intent: "How do I migrate from KCP v1 to v2?"
+    not_for:
+      - "Initial KCP adoption (no prior version)"
+      - "Migration from v2 to v3"
+    not_for_strict: true   # hard-exclude this unit when a not_for phrase matches
+```
+
+`not_for` and `not_for_strict` are OPTIONAL. Parsers MUST read and expose both fields and
+MUST NOT silently ignore `not_for` when scoring. The demotion weight for soft matches is
+implementation-defined. A root-level `not_for` (§3.10) declares a manifest-wide scope boundary
+for federation decisions and does NOT support `not_for_strict`.
+
+---
+
 ## 5. Relationships
 
 The optional `relationships` section declares explicit directional relationships between units.
@@ -1911,12 +2072,12 @@ Unknown relationship types MUST be silently ignored.
 ### 6.1 Spec Version (`kcp_version`)
 
 `kcp_version` identifies which version of this specification the manifest conforms to. Current
-valid value: `"0.16"`. The values `"0.1"` through `"0.14"` refer to prior drafts (January–June
-2026); parsers SHOULD treat these manifests as conformant with this version, as each release
-since v0.11 is a strict superset of its predecessor (new fields only, no removals or breaking
-changes). There is no `"0.15"` spec version: that number was used by the `kcp` CLI release
-train and skipped here to re-synchronise spec and tooling versions. Parsers encountering an
-unknown `kcp_version` SHOULD process the manifest using the closest known version and SHOULD
+valid value: `"0.17"`. The values `"0.1"` through `"0.14"`, and `"0.16"`, refer to prior drafts
+(January–June 2026); parsers SHOULD treat these manifests as conformant with this version, as
+each release since v0.11 is a strict superset of its predecessor (new fields only, no removals
+or breaking changes). There is no `"0.15"` spec version: that number was used by the `kcp` CLI
+release train and skipped here to re-synchronise spec and tooling versions. Parsers encountering
+an unknown `kcp_version` SHOULD process the manifest using the closest known version and SHOULD
 emit a warning.
 
 ### 6.2 Manifest Version (`version`)
@@ -1953,6 +2114,10 @@ manifest:
 - `discovery.contradicted_by` referencing an unknown unit `id`
 - A `visibility.conditions[]` entry missing a `when` or `then` key
 - An `authority` action value not in `{initiative, requires_approval, denied}` (unknown values MUST be silently ignored at runtime but SHOULD warn at validation time)
+- A `content_structure.primary` value not in the modality vocabulary (§4.19) (pass through and warn — MUST NOT reject)
+- A `content_structure.contains[]` value not in the modality vocabulary (§4.19) (pass through and warn — MUST NOT reject)
+- A `content_structure.density` value not in `{sparse, normal, dense}` (pass through and warn — MUST NOT reject)
+- `not_for_strict` present on a unit that declares no `not_for` (the strict flag has no effect without entries to match)
 
 The following conditions MUST cause the parser to reject the manifest:
 
@@ -1974,7 +2139,8 @@ this specification: root fields (`kcp_version`, `project`, `version`, `updated`,
 `intent`, `format`, `content_type`, `language`, `scope`, `audience`, `license`, `validated`,
 `update_frequency`, `indexing`, `depends_on`, `supersedes`, `triggers`, `hints`, `access`,
 `auth_scope`, `sensitivity`, `deprecated`, `delegation`, `compliance`, `payment`, `rate_limits`,
-`external_depends_on`), and relationship fields (`from`, `to`, `type`).
+`content_structure`, `not_for`, `not_for_strict`, `external_depends_on`), and relationship
+fields (`from`, `to`, `type`).
 
 The schema enforces required fields, value constraints (e.g. `id` pattern, `kind` enum,
 `format` enum, trigger `maxLength` and `maxItems`), and structural rules. It can be used with
@@ -2000,11 +2166,14 @@ Extends Level 1 with `validated`, `depends_on`, `kind`, `format`, `language`, th
 `deprecated`, `payment`), the root-level `trust.provenance` block, the `authority` block
 (§4.17) on units and at root level (manifest-wide action permission defaults), and the
 `discovery` block (§4.18) on units with `verification_status`, `source`, `confidence`, and
-`contradicted_by`. A Level 2 manifest supports freshness-aware retrieval, dependency-ordered
-loading, artifact type classification, content format awareness, multilingual navigation,
-basic context-budget planning, access-tier routing, action governance (agents know which
-operations require human approval or are denied), and discovery provenance (consuming agents
-can filter by confidence and verification state).
+`contradicted_by`, the `content_structure` block (§4.19) for modality and density routing, and
+the `not_for`/`not_for_strict` fields (§4.20) for negative-space scoping. A Level 2 manifest
+supports freshness-aware retrieval, dependency-ordered loading, artifact type classification,
+content format awareness, multilingual navigation, basic context-budget planning, access-tier
+routing, action governance (agents know which operations require human approval or are denied),
+discovery provenance (consuming agents can filter by confidence and verification state),
+structure-aware retrieval routing, and negative-space exclusion (agents can tell when a unit
+explicitly does not apply).
 
 **Level 3 — Full**
 Extends Level 2 with `triggers`, `supersedes`, `license`, `update_frequency`, `indexing`,
@@ -2606,6 +2775,53 @@ results:
 
 ---
 
+### 15.11 Negative-Space Filtering (`not_for`)
+
+The unit-level `not_for` and `not_for_strict` fields (§4.20) are **subtractive** matching
+signals. Where the scoring rules of §15.4 opt units *into* results, `not_for` opts them *out*.
+A query processor MUST evaluate `not_for` after scoring (§15.4) and before applying the
+top-N cut.
+
+For each candidate unit that declares `not_for`, the processor compares each `not_for` entry
+against the query `terms` (case-insensitive substring, the same matching basis as §15.4):
+
+- **No `not_for` entry matches:** the unit is unaffected.
+- **A `not_for` entry matches and `not_for_strict` is absent or `false` (soft demotion):**
+  the unit's `score` is demoted and the result carries a `caution` annotation naming the
+  matched phrase. The unit remains in results. The numeric demotion weight is
+  implementation-defined; a stronger `not_for` match SHOULD demote more than a weaker one,
+  and a demoted unit SHOULD rank below an otherwise-equal unit with no `not_for` match.
+- **A `not_for` entry matches and `not_for_strict` is `true` (strict exclusion):** the unit
+  is **excluded** from results entirely, exactly as if it had not matched the query.
+
+```yaml
+# Query request
+terms: ["end-user login"]
+
+# Query response (soft demotion)
+results:
+  - unit_id: api-security
+    score: 1                  # demoted from a higher pre-not_for score
+    path: docs/security/api-auth.md
+    match_reason: [intent]
+    caution: "not_for match: 'End-user login and session management'"
+    source_manifest: null
+```
+
+A response field `caution` (string or `null`) carries the soft-demotion annotation. It is
+absent or `null` when no `not_for` entry matched.
+
+**Relationship to root-level `not_for` (§3.10):** a manifest-level `not_for` match is advisory
+only. It does not demote or exclude individual units; it signals to the agent that the whole
+manifest may be the wrong place to search and that federation (§3.6) to another manifest may be
+warranted. Root-level `not_for` does not support `not_for_strict`.
+
+**Security note:** like `sensitivity_max` (§15.9), `not_for` filtering is a navigation
+convenience, not access control. Strict exclusion removes a unit from *results*; it does not
+prevent an agent that already knows the unit `id` from loading it directly. See §14.1.
+
+---
+
 ## 16. Trusted Render Pipeline (v0.16)
 
 Promoted from [RFC-0018](./RFC-0018-Trusted-Render-Pipeline.md), which remains the design
@@ -2726,7 +2942,7 @@ between commits is a security signal, diffable in CI.
 ## Appendix A: Minimal Example
 
 ```yaml
-kcp_version: "0.16"
+kcp_version: "0.17"
 project: my-project
 version: 1.0.0
 units:
@@ -2742,7 +2958,7 @@ units:
 ## Appendix B: Full Example
 
 ```yaml
-kcp_version: "0.16"
+kcp_version: "0.17"
 project: wiki.example.org
 version: 2.3.0
 updated: "2026-03-07"
