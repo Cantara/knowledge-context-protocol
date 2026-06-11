@@ -1,0 +1,22 @@
+# A4 — legitimate manifest declaring an executable unit. Must render as a
+# pointer (load_eligible: false) without being treated as hostile.
+kcp_version: "0.14"
+project: lib-pcb
+version: "1.4.2"
+
+units:
+  - id: gerber-output
+    path: src/main/java/no/exo/pcb/gerber/
+    kind: knowledge
+    intent: "Gerber file generation and validation"
+    scope: project
+    audience: [developer, agent]
+    triggers: [gerber]
+
+  - id: build-tooling
+    path: scripts/build.sh
+    kind: executable
+    intent: "Main build script for local development"
+    scope: project
+    audience: [developer]
+    triggers: [build]

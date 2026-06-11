@@ -1,0 +1,15 @@
+# Level 2 — content_structure.primary with a bogus value (RFC-0016, v0.17)
+# Vocabulary values warn but pass through (forward-compat): valid:true with a warning.
+kcp_version: "0.17"
+project: test-content-structure-bad-primary
+version: "1.0.0"
+
+units:
+  - id: mystery-doc
+    path: docs/mystery.md
+    intent: "Document with an unrecognised primary modality"
+    scope: project
+    audience: [developer]
+    content_structure:
+      primary: hologram
+      density: normal

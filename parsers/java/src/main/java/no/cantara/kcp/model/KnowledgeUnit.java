@@ -37,7 +37,10 @@ public record KnowledgeUnit(
         FreshnessPolicy freshnessPolicy,
         Visibility visibility,
         Authority authority,
-        Discovery discovery
+        Discovery discovery,
+        List<String> notFor,
+        Boolean notForStrict,
+        ContentStructure contentStructure
 ) {
     public KnowledgeUnit {
         audience = audience != null ? List.copyOf(audience) : List.of();
@@ -45,5 +48,6 @@ public record KnowledgeUnit(
         triggers = triggers != null ? List.copyOf(triggers) : List.of();
         externalDependsOn = externalDependsOn != null ? List.copyOf(externalDependsOn) : List.of();
         requiresCapabilities = requiresCapabilities != null ? List.copyOf(requiresCapabilities) : List.of();
+        notFor = notFor != null ? List.copyOf(notFor) : List.of();
     }
 }

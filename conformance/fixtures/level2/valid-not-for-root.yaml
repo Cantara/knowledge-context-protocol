@@ -1,0 +1,18 @@
+# §3.10 root-level not_for: advisory manifest-scope boundary. Valid, no
+# warnings; locks in that parsers read and accept the root field.
+kcp_version: "0.17"
+project: api-security-docs
+version: "1.0.0"
+
+not_for:
+  - "UI component documentation"
+  - "Data pipeline architecture"
+
+units:
+  - id: api-auth
+    path: docs/security/api-auth.md
+    intent: "How do we authenticate API clients?"
+    scope: project
+    audience: [developer, agent]
+    not_for:
+      - "Frontend authentication flows"
