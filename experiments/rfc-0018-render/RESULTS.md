@@ -34,10 +34,13 @@ as RFC-0018 §2.1 predicts. The lint is defense-in-depth; the load-bearing
 control for T1/T6 is §6.4 / C8 data-framing in the runtime. Any future lint
 version that claims to close this should add B12-class fixtures first.
 
-## Spec ambiguity found while building the harness
+## Spec changes these experiments drove (now in draft-03, Appendix B)
 
-RFC-0018 §5's `sanitization.stats` does not say whether `fields_dropped`
-counts drop *entries* or dropped *leaves*. With subtree drops these diverge,
-and the implied identity `fields_in = fields_rendered + fields_dropped +
-fields_quarantined` only holds leaf-wise. The prototype counts leaves; the
-RFC should state the unit explicitly.
+1. `sanitization.stats` was entry-vs-leaf ambiguous; the identity
+   `fields_in = rendered + dropped + quarantined` only holds leaf-wise.
+   Draft-03 §5.2 now defines leaf counting normatively.
+2. Origin determination was renderer policy; draft-03 §4.1 makes the
+   derivation order normative and calls out the unknown-origin (tarball)
+   downgrade with an optional strict mode.
+3. Tier→confidence mapping was unexplained; draft-03 §5.1 specifies the
+   default (0.7/0.6/0.5) and requires monotonicity in tier.

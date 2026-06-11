@@ -1,6 +1,6 @@
 # RFC-0018: Trusted Render Pipeline
 
-**Status:** Open RFC — for discussion (draft-02)
+**Status:** Open RFC — for discussion (draft-03)
 **Author:** Thor Henning Hetland (eXOReaction AS)
 **Created:** 2026-06-11
 **Target version:** v0.15
@@ -282,8 +282,22 @@ Consequences:
 - Origins matching no scope retain the `unsigned` tier — pinning is
   opt-in per origin, so the long tail of legitimate unsigned manifests is
   unaffected.
-- Origin determination is renderer policy and MUST be recorded in the
-  output (`trust.origin`, §5) so the pinning decision is auditable.
+
+**Origin determination.** Two conforming renderers must pin the same
+manifest the same way, so origin derivation is normative, in priority
+order: (1) an explicit `--origin` argument; (2) for federation fetches,
+the manifest URL's host plus path; (3) for local checkouts, the URL of
+the git remote named `origin`, normalized (scheme and credentials
+stripped, lowercased host, `.git` suffix removed). The derived origin
+MUST be recorded in the output (`trust.origin`, §5) so the pinning
+decision is auditable.
+
+If no origin can be derived (tarball download, detached copy, no
+remote), the renderer records `origin: unknown` and no scope can match —
+which silently re-opens the T7 downgrade for content that *should* have
+been pinned. Consumers with a non-empty allowlist scope SHOULD therefore
+treat unknown-origin manifests as at most `unsigned` with a warning, and
+MAY configure strict mode (`unknown_origin: failed`) to refuse them.
 
 ### 4.2 Signature mechanism (RFC-0004 amendment)
 
@@ -332,6 +346,11 @@ confirmation that has not happened. This RFC adds one value:
 Ordering of epistemic strength: `rumored < declared < observed <
 verified`. The constraint slots between RFC-0012's existing bounds
 (`rumored` MUST be `< 0.5`; `verified` SHOULD be `>= 0.8`).
+
+The `discovery.confidence` a renderer assigns is not free-form: the
+default tier→confidence mapping is `trusted` → 0.7, `known` → 0.6,
+`unsigned` → 0.5. Renderers MAY adjust within the `declared` bounds, but
+MUST be monotone in tier (a lower tier never yields higher confidence).
 
 ### 5.2 Output format
 
@@ -407,6 +426,12 @@ sanitization:
     fields_dropped: 5
     fields_quarantined: 3
 ```
+
+All four `stats` counters count **leaf fields** (scalars; an array of
+scalars counts as one), not drop/quarantine *entries* — a single dropped
+subtree is one entry in `dropped` but several leaves in `fields_dropped`.
+This makes the bookkeeping identity hold exactly:
+`fields_in = fields_rendered + fields_dropped + fields_quarantined`.
 
 Normative properties:
 
@@ -690,3 +715,15 @@ simulation tests provide a starting seed for (a).
 | 9 | Unknown `kind` values fail closed in the renderer (§6.3) | SPEC.md parser leniency (`unknown kind ⇒ knowledge`) would let `kind: executable-v2` dodge the load-eligibility rule |
 | 10 | Tier renamed `verified` → `trusted`; `known` made stateless | resolves draft-01 open question 4; "previously seen" implied an unspecified trust-state store |
 | 11 | T8 (rendered-artifact spoofing) added; out-of-worktree render cache, in-session verification rule (§3.4, C10); scope matching pinned to path-segment boundaries (§9) | moving ingestion to `kcp-rendered.yaml` made the rendered file itself the forgeable target; bare prefix matching made pinned orgs typosquattable |
+
+## Appendix B: Changes from draft-02 (experimental validation)
+
+Driven by the executable experiments in `experiments/rfc-0018-render/`
+(17 cases over T1–T8 plus the legitimate use cases; see `RESULTS.md`
+there):
+
+| # | Change | Driver |
+|---|--------|--------|
+| 1 | `sanitization.stats` semantics defined as leaf-based (§5.2) | the harness could not satisfy the bookkeeping identity until entry-vs-leaf counting was pinned down — the spec was ambiguous |
+| 2 | Origin determination made normative, with the unknown-origin downgrade called out and a strict mode added (§4.1) | two conforming renderers could otherwise pin the same manifest differently; tarball/no-remote checkouts silently re-opened T7 |
+| 3 | Default tier→confidence mapping specified, monotone in tier (§5.1) | the example's `confidence: 0.6` was unexplained renderer policy; interop requires at least a default and a monotonicity rule |

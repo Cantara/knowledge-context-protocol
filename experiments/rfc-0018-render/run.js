@@ -394,13 +394,16 @@ lines.push('as RFC-0018 §2.1 predicts. The lint is defense-in-depth; the load-b
 lines.push('control for T1/T6 is §6.4 / C8 data-framing in the runtime. Any future lint');
 lines.push('version that claims to close this should add B12-class fixtures first.');
 lines.push('');
-lines.push('## Spec ambiguity found while building the harness');
+lines.push('## Spec changes these experiments drove (now in draft-03, Appendix B)');
 lines.push('');
-lines.push('RFC-0018 §5\'s `sanitization.stats` does not say whether `fields_dropped`');
-lines.push('counts drop *entries* or dropped *leaves*. With subtree drops these diverge,');
-lines.push('and the implied identity `fields_in = fields_rendered + fields_dropped +');
-lines.push('fields_quarantined` only holds leaf-wise. The prototype counts leaves; the');
-lines.push('RFC should state the unit explicitly.');
+lines.push('1. `sanitization.stats` was entry-vs-leaf ambiguous; the identity');
+lines.push('   `fields_in = rendered + dropped + quarantined` only holds leaf-wise.');
+lines.push('   Draft-03 §5.2 now defines leaf counting normatively.');
+lines.push('2. Origin determination was renderer policy; draft-03 §4.1 makes the');
+lines.push('   derivation order normative and calls out the unknown-origin (tarball)');
+lines.push('   downgrade with an optional strict mode.');
+lines.push('3. Tier→confidence mapping was unexplained; draft-03 §5.1 specifies the');
+lines.push('   default (0.7/0.6/0.5) and requires monotonicity in tier.');
 lines.push('');
 
 fs.writeFileSync(path.join(ROOT, 'RESULTS.md'), lines.join('\n'));
