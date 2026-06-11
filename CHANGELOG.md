@@ -10,6 +10,37 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.16.0] — 2026-06-11 — Trusted Ingestion Release
+
+> Note: there is no 0.15 spec version. The `kcp` CLI release train had already used 0.15.0;
+> this release re-synchronises spec and tooling version numbers.
+
+### Spec
+
+- **v0.16.0 — Trusted Ingestion Release** (RFC-0018 + RFC-0017 promoted, RFC-0004 `content_integrity` activated, RFC-0012 amended)
+  - **Trusted Render Pipeline (§16)**: `kcp render` consumes `knowledge.yaml` and emits a derived, sanitized artifact — deterministic, LLM-free, fail-closed. Trust tiers (`trusted` | `known` | `unsigned` | `failed`, plus `unrendered` pseudo-tier) computed consumer-side over `trust.content_integrity`; producers cannot self-assign a tier. Scope pinning: an allowlisted key's `scope` creates a signing expectation — unsigned manifests from pinned origins render at `failed` (closes the signature-stripping downgrade). Normative origin derivation (explicit arg > federation URL > normalized git remote), with unknown-origin strict mode. Sanitization: render-schema whitelist, versioned imperative-mood lint with quarantine-not-reject, kind-based load eligibility (`service`/`executable`/unknown kinds never load-eligible at any tier). Federation: no transitive trust, no auto-traversal below `trusted`. Rendered artifacts are not self-authenticating: runtimes never ingest a render they did not produce or verify in-session.
+  - **Observability (§17)**: local-first event store at `~/.kcp/usage.db` promoted to core (`usage_events`), extended with `render_events` and `quarantine_events` tables. Quarantine-count drift between commits is a CI-diffable security signal.
+  - **`trust.content_integrity` (§3.2)**: activated from RFC-0004 — `manifest_hash`, `signing` (`method: jws | http_signature`), with detached JWS over canonical manifest bytes and `EdDSA` (Ed25519, RFC 8037) as the mandatory-to-implement algorithm.
+  - **`discovery.verification_status: declared` (§4.18)**: first-party self-description by the publisher. Epistemic ordering `rumored < declared < observed < verified`; confidence SHOULD be in [0.5, 0.8). New §7 advisory warning for out-of-band confidence.
+  - `KNOWN_KCP_VERSIONS` updated to include `"0.16"` in all validators. Appendix examples updated to `kcp_version: "0.16"`.
+
+### RFC Status
+
+- **RFC-0018 (Trusted Render Pipeline):** Accepted — promoted to SPEC.md §16 (v0.16). Validated by 17 executable experiments over threats T1–T8 in `experiments/rfc-0018-render/` (see RESULTS.md there; one documented known-gap: descriptive-mood injection passes the lint by design — C8 data-framing is the load-bearing control).
+- **RFC-0017 (Observability Hooks):** Accepted — promoted to SPEC.md §17 (v0.16) with the two new render tables.
+- **RFC-0004 (Trust and Compliance):** `trust.content_integrity` activated and promoted to SPEC.md §3.2; remaining blocks (access receipts, agent attestation, `publisher_did`) stay RFC-only.
+- **RFC-0012 (Capability Discovery Provenance):** amended — `declared` added to the `verification_status` vocabulary.
+
+### CLI (`kcp`) — v0.16.0
+
+- `kcp render` — new command implementing SPEC.md §16: trust tiering with Ed25519 signature verification, scope pinning, origin derivation, imperative-mood lint (`imperative-lint-0.2`), render-schema sanitization, deterministic output. Exit code 2 with no output on `failed` tier.
+
+### Experiments
+
+- `experiments/rfc-0018-render/` — executable validation harness for the render pipeline: prototype renderer, 17-case experiment matrix (legitimate use cases + threats T1–T8) with real per-run Ed25519 keys, mutation-tested expectations, generated RESULTS.md.
+
+---
+
 ## [0.14.3] — 2026-03-27 — Observability + Content Structure + Negative Space
 
 ### RFC

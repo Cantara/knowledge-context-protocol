@@ -28,7 +28,7 @@ The following proposals from this RFC have been promoted to the core specificati
 | `compliance.restrictions` | v0.7 | Level 3 | Processing restriction vocabulary (`no_ai_training`, `no-external-llm`, etc.). |
 
 **Still RFC-only (not yet promoted):**
-- `trust.content_integrity` — signing infrastructure (`manifest_hash`, `signing`) awaiting wider deployment of JWS/HTTP Signatures for knowledge manifests.
+- ~~`trust.content_integrity`~~ — **promoted to SPEC.md §3.2 in v0.16**, activated by the trusted render pipeline (RFC-0018), with `EdDSA` (Ed25519, RFC 8037) profiled as the mandatory-to-implement JWS algorithm.
 - `trust.audit.provides_access_receipts` / `receipt_format` — awaiting implementation feedback on receipt formats.
 - `trust.agent_requirements` — `require_attestation`, `trusted_providers`, `attestation_url`, `attestation_jwks` awaiting OIDC-A ratification and community input.
 - `trust.provenance.publisher_did` — W3C DID resolution not yet common enough for core.

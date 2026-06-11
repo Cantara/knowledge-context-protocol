@@ -1,8 +1,8 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.14
+**Version:** 0.16
 **Status:** Draft
-**Date:** 2026-03-25
+**Date:** 2026-06-11
 **Repository:** github.com/cantara/knowledge-context-protocol
 
 ---
@@ -92,7 +92,7 @@ Example:
 
 ```json
 {
-  "kcp_version": "0.12",
+  "kcp_version": "0.16",
   "manifest": "/knowledge.yaml",
   "title": "My Project Knowledge Base",
   "description": "Architecture decisions, API reference, and onboarding guides.",
@@ -143,7 +143,7 @@ version.
 ## 3. Root Manifest Structure
 
 ```yaml
-kcp_version: "0.12"         # RECOMMENDED
+kcp_version: "0.16"         # RECOMMENDED
 project: <string>            # REQUIRED
 version: <semver string>     # RECOMMENDED
 updated: "<ISO date>"        # RECOMMENDED; quote the value (see §4.1.1)
@@ -173,7 +173,7 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
-| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.12"` for conformance with this document. |
+| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.16"` for conformance with this document. |
 | `project` | REQUIRED | string | Human-readable name of the project or documentation site. |
 | `version` | RECOMMENDED | string | Semver version of this manifest. Increment when units are added or removed. |
 | `updated` | RECOMMENDED | string | ISO 8601 date (`YYYY-MM-DD`) when this manifest was last modified. |
@@ -236,12 +236,49 @@ specification and record it alongside the access event in their own audit trail.
 is the same — a reconstructable trace of which agent accessed which unit and when — regardless
 of whether the access occurred over HTTP or via the local file system.
 
+#### `trust.content_integrity` sub-fields (v0.16)
+
+Activated in v0.16 from [RFC-0004](./RFC-0004-Trust-and-Compliance.md) to support the trusted
+render pipeline (§16). Declares that the manifest is cryptographically signed and how to
+verify it.
+
+```yaml
+trust:
+  content_integrity:
+    manifest_hash:
+      algorithm: sha256
+      value: "9f2c…"
+    signing:
+      enabled: true
+      method: jws                   # jws (RFC 7515) | http_signature (RFC 9421)
+      verification_url: "https://acme.com/.well-known/kcp-signing-key"
+      key_id: "acme-org-2026"
+```
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `manifest_hash.algorithm` | REQUIRED if `manifest_hash` present | string | `sha256`, `sha384`, or `sha512`. |
+| `manifest_hash.value` | REQUIRED if `manifest_hash` present | string | Hex-encoded hash of the canonical manifest YAML. |
+| `signing.enabled` | OPTIONAL | boolean | Whether content signing is active. Default: `false`. |
+| `signing.method` | REQUIRED if enabled | string | `jws` (RFC 7515) or `http_signature` (RFC 9421). |
+| `signing.verification_url` | RECOMMENDED if enabled | string | URL where the signing key or JWKS can be retrieved. |
+| `signing.key_id` | OPTIONAL | string | Identifier for the specific key used. Consumers join this against their local allowlist (§16.2). |
+
+**Signature profile:** the signature envelope is a detached JWS over the canonical manifest
+bytes. The mandatory-to-implement algorithm is `EdDSA` (Ed25519, RFC 8037): verifiers MUST
+support EdDSA; producers SHOULD sign with it. Other JWS algorithms MAY be supported. The
+`http_signature` method provides transport-level integrity for federation fetches but does
+not participate in trust tiering (§16.2) — tiering is computed over the manifest artifact,
+not the channel it arrived on.
+
+A signature authenticates *who published* a manifest, never *that its content is safe*.
+Tier semantics are defined in §16.2.
+
 All sub-fields of `trust` are OPTIONAL. An empty `trust` block (no sub-fields) is valid and
 SHOULD be silently accepted. Unknown sub-fields MUST be silently ignored.
 
-Cryptographic content integrity, access receipts, and agent attestation requirements are
-defined in [RFC-0004](./RFC-0004-Trust-and-Compliance.md) and may be promoted to the core spec
-in a future version.
+Access receipts and agent attestation requirements remain in
+[RFC-0004](./RFC-0004-Trust-and-Compliance.md) and may be promoted in a future version.
 
 ### 3.3 `auth`
 
@@ -1774,13 +1811,17 @@ units:
 | Value | Meaning |
 |-------|---------|
 | `rumored` | Capability mentioned in an indirect source (marketing copy, third-party description, LLM inference). Not yet observed directly. |
+| `declared` | First-party self-description by the artifact's own publisher; not externally observed or confirmed. Added in v0.16 (RFC-0018 §5.1); used by the trusted render pipeline (§16) to frame manifest self-description as a claim. |
 | `observed` | Capability found via direct technical observation (web traversal, API call, screenshot) but not yet cross-confirmed against a canonical source. |
 | `verified` | Capability confirmed against a canonical source (OpenAPI spec, official documentation, successful live API call). |
 | `deprecated` | Capability was previously `verified` or `observed` but is no longer present or functional. Retained for audit. |
 
+Epistemic ordering: `rumored < declared < observed < verified`.
+
 **Normative rules:**
 
 - A unit with `verification_status: rumored` MUST declare `confidence < 0.5`.
+- A unit with `verification_status: declared` SHOULD declare `confidence >= 0.5` and `< 0.8`.
 - A unit with `verification_status: verified` SHOULD declare `confidence >= 0.8`.
 - A unit with `verification_status: deprecated` SHOULD NOT be loaded by agents for live
   operation. It MAY be loaded by audit tooling.
@@ -1869,11 +1910,13 @@ Unknown relationship types MUST be silently ignored.
 ### 6.1 Spec Version (`kcp_version`)
 
 `kcp_version` identifies which version of this specification the manifest conforms to. Current
-valid value: `"0.12"`. The values `"0.1"` through `"0.11"` refer to prior drafts (January–March
-2026); parsers SHOULD treat these manifests as conformant with this version, as v0.12 is a
-strict superset of v0.11 (new fields only, no removals or breaking changes). Parsers
-encountering an unknown `kcp_version` SHOULD process the manifest using the closest known
-version and SHOULD emit a warning.
+valid value: `"0.16"`. The values `"0.1"` through `"0.14"` refer to prior drafts (January–June
+2026); parsers SHOULD treat these manifests as conformant with this version, as each release
+since v0.11 is a strict superset of its predecessor (new fields only, no removals or breaking
+changes). There is no `"0.15"` spec version: that number was used by the `kcp` CLI release
+train and skipped here to re-synchronise spec and tooling versions. Parsers encountering an
+unknown `kcp_version` SHOULD process the manifest using the closest known version and SHOULD
+emit a warning.
 
 ### 6.2 Manifest Version (`version`)
 
@@ -1903,6 +1946,7 @@ manifest:
 - `auth_scope` present on a unit whose `access` is not `restricted`
 - `auth.methods` containing no recognised `type` values
 - `discovery.verification_status: rumored` with `confidence >= 0.5` (violates normative rule §4.18)
+- `discovery.verification_status: declared` with `confidence < 0.5` or `>= 0.8` (advisory)
 - `discovery.verification_status: verified` with `confidence < 0.8` (advisory)
 - `discovery.verified_at` set when `verification_status` is `rumored` or `observed`
 - `discovery.contradicted_by` referencing an unknown unit `id`
@@ -2150,7 +2194,9 @@ with an error.
 manifest size, unit count, and string field lengths to guard against resource exhaustion.
 
 **Trust:** A `knowledge.yaml` is as trustworthy as its source. Agents consuming KCP manifests
-from untrusted sources SHOULD treat the content as untrusted input.
+from untrusted sources SHOULD treat the content as untrusted input. v0.16 defines a trusted
+render pipeline (§16) that makes this normative: execution-capable agents SHOULD consume the
+rendered artifact, never the raw manifest.
 
 ### 14.1 Trust Model
 
@@ -2559,10 +2605,127 @@ results:
 
 ---
 
+## 16. Trusted Render Pipeline (v0.16)
+
+Promoted from [RFC-0018](./RFC-0018-Trusted-Render-Pipeline.md), which remains the design
+rationale and threat-model reference (T1–T8). This section is the normative core.
+
+KCP's passive-data guarantee holds at the parser level: reading a manifest cannot execute
+anything. It does not hold at the system level if an execution-capable agent ingests raw
+manifest prose directly, because free-text fields are an indirect prompt-injection channel.
+The render pipeline closes that gap:
+
+> **A manifest may influence what an agent knows, never what it does.**
+
+### 16.1 The renderer
+
+`kcp render` consumes a `knowledge.yaml` and emits a derived artifact — never the original —
+with trust decisions made, recorded, and machine-checkable. A conforming renderer MUST be:
+
+1. **Deterministic.** Identical (input, key configuration, renderer version) triples produce
+   byte-identical output. No wall-clock timestamp appears in default output.
+2. **LLM-free.** No model call participates in any code path that affects output.
+3. **Fail-closed.** A `failed` trust tier (§16.2) emits no output file and exits non-zero.
+
+Enforcement is consumer-side. Repository-authored instruction files are untrusted prose and
+cannot be the mechanism; runtimes that support tool-call interception SHOULD block raw reads
+of `knowledge.yaml` and substitute the rendered artifact. The renderer invoked MUST be
+consumer-installed — never a repository-local binary. A rendered artifact found *in* a
+repository is repository-controlled content: runtimes MUST NOT ingest a render they did not
+produce or verify in-session (check `render.source.sha256` against the live manifest bytes).
+
+### 16.2 Trust tiers
+
+Tiering is consumer-side policy computed over producer-side metadata (§3.2
+`trust.content_integrity`). Producers cannot self-assign a tier.
+
+| Tier | Condition | Effect |
+|------|-----------|--------|
+| `trusted` | Valid signature, key on consumer allowlist, origin within key scope | Rendered units eligible for standing context |
+| `known` | Valid signature, key not allowlisted (or allowlisted key outside its scope) | Metadata only; agent informed of tier |
+| `unsigned` | No signature, origin not pinned | Metadata only; agent told content is unauthenticated |
+| `failed` | Invalid signature, or unsigned manifest from a pinned origin | Render refused; nothing emitted |
+| `unrendered` | *(pseudo-tier)* Federated manifest not yet rendered | Pointer only; no content, no traversal |
+
+The consumer allowlist (`~/.kcp/trusted-keys.yaml`) maps `key_id` to public keys, each with
+an optional `scope` of origins. A scope creates a **signing expectation**: a manifest whose
+origin matches an allowlisted key's scope MUST carry a valid signature from a key scoped to
+that origin; an unsigned manifest from a pinned origin renders at `failed`, not `unsigned`.
+Scope matching is exact per path segment (`github.com/Acme` matches `github.com/Acme/lib`,
+never `github.com/AcmeEvil`).
+
+Origin derivation, in priority order: explicit argument; the manifest URL (federation
+fetches); the normalized URL of the git remote named `origin`. If no origin can be derived,
+the renderer records `origin: unknown`, no scope can match, and consumers with a non-empty
+allowlist SHOULD warn (or refuse, in strict mode).
+
+### 16.3 Sanitization
+
+- **Schema whitelist.** Output contains only fields in the render schema (identifiers, paths,
+  enums, dates, bounded-semantics fields). Unknown input fields are dropped and recorded.
+- **Imperative-mood lint.** Free-text fields are descriptive by definition. Imperative
+  constructions directed at the reader, and embedded tool-invocation syntax, are
+  **quarantined**: withheld from output, recorded with content hash and reason. Describing a
+  command ("the build uses `mvn package`") is not flagged. Lint rule sets are versioned and
+  recorded in the output (`render.lint_rules`). The lint is defense-in-depth: the load-bearing
+  control is that rendered unit content always enters agent context as framed data, never as
+  bare instructions, at every tier.
+- **Kind-based load eligibility.** Units of `kind: service` or `kind: executable` — and units
+  with an *unknown* `kind`, which fail closed here even though parsers treat them leniently
+  (§4.3a) — are never load-eligible at any tier. They render as pointers with
+  `invocation: explicit`.
+- **Stats identity.** `sanitization.stats` counts leaf fields:
+  `fields_in = fields_rendered + fields_dropped + fields_quarantined`.
+
+The render output reuses the §4.18 discovery vocabulary: all manifest self-description is
+framed `verification_status: declared`, with default tier→confidence mapping `trusted` → 0.7,
+`known` → 0.6, `unsigned` → 0.5 (monotone in tier).
+
+### 16.4 Federation
+
+Every federated manifest is rendered and tiered independently — trust is never inherited in
+either direction. Renderers MUST NOT auto-traverse federation edges from manifests below
+`trusted` tier. A `trusted` manifest whose external dependency renders at `unsigned` MUST at
+minimum trigger `on_failure: warn` (§3.6). Pinning applies per-edge.
+
+### 16.5 Renderer conformance
+
+A conforming renderer satisfies RFC-0018 §10 (C1–C10): determinism (C1), fail-closed emission
+(C2), schema-only output (C3), no `load_eligible: true` on executable/service/unknown kinds
+(C4), no auto-traversal below `trusted` (C5), recorded drops and quarantines (C6), LLM-free
+(C7), data-framed content at every tier (C8), consumer-installed renderer only (C9), and
+in-session artifact verification (C10). The reference implementation is `kcp render` in
+[`cli/`](./cli/); the validation corpus lives in
+[`experiments/rfc-0018-render/`](./experiments/rfc-0018-render/).
+
+---
+
+## 17. Observability (v0.16)
+
+Promoted from [RFC-0017](./RFC-0017-Observability-Hooks.md). A local-first observability
+convention: bridges and renderers MAY record events to a well-known SQLite database at
+`~/.kcp/usage.db` (WAL mode required; writes MUST never block serving). `kcp stats` reads it.
+
+Three tables:
+
+- **`usage_events`** — bridge query traffic. Columns: `timestamp`, `event_type`
+  (`search` | `get_unit` | `inject`), `project`, `query`, `unit_id`, `result_count`,
+  `token_estimate`, `manifest_token_total`. Defined in RFC-0017 §"Event schema".
+- **`render_events`** — one row per render: `timestamp`, `source_path`, `source_sha256`,
+  `origin`, `tier`, `pinned`, `renderer_version`, `lint_rules`, and the four stats counters.
+- **`quarantine_events`** — one row per quarantined field, referencing `render_events(id)`:
+  `field_path`, `reason`, `original_sha256`.
+
+Wall-clock timestamps live here, not in rendered artifacts — observability wants time;
+render determinism (§16.1) forbids it. A repository whose quarantine count moves from 0 to 3
+between commits is a security signal, diffable in CI.
+
+---
+
 ## Appendix A: Minimal Example
 
 ```yaml
-kcp_version: "0.12"
+kcp_version: "0.16"
 project: my-project
 version: 1.0.0
 units:
@@ -2578,7 +2741,7 @@ units:
 ## Appendix B: Full Example
 
 ```yaml
-kcp_version: "0.12"
+kcp_version: "0.16"
 project: wiki.example.org
 version: 2.3.0
 updated: "2026-03-07"

@@ -13,7 +13,7 @@ Apache-2.0. Maintained by the Cantara Norwegian Software Development Foundation.
 
 ## Structured Navigation (for AI agents)
 
-This repository ships a KCP v0.14 manifest, Ed25519-signed:
+This repository ships a KCP v0.16 manifest, Ed25519-signed:
 https://cantara.github.io/knowledge-context-protocol/knowledge.yaml
 
 Signing public key: https://cantara.github.io/knowledge-context-protocol/.well-known/kcp-signing-key.pub

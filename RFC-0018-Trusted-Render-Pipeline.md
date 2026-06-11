@@ -1,9 +1,9 @@
 # RFC-0018: Trusted Render Pipeline
 
-**Status:** Open RFC — for discussion (draft-03)
+**Status:** Accepted — promoted to [SPEC.md](./SPEC.md) §16 (v0.16). This document remains the design rationale, threat model (T1–T8), and full conformance reference.
 **Author:** Thor Henning Hetland (eXOReaction AS)
 **Created:** 2026-06-11
-**Target version:** v0.15
+**Target version:** v0.16 (originally drafted targeting v0.15; renumbered when the spec skipped 0.15 to re-sync with CLI versioning)
 **Depends on:** RFC-0004 (Trust and Compliance), RFC-0012 (Capability Discovery Provenance), RFC-0017 (Observability Hooks)
 **Amends:** RFC-0004 (activates the deferred `content_integrity` block, §4.2), RFC-0012 (adds `declared` to the `verification_status` vocabulary, §5.1), RFC-0017 (adds two event tables, §8)
 **Related:** RFC-0003 (Federation), RFC-0015 (Negative Space Declarations)
@@ -667,7 +667,7 @@ simulation tests provide a starting seed for (a).
    that question new weight: if the rendered artifact carried a hash per
    load-eligible unit, the runtime could detect content swapped *after*
    render time, narrowing the T6 window (the prose-injection half of T6
-   remains a runtime framing concern, §2.1). Should v0.15 require this for
+   remains a runtime framing concern, §2.1). Should a future version require this for
    `trusted`-tier renders?
 5. **Quarantine review workflow.** "Held for review" works inside an
    organisation where the consumer can reach the key holder. For OSS
