@@ -28,12 +28,14 @@ public record KnowledgeManifest(
         FreshnessPolicy freshnessPolicy,
         Visibility visibility,
         Authority authority,
-        Discovery discovery
+        Discovery discovery,
+        List<String> notFor
 ) {
     public KnowledgeManifest {
         units = units != null ? List.copyOf(units) : List.of();
         relationships = relationships != null ? List.copyOf(relationships) : List.of();
         manifests = manifests != null ? List.copyOf(manifests) : List.of();
         externalRelationships = externalRelationships != null ? List.copyOf(externalRelationships) : List.of();
+        notFor = notFor != null ? List.copyOf(notFor) : List.of();
     }
 }

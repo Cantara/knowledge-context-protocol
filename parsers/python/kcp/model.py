@@ -75,6 +75,19 @@ class ExternalDependency:
 
 
 @dataclass
+class ContentStructure:
+    """Content structure metadata for a knowledge unit. See RFC-0016 (v0.17).
+
+    Vocabulary (forward-compatible — unknown values pass through):
+    - ``primary`` / ``contains`` modalities: prose | table | code | list | diagram | reference | mixed
+    - ``density``: sparse | normal | dense
+    """
+    primary: Optional[str] = None
+    contains: list[str] = field(default_factory=list)
+    density: Optional[str] = None
+
+
+@dataclass
 class FreshnessPolicy:
     """Freshness policy for a knowledge unit or manifest default. See SPEC.md §3.7 (v0.11)."""
     max_age_days: Optional[int] = None
@@ -115,6 +128,9 @@ class KnowledgeUnit:
     visibility: Optional[Visibility] = None
     authority: Optional[Authority] = None
     discovery: Optional[Discovery] = None
+    not_for: list[str] = field(default_factory=list)  # RFC-0015 (v0.17)
+    not_for_strict: Optional[bool] = None  # RFC-0015 (v0.17), default false
+    content_structure: Optional[ContentStructure] = None  # RFC-0016 (v0.17)
 
 
 @dataclass
@@ -223,3 +239,4 @@ class KnowledgeManifest:
     visibility: Optional[Visibility] = None
     authority: Optional[Authority] = None
     discovery: Optional[Discovery] = None
+    not_for: list[str] = field(default_factory=list)  # RFC-0015 (v0.17), manifest-level

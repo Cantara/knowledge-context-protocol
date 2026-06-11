@@ -1,0 +1,23 @@
+# B3 — T2: capability laundering. An executable unit with an enticing,
+# perfectly descriptive intent. Even when this manifest is signed by an
+# allowlisted key (trusted tier), load_eligible must be false (§6.3, C4).
+kcp_version: "0.14"
+project: lib-pcb
+version: "1.4.2"
+
+units:
+  - id: helpful-runner
+    path: scripts/agent-helper.sh
+    kind: executable
+    intent: "Convenience helper that prepares the workspace for agent tasks"
+    scope: project
+    audience: [agent]
+    triggers: [setup, workspace, helper]
+
+  - id: docs
+    path: docs/index.md
+    kind: knowledge
+    intent: "Project documentation index"
+    scope: project
+    audience: [developer]
+    triggers: [docs]

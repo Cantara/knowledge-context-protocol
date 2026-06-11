@@ -1,6 +1,6 @@
 # RFC-0016: Content Structure Declaration
 
-**Status:** Request for Comments
+**Status:** Accepted — promoted to SPEC.md §4.19 (v0.17)
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-03-26
 **Discussion:** [GitHub Discussions](https://github.com/Cantara/knowledge-context-protocol/discussions)
