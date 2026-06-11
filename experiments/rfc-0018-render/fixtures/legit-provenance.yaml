@@ -1,0 +1,29 @@
+# A2/A5 — manifest with RFC-0004 trust.provenance, used for signed-tier
+# experiments. Provenance must pass through; content_integrity is consumed.
+kcp_version: "0.14"
+project: lib-pcb
+version: "1.4.2"
+
+trust:
+  provenance:
+    publisher: "Cantara"
+    publisher_url: "https://cantara.no"
+  content_integrity:
+    signing:
+      enabled: true
+      method: jws
+      key_id: "cantara-org-2026"
+
+units:
+  - id: gerber-output
+    path: src/main/java/no/exo/pcb/gerber/
+    kind: knowledge
+    intent: "Gerber file generation and validation"
+    scope: project
+    audience: [developer, agent]
+    triggers: [gerber, drc]
+
+relationships:
+  - from: gerber-output
+    to: gerber-output
+    type: documents
