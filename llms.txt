@@ -13,7 +13,7 @@ Apache-2.0. Maintained by the Cantara Norwegian Software Development Foundation.
 
 ## Structured Navigation (for AI agents)
 
-This repository ships a KCP v0.16 manifest, Ed25519-signed:
+This repository ships an Ed25519-signed KCP manifest:
 https://cantara.github.io/knowledge-context-protocol/knowledge.yaml
 
 Signing public key: https://cantara.github.io/knowledge-context-protocol/.well-known/kcp-signing-key.pub
@@ -35,6 +35,7 @@ Example: "How do I validate a knowledge.yaml?" → trigger `validation, schema`
 - [RFC-0001-KCP-Extended.md](RFC-0001-KCP-Extended.md) — Extensions: payments, compliance, federation
 - [RFC-0003-Federation.md](RFC-0003-Federation.md) — Cross-manifest federation
 - [RFC-0007-Query-Vocabulary.md](RFC-0007-Query-Vocabulary.md) — Agent query vocabulary (promoted v0.14)
+- [RFC-0018-Trusted-Render-Pipeline.md](RFC-0018-Trusted-Render-Pipeline.md) — Trusted render pipeline: `kcp render` (promoted v0.16)
 
 ## KCP Toolchain
 
