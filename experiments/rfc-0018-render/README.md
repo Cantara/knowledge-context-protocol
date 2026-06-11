@@ -30,7 +30,7 @@ prototype/render.js        prototype renderer (tiering, pinning, lint,
                            schema whitelist, fail-closed) — experiment
                            code, NOT the reference implementation
 prototype/verify-render.js §3.4 consumer-side artifact check (C10)
-prototype/lint.js          imperative-lint-0.2 rule set
+prototype/lint.js          imperative-lint-0.3 rule set
 fixtures/                  legit-* and hostile-* manifests
 run.js                     experiment matrix + runner, writes RESULTS.md
 ```
@@ -53,7 +53,10 @@ confirm the harness still bites.
 - The lint corpus is small (3 imperative variants, 3 descriptive
   controls, 1 bypass). Real precision/recall numbers need the
   `conformance/` adversarial corpus ported over.
-- Origin is injected via `--origin`; deriving origin from a real git
-  checkout is unspecified in the RFC (open issue) and untested here.
+- Origin is injected via `--origin`. Derivation from a real git checkout
+  is now normative (RFC-0018 §4.1, SPEC §16.2) and implemented in
+  `cli/src/render.ts`; these experiments exercise the tiering logic over
+  injected origins, not the git-remote derivation itself (the CLI unit
+  tests cover that).
 - No experiment covers RFC-0017 event-store writes (§8) — observability
   is asserted by the RFC but not yet exercised.

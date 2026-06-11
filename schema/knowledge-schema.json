@@ -813,15 +813,15 @@
         },
         "source": {
           "type": "string",
-          "description": "How this unit was discovered. Values: manual, web_traversal, openapi, llm_inference. Default: manual.",
-          "enum": ["manual", "web_traversal", "openapi", "llm_inference"]
+          "description": "How this unit was discovered. Values: manual, web_traversal, openapi, llm_inference, manifest-self-description. Default: manual.",
+          "enum": ["manual", "web_traversal", "openapi", "llm_inference", "manifest-self-description"]
         },
         "observed_at": {
           "type": "string",
           "description": "ISO 8601 datetime when this capability was first observed or inferred."
         },
         "verified_at": {
-          "description": "ISO 8601 datetime when this capability was independently confirmed. MUST be null if verification_status is rumored or observed.",
+          "description": "ISO 8601 datetime when this capability was independently confirmed. MUST be null if verification_status is rumored, declared, or observed.",
           "oneOf": [
             { "type": "string" },
             { "type": "null" }

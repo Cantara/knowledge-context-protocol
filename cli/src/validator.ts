@@ -236,7 +236,9 @@ export function validate(
       }
       if (
         disc.verified_at !== undefined &&
-        (disc.verification_status === "rumored" || disc.verification_status === "observed")
+        (disc.verification_status === "rumored" ||
+          disc.verification_status === "declared" ||
+          disc.verification_status === "observed")
       ) {
         warnings.push(
           `${ctx}: discovery.verified_at is set but verification_status is '${disc.verification_status}'; verified_at implies status should be 'verified'`

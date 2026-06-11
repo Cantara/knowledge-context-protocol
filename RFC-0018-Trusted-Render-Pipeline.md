@@ -237,10 +237,10 @@ the renderer decides trust. Producers cannot self-assign a tier.
 
 | Tier | Condition | Effect |
 |------|-----------|--------|
-| `trusted` | Valid signature, key on consumer allowlist | Eligible for standing context |
-| `known` | Valid signature, key not on allowlist | Metadata only; agent informed of tier |
+| `trusted` | Valid signature, key on consumer allowlist, origin within key scope | Eligible for standing context |
+| `known` | Valid signature, key not on allowlist (or out of scope), **origin not pinned** (§4.1) | Metadata only; agent informed of tier |
 | `unsigned` | No signature, origin not pinned (§4.1) | Metadata only; agent explicitly told content is unauthenticated |
-| `failed` | Invalid signature, or unsigned manifest from a pinned origin (§4.1) | **Render refused. Nothing emitted.** |
+| `failed` | Invalid signature; **or** a pinned-origin manifest (§4.1) without a valid signature from a key scoped to that origin — unsigned, non-allowlisted key, or out-of-scope key alike | **Render refused. Nothing emitted.** |
 | `unrendered` | *(pseudo-tier)* Federated manifest not yet rendered (§7) | Pointer only; no content, no traversal |
 
 Naming note: draft-01 called the top tier `verified`, which collided with
@@ -359,7 +359,7 @@ MUST be monotone in tier (a lower tier never yields higher confidence).
 render:
   kcp_version: "0.14"
   renderer: "kcp-cli 1.5.0"
-  lint_rules: "imperative-lint-0.2"      # versioned — render is reproducible
+  lint_rules: "imperative-lint-0.3"      # versioned — render is reproducible
   source:
     path: "knowledge.yaml"
     sha256: "9f2c…"
@@ -719,7 +719,7 @@ simulation tests provide a starting seed for (a).
 ## Appendix B: Changes from draft-02 (experimental validation)
 
 Driven by the executable experiments in `experiments/rfc-0018-render/`
-(17 cases over T1–T8 plus the legitimate use cases; see `RESULTS.md`
+(21 cases over T1–T8 plus the legitimate use cases; see `RESULTS.md`
 there):
 
 | # | Change | Driver |

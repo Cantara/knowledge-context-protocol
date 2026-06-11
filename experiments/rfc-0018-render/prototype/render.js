@@ -33,7 +33,7 @@ const UNIT_FIELDS = [
   'scope', 'audience', 'license', 'validated', 'update_frequency',
   'triggers', 'not_for',
 ];
-const UNIT_FREE_TEXT_FIELDS = ['intent', 'description', 'label'];
+const UNIT_FREE_TEXT_FIELDS = ['intent', 'triggers', 'not_for'];
 const RELATIONSHIP_FIELDS = ['from', 'to', 'type'];
 const FEDERATION_FIELDS = ['id', 'url', 'relationship'];
 const PROVENANCE_FIELDS = ['publisher', 'publisher_url', 'contact'];
@@ -63,6 +63,8 @@ function loadAllowlist(keysPath) {
 }
 
 function originIsPinned(allowlist, origin) {
+  // An unknown origin can never match a pinning scope (§16.2).
+  if (origin === 'unknown') return false;
   return (allowlist.keys || []).some((k) =>
     (k.scope?.domains || []).some((d) => scopeCovers(d, origin)));
 }
@@ -90,7 +92,13 @@ function computeTier(manifestBytes, sigPath, allowlist, origin) {
     }
     return { tier: 'unsigned', pinned, status: 'absent' };
   }
-  const sig = JSON.parse(fs.readFileSync(sigPath, 'utf8'));
+  let sig;
+  try {
+    sig = JSON.parse(fs.readFileSync(sigPath, 'utf8'));
+  } catch {
+    return { tier: 'failed', pinned, status: 'invalid',
+             reason: 'unparseable signature file' };
+  }
   if (!verifyDetachedSig(manifestBytes, sig)) {
     return { tier: 'failed', pinned, status: 'invalid',
              reason: 'signature verification failed' };
@@ -98,15 +106,23 @@ function computeTier(manifestBytes, sigPath, allowlist, origin) {
   const entry = (allowlist.keys || []).find(
     (k) => k.key_id === sig.key_id && k.public_key === sig.public_key);
   if (!entry) {
-    // T4: valid signature, unknown key — gate, don't endorse.
+    // Valid signature, non-allowlisted key. Normally `known` (T4: gate,
+    // don't endorse); on a pinned origin §4.1 makes it `failed`.
+    if (pinned) {
+      return { tier: 'failed', pinned, status: 'unknown-key',
+               reason: 'valid signature from non-allowlisted key on pinned origin (§4.1)' };
+    }
     return { tier: 'known', pinned, status: 'unknown-key', keyId: sig.key_id };
   }
   const domains = entry.scope?.domains;
   if (domains && !domains.some((d) => scopeCovers(d, origin))) {
-    // Allowlisted key used outside its declared scope (§9): the key may
-    // not verify this origin, so it confers no allowlist standing here.
-    return { tier: 'known', pinned, status: 'unknown-key', keyId: sig.key_id,
-             note: 'key valid but scoped to other origins' };
+    // Allowlisted key used outside its declared scope (§9): confers no
+    // standing here, and on a pinned origin fails the signing expectation.
+    if (pinned) {
+      return { tier: 'failed', pinned, status: 'unknown-key',
+               reason: 'signing key out of scope for pinned origin (§4.1)' };
+    }
+    return { tier: 'known', pinned, status: 'unknown-key', keyId: sig.key_id };
   }
   return { tier: 'trusted', pinned, status: 'valid', keyId: sig.key_id,
            keySource: 'allowlist' };

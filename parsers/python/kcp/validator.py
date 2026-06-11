@@ -21,7 +21,7 @@ VALID_SENSITIVITY_VALUES = {"public", "internal", "confidential", "restricted"}
 KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16"}
 VALID_MANIFEST_RELATIONSHIPS = {"child", "foundation", "governs", "peer", "archive"}
 VALID_VERIFICATION_STATUSES = {"rumored", "declared", "observed", "verified", "deprecated"}
-VALID_DISCOVERY_SOURCES = {"manual", "web_traversal", "openapi", "llm_inference"}
+VALID_DISCOVERY_SOURCES = {"manual", "web_traversal", "openapi", "llm_inference", "manifest-self-description"}
 VALID_AUTHORITY_VALUES = {"initiative", "requires_approval", "denied"}
 VALID_VISIBILITY_DEFAULTS = {"public", "internal", "confidential", "restricted"}
 VALID_ON_FAILURE_VALUES = {"skip", "warn", "degrade"}
@@ -436,8 +436,8 @@ def _validate_discovery(discovery, unit_ids: set[str], prefix: str, warnings: li
             f"(SHOULD be >= 0.8)"
         )
 
-    # verified_at SHOULD NOT be set when status is rumored or observed
-    if discovery.verified_at is not None and status in ("rumored", "observed"):
+    # verified_at SHOULD NOT be set when status is rumored, declared, or observed
+    if discovery.verified_at is not None and status in ("rumored", "declared", "observed"):
         warnings.append(
             f"{prefix}: discovery.verified_at is set but verification_status='{status}' "
             f"(SHOULD only be set for verified units)"

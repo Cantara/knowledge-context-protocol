@@ -1802,7 +1802,7 @@ units:
 | `discovery.verification_status` | OPTIONAL | enum | `verified` | The current verification state. See vocabulary below. |
 | `discovery.source` | OPTIONAL | enum | `manual` | How this unit was discovered. See vocabulary below. |
 | `discovery.observed_at` | OPTIONAL | ISO 8601 datetime | null | When this capability was first observed or inferred. |
-| `discovery.verified_at` | OPTIONAL | ISO 8601 datetime | null | When this capability was independently confirmed. MUST be null if `verification_status` is `rumored` or `observed`. |
+| `discovery.verified_at` | OPTIONAL | ISO 8601 datetime | null | When this capability was independently confirmed. MUST be null if `verification_status` is `rumored`, `declared`, or `observed` — a `verified_at` timestamp asserts external confirmation, which `declared` (first-party self-description) by definition lacks. |
 | `discovery.confidence` | OPTIONAL | float 0.0–1.0 | 1.0 | Confidence in this capability declaration. |
 | `discovery.contradicted_by` | OPTIONAL | string | null | The `id` of another unit in this manifest that provides a conflicting description of the same capability. |
 
@@ -1836,6 +1836,7 @@ Epistemic ordering: `rumored < declared < observed < verified`.
 | `web_traversal` | Discovered by automated web or UI traversal (Playwright, headless browser). |
 | `openapi` | Derived from an OpenAPI, AsyncAPI, or equivalent machine-readable API description. |
 | `llm_inference` | Inferred by an LLM from natural-language content (documentation, marketing pages). |
+| `manifest-self-description` | The claim is the manifest describing itself. Emitted by the trusted render pipeline (§16) on rendered artifacts, paired with `verification_status: declared`. Added in v0.16. |
 
 Unknown `source` values MUST be silently ignored.
 
@@ -1948,7 +1949,7 @@ manifest:
 - `discovery.verification_status: rumored` with `confidence >= 0.5` (violates normative rule §4.18)
 - `discovery.verification_status: declared` with `confidence < 0.5` or `>= 0.8` (advisory)
 - `discovery.verification_status: verified` with `confidence < 0.8` (advisory)
-- `discovery.verified_at` set when `verification_status` is `rumored` or `observed`
+- `discovery.verified_at` set when `verification_status` is `rumored`, `declared`, or `observed`
 - `discovery.contradicted_by` referencing an unknown unit `id`
 - A `visibility.conditions[]` entry missing a `when` or `then` key
 - An `authority` action value not in `{initiative, requires_approval, denied}` (unknown values MUST be silently ignored at runtime but SHOULD warn at validation time)
@@ -2642,9 +2643,9 @@ Tiering is consumer-side policy computed over producer-side metadata (§3.2
 | Tier | Condition | Effect |
 |------|-----------|--------|
 | `trusted` | Valid signature, key on consumer allowlist, origin within key scope | Rendered units eligible for standing context |
-| `known` | Valid signature, key not allowlisted (or allowlisted key outside its scope) | Metadata only; agent informed of tier |
+| `known` | Valid signature, key not allowlisted (or allowlisted key outside its scope), **origin not pinned** | Metadata only; agent informed of tier |
 | `unsigned` | No signature, origin not pinned | Metadata only; agent told content is unauthenticated |
-| `failed` | Invalid signature, or unsigned manifest from a pinned origin | Render refused; nothing emitted |
+| `failed` | Invalid signature; **or** a manifest from a pinned origin not carrying a valid signature from a key scoped to that origin (whether unsigned, signed by a non-allowlisted key, or signed by an out-of-scope key) | Render refused; nothing emitted |
 | `unrendered` | *(pseudo-tier)* Federated manifest not yet rendered | Pointer only; no content, no traversal |
 
 The consumer allowlist (`~/.kcp/trusted-keys.yaml`) maps `key_id` to public keys, each with

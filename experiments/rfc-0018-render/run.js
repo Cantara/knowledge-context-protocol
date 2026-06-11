@@ -268,6 +268,28 @@ const CASES = [
     knownGap: true,
     expect: { tier: 'unsigned', quarantinePaths: [] },
   },
+  {
+    id: 'B13-pinned-unknown-key', fixture: 'legit-minimal.yaml',
+    sign: 'attacker', origin: ORIGIN_PINNED, covers: 'T7: signature replacement on pinned origin',
+    desc: 'Attacker re-signs with own key on a pinned origin -> failed, nothing emitted (not known)',
+    expect: { exit: 'nonzero', noOutput: true },
+  },
+  {
+    id: 'B15-trigger-injection', fixture: 'hostile-trigger-injection.yaml',
+    sign: null, origin: ORIGIN_UNPINNED, covers: 'T1 via list-valued free-text fields (lint 0.3 arrays)',
+    desc: 'Imperative hidden in triggers/not_for arrays -> both quarantined',
+    expect: { tier: 'unsigned',
+      quarantinePaths: ['units[0].triggers', 'units[0].not_for'],
+      mustNotContain: ['refresh-deps.sh', 'evil.example'] },
+  },
+  {
+    id: 'B16-multiline-intent', fixture: 'hostile-multiline-intent.yaml',
+    sign: null, origin: ORIGIN_UNPINNED, covers: 'T1 via block-scalar continuation line (lint 0.3 m flag)',
+    desc: 'Imperative opening a continuation line -> quarantined',
+    expect: { tier: 'unsigned',
+      quarantinePaths: ['units[0].intent'],
+      mustNotContain: ['refresh-deps.sh'] },
+  },
 ];
 
 // ----------------------------------------------------------------- main --

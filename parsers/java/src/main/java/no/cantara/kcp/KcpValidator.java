@@ -44,7 +44,7 @@ public class KcpValidator {
     private static final Set<String> VALID_HITL_MECHANISMS = Set.of("oauth_consent", "uma", "custom");
     private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16");
     private static final Set<String> VALID_VERIFICATION_STATUSES = Set.of("rumored", "declared", "observed", "verified", "deprecated");
-    private static final Set<String> VALID_DISCOVERY_SOURCES = Set.of("manual", "web_traversal", "openapi", "llm_inference");
+    private static final Set<String> VALID_DISCOVERY_SOURCES = Set.of("manual", "web_traversal", "openapi", "llm_inference", "manifest-self-description");
     private static final Set<String> VALID_AUTHORITY_VALUES = Set.of("initiative", "requires_approval", "denied");
     private static final Set<String> VALID_VISIBILITY_DEFAULTS = Set.of("public", "internal", "confidential", "restricted");
     private static final Set<String> VALID_MANIFEST_RELATIONSHIPS = Set.of("child", "foundation", "governs", "peer", "archive");
@@ -459,9 +459,9 @@ public class KcpValidator {
                     confidence + " (SHOULD be >= 0.8)");
         }
 
-        // verified_at SHOULD NOT be set when status is rumored or observed
+        // verified_at SHOULD NOT be set when status is rumored, declared, or observed
         if (discovery.verifiedAt() != null &&
-                ("rumored".equals(status) || "observed".equals(status))) {
+                ("rumored".equals(status) || "declared".equals(status) || "observed".equals(status))) {
             warnings.add(prefix + ": discovery.verified_at is set but verification_status='" +
                     status + "' (SHOULD only be set for verified units)");
         }

@@ -1,4 +1,4 @@
-// imperative-lint-0.2 — rule set for RFC-0018 §6.2 (imperative-mood lint).
+// imperative-lint-0.3 — rule set for RFC-0018 §6.2 (imperative-mood lint).
 //
 // Flags imperative constructions directed at the reader, plus embedded
 // tool-invocation syntax. Deliberately does NOT attempt to catch
@@ -7,8 +7,12 @@
 //
 // Rule sets are versioned and recorded in the render output so renders
 // are reproducible (RFC-0018 §3.1, C1).
+//
+// 0.3: sentence-initial rule matches at line starts in block scalars (m
+// flag); lintFreeText handles string arrays so list-valued free-text
+// fields (triggers, not_for) are linted element-wise rather than skipped.
 
-export const LINT_RULES_VERSION = "imperative-lint-0.2";
+export const LINT_RULES_VERSION = "imperative-lint-0.3";
 
 interface LintRule {
   id: string;
@@ -32,7 +36,7 @@ const RULES: LintRule[] = [
     id: "sentence-initial-imperative",
     // imperative verb opening the field or a sentence, followed by a
     // command-ish token (path, backtick, known tool)
-    re: /(^|[.!?]\s+)(run|execute|invoke|source|curl|fetch|download|install)\s+(`|\.\/|\/|~\/|[a-z0-9_-]+\.(sh|py|js)\b|mvn\b|npm\b|pip\b|bash\b|sh\b)/i,
+    re: /(^|[.!?]\s+)(run|execute|invoke|source|curl|fetch|download|install)\s+(`|\.\/|\/|~\/|[a-z0-9_-]+\.(sh|py|js)\b|mvn\b|npm\b|pip\b|bash\b|sh\b)/im,
   },
   {
     id: "shell-chain",
@@ -46,6 +50,16 @@ export interface LintVerdict {
 }
 
 export function lintFreeText(text: unknown): LintVerdict {
+  // Lint string arrays (e.g. triggers, not_for) element-wise; a flag on
+  // any element flags the field. Non-string, non-string-array values
+  // (enums, numbers, nested objects) carry no free text and pass.
+  if (Array.isArray(text)) {
+    for (const el of text) {
+      const verdict = lintFreeText(el);
+      if (verdict.flagged) return verdict;
+    }
+    return { flagged: false };
+  }
   if (typeof text !== "string") return { flagged: false };
   for (const rule of RULES) {
     if (rule.re.test(text)) return { flagged: true, rule: rule.id };

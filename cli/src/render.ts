@@ -40,7 +40,9 @@ const UNIT_FIELDS = [
   "scope", "audience", "license", "validated", "update_frequency",
   "triggers", "not_for",
 ];
-const UNIT_FREE_TEXT_FIELDS = ["intent", "description", "label"];
+// Free-text fields subject to the imperative lint (§6.2). `triggers` and
+// `not_for` are list-valued; lintFreeText handles arrays element-wise.
+const UNIT_FREE_TEXT_FIELDS = ["intent", "triggers", "not_for"];
 const RELATIONSHIP_FIELDS = ["from", "to", "type"];
 const FEDERATION_FIELDS = ["id", "url", "relationship"];
 const PROVENANCE_FIELDS = ["publisher", "publisher_url", "contact"];
@@ -62,7 +64,7 @@ export interface RenderOptions {
 export type RenderTier = "trusted" | "known" | "unsigned";
 
 export type RenderResult =
-  | { ok: true; tier: RenderTier; origin: string; text: string }
+  | { ok: true; tier: RenderTier; origin: string; text: string; warnings: string[] }
   | { ok: false; tier: "failed"; origin: string; reason: string };
 
 interface AllowlistKey {
@@ -208,13 +210,29 @@ function computeTier(
     (k) => k.key_id === sig.key_id && k.public_key === sig.public_key
   );
   if (!entry) {
-    // T4: valid signature, unknown key — gate, don't endorse.
+    // Valid signature, key not on allowlist. Normally `known` (T4: gate,
+    // don't endorse). But on a pinned origin, §4.1 requires a signature
+    // from a key scoped to that origin — a non-allowlisted key does not
+    // satisfy the pin, so this is the signature-replacement case and fails.
+    if (pinned) {
+      return {
+        tier: "failed", pinned, status: "unknown-key",
+        reason: "valid signature from non-allowlisted key on pinned origin (§4.1)",
+      };
+    }
     return { tier: "known", pinned, status: "unknown-key", keyId: sig.key_id };
   }
   const domains = entry.scope?.domains;
   if (domains && !domains.some((d) => scopeCovers(d, origin))) {
     // Allowlisted key used outside its declared scope (§9): the key may
     // not verify this origin, so it confers no allowlist standing here.
+    // On a pinned origin this is again a failed signing expectation (§4.1).
+    if (pinned) {
+      return {
+        tier: "failed", pinned, status: "unknown-key",
+        reason: "signing key out of scope for pinned origin (§4.1)",
+      };
+    }
     return { tier: "known", pinned, status: "unknown-key", keyId: sig.key_id };
   }
   return { tier: "trusted", pinned, status: "valid", keyId: sig.key_id, keySource: "allowlist" };
@@ -247,6 +265,16 @@ export function renderManifest(options: RenderOptions): RenderResult {
     return { ok: false, tier: "failed", origin, reason: trust.reason ?? "failed" };
   }
   const tier = trust.tier;
+
+  const warnings: string[] = [];
+  // §16.2: with a non-empty allowlist, an undeterminable origin means no
+  // scope can pin this manifest — surface it rather than silently
+  // rendering at unsigned (the T7 downgrade the SHOULD-warn exists for).
+  if (origin === "unknown" && (allowlist.keys?.length ?? 0) > 0) {
+    warnings.push(
+      "origin could not be derived (no --origin, no git remote); scope pinning cannot apply, so a manifest that should be pinned renders unauthenticated (§16.2)"
+    );
+  }
 
   const doc = (yaml.load(manifestBytes.toString("utf8")) ?? {}) as RawMap;
   const dropped: DropEntry[] = [];
@@ -449,7 +477,7 @@ export function renderManifest(options: RenderOptions): RenderResult {
   };
 
   const text = yaml.dump(output, { lineWidth: -1, noRefs: true });
-  return { ok: true, tier, origin, text };
+  return { ok: true, tier, origin, text, warnings };
 }
 
 // --- CLI entry point ---
@@ -488,6 +516,10 @@ export function runRender(options: RunRenderOptions): void {
     // Fail-closed (R4, C2): nothing emitted, exit 2.
     process.stderr.write(red(`✗ render refused: tier=failed (${result.reason})\n`));
     process.exit(2);
+  }
+
+  for (const w of result.warnings) {
+    process.stderr.write(`${dim("⚠")} ${w}\n`);
   }
 
   if (options.out) {

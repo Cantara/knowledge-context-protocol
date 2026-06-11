@@ -26,7 +26,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### RFC Status
 
-- **RFC-0018 (Trusted Render Pipeline):** Accepted — promoted to SPEC.md §16 (v0.16). Validated by 17 executable experiments over threats T1–T8 in `experiments/rfc-0018-render/` (see RESULTS.md there; one documented known-gap: descriptive-mood injection passes the lint by design — C8 data-framing is the load-bearing control).
+- **RFC-0018 (Trusted Render Pipeline):** Accepted — promoted to SPEC.md §16 (v0.16). Validated by 21 executable experiments (20 pass, 1 documented known-gap) over threats T1–T8 in `experiments/rfc-0018-render/` (see RESULTS.md there; the known-gap is descriptive-mood injection passing the lint by design — C8 data-framing is the load-bearing control).
 - **RFC-0017 (Observability Hooks):** Accepted — promoted to SPEC.md §17 (v0.16) with the two new render tables.
 - **RFC-0004 (Trust and Compliance):** `trust.content_integrity` activated and promoted to SPEC.md §3.2; remaining blocks (access receipts, agent attestation, `publisher_did`) stay RFC-only.
 - **RFC-0012 (Capability Discovery Provenance):** amended — `declared` added to the `verification_status` vocabulary.
@@ -37,7 +37,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Experiments
 
-- `experiments/rfc-0018-render/` — executable validation harness for the render pipeline: prototype renderer, 17-case experiment matrix (legitimate use cases + threats T1–T8) with real per-run Ed25519 keys, mutation-tested expectations, generated RESULTS.md.
+- `experiments/rfc-0018-render/` — executable validation harness for the render pipeline: prototype renderer, 21-case experiment matrix (legitimate use cases + threats T1–T8) with real per-run Ed25519 keys, mutation-tested expectations, generated RESULTS.md.
 
 ---
 
