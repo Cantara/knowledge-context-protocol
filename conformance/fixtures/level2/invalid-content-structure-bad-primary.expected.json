@@ -1,0 +1,8 @@
+{
+  "_note": "Unknown content_structure vocabulary values warn but pass through (RFC-0016 forward-compat). Manifest stays valid.",
+  "valid": true,
+  "errors": [],
+  "warnings": ["content_structure.primary has unknown value 'hologram'"],
+  "unit_count": 1,
+  "relationship_count": 0
+}

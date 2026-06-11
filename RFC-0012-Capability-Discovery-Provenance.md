@@ -1,6 +1,6 @@
 # RFC-0012: Capability Discovery Provenance
 
-**Status:** Accepted — promoted to SPEC.md v0.12
+**Status:** Accepted — promoted to SPEC.md v0.12. Amended in v0.16: `declared` added to the `verification_status` vocabulary (first-party self-description, confidence SHOULD be in [0.5, 0.8); see RFC-0018 §5.1 and SPEC.md §4.18).
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-03-17
 **Discussion:** [#50 KCP Treasure Map Service](https://github.com/Cantara/knowledge-context-protocol/discussions/50)

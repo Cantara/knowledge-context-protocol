@@ -1,0 +1,8 @@
+{
+  "valid": true,
+  "errors": [],
+  "warnings": [],
+  "unit_count": 1,
+  "relationship_count": 0,
+  "_note": "§3.10 root-level not_for is advisory and supports no not_for_strict; must parse clean."
+}

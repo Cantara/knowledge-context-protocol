@@ -9,8 +9,8 @@
   "properties": {
     "kcp_version": {
       "type": "string",
-      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.12\". Prior drafts \"0.1\" through \"0.11\" are also accepted for backward compatibility.",
-      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12"]
+      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.17\". Prior drafts \"0.1\" through \"0.14\" and \"0.16\" are also accepted for backward compatibility (\"0.15\" was never a spec version).",
+      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17"]
     },
     "project": {
       "type": "string",
@@ -93,7 +93,12 @@
     },
     "visibility": { "$ref": "#/definitions/visibility_object" },
     "authority": { "$ref": "#/definitions/authority_object" },
-    "discovery": { "$ref": "#/definitions/discovery_object" }
+    "discovery": { "$ref": "#/definitions/discovery_object" },
+    "not_for": {
+      "type": "array",
+      "description": "Manifest-level negative-space declarations: purposes or audiences this knowledge is explicitly NOT for. OPTIONAL. See RFC-0015 (v0.17).",
+      "items": { "type": "string" }
+    }
   },
   "definitions": {
     "license_object": {
@@ -281,7 +286,43 @@
         },
         "visibility": { "$ref": "#/definitions/visibility_object" },
         "authority": { "$ref": "#/definitions/authority_object" },
-        "discovery": { "$ref": "#/definitions/discovery_object" }
+        "discovery": { "$ref": "#/definitions/discovery_object" },
+        "not_for": {
+          "type": "array",
+          "description": "Negative-space declarations: purposes or audiences this unit is explicitly NOT for. OPTIONAL. See RFC-0015 (v0.17).",
+          "items": { "type": "string" }
+        },
+        "not_for_strict": {
+          "type": "boolean",
+          "description": "If true, the not_for declarations are normative exclusions rather than advisory hints. Default: false. Only meaningful alongside not_for. See RFC-0015 (v0.17).",
+          "default": false
+        },
+        "content_structure": { "$ref": "#/definitions/content_structure_object" }
+      }
+    },
+    "content_structure_object": {
+      "type": "object",
+      "description": "Structural description of a unit's content. All fields optional and advisory. Unknown vocabulary values SHOULD warn but MUST pass through (forward-compat). See RFC-0016 (v0.17).",
+      "additionalProperties": true,
+      "properties": {
+        "primary": {
+          "type": "string",
+          "description": "The dominant content modality. Values: prose, table, code, list, diagram, reference, mixed.",
+          "enum": ["prose", "table", "code", "list", "diagram", "reference", "mixed"]
+        },
+        "contains": {
+          "type": "array",
+          "description": "Additional content modalities present in the unit. Values: prose, table, code, list, diagram, reference, mixed.",
+          "items": {
+            "type": "string",
+            "enum": ["prose", "table", "code", "list", "diagram", "reference", "mixed"]
+          }
+        },
+        "density": {
+          "type": "string",
+          "description": "Information density classification. Values: sparse, normal, dense.",
+          "enum": ["sparse", "normal", "dense"]
+        }
       }
     },
     "unit_hints": {
@@ -808,20 +849,20 @@
       "properties": {
         "verification_status": {
           "type": "string",
-          "description": "The current verification state of this capability declaration. Values: rumored, observed, verified, deprecated. Default (when absent): verified.",
-          "enum": ["rumored", "observed", "verified", "deprecated"]
+          "description": "The current verification state of this capability declaration. Values: rumored, declared, observed, verified, deprecated. Default (when absent): verified.",
+          "enum": ["rumored", "declared", "observed", "verified", "deprecated"]
         },
         "source": {
           "type": "string",
-          "description": "How this unit was discovered. Values: manual, web_traversal, openapi, llm_inference. Default: manual.",
-          "enum": ["manual", "web_traversal", "openapi", "llm_inference"]
+          "description": "How this unit was discovered. Values: manual, web_traversal, openapi, llm_inference, manifest-self-description. Default: manual.",
+          "enum": ["manual", "web_traversal", "openapi", "llm_inference", "manifest-self-description"]
         },
         "observed_at": {
           "type": "string",
           "description": "ISO 8601 datetime when this capability was first observed or inferred."
         },
         "verified_at": {
-          "description": "ISO 8601 datetime when this capability was independently confirmed. MUST be null if verification_status is rumored or observed.",
+          "description": "ISO 8601 datetime when this capability was independently confirmed. MUST be null if verification_status is rumored, declared, or observed.",
           "oneOf": [
             { "type": "string" },
             { "type": "null" }
@@ -829,7 +870,7 @@
         },
         "confidence": {
           "type": "number",
-          "description": "Confidence in this capability declaration. Range 0.0–1.0. Rumored units MUST have confidence < 0.5. Verified units SHOULD have confidence >= 0.8.",
+          "description": "Confidence in this capability declaration. Range 0.0–1.0. Rumored units MUST have confidence < 0.5. Declared units SHOULD have confidence in [0.5, 0.8). Verified units SHOULD have confidence >= 0.8.",
           "minimum": 0.0,
           "maximum": 1.0
         },
