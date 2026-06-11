@@ -42,8 +42,8 @@ public class KcpValidator {
     private static final Set<String> VALID_ACCESS_VALUES = Set.of("public", "authenticated", "restricted");
     private static final Set<String> VALID_SENSITIVITY_VALUES = Set.of("public", "internal", "confidential", "restricted");
     private static final Set<String> VALID_HITL_MECHANISMS = Set.of("oauth_consent", "uma", "custom");
-    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12");
-    private static final Set<String> VALID_VERIFICATION_STATUSES = Set.of("rumored", "observed", "verified", "deprecated");
+    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16");
+    private static final Set<String> VALID_VERIFICATION_STATUSES = Set.of("rumored", "declared", "observed", "verified", "deprecated");
     private static final Set<String> VALID_DISCOVERY_SOURCES = Set.of("manual", "web_traversal", "openapi", "llm_inference");
     private static final Set<String> VALID_AUTHORITY_VALUES = Set.of("initiative", "requires_approval", "denied");
     private static final Set<String> VALID_VISIBILITY_DEFAULTS = Set.of("public", "internal", "confidential", "restricted");
@@ -445,6 +445,12 @@ public class KcpValidator {
         if ("rumored".equals(status) && confidence != null && confidence >= 0.5) {
             warnings.add(prefix + ": discovery.verification_status=rumored but confidence=" +
                     confidence + " (MUST be < 0.5)");
+        }
+
+        // declared SHOULD have confidence in [0.5, 0.8) (normative, RFC-0018 §5.1)
+        if ("declared".equals(status) && confidence != null && (confidence < 0.5 || confidence >= 0.8)) {
+            warnings.add(prefix + ": discovery.verification_status=declared but confidence=" +
+                    confidence + " (SHOULD be in [0.5, 0.8))");
         }
 
         // verified SHOULD have confidence >= 0.8 (normative)

@@ -44,6 +44,7 @@ const KNOWN_KCP_VERSIONS = new Set([
   "0.12",
   "0.13",
   "0.14",
+  "0.16",
 ]);
 const VALID_MANIFEST_RELATIONSHIPS = new Set([
   "child",
@@ -222,6 +223,15 @@ export function validate(
       ) {
         warnings.push(
           `${ctx}: discovery.verification_status is 'rumored' but confidence is ${disc.confidence} (>=0.5); consider upgrading status to 'observed'`
+        );
+      }
+      if (
+        disc.verification_status === "declared" &&
+        disc.confidence !== undefined &&
+        (disc.confidence < 0.5 || disc.confidence >= 0.8)
+      ) {
+        warnings.push(
+          `${ctx}: discovery.verification_status is 'declared' but confidence is ${disc.confidence}; SHOULD be in [0.5, 0.8) per RFC-0018 §5.1`
         );
       }
       if (
