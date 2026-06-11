@@ -10,19 +10,24 @@ The Knowledge Context Protocol (KCP) specification -- a structured metadata stan
 
 ## Architecture
 KCP defines a `knowledge.yaml` manifest format with hierarchical units, each having intent, scope, audience, triggers, and dependency relationships. The spec supports 4 levels of adoption (L1-L4) from basic file listing to full agent orchestration. Includes:
-- **Spec:** `SPEC.md` (core specification, currently v0.6)
-- **RFCs:** 6 extension RFCs (auth, federation, trust, payments, context-window hints)
+- **Spec:** `SPEC.md` (core specification, currently v0.16; note: there is no v0.15 — the number was skipped to re-sync with the CLI release train)
+- **RFCs:** 18 RFCs (auth, federation, trust, payments, context-window hints, query vocabulary, visibility/authority, discovery provenance, catalog, composition, negative space, content structure, observability, trusted render pipeline); promoted ones are marked Accepted in their headers
 - **Bridges:** TypeScript, Java, Python parsers that surface KCP metadata via MCP
+- **CLI:** `kcp` developer CLI — init, validate, query, stats, render (§16 trusted render pipeline)
 - **Conformance:** Test suite and fixtures
 - **Guides:** Adoption guides for existing projects
 
 ## Key Entry Points
 - `SPEC.md` - Core specification
 - `PROPOSAL.md` - Original proposal and rationale
+- `CHANGELOG.md` - Release history (themed promotion waves)
 - `bridge/` - TypeScript, Java, Python bridge implementations
+- `cli/` - `kcp` developer CLI (TypeScript)
+- `parsers/` - Standalone Java and Python parser/validator libraries
 - `examples/` - Example knowledge.yaml files
 - `guides/` - Adoption and integration guides
 - `conformance/` - Test fixtures and conformance suite
+- `experiments/` - Executable validation harnesses for RFCs (e.g. rfc-0018-render)
 - `docs/` - GitHub Pages site
 
 ## Development

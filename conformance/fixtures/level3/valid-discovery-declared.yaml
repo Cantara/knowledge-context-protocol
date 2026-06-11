@@ -1,0 +1,21 @@
+# Level 3 — valid: declared unit with confidence in [0.5, 0.8) (RFC-0012 amendment via RFC-0018 §5.1)
+#
+# verification_status: declared means first-party self-description by the publisher,
+# not externally observed or confirmed. Epistemic ordering: rumored < declared < observed < verified.
+# Normative rule: declared SHOULD have confidence in [0.5, 0.8).
+# This fixture satisfies the rule (confidence: 0.6) and MUST validate with no warnings.
+kcp_version: "0.16"
+project: test-discovery-declared
+version: "1.0.0"
+
+units:
+  - id: rendered-self-description
+    path: capabilities/rendered-self-description.md
+    intent: "First-party self-description emitted by the trusted render pipeline"
+    scope: project
+    audience: [agent]
+    discovery:
+      verification_status: declared
+      source: manual
+      observed_at: "2026-06-11T10:00:00Z"
+      confidence: 0.6

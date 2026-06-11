@@ -1,0 +1,16 @@
+{
+  "name": "rfc-0018-render-experiments",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Executable validation harness for RFC-0018 (Trusted Render Pipeline) — drives the shipping kcp render CLI",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "run": "node run.js"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}

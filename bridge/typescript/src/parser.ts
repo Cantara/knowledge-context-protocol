@@ -8,6 +8,7 @@ import type {
   AuthMethod,
   Authority,
   Compliance,
+  ContentStructure,
   Delegation,
   Discovery,
   ExternalDependency,
@@ -139,6 +140,10 @@ function parseUnit(raw: RawMap): KnowledgeUnit {
     visibility: parseVisibility(raw["visibility"]),
     authority: parseAuthority(raw["authority"]),
     discovery: parseDiscovery(raw["discovery"]),
+    not_for: raw["not_for"] !== undefined ? asStringArray(raw["not_for"]) : undefined,
+    not_for_strict:
+      raw["not_for_strict"] !== undefined ? Boolean(raw["not_for_strict"]) : undefined,
+    content_structure: parseContentStructure(raw["content_structure"]),
   };
 }
 
@@ -325,6 +330,18 @@ function parseDiscovery(raw: unknown): Discovery | undefined {
   };
 }
 
+// --- Content structure parsing (RFC-0016, v0.17) ---
+
+function parseContentStructure(raw: unknown): ContentStructure | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const c = raw as RawMap;
+  return {
+    primary: c["primary"] !== undefined ? String(c["primary"]) : undefined,
+    contains: c["contains"] !== undefined ? asStringArray(c["contains"]) : undefined,
+    density: c["density"] !== undefined ? String(c["density"]) : undefined,
+  };
+}
+
 // --- Federation parsing (§3.6) ---
 
 function parseExternalDependency(raw: RawMap): ExternalDependency {
@@ -404,6 +421,7 @@ export function parseDict(data: RawMap): KnowledgeManifest {
     visibility: parseVisibility(data["visibility"]),
     authority: parseAuthority(data["authority"]),
     discovery: parseDiscovery(data["discovery"]),
+    not_for: data["not_for"] !== undefined ? asStringArray(data["not_for"]) : undefined,
   };
 }
 

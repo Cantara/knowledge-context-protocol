@@ -1,0 +1,10 @@
+{
+  "valid": true,
+  "errors": [],
+  "warnings": [
+    "discovery.verification_status=declared but confidence=0.95 (SHOULD be in [0.5, 0.8))"
+  ],
+  "unit_count": 1,
+  "relationship_count": 0,
+  "_note": "declared confidence outside [0.5, 0.8) violates a SHOULD, not a MUST: advisory warning, manifest stays valid (RFC-0018 §5.1)"
+}

@@ -44,7 +44,20 @@ const KNOWN_KCP_VERSIONS = new Set([
   "0.12",
   "0.13",
   "0.14",
+  "0.16",
+  "0.17",
 ]);
+// content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
+const VALID_CONTENT_MODALITIES = new Set([
+  "prose",
+  "table",
+  "code",
+  "list",
+  "diagram",
+  "reference",
+  "mixed",
+]);
+const VALID_DENSITY = new Set(["sparse", "normal", "dense"]);
 const VALID_MANIFEST_RELATIONSHIPS = new Set([
   "child",
   "foundation",
@@ -225,8 +238,19 @@ export function validate(
         );
       }
       if (
+        disc.verification_status === "declared" &&
+        disc.confidence !== undefined &&
+        (disc.confidence < 0.5 || disc.confidence >= 0.8)
+      ) {
+        warnings.push(
+          `${ctx}: discovery.verification_status is 'declared' but confidence is ${disc.confidence}; SHOULD be in [0.5, 0.8) per RFC-0018 §5.1`
+        );
+      }
+      if (
         disc.verified_at !== undefined &&
-        (disc.verification_status === "rumored" || disc.verification_status === "observed")
+        (disc.verification_status === "rumored" ||
+          disc.verification_status === "declared" ||
+          disc.verification_status === "observed")
       ) {
         warnings.push(
           `${ctx}: discovery.verified_at is set but verification_status is '${disc.verification_status}'; verified_at implies status should be 'verified'`
@@ -235,6 +259,37 @@ export function validate(
       if (disc.contradicted_by !== undefined && !unitIds.has(disc.contradicted_by)) {
         warnings.push(
           `${ctx}: discovery.contradicted_by references unknown unit id '${disc.contradicted_by}'`
+        );
+      }
+    }
+
+    // not_for validation (RFC-0015, v0.17)
+    if (unit.not_for_strict !== undefined && (!unit.not_for || unit.not_for.length === 0)) {
+      warnings.push(
+        `${ctx}: 'not_for_strict' is set but 'not_for' is empty or absent`
+      );
+    }
+
+    // content_structure validation (RFC-0016, v0.17) — warn on unknown values, pass through
+    if (unit.content_structure) {
+      const cs = unit.content_structure;
+      if (cs.primary !== undefined && !VALID_CONTENT_MODALITIES.has(cs.primary)) {
+        warnings.push(
+          `${ctx}: content_structure.primary has unknown value '${cs.primary}'; expected one of prose, table, code, list, diagram, reference, mixed`
+        );
+      }
+      if (cs.contains) {
+        for (const modality of cs.contains) {
+          if (!VALID_CONTENT_MODALITIES.has(modality)) {
+            warnings.push(
+              `${ctx}: content_structure.contains has unknown value '${modality}'; expected one of prose, table, code, list, diagram, reference, mixed`
+            );
+          }
+        }
+      }
+      if (cs.density !== undefined && !VALID_DENSITY.has(cs.density)) {
+        warnings.push(
+          `${ctx}: content_structure.density has unknown value '${cs.density}'; expected one of sparse, normal, dense`
         );
       }
     }

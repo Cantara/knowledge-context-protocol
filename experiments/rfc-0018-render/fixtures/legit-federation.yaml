@@ -1,0 +1,23 @@
+# A7 — manifest with federation edges. Edges must render as pointers with
+# target_tier: unrendered; the renderer must not traverse (the URL would
+# fail if fetched — fetching at all is the failure).
+kcp_version: "0.14"
+project: lib-pcb
+version: "1.4.2"
+
+units:
+  - id: gerber-output
+    path: src/main/java/no/exo/pcb/gerber/
+    kind: knowledge
+    intent: "Gerber file generation and validation"
+    scope: project
+    audience: [developer, agent]
+    triggers: [gerber]
+
+manifests:
+  - id: formats
+    url: https://invalid.test.invalid/lib-pcb-formats/knowledge.yaml
+    relationship: foundation
+  - id: legacy
+    url: https://invalid.test.invalid/lib-pcb-legacy/knowledge.yaml
+    relationship: archive
