@@ -6,18 +6,23 @@ import { parseArgs } from "node:util";
 
 function printUsage(): void {
   process.stderr.write(
-    `\nKCP Developer CLI — v0.15.0
+    `\nKCP Developer CLI — v0.16.0
 
 Usage: kcp <command> [options]
 
 Commands:
   init [output]       Scaffold a knowledge.yaml for this project (default: knowledge.yaml)
   validate [file]     Validate a knowledge.yaml manifest (default: knowledge.yaml)
+  render [file]       Render a manifest into a trust-tiered artifact (RFC-0018, default: knowledge.yaml)
   query <question>    Simulate agent search against a manifest
   stats               Show KCP usage statistics (queries, units, tokens saved)
 
 Options:
   --file <path>       Manifest path (for query command, default: knowledge.yaml)
+  --keys <path>       Trusted-keys allowlist for render (default: ~/.kcp/trusted-keys.yaml)
+  --origin <string>   Override origin derivation for render (RFC-0018 §4.1)
+  --out <path>        Write rendered artifact to a file (default: print to stdout)
+  --timestamp         Include rendered_at in render output (excluded from determinism)
   --days <n>          Reporting window in days for stats (default: 30)
   --json              Machine-readable JSON output (stats command)
   --project <name>    Filter stats by project name
@@ -28,6 +33,9 @@ Examples:
   npx kcp init docs/knowledge.yaml         # scaffold to custom path
   npx kcp validate                          # validate ./knowledge.yaml
   npx kcp validate docs/knowledge.yaml     # validate a specific file
+  npx kcp render                            # render ./knowledge.yaml to stdout
+  npx kcp render --out kcp-rendered.yaml   # render to a file
+  npx kcp render --keys ~/.kcp/trusted-keys.yaml --origin github.com/Cantara/repo
   npx kcp query "how do I deploy?"         # simulate agent search
   npx kcp query "authentication" --file docs/knowledge.yaml
   npx kcp stats                            # usage stats for last 30 days
@@ -42,12 +50,16 @@ async function main(): Promise<void> {
   const { values, positionals } = parseArgs({
     args: process.argv.slice(2),
     options: {
-      file:    { type: "string" },
-      help:    { type: "boolean", default: false, short: "h" },
-      yes:     { type: "boolean", default: false, short: "y" },
-      json:    { type: "boolean", default: false },
-      days:    { type: "string",  default: "30" },
-      project: { type: "string" },
+      file:      { type: "string" },
+      help:      { type: "boolean", default: false, short: "h" },
+      yes:       { type: "boolean", default: false, short: "y" },
+      json:      { type: "boolean", default: false },
+      days:      { type: "string",  default: "30" },
+      project:   { type: "string" },
+      keys:      { type: "string" },
+      origin:    { type: "string" },
+      out:       { type: "string" },
+      timestamp: { type: "boolean", default: false },
     },
     allowPositionals: true,
     strict: false,
@@ -71,6 +83,19 @@ async function main(): Promise<void> {
     const { runValidate } = await import("./validate.js");
     const manifestPath = positionals[1] ?? (values.file as string | undefined) ?? "knowledge.yaml";
     runValidate(manifestPath);
+    return;
+  }
+
+  if (command === "render") {
+    const { runRender } = await import("./render.js");
+    const manifestPath = positionals[1] ?? (values.file as string | undefined) ?? "knowledge.yaml";
+    runRender({
+      manifestPath,
+      keys:      values.keys as string | undefined,
+      origin:    values.origin as string | undefined,
+      out:       values.out as string | undefined,
+      timestamp: values.timestamp as boolean,
+    });
     return;
   }
 

@@ -1,0 +1,21 @@
+# Legitimate Level-1 manifest. Must render clean: no drops, no quarantine.
+kcp_version: "0.14"
+project: lib-pcb
+version: "1.4.2"
+
+units:
+  - id: gerber-output
+    path: src/main/java/no/exo/pcb/gerber/
+    kind: knowledge
+    intent: "Gerber file generation and validation"
+    scope: project
+    audience: [developer, agent]
+    triggers: [gerber, drc, fabrication]
+
+  - id: architecture
+    path: docs/architecture.md
+    kind: knowledge
+    intent: "System architecture overview and module boundaries"
+    scope: project
+    audience: [developer, architect]
+    triggers: [architecture, design]
