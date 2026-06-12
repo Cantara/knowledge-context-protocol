@@ -40,3 +40,23 @@ units:
     audience: [agent, developer]
     triggers: [api, endpoints, legacy]
     deprecated: true
+
+  - id: admin-console
+    path: README.md
+    intent: "Administrator console setup and configuration"
+    scope: global
+    audience: [agent]
+    triggers: [admin, configure, setup]
+    not_for:
+      - "end user"
+      - "consumer"
+
+  - id: internal-ops
+    path: README.md
+    intent: "Internal operational runbooks for platform operations"
+    scope: global
+    audience: [agent]
+    triggers: [operations, runbook, procedure]
+    not_for:
+      - "external"
+    not_for_strict: true

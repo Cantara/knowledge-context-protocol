@@ -3,7 +3,7 @@
 All three bridges (TypeScript, Java, Python) are required to stay at feature parity on **MCP tools and prompts**.
 Static generation CLI flags (Tier 2) are currently TS + Java only — Python support is planned.
 
-**Current version:** 0.14.0 (all three bridges)
+**Current version:** 0.15.0 (all three bridges)
 
 > Scope note: the `kcp` developer CLI (`cli/` — init, validate, query, stats, and as of
 > spec v0.16 `render`) versions independently of the bridges and is outside this parity
@@ -37,6 +37,7 @@ When adding any MCP capability:
 | `search_knowledge`: `match_reason` field | ✅ | ✅ | ✅ | which scoring rules fired |
 | `search_knowledge`: `token_estimate` field | ✅ | ✅ | ✅ | from hints.token_estimate |
 | `search_knowledge`: `summary_unit` field | ✅ | ✅ | ✅ | from hints.summary_unit |
+| `search_knowledge`: `not_for` filter (§15.11) | ✅ | ✅ | ✅ | strict exclusion + soft demotion with `caution` field |
 | `get_unit` tool | ✅ | ✅ | ❌ | **gap — Python needs this** |
 | `list_manifests` tool | ✅ | ✅ | ✅ | lists declared sub-manifests (federation §3.6) |
 | `get_command_syntax` tool | ✅ | ✅ | ❌ | **gap — Python needs this** (requires `--commands-dir`) |
@@ -107,6 +108,7 @@ Closing these gaps is the next Python bridge milestone (target: v0.15.0).
 | 0.6.0 | 2026-03-06 | MCP tools, prompts, `--generate-instructions`, Java parity |
 | 0.10.0 | 2026-03-06 | Three-tier static integration, `--generate-all`, full parity |
 | 0.14.0 | 2026-03-15 | RFC-0007 query baseline: `sensitivity_max`, `exclude_deprecated`, `match_reason`, `token_estimate`, `summary_unit` — all three bridges. Python bridge added to parity tracking. |
+| 0.15.0 | 2026-06-12 | §15.11 `not_for` filtering: strict exclusion + soft score halving with `caution` annotation — all three bridges. |
 
 > **Note:** v0.7.0--v0.9.0 were internal development milestones that shipped combined as v0.10.0.
 > v0.11.0--v0.13.0 were bridge feature additions that culminated in v0.14.0.

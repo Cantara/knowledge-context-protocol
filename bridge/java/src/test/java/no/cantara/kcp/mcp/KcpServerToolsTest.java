@@ -359,4 +359,29 @@ class KcpServerToolsTest {
         assertTrue(text.contains("\"id\":\"secret-config\""),
             "Confidential unit should appear when sensitivity_max is confidential");
     }
+
+    // ── §15.11 not_for filtering ──────────────────────────────────────────────
+
+    @Test void searchKnowledgeSoftDemotesNotForMatch() {
+        // "configure" hits admin-console trigger → 5 pts; "end" matches "end user" → halved + caution
+        McpSchema.CallToolRequest request = new McpSchema.CallToolRequest("search_knowledge",
+            Map.of("query", "configure end"));
+        McpSchema.CallToolResult result = KcpServer.handleSearchKnowledge(request, rfc007Rs, rfc007Slug);
+
+        assertFalse(result.isError());
+        String text = ((McpSchema.TextContent) result.content().get(0)).text();
+        assertTrue(text.contains("\"id\":\"admin-console\""), "Expected admin-console in results");
+        assertTrue(text.contains("not_for match"), "Expected caution annotation for not_for match");
+    }
+
+    @Test void searchKnowledgeStrictlyExcludesNotForStrictMatch() {
+        // "operations" hits internal-ops trigger; "external" matches not_for strict → excluded
+        McpSchema.CallToolRequest request = new McpSchema.CallToolRequest("search_knowledge",
+            Map.of("query", "operations external"));
+        McpSchema.CallToolResult result = KcpServer.handleSearchKnowledge(request, rfc007Rs, rfc007Slug);
+
+        String text = ((McpSchema.TextContent) result.content().get(0)).text();
+        assertFalse(text.contains("\"id\":\"internal-ops\""),
+            "Strict not_for unit should be excluded when query term matches not_for phrase");
+    }
 }

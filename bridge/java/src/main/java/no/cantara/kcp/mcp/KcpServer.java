@@ -168,7 +168,8 @@ public final class KcpServer {
 
     record SearchResult(
             String id, String intent, String path, String uri, int score,
-            List<String> matchReason, Integer tokenEstimate, String summaryUnit) {}
+            List<String> matchReason, Integer tokenEstimate, String summaryUnit,
+            String caution) {}
 
     /**
      * Score a unit against a set of query terms.
@@ -218,7 +219,19 @@ public final class KcpServer {
         return new SearchResult(
             unit.id(), unit.intent(), unit.path(),
             KcpMapper.unitUri(slug, unit.id()), score,
-            List.copyOf(matchReason), tokenEstimate, summaryUnit);
+            List.copyOf(matchReason), tokenEstimate, summaryUnit, null);
+    }
+
+    /** Returns the first not_for phrase matched by any query term, or null (§15.11). */
+    static String matchNotFor(KnowledgeUnit unit, List<String> terms) {
+        if (unit.notFor() == null || unit.notFor().isEmpty()) return null;
+        for (String phrase : unit.notFor()) {
+            String lphrase = phrase.toLowerCase();
+            for (String term : terms) {
+                if (lphrase.contains(term.toLowerCase())) return phrase;
+            }
+        }
+        return null;
     }
 
     // ── Public factories ──────────────────────────────────────────────────────
@@ -448,7 +461,21 @@ public final class KcpServer {
             }
         }
 
-        if (results.isEmpty()) {
+        // §15.11 not_for filter: strict exclusion, soft demotion (score → not_for → top-N per §15.12)
+        List<SearchResult> finalResults = new ArrayList<>();
+        for (SearchResult r : results) {
+            KnowledgeUnit u = rs.units().get(r.id());
+            String matched = u != null ? matchNotFor(u, terms) : null;
+            if (matched == null) { finalResults.add(r); continue; }
+            if (Boolean.TRUE.equals(u.notForStrict())) continue;
+            finalResults.add(new SearchResult(
+                r.id(), r.intent(), r.path(), r.uri(),
+                Math.max(1, r.score() / 2),
+                r.matchReason(), r.tokenEstimate(), r.summaryUnit(),
+                "not_for match: '" + matched + "'"));
+        }
+
+        if (finalResults.isEmpty()) {
             String ids = String.join(", ", rs.units().keySet());
             return new McpSchema.CallToolResult(
                 List.of(new McpSchema.TextContent(
@@ -457,8 +484,8 @@ public final class KcpServer {
         }
 
         // Sort by score descending, take top 5
-        results.sort((a, b) -> Integer.compare(b.score(), a.score()));
-        List<SearchResult> top5 = results.subList(0, Math.min(5, results.size()));
+        finalResults.sort((a, b) -> Integer.compare(b.score(), a.score()));
+        List<SearchResult> top5 = finalResults.subList(0, Math.min(5, finalResults.size()));
 
         // Build JSON array manually (no Jackson in production)
         StringBuilder sb = new StringBuilder("[\n");
@@ -487,9 +514,15 @@ public final class KcpServer {
             }
             // summary_unit
             if (r.summaryUnit() != null) {
-                sb.append("\"summary_unit\":\"").append(escapeJson(r.summaryUnit())).append("\"");
+                sb.append("\"summary_unit\":\"").append(escapeJson(r.summaryUnit())).append("\",");
             } else {
-                sb.append("\"summary_unit\":null");
+                sb.append("\"summary_unit\":null,");
+            }
+            // caution
+            if (r.caution() != null) {
+                sb.append("\"caution\":\"").append(escapeJson(r.caution())).append("\"");
+            } else {
+                sb.append("\"caution\":null");
             }
             sb.append("}");
         }

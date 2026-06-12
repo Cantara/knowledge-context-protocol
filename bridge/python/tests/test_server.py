@@ -415,6 +415,32 @@ async def test_search_knowledge_no_match_returns_text_message():
     assert "no units matched" in text.lower()
 
 
+# ── §15.11 not_for filtering ──────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_search_knowledge_soft_demotes_not_for_match():
+    # "configure" hits admin-console trigger → 5 pts; "end" matches "end user" → halved + caution
+    server = get_server(RFC007_DIR)
+    result = await call_tool(server, "search_knowledge", {"query": "configure end"})
+    results = json.loads(result.content[0].text)
+    admin_console = next((r for r in results if r["id"] == "admin-console"), None)
+    assert admin_console is not None, "admin-console should appear (soft demotion, not excluded)"
+    assert admin_console["caution"] is not None
+    assert "not_for match" in admin_console["caution"]
+
+
+@pytest.mark.asyncio
+async def test_search_knowledge_strictly_excludes_not_for_strict_match():
+    # "operations" hits internal-ops trigger; "external" matches not_for strict → excluded
+    server = get_server(RFC007_DIR)
+    result = await call_tool(server, "search_knowledge", {"query": "operations external"})
+    text = result.content[0].text
+    if text.startswith("["):
+        results = json.loads(text)
+        ids = [r["id"] for r in results]
+        assert "internal-ops" not in ids, "Strict not_for unit must be excluded when query matches"
+
+
 @pytest.mark.asyncio
 async def test_search_knowledge_match_reason_intent():
     server = get_server(RFC007_DIR)

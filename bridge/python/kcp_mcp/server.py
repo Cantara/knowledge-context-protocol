@@ -279,7 +279,19 @@ def _score_unit(unit, terms: list[str], slug: str) -> dict:
         "match_reason": match_reason,
         "token_estimate": int(token_estimate) if token_estimate is not None else None,
         "summary_unit": str(summary_unit) if summary_unit is not None else None,
+        "caution": None,
     }
+
+
+def _match_not_for(unit, terms: list[str]) -> str | None:
+    """Return the first not_for phrase matched by any query term, or None (§15.11)."""
+    not_for = getattr(unit, "not_for", None) or []
+    for phrase in not_for:
+        lphrase = phrase.lower()
+        for term in terms:
+            if term.lower() in lphrase:
+                return phrase
+    return None
 
 
 def _handle_search_knowledge(
@@ -322,12 +334,24 @@ def _handle_search_knowledge(
         if scored["score"] > 0:
             results.append(scored)
 
-    if not results:
+    # §15.11 not_for filter: strict exclusion, soft demotion (score → not_for → top-N per §15.12)
+    final_results = []
+    for r in results:
+        unit, _ = unit_context.get(r["id"], (None, None))
+        matched = _match_not_for(unit, terms) if unit else None
+        if not matched:
+            final_results.append(r)
+            continue
+        if getattr(unit, "not_for_strict", False):
+            continue
+        final_results.append({**r, "score": max(1, r["score"] // 2), "caution": f"not_for match: '{matched}'"})
+
+    if not final_results:
         ids = ", ".join(unit_context.keys())
         return [TextContent(type="text", text=f'No units matched query "{query}". Available units: {ids}')]
 
-    results.sort(key=lambda r: r["score"], reverse=True)
-    top5 = results[:5]
+    final_results.sort(key=lambda r: r["score"], reverse=True)
+    top5 = final_results[:5]
 
     return [TextContent(type="text", text=json.dumps(top5, indent=2))]
 

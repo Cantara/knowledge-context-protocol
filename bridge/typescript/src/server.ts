@@ -69,6 +69,7 @@ interface SearchResult {
   match_reason: string[];
   token_estimate: number | null;
   summary_unit: string | null;
+  caution: string | null;
 }
 
 /**
@@ -122,7 +123,20 @@ function scoreUnit(
     match_reason: [...matchReason],
     token_estimate: tokenEstimate,
     summary_unit: summaryUnit,
+    caution: null,
   };
+}
+
+/** Returns the first not_for phrase matched by any query term, or null (§15.11). */
+function matchNotFor(unit: KnowledgeUnit, terms: string[]): string | null {
+  if (!unit.not_for || unit.not_for.length === 0) return null;
+  for (const phrase of unit.not_for) {
+    const lphrase = phrase.toLowerCase();
+    for (const term of terms) {
+      if (lphrase.includes(term.toLowerCase())) return phrase;
+    }
+  }
+  return null;
 }
 
 /**
@@ -429,7 +443,17 @@ export function createKcpServer(
           }
         }
 
-        if (results.length === 0) {
+        // §15.11 not_for filter: strict exclusion, soft demotion (score → not_for → top-N per §15.12)
+        const finalResults: SearchResult[] = [];
+        for (const r of results) {
+          const uctx = unitContextMap.get(r.id);
+          const matched = uctx ? matchNotFor(uctx.unit, terms) : null;
+          if (!matched) { finalResults.push(r); continue; }
+          if (uctx!.unit.not_for_strict) continue;
+          finalResults.push({ ...r, score: Math.max(1, Math.floor(r.score / 2)), caution: `not_for match: '${matched}'` });
+        }
+
+        if (finalResults.length === 0) {
           const ids = [...unitContextMap.keys()].join(", ");
           return {
             content: [
@@ -442,8 +466,8 @@ export function createKcpServer(
         }
 
         // Sort by score descending, take top 5
-        results.sort((a, b) => b.score - a.score);
-        const top5 = results.slice(0, 5);
+        finalResults.sort((a, b) => b.score - a.score);
+        const top5 = finalResults.slice(0, 5);
 
         return {
           content: [

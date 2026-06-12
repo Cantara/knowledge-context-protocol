@@ -243,6 +243,39 @@ describe("search_knowledge tool", () => {
     expect(ids).toContain("secret-config");
     await client.close();
   });
+
+  // ── §15.11 not_for filtering ─────────────────────────────────────────────
+
+  it("soft-demotes units whose not_for phrase matches a query term (§15.11)", async () => {
+    const client = await connectClient(join(RFC007_DIR, "knowledge.yaml"));
+    // "configure" hits admin-console trigger → score 5; "end" matches "end user" → halved + caution
+    const result = await client.callTool({
+      name: "search_knowledge",
+      arguments: { query: "configure end" },
+    });
+    const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+    const results = JSON.parse(text);
+    const adminConsole = results.find((r: { id: string }) => r.id === "admin-console");
+    expect(adminConsole).toBeDefined();
+    expect(adminConsole.caution).toMatch(/not_for match/);
+    await client.close();
+  });
+
+  it("strictly excludes units with not_for_strict when query term matches (§15.11)", async () => {
+    const client = await connectClient(join(RFC007_DIR, "knowledge.yaml"));
+    // "operations" hits internal-ops trigger → 5 pts; "external" matches not_for strict → excluded
+    const result = await client.callTool({
+      name: "search_knowledge",
+      arguments: { query: "operations external" },
+    });
+    const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+    if (text.startsWith("[")) {
+      const results = JSON.parse(text);
+      const ids = results.map((r: { id: string }) => r.id);
+      expect(ids).not.toContain("internal-ops");
+    }
+    await client.close();
+  });
 });
 
 describe("get_unit tool", () => {
