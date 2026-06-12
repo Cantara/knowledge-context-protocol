@@ -1,0 +1,12 @@
+command: docker
+platform: all
+description: "Container runtime and image management"
+syntax:
+  usage: "docker [OPTIONS] COMMAND [ARG...]"
+  key_flags:
+    - flag: "--version"
+      description: "Print version information"
+      use_when: "Checking installed Docker version"
+  preferred_invocations:
+    - invocation: "docker ps"
+      use_when: "List running containers"

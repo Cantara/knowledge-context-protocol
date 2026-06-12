@@ -1,0 +1,18 @@
+command: git
+subcommand: status
+platform: all
+description: "Show the working tree status"
+syntax:
+  usage: "git status [<options>] [--] [<pathspec>...]"
+  key_flags:
+    - flag: "-s"
+      description: "Short format output"
+      use_when: "Quick overview of changes"
+    - flag: "--branch"
+      description: "Show branch info even in short format"
+      use_when: "Need branch tracking info"
+  preferred_invocations:
+    - invocation: "git status -s"
+      use_when: "Quick check for modified files"
+output_schema:
+  enable_filter: false

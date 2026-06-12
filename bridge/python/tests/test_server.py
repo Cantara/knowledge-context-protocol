@@ -896,3 +896,74 @@ async def test_multiple_sub_manifests_all_merged(tmp_path):
     names = [r.name for r in resources]
     assert "alpha" in names
     assert "beta" in names
+
+
+COMMANDS_DIR = Path(__file__).parent / "fixtures" / "commands"
+
+
+# ── get_unit tool ─────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_get_unit_returns_content():
+    server = get_server(FULL_DIR)
+    result = await call_tool(server, "get_unit", {"unit_id": "overview"})
+    assert result.content[0].text  # non-empty content
+
+
+@pytest.mark.asyncio
+async def test_get_unit_unknown_id_returns_error():
+    server = get_server(MINIMAL_DIR)
+    result = await call_tool(server, "get_unit", {"unit_id": "nonexistent"})
+    assert "not found" in result.content[0].text.lower()
+
+
+@pytest.mark.asyncio
+async def test_get_unit_listed_in_tools():
+    server = get_server(MINIMAL_DIR)
+    tools = await call_list_tools(server)
+    names = [t.name for t in tools]
+    assert "get_unit" in names
+
+
+# ── get_command_syntax tool ───────────────────────────────────────────────────
+
+
+def get_server_with_commands(fixture_dir: Path) -> object:
+    return create_server(
+        fixture_dir / "knowledge.yaml",
+        warn_on_validation=False,
+        commands_dir=COMMANDS_DIR,
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_command_syntax_returns_block():
+    server = get_server_with_commands(MINIMAL_DIR)
+    result = await call_tool(server, "get_command_syntax", {"command": "git commit"})
+    text = result.content[0].text
+    assert "[kcp] git commit:" in text
+    assert "Usage:" in text
+
+
+@pytest.mark.asyncio
+async def test_get_command_syntax_prefix_lookup():
+    server = get_server_with_commands(MINIMAL_DIR)
+    result = await call_tool(server, "get_command_syntax", {"command": "docker"})
+    text = result.content[0].text
+    assert "[kcp] docker" in text
+
+
+@pytest.mark.asyncio
+async def test_get_command_syntax_unknown_returns_available():
+    server = get_server_with_commands(MINIMAL_DIR)
+    result = await call_tool(server, "get_command_syntax", {"command": "nonexistent"})
+    text = result.content[0].text
+    assert "Available commands" in text
+
+
+@pytest.mark.asyncio
+async def test_get_command_syntax_no_commands_dir_returns_hint():
+    server = get_server(MINIMAL_DIR)
+    result = await call_tool(server, "get_command_syntax", {"command": "git"})
+    assert "--commands-dir" in result.content[0].text

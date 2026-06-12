@@ -39,9 +39,9 @@ When adding any MCP capability:
 | `search_knowledge`: `summary_unit` field | ✅ | ✅ | ✅ | from hints.summary_unit |
 | `search_knowledge`: `not_for` filter (§15.11) | ✅ | ✅ | ✅ | strict exclusion + soft demotion with `caution` field |
 | `search_knowledge`: temporal query `as_of` / `include_all_temporal` (§15.13) | ✅ | ✅ | ✅ | point-in-time filtering, conflict error on mutual exclusion |
-| `get_unit` tool | ✅ | ✅ | ❌ | **gap — Python needs this** |
+| `get_unit` tool | ✅ | ✅ | ✅ | fetch unit file content by id |
 | `list_manifests` tool | ✅ | ✅ | ✅ | lists declared sub-manifests (federation §3.6) |
-| `get_command_syntax` tool | ✅ | ✅ | ❌ | **gap — Python needs this** (requires `--commands-dir`) |
+| `get_command_syntax` tool | ✅ | ✅ | ✅ | requires `--commands-dir` |
 | `sdd-review` prompt | ✅ | ✅ | ❌ | **gap — Python needs this** |
 | `kcp-explore` prompt | ✅ | ✅ | ❌ | **gap — Python needs this** |
 
@@ -81,23 +81,19 @@ When adding any MCP capability:
 |--------|------:|
 | TypeScript (vitest) | 163 |
 | Java (JUnit) | 147 |
-| Python (pytest) | 135 |
-| **Total** | **445** |
+| Python (pytest) | 143 |
+| **Total** | **453** |
 
 ---
 
 ## Known Python gaps (Tier 1)
 
-The following MCP tools/prompts exist in TS + Java but not yet in Python:
+The following MCP prompts exist in TS + Java but not yet in Python:
 
 | Gap | Priority | Notes |
 |-----|----------|-------|
-| `get_unit` | High | Simple: lookup by unit ID, return full unit JSON |
-| `get_command_syntax` | Medium | Requires `--commands-dir` CLI flag |
 | `sdd-review` prompt | Medium | Static prompt text + manifest context |
 | `kcp-explore` prompt | Medium | Requires `topic` argument |
-
-Closing these gaps is the next Python bridge milestone (target: v0.15.0).
 
 ---
 

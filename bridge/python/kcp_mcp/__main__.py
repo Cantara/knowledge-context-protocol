@@ -54,6 +54,12 @@ def main() -> None:
         metavar="PATH",
         help="Additional knowledge.yaml paths to merge (supports glob wildcards)",
     )
+    parser.add_argument(
+        "--commands-dir",
+        default=None,
+        metavar="DIR",
+        help="Directory of kcp-commands YAML files (enables get_command_syntax tool)",
+    )
     args = parser.parse_args()
 
     manifest_path = Path(args.manifest)
@@ -72,12 +78,15 @@ def main() -> None:
 
     from .server import create_server
 
+    commands_dir = Path(args.commands_dir) if args.commands_dir else None
+
     try:
         server = create_server(
             manifest_path,
             agent_only=args.agent_only,
             warn_on_validation=not args.no_warnings,
             sub_manifests=sub_manifest_paths,
+            commands_dir=commands_dir,
         )
     except Exception as e:
         sys.stderr.write(f"Error: {e}\n")

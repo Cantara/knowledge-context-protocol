@@ -1,0 +1,18 @@
+command: git
+subcommand: commit
+platform: all
+description: "Record staged changes to the repository"
+syntax:
+  usage: "git commit [<options>]"
+  key_flags:
+    - flag: "-m '<message>'"
+      description: "Commit message inline"
+      use_when: "Simple one-line commits"
+    - flag: "--amend"
+      description: "Replace the last commit (rewrites history)"
+      use_when: "Fixing typo in last commit message or adding forgotten file — never after push"
+  preferred_invocations:
+    - invocation: "git commit -m 'Add feature X'"
+      use_when: "Standard single-line commit"
+output_schema:
+  enable_filter: false

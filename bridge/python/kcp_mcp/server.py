@@ -19,6 +19,12 @@ from pydantic import AnyUrl
 from kcp import parse
 from kcp.model import KnowledgeManifest
 
+from .commands import (
+    CommandManifest,
+    format_syntax_block,
+    load_command_manifests,
+    lookup_command,
+)
 from .content import PathTraversalError, ResourceNotFoundError, read_resource_content
 from .mapper import (
     build_manifest_json,
@@ -55,6 +61,7 @@ def create_server(
     agent_only: bool = False,
     warn_on_validation: bool = True,
     sub_manifests: list[Path] | None = None,
+    commands_dir: Path | None = None,
 ) -> Server:
     """
     Parse knowledge.yaml and return a configured MCP Server.
@@ -64,6 +71,7 @@ def create_server(
         agent_only:         If True, only expose units with audience: [agent]
         warn_on_validation: Log validation warnings to stderr
         sub_manifests:      Additional manifest paths whose units merge into the primary namespace
+        commands_dir:       Directory of kcp-commands YAML files (enables get_command_syntax tool)
     """
     if sub_manifests is None:
         sub_manifests = []
@@ -105,6 +113,11 @@ def create_server(
         )
 
     total_units = len(unit_context)
+
+    # Load command manifests (optional — enables get_command_syntax tool)
+    command_manifests: dict[str, CommandManifest] = {}
+    if commands_dir is not None:
+        command_manifests = load_command_manifests(commands_dir)
 
     # Build static resource list
     resource_list: list[Resource] = [
@@ -173,7 +186,7 @@ def create_server(
 
     @server.list_tools()
     async def list_tools() -> list[Tool]:
-        return [
+        tools = [
             Tool(
                 name="search_knowledge",
                 description=(
@@ -215,6 +228,34 @@ def create_server(
                 },
             ),
             Tool(
+                name="get_unit",
+                description="Fetch the content of a specific knowledge unit by its id.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "unit_id": {
+                            "type": "string",
+                            "description": "The unit id from search_knowledge results",
+                        },
+                    },
+                    "required": ["unit_id"],
+                },
+            ),
+            Tool(
+                name="get_command_syntax",
+                description="Get syntax guidance for a CLI command from kcp-commands manifests.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "command": {
+                            "type": "string",
+                            "description": "Command name e.g. 'git commit', 'mvn', 'docker'",
+                        },
+                    },
+                    "required": ["command"],
+                },
+            ),
+            Tool(
                 name="list_manifests",
                 description=(
                     "List the sub-manifests declared in this knowledge.yaml federation block."
@@ -226,11 +267,16 @@ def create_server(
                 },
             ),
         ]
+        return tools
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         if name == "search_knowledge":
             return _handle_search_knowledge(unit_context, slug, arguments or {})
+        if name == "get_unit":
+            return _handle_get_unit(unit_context, arguments or {})
+        if name == "get_command_syntax":
+            return _handle_get_command_syntax(command_manifests, arguments or {})
         if name == "list_manifests":
             return _handle_list_manifests(manifest)
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
@@ -390,6 +436,46 @@ def _handle_search_knowledge(
     top5 = final_results[:5]
 
     return [TextContent(type="text", text=json.dumps(top5, indent=2))]
+
+
+def _handle_get_unit(
+    unit_context: dict,
+    arguments: dict,
+) -> list[TextContent]:
+    """Fetch the content of a specific knowledge unit by id."""
+    unit_id = arguments.get("unit_id", "").strip()
+    ctx = unit_context.get(unit_id)
+    if ctx is None:
+        ids = ", ".join(unit_context.keys())
+        return [TextContent(type="text", text=f'Unit not found: "{unit_id}". Available units: {ids}')]
+
+    unit, unit_dir = ctx
+    mime = resolve_mime(unit)
+    try:
+        content, is_binary = read_resource_content(unit_dir, unit.path, mime)
+    except (ResourceNotFoundError, PathTraversalError) as e:
+        return [TextContent(type="text", text=f"Error reading unit: {e}")]
+
+    if is_binary:
+        return [TextContent(type="text", text=f"[Binary content: {mime}, base64 length: {len(content)}]")]
+    return [TextContent(type="text", text=content)]
+
+
+def _handle_get_command_syntax(
+    command_manifests: dict,
+    arguments: dict,
+) -> list[TextContent]:
+    """Return syntax guidance for a CLI command."""
+    if not command_manifests:
+        return [TextContent(type="text", text="No command manifests loaded \u2014 start kcp-mcp with --commands-dir")]
+
+    cmd_query = arguments.get("command", "").strip()
+    found = lookup_command(command_manifests, cmd_query)
+    if found is None:
+        available = ", ".join(sorted({m.command for m in command_manifests.values()}))
+        return [TextContent(type="text", text=f'Unknown command: "{cmd_query}". Available commands: {available}')]
+
+    return [TextContent(type="text", text=format_syntax_block(found))]
 
 
 def _handle_list_manifests(manifest: KnowledgeManifest) -> list[TextContent]:
