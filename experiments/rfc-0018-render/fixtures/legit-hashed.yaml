@@ -19,6 +19,10 @@ units:
     content_hash:
       algorithm: sha256
       value: "PLACEHOLDER_DIR_HASH"
+  - id: notes
+    path: docs/notes.md
+    intent: "Working notes for contributors"
+    triggers: [notes]
 trust:
   provenance:
     publisher: "Cantara"

@@ -13,7 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
 
@@ -81,6 +81,8 @@ function setupHashedContent({ dir, manifest }) {
   fs.mkdirSync(path.join(dir, 'docs'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'docs', 'setup.md'),
     '# Setup\nJDK 21 and Maven are described here.\n');
+  fs.writeFileSync(path.join(dir, 'docs', 'notes.md'),
+    'Working notes — deliberately NOT covered by a content_hash (C14 probe).\n');
   fs.mkdirSync(path.join(dir, 'src', 'gerber', 'nested'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'src', 'gerber', 'Gerber.java'), 'class Gerber {}\n');
   fs.writeFileSync(path.join(dir, 'src', 'gerber', 'nested', 'Drill.java'), 'class Drill {}\n');
@@ -88,6 +90,33 @@ function setupHashedContent({ dir, manifest }) {
     PLACEHOLDER_FILE_HASH: digestFileHex(path.join(dir, 'docs', 'setup.md')),
     PLACEHOLDER_DIR_HASH: digestDirHex(path.join(dir, 'src', 'gerber')),
   });
+}
+
+// Serve fixed bytes over local HTTP for corroboration cases. The runner is
+// synchronous, so the server runs in a child process; it writes its
+// dynamically-assigned port to a file the parent polls for.
+function withManifestServer(fileToServe, fn) {
+  // port file lives in the work dir — never beside a fixture
+  const portFile = path.join(WORK, `server-${path.basename(fileToServe)}-${process.pid}.port`);
+  fs.rmSync(portFile, { force: true });
+  const srv = spawn('node', ['-e', `
+    const http = require('http'), fs = require('fs');
+    const body = fs.readFileSync(process.argv[1]);
+    const s = http.createServer((req, res) => res.end(body));
+    s.listen(0, '127.0.0.1', () =>
+      fs.writeFileSync(process.argv[2], String(s.address().port)));
+  `, fileToServe, portFile], { stdio: 'ignore' });
+  try {
+    let port;
+    for (let i = 0; i < 100 && port === undefined; i++) {
+      try { port = fs.readFileSync(portFile, 'utf8'); }
+      catch { execFileSync('node', ['-e', 'setTimeout(() => {}, 100)']); }
+    }
+    if (!port) throw new Error('corroboration server failed to start');
+    return fn(`http://127.0.0.1:${port}/knowledge.yaml`);
+  } finally {
+    srv.kill();
+  }
 }
 
 // T9 relocation: a fabricated .git/config claiming the pinned origin —
@@ -139,11 +168,25 @@ function renderCase(c, keys, allowlistPath) {
   const out = path.join(dir, 'rendered.yaml');
   let exitCode = 0;
   let stderr = '';
-  try {
-    runRenderCli(manifest, allowlistPath, c.origin, out, c.extraArgs ?? []);
-  } catch (e) {
-    exitCode = e.status ?? 1;
-    stderr = (e.stderr || '').toString().trim();
+  const invoke = (extraArgs) => {
+    try {
+      runRenderCli(manifest, allowlistPath, c.origin, out, extraArgs);
+    } catch (e) {
+      exitCode = e.status ?? 1;
+      stderr = (e.stderr || '').toString().trim();
+    }
+  };
+  if (c.corroborateWith) {
+    // 'self': the claimed origin really serves these manifest bytes (the
+    // verbatim-copy relocation, or a legit clone). 'other': it serves
+    // something else entirely.
+    const serveFile = c.corroborateWith === 'self'
+      ? manifest
+      : path.join(ROOT, 'fixtures', 'legit-minimal.yaml');
+    withManifestServer(serveFile, (url) =>
+      invoke([...(c.extraArgs ?? []), '--corroborate-url', url]));
+  } else {
+    invoke(c.extraArgs ?? []);
   }
   return { dir, manifest, out, exitCode, stderr };
 }
@@ -222,6 +265,9 @@ function checkCase(c, r) {
   }
   if (e.trustReason && doc.trust.reason !== e.trustReason) {
     problems.push(`trust.reason=${doc.trust.reason}, expected ${e.trustReason}`);
+  }
+  if (e.corroboration && doc.trust.corroboration?.result !== e.corroboration) {
+    problems.push(`corroboration=${doc.trust.corroboration?.result}, expected ${e.corroboration}`);
   }
   if (e.contentVerified) {
     for (const [unitId, want] of Object.entries(e.contentVerified)) {
@@ -411,8 +457,9 @@ const CASES = [
     covers: 'RFC-0019 §3/C11: per-unit hashes verify at trusted tier',
     desc: 'Signed manifest with intact per-unit hashes -> content_verified, load-eligible',
     expect: { tier: 'trusted', pinned: true, originEvidence: 'asserted',
-      contentVerified: { 'setup-docs': true, 'gerber-src': true },
-      loadEligible: { 'setup-docs': true, 'gerber-src': true } },
+      contentVerified: { 'setup-docs': true, 'gerber-src': true, notes: 'absent' },
+      // asserted evidence: the hash-less notes unit stays eligible (no C14)
+      loadEligible: { 'setup-docs': true, 'gerber-src': true, notes: true } },
   },
   {
     id: 'A11-dir-digest', fixture: 'legit-hashed-dir.yaml',
@@ -440,7 +487,7 @@ const CASES = [
     expect: { tier: 'known', pinned: true,
       originEvidence: 'derived', trustReason: 'origin_evidence_derived',
       contentVerified: { 'setup-docs': 'mismatch', 'gerber-src': 'mismatch' },
-      loadEligible: { 'setup-docs': false, 'gerber-src': false },
+      loadEligible: { 'setup-docs': false, 'gerber-src': false, notes: false },
       droppedPaths: ['units[0].content_hash', 'units[1].content_hash'] },
   },
   {
@@ -452,7 +499,8 @@ const CASES = [
     desc: 'Same relocation with --allow-derived-origin -> trusted tier, but every swapped unit demoted by hash',
     expect: { tier: 'trusted', originEvidence: 'derived',
       contentVerified: { 'setup-docs': 'mismatch', 'gerber-src': 'mismatch' },
-      loadEligible: { 'setup-docs': false, 'gerber-src': false } },
+      // explicit consumer opt-out, not corroboration: notes stays eligible
+      loadEligible: { 'setup-docs': false, 'gerber-src': false, notes: true } },
   },
   {
     id: 'B18-content-drift', fixture: 'legit-hashed.yaml',
@@ -465,6 +513,38 @@ const CASES = [
       contentVerified: { 'setup-docs': 'mismatch', 'gerber-src': true },
       loadEligible: { 'setup-docs': false, 'gerber-src': true },
       droppedPaths: ['units[0].content_hash'] },
+  },
+  {
+    id: 'A12-corroborated-clean', fixture: 'legit-hashed.yaml',
+    sign: 'org', origin: null, corroborateWith: 'self',
+    setup: (ctx) => { setupHashedContent(ctx); fakeGitRemote(ctx.dir, 'https://github.com/Cantara/lib-pcb.git'); },
+    covers: 'RFC-0019 §4.3: matched corroboration upgrades derived evidence',
+    desc: 'Derived origin corroborated against a matching manifest -> trusted; only hash-verified units load (C14)',
+    expect: { tier: 'trusted', originEvidence: 'fetched', corroboration: 'matched',
+      contentVerified: { 'setup-docs': true, 'gerber-src': true, notes: 'absent' },
+      // C14: corroboration vouched for the manifest, not the checkout —
+      // the hash-less notes unit stays out of standing context
+      loadEligible: { 'setup-docs': true, 'gerber-src': true, notes: false } },
+  },
+  {
+    id: 'B19-corroboration-mismatch', fixture: 'legit-hashed.yaml',
+    sign: 'org', origin: null, corroborateWith: 'other',
+    setup: (ctx) => { setupHashedContent(ctx); fakeGitRemote(ctx.dir, 'https://github.com/Cantara/lib-pcb.git'); },
+    covers: 'RFC-0019 §4.3: corroboration mismatch keeps derived evidence',
+    desc: 'Claimed origin serves a different manifest -> evidence stays derived, tier stays capped at known',
+    expect: { tier: 'known', originEvidence: 'derived', corroboration: 'mismatch',
+      trustReason: 'origin_evidence_derived' },
+  },
+  {
+    id: 'B20-corroborated-relocation', fixture: 'legit-hashed.yaml',
+    sign: 'org', origin: null, corroborateWith: 'self',
+    setup: (ctx) => { setupHashedContent(ctx); fakeGitRemote(ctx.dir, 'https://github.com/Cantara/lib-pcb.git'); },
+    afterSign: attackerSwapsContent,
+    covers: 'T9 via corroboration: the verbatim-copy relocation defeats byte-comparison (drove C14)',
+    desc: 'Relocated genuine manifest corroborates clean (it IS at the real origin) -> trusted, yet zero units load: hashed ones mismatch (C11), hash-less ones are C14-excluded',
+    expect: { tier: 'trusted', originEvidence: 'fetched', corroboration: 'matched',
+      contentVerified: { 'setup-docs': 'mismatch', 'gerber-src': 'mismatch', notes: 'absent' },
+      loadEligible: { 'setup-docs': false, 'gerber-src': false, notes: false } },
   },
 ];
 
@@ -558,15 +638,6 @@ for (const c of CASES) {
   });
 }
 
-// B19 — origin corroboration (RFC-0019 §4.3) is not yet implemented in the
-// CLI (it needs forge-specific manifest-URL mapping and a network stub to
-// test); recorded as deferred rather than silently absent.
-results.push({
-  id: 'B19-corroboration', covers: 'RFC-0019 §4.3: derived-origin corroboration (DEFERRED)',
-  desc: 'Derived origin whose remote serves a different manifest must stay derived',
-  status: 'DEFERRED', problems: [],
-});
-
 // ------------------------------------------------------------- report --
 const failed = results.filter((r) => r.status === 'FAIL');
 const lines = [];
@@ -600,7 +671,7 @@ lines.push('as RFC-0018 §2.1 predicts. The lint is defense-in-depth; the load-b
 lines.push('control for T1/T6 is §6.4 / C8 data-framing in the runtime. Any future lint');
 lines.push('version that claims to close this should add B12-class fixtures first.');
 lines.push('');
-lines.push('## RFC-0019 coverage (A10–A11, B17–B18)');
+lines.push('## RFC-0019 coverage (A10–A12, B17–B20)');
 lines.push('');
 lines.push('B17 mounts the full T9 relocation: a genuinely org-signed manifest behind');
 lines.push('a fabricated `.git/config` claiming the pinned origin, with attacker files');
@@ -609,7 +680,15 @@ lines.push('the evidence cap (C13) holds the tier at `known`, and B17b shows tha
 lines.push('with the cap explicitly waived (`--allow-derived-origin`), the per-unit');
 lines.push('content hashes (C11) demote every swapped unit to a pointer. B18 separates');
 lines.push('drift (one mismatch) from relocation (all units mismatching at once).');
-lines.push('B19 (corroboration, §4.3) is DEFERRED: not yet implemented in the CLI.');
+lines.push('');
+lines.push('Corroboration (§4.3) runs against a real local HTTP server: A12 is the');
+lines.push('legitimate clone (matched -> evidence upgraded to fetched -> trusted) and');
+lines.push('B19 the mismatch control. **B20 is the case that drove C14:** a verbatim-');
+lines.push('copy relocation corroborates clean, because the manifest genuinely IS at');
+lines.push('the claimed origin — byte-comparison verifies the map, not the territory.');
+lines.push('The render still yields zero load-eligible units: hashed units mismatch');
+lines.push('(C11) and hash-less units are excluded whenever trust rests on');
+lines.push('corroboration rather than assertion (C14).');
 lines.push('');
 lines.push('## Spec changes these experiments drove (now in draft-03, Appendix B)');
 lines.push('');

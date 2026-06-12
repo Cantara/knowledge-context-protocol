@@ -15,15 +15,21 @@
 //
 // RFC-0019 (draft) additions: per-unit content_hash verification (C11)
 // and origin evidence classes with the trust-escalation cap (C13) —
-// together closing the T9 manifest-relocation attack.
+// together closing the T9 manifest-relocation attack. Corroboration
+// (§4.3) verifies the *manifest* against its claimed origin; it cannot
+// verify the *checkout*, so escalation that rests on corroboration never
+// extends standing-context eligibility to hash-less units (C14).
 
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createHash, createPublicKey, verify as cryptoVerify } from "node:crypto";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import yaml from "js-yaml";
 import { lintFreeText, LINT_RULES_VERSION } from "./lint.js";
+import { computeContentDigest, HASH_ALGORITHMS } from "./validator.js";
+
+export { computeContentDigest, HASH_ALGORITHMS };
 
 const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
@@ -73,6 +79,17 @@ export interface RenderOptions {
   allowDerivedOrigin?: boolean;
   /** RFC-0019 §3.3: deny standing-context eligibility to hash-less units at trusted tier. */
   requireUnitHashes?: boolean;
+  /**
+   * RFC-0019 §4.3: outcome of an origin-corroboration attempt, performed
+   * by the caller *before* rendering (the renderer itself stays offline
+   * and deterministic; the outcome is part of the C1 input).
+   */
+  corroboration?: CorroborationOutcome;
+}
+
+export interface CorroborationOutcome {
+  url: string;
+  result: "matched" | "mismatch" | "unreachable";
 }
 
 /**
@@ -122,50 +139,9 @@ function sha256(buf: Buffer): string {
 }
 
 // --- Per-unit content hashes (RFC-0019 §3, C11) ---
-
-const HASH_ALGORITHMS = ["sha256", "sha384", "sha512"];
-
-/** POSIX-relative paths of all regular files under root; symlinks not followed. */
-function walkRegularFiles(root: string, rel = ""): string[] {
-  const out: string[] = [];
-  for (const entry of readdirSync(root, { withFileTypes: true })) {
-    const entryRel = rel ? `${rel}/${entry.name}` : entry.name;
-    if (entry.isDirectory()) {
-      out.push(...walkRegularFiles(join(root, entry.name), entryRel));
-    } else if (entry.isFile()) {
-      out.push(entryRel);
-    }
-    // symlinks, sockets, etc. are neither: skipped
-  }
-  return out;
-}
-
-/**
- * RFC-0019 §3.2 digest: a file hashes its raw bytes; a directory hashes
- * the bytewise-sorted concatenation of `relpath \0 hexdigest \n` entries
- * over every regular file beneath it. No exclusions. Returns undefined
- * when the target is missing or unreadable (fails closed at the caller).
- */
-export function computeContentDigest(target: string, algorithm: string): string | undefined {
-  try {
-    const hashFile = (p: string): string =>
-      createHash(algorithm).update(readFileSync(p)).digest("hex");
-    // readdirSync throws ENOTDIR on files — cheaper than a stat round-trip
-    let entries: string[];
-    try {
-      entries = walkRegularFiles(target);
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === "ENOTDIR") return hashFile(target);
-      throw err;
-    }
-    entries.sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
-    const digest = createHash(algorithm);
-    for (const e of entries) digest.update(`${e}\0${hashFile(join(target, e))}\n`);
-    return digest.digest("hex");
-  } catch {
-    return undefined;
-  }
-}
+// The digest implementation lives in validator.ts (which is kept
+// byte-identical with the bridge's validator); re-exported here for the
+// render/sign/test call sites that historically import it from render.
 
 // --- Origin determination (§4.1, normative) ---
 
@@ -349,12 +325,26 @@ export function renderManifest(options: RenderOptions): RenderResult {
   const { manifestPath } = options;
   const manifestBytes = readFileSync(manifestPath);
   const allowlist = loadAllowlist(options.keysPath);
-  const { origin, evidence } = deriveOrigin(manifestPath, options.origin);
+  const derived = deriveOrigin(manifestPath, options.origin);
+  const origin = derived.origin;
+  let evidence = derived.evidence;
+
+  // RFC-0019 §4.3: a matched corroboration upgrades derived evidence —
+  // the manifest has now been observed at its claimed origin over the
+  // consumer's own channel. It says nothing about the *checkout* (the
+  // files around the manifest), which is why the C14 flag below narrows
+  // what the upgrade may grant.
+  const corroborated =
+    evidence === "derived" && options.corroboration?.result === "matched";
+  if (corroborated) evidence = "fetched";
 
   const trust = computeTier(
     manifestBytes, manifestPath + ".sig", allowlist, origin,
     evidence, options.allowDerivedOrigin ?? false
   );
+  // C14: does the trusted tier rest on corroboration alone?
+  const escalationByCorroboration =
+    corroborated && trust.tier === "trusted" && !options.allowDerivedOrigin;
   if (trust.tier === "failed") {
     // Fail-closed (§3.1, R4, C2): emit nothing.
     return { ok: false, tier: "failed", origin, reason: trust.reason ?? "failed" };
@@ -366,6 +356,16 @@ export function renderManifest(options: RenderOptions): RenderResult {
     warnings.push(
       "trusted tier withheld: origin evidence is derived from the checkout's own git config (RFC-0019 C13). " +
         "Pass --origin from the component that cloned the repository, or --allow-derived-origin to accept the relocation risk."
+    );
+  }
+  if (options.corroboration && options.corroboration.result !== "matched") {
+    warnings.push(
+      `origin corroboration ${options.corroboration.result} (${options.corroboration.url}); evidence remains ${evidence} (RFC-0019 §4.3)`
+    );
+  }
+  if (escalationByCorroboration) {
+    warnings.push(
+      "trusted tier rests on corroboration: the manifest was verified at its claimed origin, the surrounding checkout was not — hash-less units stay out of standing context (RFC-0019 C14)"
     );
   }
   // §16.2: with a non-empty allowlist, an undeterminable origin means no
@@ -535,7 +535,9 @@ export function renderManifest(options: RenderOptions): RenderResult {
     }
 
     // §6.3 load eligibility — unconditional, even at trusted tier (C4),
-    // then narrowed by content verification (RFC-0019 §3.3).
+    // then narrowed by content verification (RFC-0019 §3.3) and, when the
+    // tier rests on corroboration, restricted to hash-verified units (C14:
+    // corroboration vouched for the manifest, not the checkout).
     if (unknownKind || NEVER_LOAD_KINDS.includes(kind)) {
       out.load_eligible = false;
       out.invocation = "explicit";
@@ -543,7 +545,8 @@ export function renderManifest(options: RenderOptions): RenderResult {
       out.load_eligible =
         tier === "trusted" &&
         contentVerified !== "mismatch" &&
-        !(options.requireUnitHashes && contentVerified === "absent");
+        !(contentVerified === "absent" &&
+          (options.requireUnitHashes || escalationByCorroboration));
     }
     out.content_verified = contentVerified;
     units.push(out);
@@ -622,6 +625,9 @@ export function renderManifest(options: RenderOptions): RenderResult {
       origin_evidence: evidence, // RFC-0019 §4.1, auditable like origin/pinned (R5)
       pinned: trust.pinned,
       ...(trust.capped ? { reason: trust.capped } : {}),
+      ...(options.corroboration
+        ? { corroboration: { url: options.corroboration.url, result: options.corroboration.result } }
+        : {}),
       signature: {
         method: "jws",
         algorithm: "EdDSA",
@@ -657,6 +663,37 @@ export function renderManifest(options: RenderOptions): RenderResult {
   return { ok: true, tier, origin, text, warnings };
 }
 
+// --- Origin corroboration (RFC-0019 §4.3) ---
+//
+// An evidence-resolution step that precedes rendering: fetch the manifest
+// from the derived origin over the consumer's own channel and compare
+// bytes. The outcome — never the network — feeds into renderManifest, so
+// the render core stays offline and deterministic (C1, C7).
+
+/** Map an origin to its manifest URL: explicit override, forge mapping, generic fallback. */
+export function resolveCorroborationUrl(origin: string, explicit?: string): string {
+  if (explicit) return explicit;
+  const gh = /^github\.com\/([^/]+)\/([^/]+)$/.exec(origin);
+  if (gh) return `https://raw.githubusercontent.com/${gh[1]}/${gh[2]}/HEAD/knowledge.yaml`;
+  return `https://${origin}/knowledge.yaml`;
+}
+
+export async function corroborateOrigin(
+  manifestBytes: Buffer,
+  origin: string,
+  explicitUrl?: string
+): Promise<CorroborationOutcome> {
+  const url = resolveCorroborationUrl(origin, explicitUrl);
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(10_000), redirect: "follow" });
+    if (!res.ok) return { url, result: "unreachable" };
+    const remote = Buffer.from(await res.arrayBuffer());
+    return { url, result: remote.equals(manifestBytes) ? "matched" : "mismatch" };
+  } catch {
+    return { url, result: "unreachable" };
+  }
+}
+
 // --- CLI entry point ---
 
 export interface RunRenderOptions {
@@ -667,6 +704,8 @@ export interface RunRenderOptions {
   timestamp?: boolean;
   allowDerivedOrigin?: boolean;
   requireUnitHashes?: boolean;
+  corroborate?: boolean;
+  corroborateUrl?: string;
 }
 
 function expandHome(p: string): string {
@@ -675,11 +714,22 @@ function expandHome(p: string): string {
   return p;
 }
 
-export function runRender(options: RunRenderOptions): void {
+export async function runRender(options: RunRenderOptions): Promise<void> {
   const keysPath = options.keys !== undefined ? expandHome(options.keys) : DEFAULT_KEYS_PATH;
 
   let result: RenderResult;
   try {
+    // Corroboration happens here, before the deterministic core, and only
+    // when the origin evidence is actually derived (§4.3).
+    let corroboration: CorroborationOutcome | undefined;
+    if (options.corroborate || options.corroborateUrl) {
+      const { origin, evidence } = deriveOrigin(options.manifestPath, options.origin);
+      if (evidence === "derived") {
+        corroboration = await corroborateOrigin(
+          readFileSync(options.manifestPath), origin, options.corroborateUrl
+        );
+      }
+    }
     result = renderManifest({
       manifestPath: options.manifestPath,
       keysPath,
@@ -687,6 +737,7 @@ export function runRender(options: RunRenderOptions): void {
       timestamp: options.timestamp,
       allowDerivedOrigin: options.allowDerivedOrigin,
       requireUnitHashes: options.requireUnitHashes,
+      corroboration,
     });
   } catch (err) {
     process.stderr.write(red(`Error: ${err instanceof Error ? err.message : String(err)}\n`));

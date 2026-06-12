@@ -264,14 +264,45 @@ preference order:
    channel and compares canonical bytes against the local manifest. On a
    match, the evidence upgrades to `fetched` (it has now been observed via
    a consumer-controlled channel); on mismatch or fetch failure, evidence
-   stays `derived` and the outcome is recorded. Corroboration is
-   conceptually an evidence-resolution step that *precedes* rendering;
-   its result is part of the (input, keys, renderer-version) determinism
-   triple's input, so C1 is preserved for a fixed corroboration outcome.
+   stays `derived` and the outcome is recorded
+   (`trust.corroboration`, §5). URL resolution is implementation-defined
+   (explicit `--corroborate-url`, forge mapping, generic
+   `https://<origin>/knowledge.yaml` fallback) but the resolved URL MUST
+   be recorded. Corroboration is conceptually an evidence-resolution step
+   that *precedes* rendering; its result is part of the (input, keys,
+   renderer-version) determinism triple's input, so C1 is preserved for a
+   fixed corroboration outcome.
+
+### 4.4 Corroboration verifies the map, not the territory (C14)
+
+Corroboration has a soundness boundary that experimental validation
+exposed (case B20): **the T9 relocation ships a verbatim copy of a
+genuine manifest, so corroboration succeeds against the real origin** —
+the manifest really is there. A matched byte-comparison proves the
+*manifest's* presence at the claimed origin; it proves nothing about the
+*checkout* surrounding the local copy, which is the thing T9 actually
+attacks.
+
+Therefore:
+
+> When the `trusted` tier rests on a corroboration upgrade (rather than
+> asserted or fetched-by-construction evidence), standing-context
+> eligibility extends **only to units whose `content_hash` verified**.
+> Hash-less units render at most as pointers, exactly as if
+> `require_unit_hashes` were set. (C14)
+
+Under this rule the corroborated relocation nets the attacker nothing:
+hashed units fail their digests (C11) and unhashed units are C14-excluded
+— zero load-eligible units, while the legitimate corroborated clone keeps
+every hash-verified unit. Harness assertion (`--origin`) remains the
+preferred remedy precisely because the asserting component vouches for
+the checkout itself, which corroboration cannot.
 
 Air-gapped consumers who cannot assert or corroborate MAY configure
 `allow_derived_origin: true`, accepting T9 exposure explicitly — the
-knob exists so the default can stay safe.
+knob exists so the default can stay safe. The opt-out reflects a
+deliberate consumer decision about the *checkout*, so C14 does not apply
+to it.
 
 Note the defense in depth: even where §4.2 is waived, §3's content
 hashes independently neutralize T9 for hashed units. Either mechanism
@@ -290,6 +321,8 @@ trust:
   origin_evidence: asserted        # asserted | fetched | derived | none   (§4.1)
   pinned: true
   # reason: origin_evidence_derived   — present only when §4.2 capped the tier
+  # corroboration: { url: "…", result: matched | mismatch | unreachable }
+  #                                   — present only when §4.3 was attempted
   # …signature block unchanged…
 
 units:
@@ -338,13 +371,20 @@ Extending RFC-0018 §10:
   the `trusted` tier's scope condition with `derived` (or `none`)
   evidence unless the consumer has explicitly configured
   `allow_derived_origin: true`.
+- **C14.** When the `trusted` tier rests on a corroboration upgrade,
+  never grants standing-context eligibility to a unit without a verified
+  `content_hash` (§4.4).
 
-Test corpus (extend `experiments/rfc-0018-render/`):
+Test corpus (extend `experiments/rfc-0018-render/`; all implemented and
+passing there):
 
 - **A10** — signed manifest with per-unit hashes, intact content: renders
   `trusted`, all units `content_verified: true`.
 - **A11** — directory-digest determinism: two implementations (or two
   runs over a re-created tree) produce identical digests per §3.2.
+- **A12** — corroborated clone: derived origin whose remote serves the
+  identical manifest upgrades to `fetched` and renders `trusted`;
+  hash-less units stay out of standing context (C14).
 - **B17** — the T9 relocation: genuine signed manifest, fabricated
   `.git/config`, attacker files at unit paths. Without this RFC:
   `trusted` with attacker content load-eligible. With it: tier capped at
@@ -353,6 +393,10 @@ Test corpus (extend `experiments/rfc-0018-render/`):
   digests recorded; the rest render normally (drift, not relocation).
 - **B19** — corroboration mismatch: derived origin whose remote serves a
   different manifest stays `derived`; outcome recorded.
+- **B20** — corroborated relocation: the verbatim-copy attack
+  corroborates clean (the manifest *is* at the real origin), yet yields
+  zero load-eligible units — hashed units mismatch (C11), hash-less
+  units are excluded (C14). This case drove §4.4.
 
 ---
 
@@ -394,3 +438,16 @@ Test corpus (extend `experiments/rfc-0018-render/`):
 - **RFC-0003**: pinning and evidence classification apply per federation
   edge, consistent with RFC-0018 §7's per-edge rule; fetched manifests
   start at `fetched` evidence by construction.
+
+---
+
+## Appendix A: Changes from draft-01 (experimental validation)
+
+Driven by implementing this RFC in `kcp render`/`kcp sign` and extending
+the `experiments/rfc-0018-render/` harness (cases A10–A12, B17–B20):
+
+| # | Change | Driver |
+|---|--------|--------|
+| 1 | §4.4 added: corroboration verifies the map, not the territory; C14 restricts corroboration-rested escalation to hash-verified units | designing case B20 showed the verbatim-copy relocation corroborates *clean* — the manifest genuinely is at the claimed origin — so a matched byte-comparison would have re-opened T9 for hash-less units |
+| 2 | Mismatch entries record `algorithm`/`expected`/`observed` (§5) | draft-01's example keys (`expected_sha256`) did not generalize across the three allowed algorithms |
+| 3 | `trust.corroboration` output field and URL-recording requirement (§4.3, §5) | the outcome must be auditable and part of the C1 determinism input; an unrecorded resolver would let two renderers disagree invisibly |

@@ -19,7 +19,7 @@ npm run run        # writes RESULTS.md, exit 0 iff no failures
 | A-cases | Do **legitimate** manifests render cleanly? Plain OSS repos (unsigned), org-signed manifests, manifests that *describe* build commands, declared `kind: executable` tooling, federation edges, byte-identical re-renders (C1). |
 | B-cases | Do the **threats** fail the way the RFC says? Imperative injection (T1), capability laundering at trusted tier (T2), schema smuggling (T5), unknown-`kind` evasion, signature theater (T4), signature stripping with and without pinning (T7), tampered signatures, scope typosquatting, forged rendered artifacts (T8). |
 | B12 | A deliberately **unfixed** case: descriptive-mood injection that passes the lint, kept as a permanent reminder that §6.2 is defense-in-depth and §6.4/C8 data-framing is the load-bearing control. It reports `KNOWN-GAP`, not `PASS`. |
-| RFC-0019 | Per-unit content hashes verify intact (A10) and across two independent §3.2 digest implementations (A11); the T9 relocation attack — genuine signed manifest, fabricated `.git` remote, attacker content — is stopped by the evidence cap (B17) and, independently, by content hashes when the cap is waived (B17b); post-sign drift demotes per-unit (B18). Corroboration (§4.3) is deferred (B19). |
+| RFC-0019 | Per-unit content hashes verify intact (A10) and across two independent §3.2 digest implementations (A11); the T9 relocation attack — genuine signed manifest, fabricated `.git` remote, attacker content — is stopped by the evidence cap (B17) and, independently, by content hashes when the cap is waived (B17b); post-sign drift demotes per-unit (B18). Corroboration runs against a real local HTTP server: the clean clone upgrades (A12), the mismatch control stays capped (B19), and the corroborated relocation — which corroborates *clean*, having a genuine manifest — still yields zero load-eligible units via C11+C14 (B20, the case that drove RFC-0019 §4.4). |
 
 Machine-checked global invariants on every emitted artifact: the stats
 identity (`fields_in = rendered + dropped + quarantined`), schema-only
@@ -61,10 +61,10 @@ confirm the harness still bites.
   `conformance/` adversarial corpus ported over.
 - Most cases inject origin via `--origin` (asserted evidence,
   RFC-0019 §4.1). Real git-remote derivation — and its classification as
-  `derived` evidence — is exercised by B17/B17b, which build an actual
-  fabricated `.git/config` in the case directory.
-- B19 (origin corroboration, RFC-0019 §4.3) is deferred: the CLI does not
-  implement `--corroborate` yet, and testing it honestly needs a network
-  stub plus forge-specific manifest-URL mapping.
+  `derived` evidence — is exercised by B17/B17b/A12/B19/B20, which build
+  an actual fabricated `.git/config` in the case directory.
+- Corroboration cases use `--corroborate-url` against a local HTTP
+  server; the default forge URL mapping (github.com → raw.githubusercontent)
+  is covered by CLI unit tests, not by these experiments.
 - No experiment covers RFC-0017 event-store writes (§8) — observability
   is asserted by the RFC but not yet exercised.
