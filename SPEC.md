@@ -1,8 +1,8 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.17
+**Version:** 0.19
 **Status:** Draft
-**Date:** 2026-06-11
+**Date:** 2026-06-12
 **Repository:** github.com/cantara/knowledge-context-protocol
 
 ---
@@ -92,7 +92,7 @@ Example:
 
 ```json
 {
-  "kcp_version": "0.18",
+  "kcp_version": "0.19",
   "manifest": "/knowledge.yaml",
   "title": "My Project Knowledge Base",
   "description": "Architecture decisions, API reference, and onboarding guides.",
@@ -143,7 +143,7 @@ version.
 ## 3. Root Manifest Structure
 
 ```yaml
-kcp_version: "0.18"         # RECOMMENDED
+kcp_version: "0.19"         # RECOMMENDED
 project: <string>            # REQUIRED
 version: <semver string>     # RECOMMENDED
 updated: "<ISO date>"        # RECOMMENDED; quote the value (see §4.1.1)
@@ -162,6 +162,8 @@ external_relationships: <list>  # OPTIONAL; cross-manifest relationship declarat
 visibility: <object>         # OPTIONAL; manifest-wide visibility default for all units (see §3.8)
 authority: <object>          # OPTIONAL; manifest-wide authority default for all units (see §3.8)
 discovery: <object>          # OPTIONAL; manifest-wide discovery defaults for all units (see §3.9)
+temporal: <object>           # OPTIONAL; default temporal validity window for all units (see §4.22)
+composition: <object>        # OPTIONAL; composed includes, overrides, and excludes (see §3.11)
 
 units:                       # REQUIRED; list of knowledge units
   - ...
@@ -174,7 +176,7 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
-| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.18"` for conformance with this document. |
+| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.19"` for conformance with this document. |
 | `project` | REQUIRED | string | Human-readable name of the project or documentation site. |
 | `version` | RECOMMENDED | string | Semver version of this manifest. Increment when units are added or removed. |
 | `updated` | RECOMMENDED | string | ISO 8601 date (`YYYY-MM-DD`) when this manifest was last modified. |
@@ -194,6 +196,8 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 | `authority` | OPTIONAL | object | Manifest-wide authority default. Units without their own `authority` block inherit this. See §3.8. |
 | `discovery` | OPTIONAL | object | Manifest-wide discovery defaults. Units inherit fields not declared at unit level. See §3.9. |
 | `not_for` | OPTIONAL | list | Advisory manifest-wide scope boundary — contexts this manifest does NOT cover. Used for federation decisions. See §3.10. |
+| `temporal` | OPTIONAL | object | Default temporal validity window applied to all units that do not declare their own `temporal` block. Field-level override at unit level. See §4.22. |
+| `composition` | OPTIONAL | object | Declares how this manifest is assembled from other manifests via includes, overrides, and excludes. See §3.11. |
 | `units` | REQUIRED | list | Ordered list of knowledge unit declarations. MUST contain at least one unit. |
 | `relationships` | OPTIONAL | list | Explicit cross-unit relationship declarations. See §5. |
 
@@ -875,7 +879,7 @@ a whole does NOT cover. It is an advisory scope boundary that helps an agent dec
 to federate to another manifest (§3.6) rather than searching this one at all.
 
 ```yaml
-kcp_version: "0.17"
+kcp_version: "0.19"
 project: "Payments Service Docs"
 
 not_for:
@@ -894,6 +898,83 @@ routing but never hard-excludes the manifest. Parsers MUST read and expose root-
 
 The unit-level `not_for` and `not_for_strict` fields, which influence per-unit query scoring,
 are defined in §4.20.
+
+---
+
+### 3.11 Manifest Composition (`composition` block) (v0.19)
+
+Promoted from [RFC-0020](./RFC-0020-Temporal-Composition.md). The optional root-level
+`composition` block declares how this manifest is assembled from other manifests. It enables
+multi-team manifests to share a common base, adapt individual units, and suppress obsolete
+units — without forking or copying.
+
+```yaml
+kcp_version: "0.19"
+
+composition:
+  includes:
+    - source: ./base/knowledge.yaml
+    - source: https://raw.githubusercontent.com/acme/kcps/main/platform/knowledge.yaml
+      as: platform                      # namespace prefix for included unit ids
+      integrity:
+        manifest_hash: "sha256:a1b2c3d4e5f6..."  # hash of raw file bytes at authoring time
+        expected_signer: "ed25519:MCowBQYDK2VwAyEA..."
+
+  overrides:
+    - id: platform:submit-expense-report  # namespaced: overrides a unit from 'platform' include
+      title: "Submit Expense Report (EU region)"
+      triggers:
+        - "expense report"
+        - "speserapport"
+
+  excludes:
+    - id: platform:legacy-sso-login       # suppress a unit from the included manifest
+
+units:
+  - id: my-local-unit                     # local units declared normally
+    # ...
+```
+
+**Resolution order:** includes (in list order, later wins on id collision) → overrides
+(applied on top) → excludes (removed from result) → local `units[]` (merged last, wins
+on all collisions). Resolution MUST complete before trust tiering (§16).
+
+#### `composition.includes[]` fields
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `source` | REQUIRED | string | Relative path or URL of the manifest to include. |
+| `as` | OPTIONAL | string | Namespace prefix for all unit ids from this source. Applied as `<prefix>:<id>`. |
+| `integrity.manifest_hash` | OPTIONAL | string | `sha256:<hex>` of the included source file's raw bytes at authoring time. Mismatch MUST produce a §7 warning. |
+| `integrity.expected_signer` | OPTIONAL | string | Public key id expected to have signed the included source. Mismatch MUST produce a §7 warning. |
+
+#### `composition.overrides[]` fields
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `id` | REQUIRED | string | Id of the unit to override. Use `namespace:id` for namespaced includes. Override of nonexistent id MUST produce a §7 warning. |
+| *(other unit fields)* | OPTIONAL | — | Any unit field declared here replaces the corresponding field on the referenced unit. Fields not declared are inherited from the original. |
+
+#### `composition.excludes[]` fields
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `id` | REQUIRED | string | Id of the unit to suppress from the resolved output. Use `namespace:id` for namespaced includes. Exclude of nonexistent id MUST produce a §7 warning. |
+
+#### Normative rules
+
+- Circular includes MUST be detected and reported as a manifest error (not a §7 warning).
+- `composition.overrides` MAY add a `temporal` block to a unit that did not originally have one.
+- `superseded_by` (§4.22) MAY reference a unit from an included manifest using the `namespace:id` form.
+- `includes[].integrity` fields are advisory warnings, not hard failures. A mismatch
+  produces a §7 warning but does not lower the composed result's trust tier — that is
+  determined by the composing file's own signature (§16).
+- `includes[].integrity.manifest_hash` is computed over the raw file bytes before
+  composition resolution of the included file, matching `trust.content_integrity.manifest_hash` semantics.
+- The trust tier of included sources does not propagate to the composed result.
+
+**Conformance:** `includes`/`overrides`/`excludes` at Level 1; `as` prefix and `integrity`
+pinning at Level 2; recursive composition (includes within includes) at Level 2.
 
 ---
 
@@ -936,6 +1017,7 @@ Each entry in `units` describes a self-contained piece of knowledge.
 | `not_for` | OPTIONAL | list of strings | Contexts or questions this unit explicitly does NOT address. Subtractive matching signal. See §4.20. |
 | `not_for_strict` | OPTIONAL | boolean | When `true`, bridges MUST exclude this unit from results on a `not_for` match. Default: `false`. See §4.20. |
 | `content_hash` | OPTIONAL | object | Per-unit content digest. When present inside a signed manifest, the existing JWS covers the hash — binding referenced bytes to the signature and closing the manifest relocation attack (T9). See §4.21. |
+| `temporal` | OPTIONAL | object | Temporal validity window for this unit: `valid_from`, `valid_until`, `recorded_at`, `superseded_by`. Overrides root-level `temporal` defaults field-by-field. See §4.22. |
 
 #### 4.1.1 Date Fields
 
@@ -1830,6 +1912,18 @@ units:
       contradicted_by: null
 ```
 
+Discovery provenance enrichment (v0.19): two additional OPTIONAL fields attribute verification
+claims to a specific verifier identity and artifact:
+
+```yaml
+discovery:
+  verification_status: verified
+  verified_at: "2026-05-01"
+  verified_by: "ed25519:MCowBQYDK2VwAyEA..."   # key id or agent identity of the verifier
+  evidence: "https://example.com/audits/kcp-2026-05.pdf"
+  confidence: 0.95
+```
+
 #### `discovery` field reference
 
 | Field | Required | Type | Default | Description |
@@ -1840,6 +1934,8 @@ units:
 | `discovery.verified_at` | OPTIONAL | ISO 8601 datetime | null | When this capability was independently confirmed. MUST be null if `verification_status` is `rumored`, `declared`, or `observed` — a `verified_at` timestamp asserts external confirmation, which `declared` (first-party self-description) by definition lacks. |
 | `discovery.confidence` | OPTIONAL | float 0.0–1.0 | 1.0 | Confidence in this capability declaration. |
 | `discovery.contradicted_by` | OPTIONAL | string | null | The `id` of another unit in this manifest that provides a conflicting description of the same capability. |
+| `discovery.verified_by` | OPTIONAL | string | null | Key id (from `trust.content_integrity.signing.public_key`), agent identity, or opaque verifier handle. SHOULD be present when `verification_status: verified`. §7 warning if `verification_status: verified` and `verified_by` is absent. (v0.19) |
+| `discovery.evidence` | OPTIONAL | string | null | URL or path to the artifact against which verification was performed. No format requirement; any stable reference is valid. (v0.19) |
 
 #### `verification_status` vocabulary
 
@@ -2082,6 +2178,66 @@ Two conforming implementations MUST produce identical digests:
 
 ---
 
+### 4.22 `temporal` block (v0.19)
+
+Promoted from [RFC-0020](./RFC-0020-Temporal-Composition.md). A unit MAY declare a `temporal`
+block to express when its knowledge is valid in the world (*valid time*) and when this version
+was recorded (*transaction time*). A root-level `temporal` block provides defaults; unit-level
+overrides apply field-by-field.
+
+```yaml
+# Root-level defaults (applied to all units that do not override)
+temporal:
+  valid_from: "2026-01-01"
+  valid_until: "2026-12-31"
+
+units:
+  - id: migration-runbook
+    title: "Q2 Database Migration Runbook"
+    temporal:
+      valid_from: "2026-04-01"
+      valid_until: "2026-06-30"      # expires after migration window
+      recorded_at: "2026-03-28"
+
+  - id: legacy-sso-policy
+    title: "Legacy SSO Policy (deprecated)"
+    temporal:
+      valid_until: "2026-03-01"
+      superseded_by: "new-sso-policy"   # id of the replacement unit
+```
+
+#### `temporal` field reference
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `valid_from` | OPTIONAL | ISO 8601 date or datetime | When the knowledge became true in the real world. If absent, the knowledge is treated as valid from an unbounded past. |
+| `valid_until` | OPTIONAL | ISO 8601 date or datetime | When the knowledge ceases to be true in the real world. If absent, the knowledge is treated as valid indefinitely. |
+| `recorded_at` | OPTIONAL | ISO 8601 date or datetime | When this manifest version was authored. |
+| `superseded_by` | OPTIONAL | string | Id of another unit (in the same composed manifest) that replaces this one. Cycles MUST be detected and reported as a manifest error. MAY use `namespace:id` form to reference a unit from a `composition.includes` source. |
+
+All four sub-fields are OPTIONAL. Omitting the `temporal` block entirely is valid and has no
+effect on how the unit is evaluated — absence means "always valid" (backward-compatible default).
+
+#### Normative rules
+
+- Parsers MUST read and expose `temporal` fields.
+- Parsers that do not implement temporal evaluation MUST treat all units as active (safe default).
+- Bridges that implement temporal evaluation MUST filter at query time:
+  `valid_from <= today AND (valid_until IS NULL OR valid_until >= today)`.
+  Temporal filtering is applied after `not_for` filtering and before the top-N cut (§15.4).
+- Root-level `temporal` provides defaults. Unit-level overrides are field-by-field (not block-level).
+- `superseded_by` cycles MUST be detected and reported as a manifest error.
+
+**§7 advisory warnings (new in v0.19):**
+- `superseded_by` references a nonexistent unit id
+- `valid_until` is in the past and no `superseded_by` is set (stale unit with no successor)
+- `recorded_at` is later than `valid_from` (manifest authored after the fact it describes)
+- `discovery.verification_status: verified` without `discovery.verified_by`
+
+**Conformance:** Level 1 — temporal field exposure (parsers MUST read and expose). Level 2 — temporal filtering (bridges that evaluate validity windows at query time).
+
+---
+
 ## 5. Relationships
 
 The optional `relationships` section declares explicit directional relationships between units.
@@ -2118,13 +2274,13 @@ Unknown relationship types MUST be silently ignored.
 ### 6.1 Spec Version (`kcp_version`)
 
 `kcp_version` identifies which version of this specification the manifest conforms to. Current
-valid value: `"0.17"`. The values `"0.1"` through `"0.14"`, and `"0.16"`, refer to prior drafts
-(January–June 2026); parsers SHOULD treat these manifests as conformant with this version, as
-each release since v0.11 is a strict superset of its predecessor (new fields only, no removals
-or breaking changes). There is no `"0.15"` spec version: that number was used by the `kcp` CLI
-release train and skipped here to re-synchronise spec and tooling versions. Parsers encountering
-an unknown `kcp_version` SHOULD process the manifest using the closest known version and SHOULD
-emit a warning.
+valid value: `"0.19"`. The values `"0.1"` through `"0.14"`, `"0.16"`, `"0.17"`, and `"0.18"`,
+refer to prior drafts (January–June 2026); parsers SHOULD treat these manifests as conformant
+with this version, as each release since v0.11 is a strict superset of its predecessor (new
+fields only, no removals or breaking changes). There is no `"0.15"` spec version: that number
+was used by the `kcp` CLI release train and skipped here to re-synchronise spec and tooling
+versions. Parsers encountering an unknown `kcp_version` SHOULD process the manifest using the
+closest known version and SHOULD emit a warning.
 
 ### 6.2 Manifest Version (`version`)
 
@@ -2869,6 +3025,27 @@ prevent an agent that already knows the unit `id` from loading it directly. See 
 
 ---
 
+### 15.12 Temporal Filtering (v0.19)
+
+Bridges that implement temporal evaluation (§4.22) MUST apply temporal filtering after
+`not_for` filtering (§15.11) and before the top-N cut. The complete filter order is:
+
+> **score → `not_for` filter → temporal filter → top-N cut**
+
+A unit is **temporally excluded** when both of the following hold:
+
+- The unit (or its root-level default) declares a `temporal` block.
+- At least one of: `valid_from > today` (not yet valid) or `valid_until < today` (expired).
+
+Units without a `temporal` block are **not** excluded — absence means "always valid".
+
+Bridges that do not implement temporal evaluation MUST treat all units as active and MUST NOT
+exclude units solely because a `temporal` block is present. This ensures backward-compatible
+behaviour: a manifest authored with `valid_until` dates will degrade gracefully on older bridges
+(all units remain visible) rather than silently losing content.
+
+---
+
 ## 16. Trusted Render Pipeline (v0.16)
 
 Promoted from [RFC-0018](./RFC-0018-Trusted-Render-Pipeline.md), which remains the design
@@ -2977,7 +3154,7 @@ minimum trigger `on_failure: warn` (§3.6). Pinning applies per-edge.
 
 ### 16.5 Renderer conformance
 
-A conforming renderer satisfies C1–C10 (RFC-0018) and C11–C14 (RFC-0019, v0.18):
+A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18), and C15 (RFC-0020, v0.19):
 
 - **C1–C10** (RFC-0018): determinism (C1), fail-closed emission (C2), schema-only output (C3),
   no `load_eligible: true` on executable/service/unknown kinds (C4), no auto-traversal below
@@ -2993,10 +3170,15 @@ A conforming renderer satisfies C1–C10 (RFC-0018) and C11–C14 (RFC-0019, v0.
   configured `allow_derived_origin: true`.
 - **C14** (v0.18): When the `trusted` tier rests on a corroboration upgrade, never grants
   standing-context eligibility to a unit without a verified `content_hash`.
+- **C15** (v0.19): When a `composition` block is present, resolves all includes/overrides/excludes
+  before trust tiering; derives the trust tier from the composing file's signature only; emits
+  §7 warnings for `integrity` mismatches, circular includes, and override/exclude references to
+  nonexistent unit ids; never allows included sources with lower-tier signatures to elevate the
+  composed result's tier.
 
 The reference implementation is `kcp render` in [`cli/`](./cli/); the validation corpus lives
 in [`experiments/rfc-0018-render/`](./experiments/rfc-0018-render/) (cases A10–A12, B17–B20
-cover v0.18 conformance).
+cover v0.18 conformance; v0.19 cases to be added).
 
 ---
 
@@ -3025,7 +3207,7 @@ between commits is a security signal, diffable in CI.
 ## Appendix A: Minimal Example
 
 ```yaml
-kcp_version: "0.17"
+kcp_version: "0.19"
 project: my-project
 version: 1.0.0
 units:
@@ -3041,7 +3223,7 @@ units:
 ## Appendix B: Full Example
 
 ```yaml
-kcp_version: "0.17"
+kcp_version: "0.19"
 project: wiki.example.org
 version: 2.3.0
 updated: "2026-03-07"

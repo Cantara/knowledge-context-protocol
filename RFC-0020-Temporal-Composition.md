@@ -1,9 +1,9 @@
 # RFC-0020: Temporal Composition
 
-**Status:** Request for Comments
+**Status:** Accepted — promoted to SPEC.md §4.22, §3.11, §4.18 amendment, §15.12, §16.5 C15 (v0.19)
 **Author:** Thor Henning Hetland (eXOReaction AS)
 **Created:** 2026-06-12
-**Target version:** v0.18
+**Target version:** v0.19
 **Depends on:** RFC-0010 (Bi-Temporal Unit Validity), RFC-0014 (Manifest Composition), RFC-0018 (Trusted Render Pipeline)
 **Amends:** RFC-0010 (promotes schema phase to spec), RFC-0014 (promotes to spec with trust-pipeline integration), SPEC.md §4.18 (adds `verified_by`, `evidence`)
 **Related:** RFC-0003 (Federation), RFC-0004 (Trust and Compliance), RFC-0012 (Capability Discovery Provenance)
@@ -12,9 +12,9 @@
 
 ## Summary
 
-v0.16 gave manifests a trust model. v0.17 gave units a content model. v0.18 gives knowledge a
-**time axis** and a **layering model** — the two features most commonly blocking adoption in
-regulated, multi-team environments.
+v0.16 gave manifests a trust model. v0.17 gave units a content model. v0.18 gave units
+integrity hashes. v0.19 gives knowledge a **time axis** and a **layering model** — the two
+features most commonly blocking adoption in regulated, multi-team environments.
 
 This RFC promotes the schema phase of RFC-0010 (bi-temporal unit validity) and the core of
 RFC-0014 (manifest composition) to normative spec status, adds two provenance fields to §4.18,
@@ -109,9 +109,10 @@ units:
 All four sub-fields are OPTIONAL strings in ISO 8601 date or datetime format.
 Root-level `temporal` provides defaults; unit-level overrides field-by-field (not block-level).
 
-**Query extensions (`as_of`, `include_all_temporal`) are deferred to v0.19.** This phase ships
-the schema so authors can begin declaring validity windows immediately. Bridges that do not yet
-implement temporal evaluation MUST treat all units as active (safe, backward-compatible default).
+**Query extensions (`as_of`, `include_all_temporal`) are deferred to v0.20.** v0.19 ships
+the schema and basic temporal filtering (§4.22, §15.12) so authors can begin declaring
+validity windows immediately. Bridges that do not yet implement temporal evaluation MUST
+treat all units as active (safe, backward-compatible default).
 
 ### 2.2 Manifest Composition (`composition` block)
 
@@ -119,7 +120,7 @@ A root-level `composition` block, OPTIONAL, declares how this manifest is assemb
 other manifests:
 
 ```yaml
-kcp_version: "0.18"
+kcp_version: "0.19"
 
 composition:
   includes:
@@ -275,11 +276,12 @@ and `evidence` add attribution to the `verified` tier without changing the order
 
 ## 5. Deferred
 
-The following are explicitly deferred from this RFC and flagged for v0.19 or later:
+The following are explicitly deferred from this RFC and flagged for v0.20 or later:
 
 - **Temporal query extensions** (`as_of`, `include_all_temporal`): per RFC-0010's own
-  staging plan. Get the schema into manifests first, then add query-time filtering once
-  bridge implementations exist.
+  staging plan. The schema and basic temporal filtering are shipped in v0.19 (§4.22, §15.12).
+  Point-in-time query (`as_of`) and full bi-temporal traversal (`include_all_temporal`) require
+  bridge implementation experience before standardising.
 
 - **Transitive trust / federated trust chains**: the no-transitive-trust rule from §16
   remains unchanged. Pinned inclusion (§2.4) is not transitive trust — it is drift detection
@@ -288,24 +290,26 @@ The following are explicitly deferred from this RFC and flagged for v0.19 or lat
 - **Schema merging semantics for overlapping `temporal` blocks**: if an included unit has
   a `temporal.valid_until` and the overlay sets `temporal.valid_from` later than that date,
   the resolution is undefined. This degenerate case is rare and can be addressed by bridge
-  implementation guidance rather than normative spec text in v0.18.
+  implementation guidance rather than normative spec text in v0.19.
 
 ---
 
-## 6. Open Questions
+## 6. Resolved Questions (v0.19)
 
-1. Should `composition.includes[].integrity.manifest_hash` be computed before or after
-   composition resolution of the included file? (The included file may itself have a
-   `composition` block.) Recommendation: hash the raw file bytes before resolution, matching
-   `trust.content_integrity.manifest_hash` semantics.
+The following questions were open during the Request for Comments phase. All three are
+adopted normatively in SPEC.md as part of v0.19 promotion.
 
-2. Should `superseded_by` cross `composition` boundaries (reference a unit id from an
-   included manifest)? Recommendation: yes, with namespace prefix when the unit is in a
-   namespaced include.
+1. **`composition.includes[].integrity.manifest_hash` computation:** Hashed over the raw
+   file bytes *before* composition resolution of the included file, matching
+   `trust.content_integrity.manifest_hash` semantics (SPEC.md §3.11). **Adopted.**
 
-3. Should `composition.overrides` be able to add a `temporal` block to a unit that did not
-   originally have one? Recommendation: yes — this is the primary use case for time-gated
-   policy rollouts via overlay manifests.
+2. **`superseded_by` crossing composition boundaries:** Yes — `superseded_by` MAY reference
+   a unit id from an included manifest using the `namespace:id` form (SPEC.md §4.22).
+   **Adopted.**
+
+3. **`composition.overrides` adding a `temporal` block:** Yes — `composition.overrides` MAY
+   add a `temporal` block to a unit that did not originally have one. This is the primary
+   use case for time-gated policy rollouts via overlay manifests (SPEC.md §3.11). **Adopted.**
 
 ---
 

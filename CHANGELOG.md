@@ -10,6 +10,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.19.0] — 2026-06-12 — Temporal Composition Release
+
+### Spec
+
+- **v0.19.0 — Temporal Composition Release** (RFC-0020 promoted)
+  - **`temporal` block (§4.22):** optional at manifest root and at unit level. Declares two independent timelines per unit: *valid time* (`valid_from`, `valid_until` — when the knowledge is true in the real world) and *transaction time* (`recorded_at` — when this version was authored; `superseded_by` — id of the replacement unit). Root-level `temporal` provides defaults; unit-level overrides apply field-by-field. Parsers MUST read and expose `temporal` fields; bridges without temporal evaluation MUST treat all units as active (safe backward-compatible default). Bridges that implement temporal evaluation MUST filter: `valid_from <= today AND (valid_until IS NULL OR valid_until >= today)`. `superseded_by` cycles are a manifest error. Three new §7 advisory warnings: `superseded_by` referencing nonexistent id; `valid_until` in the past without `superseded_by`; `recorded_at` later than `valid_from`.
+  - **`composition` block (§3.11):** optional root-level block. Declares how a manifest is assembled from other manifests via `includes[]` (relative path or URL, optional `as` namespace prefix, optional `integrity` pin), `overrides[]` (adapt units from included sources), and `excludes[]` (suppress units). Resolution order: includes → overrides → excludes → local `units[]`; completed before trust tiering. Trust tier derived from composing file's signature only — included sources with lower-tier signatures produce §7 warnings but do not lower the composed result's tier. Integrity-pin (`manifest_hash`, `expected_signer`) mismatches produce §7 warnings, not hard failures. `composition.overrides` MAY add a `temporal` block to a unit that did not originally have one. `superseded_by` MAY cross composition boundaries using `namespace:id` form.
+  - **`discovery.verified_by` and `discovery.evidence` (§4.18 amendment):** two new OPTIONAL fields add attribution to the `verified` epistemic tier. `verified_by`: key id or agent identity of the verifier; SHOULD be present with `verification_status: verified` (§7 warning if absent). `evidence`: URL or path to the verification artifact.
+  - **Temporal filter order (§15.12):** normative query filter order: score → `not_for` filter → temporal filter → top-N cut. Bridges MUST apply temporal filter after `not_for` and before top-N.
+  - **Renderer conformance C15 (§16.5):** composition resolution completes before trust tiering; trust tier derived from composing file only; §7 warnings for integrity mismatches, circular includes, nonexistent override/exclude targets.
+  - `KNOWN_KCP_VERSIONS` updated to include `"0.19"` in all validators. Appendix examples updated to `kcp_version: "0.19"`.
+
+### RFC Status
+
+- **RFC-0020 (Temporal Composition):** Accepted — promoted to SPEC.md §4.22, §3.11, §4.18 amendment, §15.12, §16.5 C15 (v0.19).
+- **RFC-0010 (Bi-Temporal Unit Validity):** Accepted — schema phase promoted via RFC-0020/§4.22.
+- **RFC-0014 (Manifest Composition):** Accepted — promoted via RFC-0020/§3.11.
+
+### CLI (`kcp`) — v0.19.0
+
+- `kcp validate` — extended: detects `superseded_by` cycles; warns on nonexistent `superseded_by` ids, stale-with-no-successor, `recorded_at > valid_from`, missing `verified_by` on `verified` status, and composition integrity mismatches.
+- `kcp render` — extended: C15 composition resolution before trust tiering; integrity-pin warning emission.
+- `kcp query` — temporal filter applied when bridge implements temporal evaluation.
+
+### Parsers
+
+- TypeScript, Java, Python: `temporal` and `composition` fields parsed and exposed; `KNOWN_KCP_VERSIONS` updated.
+
+---
+
 ## [0.18.0] — 2026-06-12 — Unit Integrity Release
 
 ### Spec
