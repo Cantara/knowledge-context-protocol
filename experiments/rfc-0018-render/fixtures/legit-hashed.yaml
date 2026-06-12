@@ -1,0 +1,25 @@
+# Signed org manifest with per-unit content hashes (RFC-0019 §3).
+# PLACEHOLDER_* values are patched by run.js after it writes the unit
+# content, before signing — so the signature covers the real digests.
+kcp_version: "0.17"
+project: lib-pcb
+version: 1.4.2
+units:
+  - id: setup-docs
+    path: docs/setup.md
+    intent: "Development environment description"
+    triggers: [setup]
+    content_hash:
+      algorithm: sha256
+      value: "PLACEHOLDER_FILE_HASH"
+  - id: gerber-src
+    path: src/gerber/
+    intent: "Gerber file generation and validation"
+    triggers: [gerber, drc]
+    content_hash:
+      algorithm: sha256
+      value: "PLACEHOLDER_DIR_HASH"
+trust:
+  provenance:
+    publisher: "Cantara"
+    publisher_url: "https://cantara.no"

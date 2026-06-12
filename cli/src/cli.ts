@@ -20,9 +20,11 @@ Commands:
 Options:
   --file <path>       Manifest path (for query command, default: knowledge.yaml)
   --keys <path>       Trusted-keys allowlist for render (default: ~/.kcp/trusted-keys.yaml)
-  --origin <string>   Override origin derivation for render (RFC-0018 §4.1)
+  --origin <string>   Assert the origin for render (RFC-0018 §4.1; asserted evidence, RFC-0019 §4.1)
   --out <path>        Write rendered artifact to a file (default: print to stdout)
   --timestamp         Include rendered_at in render output (excluded from determinism)
+  --allow-derived-origin   Let a git-derived origin satisfy trusted tier (RFC-0019 §4.3; accepts T9 risk)
+  --require-unit-hashes    Deny standing-context eligibility to units without content_hash (RFC-0019 §3.3)
   --days <n>          Reporting window in days for stats (default: 30)
   --json              Machine-readable JSON output (stats command)
   --project <name>    Filter stats by project name
@@ -60,6 +62,8 @@ async function main(): Promise<void> {
       origin:    { type: "string" },
       out:       { type: "string" },
       timestamp: { type: "boolean", default: false },
+      "allow-derived-origin": { type: "boolean", default: false },
+      "require-unit-hashes":  { type: "boolean", default: false },
     },
     allowPositionals: true,
     strict: false,
@@ -95,6 +99,8 @@ async function main(): Promise<void> {
       origin:    values.origin as string | undefined,
       out:       values.out as string | undefined,
       timestamp: values.timestamp as boolean,
+      allowDerivedOrigin: values["allow-derived-origin"] as boolean,
+      requireUnitHashes:  values["require-unit-hashes"] as boolean,
     });
     return;
   }

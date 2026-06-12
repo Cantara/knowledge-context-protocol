@@ -289,6 +289,7 @@ trust:
   origin: "github.com/Cantara/lib-pcb"
   origin_evidence: asserted        # asserted | fetched | derived | none   (§4.1)
   pinned: true
+  # reason: origin_evidence_derived   — present only when §4.2 capped the tier
   # …signature block unchanged…
 
 units:
@@ -301,10 +302,11 @@ units:
 
 sanitization:
   dropped:
-    - path: "units[4]"
+    - path: "units[4].content_hash"
       reason: content_hash_mismatch     # §3.3 — unit demoted to pointer
-      expected_sha256: "4be1d6…"
-      observed_sha256: "97c0a2…"
+      algorithm: sha256
+      expected: "4be1d6…"
+      observed: "97c0a2…"               # or "unreadable" if the path is gone
 ```
 
 `content_hash_mismatch` entries record both digests; all other RFC-0018
