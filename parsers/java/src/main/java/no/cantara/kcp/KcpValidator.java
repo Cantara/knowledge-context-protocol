@@ -1,6 +1,7 @@
 package no.cantara.kcp;
 
 import no.cantara.kcp.model.Compliance;
+import no.cantara.kcp.model.ContentHash;
 import no.cantara.kcp.model.ContentStructure;
 import no.cantara.kcp.model.Delegation;
 import no.cantara.kcp.model.Discovery;
@@ -12,8 +13,16 @@ import no.cantara.kcp.model.KnowledgeUnit;
 import no.cantara.kcp.model.ManifestRef;
 import no.cantara.kcp.model.Relationship;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -54,6 +63,10 @@ public class KcpValidator {
     private static final Set<String> VALID_MANIFEST_RELATIONSHIPS = Set.of("child", "foundation", "governs", "peer", "archive");
     private static final Set<String> VALID_ON_FAILURE_VALUES = Set.of("skip", "warn", "degrade");
     private static final Set<String> VALID_VERSION_POLICIES = Set.of("exact", "minimum", "compatible");
+    // RFC-0019 (draft): allowed content_hash algorithms, keyed to JCA names.
+    private static final Map<String, String> HASH_ALGORITHMS = Map.of(
+            "sha256", "SHA-256", "sha384", "SHA-384", "sha512", "SHA-512");
+    private static final Pattern HEX_PATTERN = Pattern.compile("^[0-9a-fA-F]+$");
     private static final Pattern ID_PATTERN = Pattern.compile("^[a-z0-9.\\-]+$");
     private static final int MAX_TRIGGER_LENGTH = 60;
     private static final int MAX_TRIGGERS_PER_UNIT = 20;
@@ -251,6 +264,12 @@ public class KcpValidator {
 
             // content_structure validation (RFC-0016, v0.17) — warn on unknown values, pass through
             validateContentStructure(unit.contentStructure(), p, warnings);
+
+            // content_hash validation (RFC-0019, draft) — shape, then recompute
+            // against disk when a manifest directory is available (§3.1: "kcp
+            // validate recomputes and compares"). A stale hash is an error, not a
+            // warning: signing over it would brick the unit for every consumer.
+            validateContentHash(unit.contentHash(), unit.path(), manifestDir, p, errors);
         }
 
         // Root-level delegation validation
@@ -511,6 +530,81 @@ public class KcpValidator {
             warnings.add(prefix + ": visibility.default must be one of " +
                     sorted(VALID_VISIBILITY_DEFAULTS) + ", got '" + visibility.defaultSensitivity() + "'");
         }
+    }
+
+    private static void validateContentHash(ContentHash ch, String unitPath, Path manifestDir,
+                                            String prefix, List<String> errors) {
+        if (ch == null) return;
+        if (ch.algorithm() == null || !HASH_ALGORITHMS.containsKey(ch.algorithm())) {
+            errors.add(prefix + ": content_hash.algorithm must be one of "
+                    + String.join(", ", HASH_ALGORITHMS.keySet().stream().sorted().toList()));
+            return;
+        }
+        if (ch.value() == null || !HEX_PATTERN.matcher(ch.value()).matches()) {
+            errors.add(prefix + ": content_hash.value must be a hex digest");
+            return;
+        }
+        if (manifestDir == null || unitPath == null || unitPath.isEmpty()) return;
+        Path resolved = manifestDir.resolve(unitPath);
+        if (!Files.exists(resolved)) return; // missing path already warned elsewhere
+        String observed = computeContentDigest(resolved, ch.algorithm());
+        if (!ch.value().toLowerCase().equals(observed)) {
+            String observedLabel = observed == null ? "unreadable" : observed.substring(0, 12) + "…";
+            errors.add(prefix + ": content_hash does not match content on disk (declared "
+                    + ch.value().substring(0, Math.min(12, ch.value().length())) + "…, observed "
+                    + observedLabel + "); run kcp sign --update-hashes before signing");
+        }
+    }
+
+    /**
+     * RFC-0019 §3.2 digest: a file hashes its raw bytes; a directory hashes the
+     * bytewise-sorted concatenation of {@code relpath \0 hexdigest \n} entries over
+     * every regular file beneath it (symlinks not followed, no exclusions). Returns
+     * {@code null} when the target is missing or unreadable (fails closed at the
+     * caller). Mirrors computeContentDigest in the TypeScript and Python validators.
+     */
+    public static String computeContentDigest(Path target, String algorithm) {
+        String jcaName = HASH_ALGORITHMS.get(algorithm);
+        if (jcaName == null) return null;
+        try {
+            if (Files.isRegularFile(target)) {
+                return hexDigest(jcaName, Files.readAllBytes(target));
+            }
+            if (!Files.isDirectory(target)) return null;
+            // resolve a symlinked root before walking (TS readdir and Python
+            // scandir follow the root link; children are still lstat-skipped)
+            Path root = target.toRealPath();
+            List<String> entries = new ArrayList<>();
+            Files.walkFileTree(root, new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                    if (attrs.isRegularFile()) {
+                        entries.add(root.relativize(file).toString().replace('\\', '/'));
+                    }
+                    return FileVisitResult.CONTINUE; // symlinks not followed (walkFileTree default)
+                }
+            });
+            entries.sort((a, b) -> Arrays.compare(
+                    a.getBytes(StandardCharsets.UTF_8), b.getBytes(StandardCharsets.UTF_8)));
+            MessageDigest digest = MessageDigest.getInstance(jcaName);
+            for (String entry : entries) {
+                String fileHex = hexDigest(jcaName, Files.readAllBytes(root.resolve(entry)));
+                digest.update((entry + "\0" + fileHex + "\n").getBytes(StandardCharsets.UTF_8));
+            }
+            return toHex(digest.digest());
+        } catch (IOException | NoSuchAlgorithmException | SecurityException e) {
+            return null;
+        }
+    }
+
+    private static String hexDigest(String jcaName, byte[] bytes) throws NoSuchAlgorithmException {
+        return toHex(MessageDigest.getInstance(jcaName).digest(bytes));
+    }
+
+    private static String toHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) sb.append(String.format("%02x", b));
+        return sb.toString();
     }
 
     private static void validateContentStructure(ContentStructure cs, String prefix, List<String> warnings) {

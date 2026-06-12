@@ -5,10 +5,10 @@ from typing import Optional, Union
 import yaml
 
 from .model import (
-    Auth, AuthMethod, Authority, Compliance, ContentStructure, Delegation, Discovery,
-    ExternalDependency, ExternalRelationship, FreshnessPolicy, KnowledgeManifest,
-    KnowledgeUnit, ManifestRef, RateLimit, RateLimits, Relationship, Trust, TrustAudit,
-    TrustProvenance, Visibility,
+    Auth, AuthMethod, Authority, Compliance, ContentHash, ContentStructure, Delegation,
+    Discovery, ExternalDependency, ExternalRelationship, FreshnessPolicy,
+    KnowledgeManifest, KnowledgeUnit, ManifestRef, RateLimit, RateLimits, Relationship,
+    Trust, TrustAudit, TrustProvenance, Visibility,
 )
 
 
@@ -200,6 +200,23 @@ def _parse_content_structure(data) -> Optional[ContentStructure]:
     )
 
 
+def _parse_content_hash(data) -> Optional[ContentHash]:
+    """Parse a content_hash block (per-unit). See RFC-0019 (draft).
+
+    A declared-but-malformed block (scalar, list) parses to an empty
+    ``ContentHash`` so the validator can flag it; only an absent block
+    parses to ``None``. Mirrors the TypeScript parsers.
+    """
+    if data is None:
+        return None
+    if not isinstance(data, dict):
+        return ContentHash()
+    return ContentHash(
+        algorithm=str(data["algorithm"]) if data.get("algorithm") is not None else None,
+        value=str(data["value"]) if data.get("value") is not None else None,
+    )
+
+
 def _parse_external_dependency(data: dict) -> ExternalDependency:
     """Parse an external_depends_on entry."""
     return ExternalDependency(
@@ -276,6 +293,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
             not_for=_as_string_list(u.get("not_for"), default=[]),
             not_for_strict=None if u.get("not_for_strict") is None else bool(u.get("not_for_strict")),
             content_structure=_parse_content_structure(u.get("content_structure")),
+            content_hash=_parse_content_hash(u.get("content_hash")),
         )
         for u in data.get("units", [])
     ]

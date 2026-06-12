@@ -4,6 +4,7 @@ import no.cantara.kcp.model.Auth;
 import no.cantara.kcp.model.AuthMethod;
 import no.cantara.kcp.model.Authority;
 import no.cantara.kcp.model.Compliance;
+import no.cantara.kcp.model.ContentHash;
 import no.cantara.kcp.model.ContentStructure;
 import no.cantara.kcp.model.Delegation;
 import no.cantara.kcp.model.Discovery;
@@ -153,7 +154,8 @@ public class KcpParser {
                 parseDiscovery((Map<String, Object>) u.get("discovery")),
                 asStringList(u.get("not_for")),
                 asBoolean(u.get("not_for_strict")),
-                parseContentStructure(u.get("content_structure"))
+                parseContentStructure(u.get("content_structure")),
+                parseContentHash(u.get("content_hash"))
         );
     }
 
@@ -345,6 +347,20 @@ public class KcpParser {
                 (String) d.get("verified_at"),
                 confidence,
                 (String) d.get("contradicted_by")
+        );
+    }
+
+    @SuppressWarnings("unchecked")
+    private static ContentHash parseContentHash(Object raw) {
+        // RFC-0019 (draft). A declared-but-malformed block parses to an empty
+        // record so the validator can flag it; only an absent block parses to
+        // null. Mirrors the TypeScript parsers.
+        if (raw == null) return null;
+        if (!(raw instanceof Map)) return new ContentHash(null, null);
+        Map<String, Object> c = (Map<String, Object>) raw;
+        return new ContentHash(
+                c.get("algorithm") == null ? null : c.get("algorithm").toString(),
+                c.get("value") == null ? null : c.get("value").toString()
         );
     }
 

@@ -40,7 +40,8 @@ public record KnowledgeUnit(
         Discovery discovery,
         List<String> notFor,
         Boolean notForStrict,
-        ContentStructure contentStructure
+        ContentStructure contentStructure,
+        ContentHash contentHash
 ) {
     public KnowledgeUnit {
         audience = audience != null ? List.copyOf(audience) : List.of();

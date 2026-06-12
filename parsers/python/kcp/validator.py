@@ -1,9 +1,58 @@
+import hashlib
 import os
 import re
 from pathlib import Path
 from typing import NamedTuple, Optional
 
 from .model import KnowledgeManifest
+
+# RFC-0019 (draft): allowed content_hash algorithms.
+HASH_ALGORITHMS = ("sha256", "sha384", "sha512")
+
+_HEX_PATTERN = re.compile(r"^[0-9a-fA-F]+$")
+
+
+def _walk_regular_files(root: str, rel: str = "") -> list[str]:
+    """POSIX-relative paths of all regular files under root; symlinks not followed."""
+    out: list[str] = []
+    for entry in os.scandir(root):
+        entry_rel = f"{rel}/{entry.name}" if rel else entry.name
+        if entry.is_dir(follow_symlinks=False):
+            out.extend(_walk_regular_files(entry.path, entry_rel))
+        elif entry.is_file(follow_symlinks=False):
+            out.append(entry_rel)
+        # symlinks, sockets, etc. are neither: skipped
+    return out
+
+
+def compute_content_digest(target: str, algorithm: str) -> Optional[str]:
+    """RFC-0019 §3.2 digest: a file hashes its raw bytes; a directory hashes
+    the bytewise-sorted concatenation of ``relpath\\0hexdigest\\n`` entries
+    over every regular file beneath it. No exclusions. Returns ``None`` when
+    the target is missing or unreadable (fails closed at the caller).
+    Mirrors computeContentDigest in the TypeScript validators.
+    """
+    def _hash_file(p: str) -> str:
+        h = hashlib.new(algorithm)
+        with open(p, "rb") as f:
+            for chunk in iter(lambda: f.read(65536), b""):
+                h.update(chunk)
+        return h.hexdigest()
+
+    try:
+        try:
+            entries = _walk_regular_files(target)
+        except NotADirectoryError:
+            return _hash_file(target)
+        entries.sort(key=lambda r: r.encode("utf-8"))
+        digest = hashlib.new(algorithm)
+        for entry in entries:
+            digest.update(
+                f"{entry}\0{_hash_file(os.path.join(target, entry))}\n".encode("utf-8")
+            )
+        return digest.hexdigest()
+    except Exception:
+        return None
 
 VALID_SCOPES = {"global", "project", "module"}
 VALID_AUDIENCES = {"human", "agent", "developer", "operator", "architect", "devops"}
@@ -283,6 +332,30 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
 
         # content_structure validation (RFC-0016, v0.17) — warn on unknown values, pass through
         _validate_content_structure(unit.content_structure, p, warnings)
+
+        # content_hash validation (RFC-0019, draft) — shape, then recompute
+        # against disk when a manifest directory is available (§3.1: "kcp
+        # validate recomputes and compares"). A stale hash is an error, not a
+        # warning: signing over it would brick the unit for every consumer.
+        if unit.content_hash is not None:
+            ch = unit.content_hash
+            if ch.algorithm is None or ch.algorithm not in HASH_ALGORITHMS:
+                errors.append(
+                    f"{p}: content_hash.algorithm must be one of {', '.join(HASH_ALGORITHMS)}"
+                )
+            elif not ch.value or not _HEX_PATTERN.match(ch.value):
+                errors.append(f"{p}: content_hash.value must be a hex digest")
+            elif manifest_dir is not None and unit.path:
+                resolved = Path(manifest_dir) / unit.path
+                if resolved.exists():
+                    observed = compute_content_digest(str(resolved), ch.algorithm)
+                    if observed != ch.value.lower():
+                        observed_label = f"{observed[:12]}…" if observed else "unreadable"
+                        errors.append(
+                            f"{p}: content_hash does not match content on disk "
+                            f"(declared {ch.value[:12]}…, observed {observed_label}); "
+                            f"run kcp sign --update-hashes before signing"
+                        )
 
     # Root-level delegation validation
     if manifest.delegation is not None:
