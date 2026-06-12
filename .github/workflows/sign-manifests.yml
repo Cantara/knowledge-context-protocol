@@ -18,6 +18,18 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: cli/package-lock.json
+
+      - name: Build kcp CLI
+        run: |
+          cd cli
+          npm ci
+          npm run build
+
       - name: Restore signing key
         env:
           KCP_SIGNING_KEY: ${{ secrets.KCP_SIGNING_KEY }}
@@ -25,24 +37,21 @@ jobs:
           printf '%s' "$KCP_SIGNING_KEY" > /tmp/kcp-signing.pem
           chmod 600 /tmp/kcp-signing.pem
 
-      - name: Sign manifests
+      - name: Sign manifests (RFC-0018 §4.2 detached envelope)
         run: |
           set -euo pipefail
           sign_manifest() {
             local f="$1"
-            local sigpath="$2"
-            openssl pkeyutl -sign -rawin -inkey /tmp/kcp-signing.pem -in "$f" \
-              | base64 -w0 > "$sigpath"
-            echo "  signed: $f → $sigpath"
+            node cli/dist/cli.js sign "$f" \
+              --key /tmp/kcp-signing.pem \
+              --key-id cantara-org-2026 \
+              --out "${f}.sig"
+            echo "  signed: $f → ${f}.sig"
           }
-          # Each manifest gets its OWN signature file. (Both previously wrote
-          # to docs/knowledge.yaml.sig, so the root manifest's signature was
-          # always overwritten by the docs one — and the two files differ.)
           # Root manifest — adjacent .sig for git-clone consumers (SPEC §16)
-          sign_manifest knowledge.yaml knowledge.yaml.sig
-          # docs/ manifest — served by GitHub Pages; this is the sig that
-          # entity.signature and llms.txt point at
-          sign_manifest docs/knowledge.yaml docs/knowledge.yaml.sig
+          sign_manifest knowledge.yaml
+          # docs/ manifest — served by GitHub Pages
+          sign_manifest docs/knowledge.yaml
 
       - name: Commit and push
         run: |
