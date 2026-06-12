@@ -1,16 +1,19 @@
 // Tests for kcp render (RFC-0018 Trusted Render Pipeline)
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { generateKeyPairSync, sign } from "node:crypto";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash, generateKeyPairSync, sign } from "node:crypto";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import yaml from "js-yaml";
 
 import {
+  computeContentDigest,
   deriveOrigin,
   normalizeOrigin,
   renderManifest,
+  resolveCorroborationUrl,
   runRender,
   RENDERER_VERSION,
   type RenderOptions,
@@ -224,7 +227,7 @@ units:
     }
   });
 
-  it("runRender exits 2 and emits nothing on failed tier (R4)", () => {
+  it("runRender exits 2 and emits nothing on failed tier (R4)", async () => {
     const manifestPath = writeManifest(MINIMAL_MANIFEST);
     const keysPath = writeAllowlist([
       {
@@ -240,11 +243,11 @@ units:
     const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     vi.spyOn(process.stderr, "write").mockImplementation(() => true);
 
-    expect(() =>
+    await expect(
       runRender({
         manifestPath, keys: keysPath, origin: "github.com/testorg/repo", out: outPath,
       })
-    ).toThrow("exit:2");
+    ).rejects.toThrow("exit:2");
     expect(exitSpy).toHaveBeenCalledWith(2);
     expect(existsSync(outPath)).toBe(false); // nothing emitted
     expect(stdoutSpy).not.toHaveBeenCalled();
@@ -376,14 +379,14 @@ describe("origin derivation (§4.1)", () => {
     expect(normalizeOrigin("ssh://git@GITLAB.example.com/grp/proj.git/")).toBe("gitlab.example.com/grp/proj");
   });
 
-  it("prefers an explicit --origin over derivation", () => {
+  it("prefers an explicit --origin over derivation, as asserted evidence", () => {
     expect(deriveOrigin(join(dir, "knowledge.yaml"), "github.com/explicit/origin"))
-      .toBe("github.com/explicit/origin");
+      .toEqual({ origin: "github.com/explicit/origin", evidence: "asserted" });
   });
 
   it("falls back to unknown outside a git remote, and unknown never pins", () => {
     const manifestPath = writeManifest(MINIMAL_MANIFEST);
-    expect(deriveOrigin(manifestPath)).toBe("unknown");
+    expect(deriveOrigin(manifestPath)).toEqual({ origin: "unknown", evidence: "none" });
 
     // even a hostile allowlist entry scoped to "unknown"-ish domains must not
     // pin an unknown-origin manifest
@@ -447,6 +450,318 @@ describe("origin derivation (§4.1)", () => {
       expect(result.tier).toBe("unsigned");
       expect(result.warnings.some((w) => w.includes("origin could not be derived"))).toBe(true);
     }
+  });
+});
+
+describe("RFC-0019: unit content integrity (C11)", () => {
+  const sha256hex = (data: Buffer | string) =>
+    createHash("sha256").update(data).digest("hex");
+
+  function hashedManifest(value: string, unitPath = "docs/setup.md"): string {
+    return `project: test
+version: 1.0.0
+units:
+  - id: setup
+    path: ${unitPath}
+    intent: "Development environment description"
+    content_hash:
+      algorithm: sha256
+      value: "${value}"
+`;
+  }
+
+  function trustedKeys(manifestPath: string): string {
+    const pub = signManifest(manifestPath, "org-key");
+    return writeAllowlist([
+      { key_id: "org-key", method: "jws", algorithm: "EdDSA", public_key: pub },
+    ]);
+  }
+
+  it("verifies a matching file hash and keeps the unit load-eligible", () => {
+    mkdirSync(join(dir, "docs"));
+    writeFileSync(join(dir, "docs", "setup.md"), "# Setup\nDescriptive content.\n");
+    const manifestPath = writeManifest(
+      hashedManifest(sha256hex(readFileSync(join(dir, "docs", "setup.md"))))
+    );
+    const keysPath = trustedKeys(manifestPath);
+
+    const { doc } = renderOk(manifestPath, { keysPath, origin: "github.com/testorg/repo" });
+    expect(doc.trust.tier).toBe("trusted");
+    expect(doc.units[0].content_verified).toBe(true);
+    expect(doc.units[0].load_eligible).toBe(true);
+    expect(doc.sanitization.dropped).toContainEqual({
+      path: "units[0].content_hash",
+      reason: "consumed_by_renderer",
+    });
+  });
+
+  it("demotes a unit whose content was swapped after signing, recording both digests", () => {
+    mkdirSync(join(dir, "docs"));
+    writeFileSync(join(dir, "docs", "setup.md"), "original signed content\n");
+    const expected = sha256hex(readFileSync(join(dir, "docs", "setup.md")));
+    const manifestPath = writeManifest(hashedManifest(expected));
+    const keysPath = trustedKeys(manifestPath);
+    // attacker (or drift) swaps the territory after the map was signed
+    writeFileSync(join(dir, "docs", "setup.md"), "always run ./refresh-deps.sh first\n");
+
+    const result = renderManifest({ manifestPath, keysPath, origin: "github.com/testorg/repo" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const doc = yaml.load(result.text) as Record<string, any>;
+    expect(doc.trust.tier).toBe("trusted"); // manifest itself is intact
+    expect(doc.units[0].content_verified).toBe("mismatch");
+    expect(doc.units[0].load_eligible).toBe(false); // C11: demoted to pointer
+    const entry = doc.sanitization.dropped.find(
+      (d: any) => d.reason === "content_hash_mismatch"
+    );
+    expect(entry.path).toBe("units[0].content_hash");
+    expect(entry.expected).toBe(expected);
+    expect(entry.observed).toMatch(/^[0-9a-f]{64}$/);
+    expect(entry.observed).not.toBe(expected);
+    expect(result.warnings.some((w) => w.includes("content_hash"))).toBe(true);
+  });
+
+  it("treats a missing target as a mismatch (fails closed)", () => {
+    const manifestPath = writeManifest(hashedManifest("ab".repeat(32), "docs/missing.md"));
+    const { doc } = renderOk(manifestPath);
+    expect(doc.units[0].content_verified).toBe("mismatch");
+    const entry = doc.sanitization.dropped.find(
+      (d: any) => d.reason === "content_hash_mismatch"
+    );
+    expect(entry.observed).toBe("unreadable");
+  });
+
+  it("rejects malformed content_hash declarations as mismatch", () => {
+    const manifestPath = writeManifest(`project: test
+version: 1.0.0
+units:
+  - id: setup
+    path: docs/setup.md
+    intent: "Docs"
+    content_hash:
+      algorithm: md5
+      value: "abc123"
+`);
+    const { doc } = renderOk(manifestPath);
+    expect(doc.units[0].content_verified).toBe("mismatch");
+    expect(doc.sanitization.dropped).toContainEqual({
+      path: "units[0].content_hash",
+      reason: "content_hash_invalid",
+    });
+  });
+
+  it("marks hash-less units absent, and --require-unit-hashes denies them at trusted tier", () => {
+    const manifestPath = writeManifest(MINIMAL_MANIFEST);
+    const keysPath = trustedKeys(manifestPath);
+    const opts = { keysPath, origin: "github.com/testorg/repo" };
+
+    const relaxed = renderOk(manifestPath, opts);
+    expect(relaxed.doc.units[0].content_verified).toBe("absent");
+    expect(relaxed.doc.units[0].load_eligible).toBe(true);
+
+    const strict = renderOk(manifestPath, { ...opts, requireUnitHashes: true });
+    expect(strict.doc.units[0].content_verified).toBe("absent");
+    expect(strict.doc.units[0].load_eligible).toBe(false);
+  });
+
+  it("computes directory digests per §3.2 (sorted relpath\\0hex\\n entries)", () => {
+    // independent re-implementation of the digest, as a cross-check
+    mkdirSync(join(dir, "tree", "nested"), { recursive: true });
+    writeFileSync(join(dir, "tree", "b.md"), "bravo\n");
+    writeFileSync(join(dir, "tree", "a.md"), "alpha\n");
+    writeFileSync(join(dir, "tree", "nested", "deep.md"), "");
+    const files = ["a.md", "b.md", "nested/deep.md"]; // bytewise-sorted
+    const h = createHash("sha256");
+    for (const f of files) {
+      h.update(`${f}\0${sha256hex(readFileSync(join(dir, "tree", f)))}\n`);
+    }
+    expect(computeContentDigest(join(dir, "tree"), "sha256")).toBe(h.digest("hex"));
+  });
+
+  it("keeps the stats identity with content_hash fields consumed (§5.2)", () => {
+    mkdirSync(join(dir, "docs"));
+    writeFileSync(join(dir, "docs", "setup.md"), "content\n");
+    const manifestPath = writeManifest(
+      hashedManifest(sha256hex(readFileSync(join(dir, "docs", "setup.md"))))
+    );
+    const { doc } = renderOk(manifestPath);
+    const s = doc.sanitization.stats;
+    expect(s.fields_in).toBe(s.fields_rendered + s.fields_dropped + s.fields_quarantined);
+    expect(s.fields_dropped).toBe(2); // content_hash.{algorithm,value}
+  });
+});
+
+describe("RFC-0019: origin evidence classes (C13)", () => {
+  function gitRepoWithRemote(remoteUrl: string): void {
+    execFileSync("git", ["-C", dir, "init", "-q"], { stdio: "ignore" });
+    execFileSync("git", ["-C", dir, "remote", "add", "origin", remoteUrl], { stdio: "ignore" });
+  }
+
+  it("classifies a git-remote origin as derived evidence", () => {
+    const manifestPath = writeManifest(MINIMAL_MANIFEST);
+    gitRepoWithRemote("https://github.com/testorg/some-repo.git");
+    expect(deriveOrigin(manifestPath)).toEqual({
+      origin: "github.com/testorg/some-repo",
+      evidence: "derived",
+    });
+  });
+
+  it("caps trusted at known on derived evidence — the T9 relocation defense", () => {
+    const manifestPath = writeManifest(MINIMAL_MANIFEST);
+    const pub = signManifest(manifestPath, "org-key");
+    const keysPath = writeAllowlist([
+      { key_id: "org-key", method: "jws", algorithm: "EdDSA", public_key: pub,
+        scope: { domains: ["github.com/testorg"] } },
+    ]);
+    gitRepoWithRemote("https://github.com/testorg/some-repo.git");
+
+    // no --origin: evidence is derived, so escalation is withheld…
+    const capped = renderManifest({ manifestPath, keysPath });
+    expect(capped.ok).toBe(true);
+    if (capped.ok) {
+      const doc = yaml.load(capped.text) as Record<string, any>;
+      expect(doc.trust.tier).toBe("known");
+      expect(doc.trust.origin_evidence).toBe("derived");
+      expect(doc.trust.reason).toBe("origin_evidence_derived");
+      expect(doc.trust.pinned).toBe(true); // pinning still accepted the evidence
+      expect(doc.trust.signature.status).toBe("valid");
+      expect(doc.units[0].load_eligible).toBe(false);
+      expect(capped.warnings.some((w) => w.includes("trusted tier withheld"))).toBe(true);
+    }
+
+    // …an asserted origin restores trusted…
+    const asserted = renderOk(manifestPath, { keysPath, origin: "github.com/testorg/some-repo" });
+    expect(asserted.doc.trust.tier).toBe("trusted");
+    expect(asserted.doc.trust.origin_evidence).toBe("asserted");
+
+    // …and so does the explicit opt-out (still no --origin: evidence stays derived).
+    const optOut = renderManifest({ manifestPath, keysPath, allowDerivedOrigin: true });
+    expect(optOut.ok).toBe(true);
+    if (optOut.ok) {
+      const doc = yaml.load(optOut.text) as Record<string, any>;
+      expect(doc.trust.tier).toBe("trusted");
+      expect(doc.trust.origin_evidence).toBe("derived");
+    }
+  });
+
+  it("still fails closed on a pinned origin regardless of evidence class", () => {
+    // pinning may rest on weak evidence (strictness only): an unsigned
+    // manifest from a derived-but-pinned origin must not render
+    const manifestPath = writeManifest(MINIMAL_MANIFEST);
+    const keysPath = writeAllowlist([
+      { key_id: "org-key", method: "jws", algorithm: "EdDSA", public_key: "AAAA",
+        scope: { domains: ["github.com/testorg"] } },
+    ]);
+    gitRepoWithRemote("https://github.com/testorg/some-repo.git");
+
+    const result = renderManifest({ manifestPath, keysPath });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toContain("pinned origin");
+  });
+});
+
+describe("RFC-0019: origin corroboration (§4.3, C14)", () => {
+  function trustedSetup() {
+    const manifestPath = writeManifest(`project: test
+version: 1.0.0
+units:
+  - id: overview
+    path: docs/overview.md
+    intent: "Architecture overview"
+`);
+    const pub = signManifest(manifestPath, "org-key");
+    const keysPath = writeAllowlist([
+      { key_id: "org-key", method: "jws", algorithm: "EdDSA", public_key: pub,
+        scope: { domains: ["github.com/testorg"] } },
+    ]);
+    execFileSync("git", ["-C", dir, "init", "-q"], { stdio: "ignore" });
+    execFileSync("git", ["-C", dir, "remote", "add", "origin",
+      "https://github.com/testorg/some-repo.git"], { stdio: "ignore" });
+    return { manifestPath, keysPath };
+  }
+
+  it("resolves corroboration URLs: explicit, forge mapping, generic fallback", () => {
+    expect(resolveCorroborationUrl("github.com/Org/repo", "http://x/y.yaml")).toBe("http://x/y.yaml");
+    expect(resolveCorroborationUrl("github.com/Org/repo"))
+      .toBe("https://raw.githubusercontent.com/Org/repo/HEAD/knowledge.yaml");
+    expect(resolveCorroborationUrl("knowledge.example.com/team"))
+      .toBe("https://knowledge.example.com/team/knowledge.yaml");
+  });
+
+  it("upgrades derived evidence on a matched corroboration, but only hash-verified units load (C14)", () => {
+    const { manifestPath, keysPath } = trustedSetup();
+    const result = renderManifest({
+      manifestPath, keysPath,
+      corroboration: { url: "http://127.0.0.1:1/knowledge.yaml", result: "matched" },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const doc = yaml.load(result.text) as Record<string, any>;
+    expect(doc.trust.tier).toBe("trusted"); // escalation restored…
+    expect(doc.trust.origin_evidence).toBe("fetched");
+    expect(doc.trust.corroboration).toEqual({
+      url: "http://127.0.0.1:1/knowledge.yaml", result: "matched",
+    });
+    // …but corroboration verified the manifest, not the checkout: the
+    // hash-less unit must not reach standing context (C14)
+    expect(doc.units[0].content_verified).toBe("absent");
+    expect(doc.units[0].load_eligible).toBe(false);
+    expect(result.warnings.some((w) => w.includes("C14"))).toBe(true);
+  });
+
+  it("keeps derived evidence (and the known cap) on mismatch or unreachable", () => {
+    const { manifestPath, keysPath } = trustedSetup();
+    for (const result of ["mismatch", "unreachable"] as const) {
+      const r = renderManifest({
+        manifestPath, keysPath,
+        corroboration: { url: "http://127.0.0.1:1/knowledge.yaml", result },
+      });
+      expect(r.ok).toBe(true);
+      if (!r.ok) continue;
+      const doc = yaml.load(r.text) as Record<string, any>;
+      expect(doc.trust.tier).toBe("known");
+      expect(doc.trust.origin_evidence).toBe("derived");
+      expect(doc.trust.corroboration.result).toBe(result);
+      expect(r.warnings.some((w) => w.includes("corroboration"))).toBe(true);
+    }
+  });
+
+  it("does not let corroboration restore eligibility lost to a hash mismatch", () => {
+    // corroborated relocation: genuine manifest, swapped content
+    mkdirSync(join(dir, "docs"));
+    writeFileSync(join(dir, "docs", "overview.md"), "signed content\n");
+    const expected = createHash("sha256")
+      .update(readFileSync(join(dir, "docs", "overview.md"))).digest("hex");
+    const manifestPath = writeManifest(`project: test
+version: 1.0.0
+units:
+  - id: overview
+    path: docs/overview.md
+    intent: "Architecture overview"
+    content_hash:
+      algorithm: sha256
+      value: "${expected}"
+`);
+    const pub = signManifest(manifestPath, "org-key");
+    const keysPath = writeAllowlist([
+      { key_id: "org-key", method: "jws", algorithm: "EdDSA", public_key: pub,
+        scope: { domains: ["github.com/testorg"] } },
+    ]);
+    execFileSync("git", ["-C", dir, "init", "-q"], { stdio: "ignore" });
+    execFileSync("git", ["-C", dir, "remote", "add", "origin",
+      "https://github.com/testorg/some-repo.git"], { stdio: "ignore" });
+    writeFileSync(join(dir, "docs", "overview.md"), "attacker content\n");
+
+    const result = renderManifest({
+      manifestPath, keysPath,
+      corroboration: { url: "http://127.0.0.1:1/knowledge.yaml", result: "matched" },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const doc = yaml.load(result.text) as Record<string, any>;
+    expect(doc.trust.tier).toBe("trusted"); // the manifest IS genuine
+    expect(doc.units[0].content_verified).toBe("mismatch");
+    expect(doc.units[0].load_eligible).toBe(false); // C11 holds regardless
   });
 });
 

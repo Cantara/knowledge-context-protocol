@@ -357,7 +357,7 @@ MUST be monotone in tier (a lower tier never yields higher confidence).
 ```yaml
 # kcp-rendered.yaml — generated artifact. Never hand-edited.
 render:
-  kcp_version: "0.14"
+  kcp_version: "0.17"
   renderer: "kcp-cli 1.5.0"
   lint_rules: "imperative-lint-0.3"      # versioned — render is reproducible
   source:

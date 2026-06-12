@@ -42,6 +42,12 @@ export interface Discovery {
   contradicted_by?: string;
 }
 
+/** Per-unit content hash. See RFC-0019 §3 (draft). */
+export interface ContentHash {
+  algorithm?: string;      // sha256 | sha384 | sha512
+  value?: string;          // hex digest per RFC-0019 §3.2
+}
+
 /** Content structure block. See RFC-0016 (v0.17). */
 export interface ContentStructure {
   primary?: string;        // prose | table | code | list | diagram | reference | mixed
@@ -91,6 +97,7 @@ export interface KnowledgeUnit {
   not_for?: string[];      // RFC-0015 (v0.17) — negative-space declarations
   not_for_strict?: boolean;  // RFC-0015 (v0.17) — default false
   content_structure?: ContentStructure;  // RFC-0016 (v0.17)
+  content_hash?: ContentHash;  // RFC-0019 (draft)
 }
 
 export interface Relationship {

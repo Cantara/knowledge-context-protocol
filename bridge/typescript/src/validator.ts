@@ -1,9 +1,58 @@
 // KCP manifest validator
 // Mirrors Python validate() and Java KcpValidator.validate()
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { resolve, join } from "node:path";
 import type { KnowledgeManifest, ValidationResult } from "./model.js";
+
+// --- Per-unit content digest (RFC-0019 §3.2, draft) ---
+// Lives here (not in a render module) so the CLI and bridge validator
+// copies stay self-contained and byte-identical.
+
+export const HASH_ALGORITHMS = ["sha256", "sha384", "sha512"];
+
+/** POSIX-relative paths of all regular files under root; symlinks not followed. */
+function walkRegularFiles(root: string, rel = ""): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const entryRel = rel ? `${rel}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      out.push(...walkRegularFiles(join(root, entry.name), entryRel));
+    } else if (entry.isFile()) {
+      out.push(entryRel);
+    }
+    // symlinks, sockets, etc. are neither: skipped
+  }
+  return out;
+}
+
+/**
+ * RFC-0019 §3.2 digest: a file hashes its raw bytes; a directory hashes
+ * the bytewise-sorted concatenation of `relpath \0 hexdigest \n` entries
+ * over every regular file beneath it. No exclusions. Returns undefined
+ * when the target is missing or unreadable (fails closed at the caller).
+ */
+export function computeContentDigest(target: string, algorithm: string): string | undefined {
+  try {
+    const hashFile = (p: string): string =>
+      createHash(algorithm).update(readFileSync(p)).digest("hex");
+    // readdirSync throws ENOTDIR on files — cheaper than a stat round-trip
+    let entries: string[];
+    try {
+      entries = walkRegularFiles(target);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "ENOTDIR") return hashFile(target);
+      throw err;
+    }
+    entries.sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
+    const digest = createHash(algorithm);
+    for (const e of entries) digest.update(`${e}\0${hashFile(join(target, e))}\n`);
+    return digest.digest("hex");
+  } catch {
+    return undefined;
+  }
+}
 
 const VALID_SCOPES = new Set(["global", "project", "module"]);
 const VALID_KINDS = new Set([
@@ -291,6 +340,33 @@ export function validate(
         warnings.push(
           `${ctx}: content_structure.density has unknown value '${cs.density}'; expected one of sparse, normal, dense`
         );
+      }
+    }
+
+    // content_hash validation (RFC-0019, draft) — shape, then recompute
+    // against disk when a manifest directory is available (§3.1: "kcp
+    // validate recomputes and compares"). A stale hash is an error, not a
+    // warning: signing over it would brick the unit for every consumer.
+    if (unit.content_hash) {
+      const ch = unit.content_hash;
+      if (!ch.algorithm || !HASH_ALGORITHMS.includes(ch.algorithm)) {
+        errors.push(
+          `${ctx}: content_hash.algorithm must be one of ${HASH_ALGORITHMS.join(", ")}`
+        );
+      } else if (!ch.value || !/^[0-9a-fA-F]+$/.test(ch.value)) {
+        errors.push(`${ctx}: content_hash.value must be a hex digest`);
+      } else if (manifestDir && unit.path) {
+        const resolved = resolve(join(manifestDir, unit.path));
+        if (resolved.startsWith(resolve(manifestDir)) && existsSync(resolved)) {
+          const observed = computeContentDigest(resolved, ch.algorithm);
+          if (observed !== ch.value.toLowerCase()) {
+            errors.push(
+              `${ctx}: content_hash does not match content on disk ` +
+                `(declared ${ch.value.slice(0, 12)}…, observed ${observed ? observed.slice(0, 12) + "…" : "unreadable"}); ` +
+                `run kcp sign --update-hashes before signing`
+            );
+          }
+        }
       }
     }
 

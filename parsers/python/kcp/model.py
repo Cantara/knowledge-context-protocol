@@ -88,6 +88,19 @@ class ContentStructure:
 
 
 @dataclass
+class ContentHash:
+    """Per-unit content hash binding referenced content to the signed
+    manifest. See RFC-0019 (draft).
+
+    - ``algorithm``: sha256 | sha384 | sha512
+    - ``value``: hex digest per RFC-0019 §3.2 (file bytes, or the
+      bytewise-sorted ``relpath\\0hexdigest\\n`` entries of a directory)
+    """
+    algorithm: Optional[str] = None
+    value: Optional[str] = None
+
+
+@dataclass
 class FreshnessPolicy:
     """Freshness policy for a knowledge unit or manifest default. See SPEC.md §3.7 (v0.11)."""
     max_age_days: Optional[int] = None
@@ -131,6 +144,7 @@ class KnowledgeUnit:
     not_for: list[str] = field(default_factory=list)  # RFC-0015 (v0.17)
     not_for_strict: Optional[bool] = None  # RFC-0015 (v0.17), default false
     content_structure: Optional[ContentStructure] = None  # RFC-0016 (v0.17)
+    content_hash: Optional[ContentHash] = None  # RFC-0019 (draft)
 
 
 @dataclass

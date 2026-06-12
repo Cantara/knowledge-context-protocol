@@ -1,0 +1,13 @@
+# Directory-digest cross-implementation check (RFC-0019 §3.2, case A11).
+# run.js computes the digest with its own independent implementation and
+# patches it in; the renderer must agree byte-for-byte.
+kcp_version: "0.17"
+project: digest-check
+version: 1.0.0
+units:
+  - id: tree-docs
+    path: tree/
+    intent: "Reference tree for the digest cross-check"
+    content_hash:
+      algorithm: sha256
+      value: "PLACEHOLDER_DIR_HASH"

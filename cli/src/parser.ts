@@ -8,6 +8,7 @@ import type {
   AuthMethod,
   Authority,
   Compliance,
+  ContentHash,
   ContentStructure,
   Delegation,
   Discovery,
@@ -144,6 +145,7 @@ function parseUnit(raw: RawMap): KnowledgeUnit {
     not_for_strict:
       raw["not_for_strict"] !== undefined ? Boolean(raw["not_for_strict"]) : undefined,
     content_structure: parseContentStructure(raw["content_structure"]),
+    content_hash: parseContentHash(raw["content_hash"]),
   };
 }
 
@@ -339,6 +341,20 @@ function parseContentStructure(raw: unknown): ContentStructure | undefined {
     primary: c["primary"] !== undefined ? String(c["primary"]) : undefined,
     contains: c["contains"] !== undefined ? asStringArray(c["contains"]) : undefined,
     density: c["density"] !== undefined ? String(c["density"]) : undefined,
+  };
+}
+
+// --- Content hash parsing (RFC-0019 §3, draft) ---
+// A declared-but-malformed block parses to {} so the validator can flag
+// it; only an absent block parses to undefined.
+
+function parseContentHash(raw: unknown): ContentHash | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== "object" || Array.isArray(raw)) return {};
+  const c = raw as RawMap;
+  return {
+    algorithm: c["algorithm"] !== undefined ? String(c["algorithm"]) : undefined,
+    value: c["value"] !== undefined ? String(c["value"]) : undefined,
   };
 }
 

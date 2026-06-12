@@ -12,6 +12,13 @@
 // { key_id, algorithm: "EdDSA", public_key: <base64 DER SPKI>,
 //   signature: <base64> } over the exact manifest bytes — the
 // detached-JWS EdDSA profile of RFC-0018 §4.2.
+//
+// RFC-0019 (draft) additions: per-unit content_hash verification (C11)
+// and origin evidence classes with the trust-escalation cap (C13) —
+// together closing the T9 manifest-relocation attack. Corroboration
+// (§4.3) verifies the *manifest* against its claimed origin; it cannot
+// verify the *checkout*, so escalation that rests on corroboration never
+// extends standing-context eligibility to hash-less units (C14).
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
@@ -20,13 +27,16 @@ import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import yaml from "js-yaml";
 import { lintFreeText, LINT_RULES_VERSION } from "./lint.js";
+import { computeContentDigest, HASH_ALGORITHMS } from "./validator.js";
+
+export { computeContentDigest, HASH_ALGORITHMS };
 
 const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 
-export const RENDERER_VERSION = "kcp-cli 0.16.0";
-export const RENDER_SCHEMA = "kcp-render-schema-0.1";
+export const RENDERER_VERSION = "kcp-cli 0.18.0-dev";
+export const RENDER_SCHEMA = "kcp-render-schema-0.2";
 export const DEFAULT_KEYS_PATH = join(homedir(), ".kcp", "trusted-keys.yaml");
 
 const KNOWN_KINDS = ["knowledge", "schema", "policy", "service", "executable"];
@@ -62,7 +72,33 @@ export interface RenderOptions {
   origin?: string;
   /** Opt-in `rendered_at` field; excluded from the determinism contract (C1). */
   timestamp?: boolean;
+  /**
+   * RFC-0019 §4.3: accept `derived` origin evidence for trust escalation.
+   * Off by default — repo-resident bytes may restrict trust, never extend it.
+   */
+  allowDerivedOrigin?: boolean;
+  /** RFC-0019 §3.3: deny standing-context eligibility to hash-less units at trusted tier. */
+  requireUnitHashes?: boolean;
+  /**
+   * RFC-0019 §4.3: outcome of an origin-corroboration attempt, performed
+   * by the caller *before* rendering (the renderer itself stays offline
+   * and deterministic; the outcome is part of the C1 input).
+   */
+  corroboration?: CorroborationOutcome;
 }
+
+export interface CorroborationOutcome {
+  url: string;
+  result: "matched" | "mismatch" | "unreachable";
+}
+
+/**
+ * RFC-0019 §4.1: who controlled the bytes the origin was derived from.
+ * `asserted` (consumer flag) and `fetched` (consumer's own channel) may
+ * satisfy trust escalation; `derived` (the checkout's own .git/config)
+ * and `none` may only pin.
+ */
+export type OriginEvidence = "asserted" | "fetched" | "derived" | "none";
 
 export type RenderTier = "trusted" | "known" | "unsigned";
 
@@ -94,11 +130,18 @@ interface TierDecision {
   keyId?: string;
   keySource?: string;
   reason?: string;
+  /** RFC-0019 §4.2: trusted conditions met, escalation withheld. */
+  capped?: string;
 }
 
 function sha256(buf: Buffer): string {
   return createHash("sha256").update(buf).digest("hex");
 }
+
+// --- Per-unit content hashes (RFC-0019 §3, C11) ---
+// The digest implementation lives in validator.ts (which is kept
+// byte-identical with the bridge's validator); re-exported here for the
+// render/sign/test call sites that historically import it from render.
 
 // --- Origin determination (§4.1, normative) ---
 
@@ -129,21 +172,26 @@ export function normalizeOrigin(url: string): string {
  * (1) explicit --origin; (2) (federation fetches — not applicable to
  * local rendering); (3) the git remote named `origin` of the manifest's
  * directory, normalized. Falls back to "unknown", which can never match
- * a pinning scope.
+ * a pinning scope. Each derivation carries its RFC-0019 evidence class.
  */
-export function deriveOrigin(manifestPath: string, explicit?: string): string {
-  if (explicit) return explicit;
+export function deriveOrigin(
+  manifestPath: string,
+  explicit?: string
+): { origin: string; evidence: OriginEvidence } {
+  if (explicit) return { origin: explicit, evidence: "asserted" };
   try {
     const dir = dirname(resolve(manifestPath));
     const url = execFileSync("git", ["-C", dir, "remote", "get-url", "origin"], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
     }).trim();
-    if (url) return normalizeOrigin(url);
+    // The remote URL lives in the checkout's own .git/config — bytes the
+    // directory's producer may control (tarball with a fabricated .git).
+    if (url) return { origin: normalizeOrigin(url), evidence: "derived" };
   } catch {
     // no git, not a repository, or no remote named "origin"
   }
-  return "unknown";
+  return { origin: "unknown", evidence: "none" };
 }
 
 // --- Allowlist and scope pinning (§4.1, §9) ---
@@ -183,12 +231,14 @@ function verifyDetachedSig(manifestBytes: Buffer, sig: DetachedSignature): boole
   }
 }
 
-// §4 + §4.1 tier computation.
+// §4 + §4.1 tier computation, with the RFC-0019 §4.2 escalation rule.
 function computeTier(
   manifestBytes: Buffer,
   sigPath: string,
   allowlist: Allowlist,
-  origin: string
+  origin: string,
+  evidence: OriginEvidence,
+  allowDerivedOrigin: boolean
 ): TierDecision {
   const pinned = originIsPinned(allowlist, origin);
   if (!existsSync(sigPath)) {
@@ -238,6 +288,17 @@ function computeTier(
     }
     return { tier: "known", pinned, status: "unknown-key", keyId: sig.key_id };
   }
+  // RFC-0019 §4.2 (C13): all trusted conditions hold, but an in-scope
+  // origin read from the checkout's own bytes is not evidence the
+  // manifest is actually *at* that origin (T9 relocation). Pinning above
+  // accepted any evidence class — strictness may rest on weak evidence;
+  // escalation may not.
+  if (evidence !== "asserted" && evidence !== "fetched" && !allowDerivedOrigin) {
+    return {
+      tier: "known", pinned, status: "valid", keyId: sig.key_id,
+      keySource: "allowlist", capped: "origin_evidence_derived",
+    };
+  }
   return { tier: "trusted", pinned, status: "valid", keyId: sig.key_id, keySource: "allowlist" };
 }
 
@@ -246,6 +307,10 @@ function computeTier(
 interface DropEntry {
   path: string;
   reason: string;
+  /** content_hash_mismatch entries (RFC-0019 §3.3) record both digests. */
+  algorithm?: string;
+  expected?: string;
+  observed?: string;
 }
 
 interface QuarantineEntry {
@@ -260,9 +325,26 @@ export function renderManifest(options: RenderOptions): RenderResult {
   const { manifestPath } = options;
   const manifestBytes = readFileSync(manifestPath);
   const allowlist = loadAllowlist(options.keysPath);
-  const origin = deriveOrigin(manifestPath, options.origin);
+  const derived = deriveOrigin(manifestPath, options.origin);
+  const origin = derived.origin;
+  let evidence = derived.evidence;
 
-  const trust = computeTier(manifestBytes, manifestPath + ".sig", allowlist, origin);
+  // RFC-0019 §4.3: a matched corroboration upgrades derived evidence —
+  // the manifest has now been observed at its claimed origin over the
+  // consumer's own channel. It says nothing about the *checkout* (the
+  // files around the manifest), which is why the C14 flag below narrows
+  // what the upgrade may grant.
+  const corroborated =
+    evidence === "derived" && options.corroboration?.result === "matched";
+  if (corroborated) evidence = "fetched";
+
+  const trust = computeTier(
+    manifestBytes, manifestPath + ".sig", allowlist, origin,
+    evidence, options.allowDerivedOrigin ?? false
+  );
+  // C14: does the trusted tier rest on corroboration alone?
+  const escalationByCorroboration =
+    corroborated && trust.tier === "trusted" && !options.allowDerivedOrigin;
   if (trust.tier === "failed") {
     // Fail-closed (§3.1, R4, C2): emit nothing.
     return { ok: false, tier: "failed", origin, reason: trust.reason ?? "failed" };
@@ -270,6 +352,22 @@ export function renderManifest(options: RenderOptions): RenderResult {
   const tier = trust.tier;
 
   const warnings: string[] = [];
+  if (trust.capped) {
+    warnings.push(
+      "trusted tier withheld: origin evidence is derived from the checkout's own git config (RFC-0019 C13). " +
+        "Pass --origin from the component that cloned the repository, or --allow-derived-origin to accept the relocation risk."
+    );
+  }
+  if (options.corroboration && options.corroboration.result !== "matched") {
+    warnings.push(
+      `origin corroboration ${options.corroboration.result} (${options.corroboration.url}); evidence remains ${evidence} (RFC-0019 §4.3)`
+    );
+  }
+  if (escalationByCorroboration) {
+    warnings.push(
+      "trusted tier rests on corroboration: the manifest was verified at its claimed origin, the surrounding checkout was not — hash-less units stay out of standing context (RFC-0019 C14)"
+    );
+  }
   // §16.2: with a non-empty allowlist, an undeterminable origin means no
   // scope can pin this manifest — surface it rather than silently
   // rendering at unsigned (the T7 downgrade the SHOULD-warn exists for).
@@ -370,6 +468,9 @@ export function renderManifest(options: RenderOptions): RenderResult {
     // sub-fields can be sub-whitelisted rather than copied verbatim.
     const cs = rest.content_structure;
     delete rest.content_structure;
+    // content_hash (RFC-0019 §3) is consumed by verification, never re-emitted.
+    const contentHash = rest.content_hash;
+    delete rest.content_hash;
     take(rest, UNIT_FIELDS, base, out, UNIT_FREE_TEXT_FIELDS);
     if (cs !== undefined) {
       const csOut: RawMap = {};
@@ -393,13 +494,61 @@ export function renderManifest(options: RenderOptions): RenderResult {
         dropped.push({ path: `${base}content_structure`, reason: "not_in_schema" });
       }
     }
-    // §6.3 load eligibility — unconditional, even at trusted tier (C4)
+    // content_hash verification (RFC-0019 §3.3, C11). Runs at every tier;
+    // tier governs placement, the hash governs whether the bytes at the
+    // path are the bytes the key-holder signed.
+    let contentVerified: true | "mismatch" | "absent" = "absent";
+    if (contentHash !== undefined) {
+      const leafCount = countLeaves(contentHash);
+      fieldsIn += leafCount;
+      fieldsDropped += leafCount;
+      const ch = contentHash as RawMap;
+      const wellFormed =
+        ch !== null && typeof ch === "object" && !Array.isArray(ch) &&
+        HASH_ALGORITHMS.includes(String(ch.algorithm)) &&
+        typeof ch.value === "string" && /^[0-9a-fA-F]+$/.test(ch.value);
+      if (!wellFormed) {
+        // malformed declarations fail closed, same as a mismatch
+        contentVerified = "mismatch";
+        dropped.push({ path: `${base}content_hash`, reason: "content_hash_invalid" });
+      } else {
+        const algorithm = String(ch.algorithm);
+        const expected = (ch.value as string).toLowerCase();
+        const observed = unit.path
+          ? computeContentDigest(
+              resolve(dirname(resolve(manifestPath)), String(unit.path)), algorithm)
+          : undefined;
+        if (observed === expected) {
+          contentVerified = true;
+          dropped.push({ path: `${base}content_hash`, reason: "consumed_by_renderer" });
+        } else {
+          contentVerified = "mismatch";
+          dropped.push({
+            path: `${base}content_hash`, reason: "content_hash_mismatch",
+            algorithm, expected, observed: observed ?? "unreadable",
+          });
+          warnings.push(
+            `unit '${String(unit.id ?? `units[${i}]`)}' content does not match its signed content_hash; demoted to pointer (RFC-0019 §3.3)`
+          );
+        }
+      }
+    }
+
+    // §6.3 load eligibility — unconditional, even at trusted tier (C4),
+    // then narrowed by content verification (RFC-0019 §3.3) and, when the
+    // tier rests on corroboration, restricted to hash-verified units (C14:
+    // corroboration vouched for the manifest, not the checkout).
     if (unknownKind || NEVER_LOAD_KINDS.includes(kind)) {
       out.load_eligible = false;
       out.invocation = "explicit";
     } else {
-      out.load_eligible = tier === "trusted";
+      out.load_eligible =
+        tier === "trusted" &&
+        contentVerified !== "mismatch" &&
+        !(contentVerified === "absent" &&
+          (options.requireUnitHashes || escalationByCorroboration));
     }
+    out.content_verified = contentVerified;
     units.push(out);
   });
 
@@ -473,7 +622,12 @@ export function renderManifest(options: RenderOptions): RenderResult {
     trust: {
       tier,
       origin,
+      origin_evidence: evidence, // RFC-0019 §4.1, auditable like origin/pinned (R5)
       pinned: trust.pinned,
+      ...(trust.capped ? { reason: trust.capped } : {}),
+      ...(options.corroboration
+        ? { corroboration: { url: options.corroboration.url, result: options.corroboration.result } }
+        : {}),
       signature: {
         method: "jws",
         algorithm: "EdDSA",
@@ -509,6 +663,37 @@ export function renderManifest(options: RenderOptions): RenderResult {
   return { ok: true, tier, origin, text, warnings };
 }
 
+// --- Origin corroboration (RFC-0019 §4.3) ---
+//
+// An evidence-resolution step that precedes rendering: fetch the manifest
+// from the derived origin over the consumer's own channel and compare
+// bytes. The outcome — never the network — feeds into renderManifest, so
+// the render core stays offline and deterministic (C1, C7).
+
+/** Map an origin to its manifest URL: explicit override, forge mapping, generic fallback. */
+export function resolveCorroborationUrl(origin: string, explicit?: string): string {
+  if (explicit) return explicit;
+  const gh = /^github\.com\/([^/]+)\/([^/]+)$/.exec(origin);
+  if (gh) return `https://raw.githubusercontent.com/${gh[1]}/${gh[2]}/HEAD/knowledge.yaml`;
+  return `https://${origin}/knowledge.yaml`;
+}
+
+export async function corroborateOrigin(
+  manifestBytes: Buffer,
+  origin: string,
+  explicitUrl?: string
+): Promise<CorroborationOutcome> {
+  const url = resolveCorroborationUrl(origin, explicitUrl);
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(10_000), redirect: "follow" });
+    if (!res.ok) return { url, result: "unreachable" };
+    const remote = Buffer.from(await res.arrayBuffer());
+    return { url, result: remote.equals(manifestBytes) ? "matched" : "mismatch" };
+  } catch {
+    return { url, result: "unreachable" };
+  }
+}
+
 // --- CLI entry point ---
 
 export interface RunRenderOptions {
@@ -517,6 +702,10 @@ export interface RunRenderOptions {
   origin?: string;
   out?: string;
   timestamp?: boolean;
+  allowDerivedOrigin?: boolean;
+  requireUnitHashes?: boolean;
+  corroborate?: boolean;
+  corroborateUrl?: string;
 }
 
 function expandHome(p: string): string {
@@ -525,16 +714,30 @@ function expandHome(p: string): string {
   return p;
 }
 
-export function runRender(options: RunRenderOptions): void {
+export async function runRender(options: RunRenderOptions): Promise<void> {
   const keysPath = options.keys !== undefined ? expandHome(options.keys) : DEFAULT_KEYS_PATH;
 
   let result: RenderResult;
   try {
+    // Corroboration happens here, before the deterministic core, and only
+    // when the origin evidence is actually derived (§4.3).
+    let corroboration: CorroborationOutcome | undefined;
+    if (options.corroborate || options.corroborateUrl) {
+      const { origin, evidence } = deriveOrigin(options.manifestPath, options.origin);
+      if (evidence === "derived") {
+        corroboration = await corroborateOrigin(
+          readFileSync(options.manifestPath), origin, options.corroborateUrl
+        );
+      }
+    }
     result = renderManifest({
       manifestPath: options.manifestPath,
       keysPath,
       origin: options.origin,
       timestamp: options.timestamp,
+      allowDerivedOrigin: options.allowDerivedOrigin,
+      requireUnitHashes: options.requireUnitHashes,
+      corroboration,
     });
   } catch (err) {
     process.stderr.write(red(`Error: ${err instanceof Error ? err.message : String(err)}\n`));
