@@ -1,6 +1,6 @@
 # RFC-0019: Unit Content Integrity and Origin Evidence
 
-**Status:** Draft
+**Status:** Accepted — promoted to SPEC.md §4.21 and §16.2/§16.5 (v0.18)
 **Author:** Thor Henning Hetland (eXOReaction AS)
 **Created:** 2026-06-12
 **Target version:** v0.18

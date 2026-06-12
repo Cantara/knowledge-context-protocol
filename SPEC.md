@@ -92,7 +92,7 @@ Example:
 
 ```json
 {
-  "kcp_version": "0.17",
+  "kcp_version": "0.18",
   "manifest": "/knowledge.yaml",
   "title": "My Project Knowledge Base",
   "description": "Architecture decisions, API reference, and onboarding guides.",
@@ -143,7 +143,7 @@ version.
 ## 3. Root Manifest Structure
 
 ```yaml
-kcp_version: "0.17"         # RECOMMENDED
+kcp_version: "0.18"         # RECOMMENDED
 project: <string>            # REQUIRED
 version: <semver string>     # RECOMMENDED
 updated: "<ISO date>"        # RECOMMENDED; quote the value (see §4.1.1)
@@ -174,7 +174,7 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
-| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.17"` for conformance with this document. |
+| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.18"` for conformance with this document. |
 | `project` | REQUIRED | string | Human-readable name of the project or documentation site. |
 | `version` | RECOMMENDED | string | Semver version of this manifest. Increment when units are added or removed. |
 | `updated` | RECOMMENDED | string | ISO 8601 date (`YYYY-MM-DD`) when this manifest was last modified. |
@@ -935,6 +935,7 @@ Each entry in `units` describes a self-contained piece of knowledge.
 | `content_structure` | OPTIONAL | object | Internal modality composition and density of the unit's content. See §4.19. |
 | `not_for` | OPTIONAL | list of strings | Contexts or questions this unit explicitly does NOT address. Subtractive matching signal. See §4.20. |
 | `not_for_strict` | OPTIONAL | boolean | When `true`, bridges MUST exclude this unit from results on a `not_for` match. Default: `false`. See §4.20. |
+| `content_hash` | OPTIONAL | object | Per-unit content digest. When present inside a signed manifest, the existing JWS covers the hash — binding referenced bytes to the signature and closing the manifest relocation attack (T9). See §4.21. |
 
 #### 4.1.1 Date Fields
 
@@ -2036,6 +2037,51 @@ for federation decisions and does NOT support `not_for_strict`.
 
 ---
 
+### 4.21 `content_hash` (v0.18)
+
+Promoted from [RFC-0019](./RFC-0019-Unit-Content-Integrity-and-Origin-Evidence.md). A unit
+MAY declare a `content_hash` block to bind the content at `path` to the signed manifest.
+Because the block lives inside `knowledge.yaml`, the existing detached JWS covers it with no
+envelope change — signing the manifest now signs the expected content digest.
+
+```yaml
+units:
+  - id: gerber-output
+    kind: knowledge
+    path: src/main/java/no/exo/pcb/gerber/
+    intent: "Gerber file generation and validation"
+    content_hash:
+      algorithm: sha256     # sha256 | sha384 | sha512
+      value: "4be1d6…"      # hex digest per §4.21.1
+```
+
+#### 4.21.1 Digest computation (normative)
+
+Two conforming implementations MUST produce identical digests:
+
+- **File path:** the digest is the hash of the file's raw bytes.
+- **Directory path:** for every regular file under the path (recursive, symlinks not followed,
+  no exclusions), compute `entry = relative_path + "\0" + lowercase_hex(hash(file_bytes)) + "\n"`
+  with `relative_path` POSIX-separated and relative to the unit path. Sort entries bytewise.
+  The digest is the hash of the concatenated, sorted entries.
+
+#### 4.21.2 Verification
+
+- **At render time** (§16), the renderer MUST verify every declared `content_hash`. A
+  mismatch does not fail the render; it fails the **unit**: `load_eligible` is forced to
+  `false` and the event is recorded in the `sanitization` block with
+  `reason: content_hash_mismatch` and the *observed* digest.
+- **At load time**, a runtime loading unit content MUST re-verify the hash against the bytes
+  it is about to inject (closes the render→load TOCTOU window).
+- A `trusted`-tier render MUST mark each unit with
+  `content_verified: true | mismatch | absent`. Consumers MAY set `require_unit_hashes: true`
+  to deny standing-context eligibility to `absent` units at `trusted` tier.
+
+`content_hash` is OPTIONAL per unit. The `kcp sign` command computes or refreshes
+`content_hash` for declared units before signing; `kcp validate` recomputes and compares.
+
+---
+
 ## 5. Relationships
 
 The optional `relationships` section declares explicit directional relationships between units.
@@ -2877,6 +2923,29 @@ fetches); the normalized URL of the git remote named `origin`. If no origin can 
 the renderer records `origin: unknown`, no scope can match, and consumers with a non-empty
 allowlist SHOULD warn (or refuse, in strict mode).
 
+#### Origin evidence classes (v0.18)
+
+Each derived origin carries an **evidence class** recorded in the render output:
+
+| Class | Source | Who controls the consulted bytes |
+|-------|--------|----------------------------------|
+| `asserted` | Explicit `--origin` argument | The consumer or its harness |
+| `fetched` | Federation fetch URL | The consumer's own channel |
+| `derived` | Git remote URL from the checkout's `.git/config` | The directory's producer |
+| `none` | No origin derivable | — |
+
+**Scope pinning** accepts any evidence class (pinning only ever tightens; an attacker cannot
+gain `trusted` by fabricating evidence that makes their own render stricter). **Trust-tier
+escalation** does not: the `trusted` tier's "origin within key scope" condition is satisfiable
+only by `asserted` or `fetched` evidence. A manifest that would otherwise qualify renders at
+`known` with `reason: origin_evidence_derived` when the matching origin has only `derived`
+evidence (C13).
+
+`kcp render --corroborate` upgrades `derived` evidence to `fetched` by fetching the manifest
+from the claimed origin and byte-comparing. When the `trusted` tier rests on a corroboration
+upgrade, standing-context eligibility is restricted to units with a verified `content_hash` —
+corroboration confirms the manifest's presence at the origin, not the checkout's contents (C14).
+
 ### 16.3 Sanitization
 
 - **Schema whitelist.** Output contains only fields in the render schema (identifiers, paths,
@@ -2908,13 +2977,26 @@ minimum trigger `on_failure: warn` (§3.6). Pinning applies per-edge.
 
 ### 16.5 Renderer conformance
 
-A conforming renderer satisfies RFC-0018 §10 (C1–C10): determinism (C1), fail-closed emission
-(C2), schema-only output (C3), no `load_eligible: true` on executable/service/unknown kinds
-(C4), no auto-traversal below `trusted` (C5), recorded drops and quarantines (C6), LLM-free
-(C7), data-framed content at every tier (C8), consumer-installed renderer only (C9), and
-in-session artifact verification (C10). The reference implementation is `kcp render` in
-[`cli/`](./cli/); the validation corpus lives in
-[`experiments/rfc-0018-render/`](./experiments/rfc-0018-render/).
+A conforming renderer satisfies C1–C10 (RFC-0018) and C11–C14 (RFC-0019, v0.18):
+
+- **C1–C10** (RFC-0018): determinism (C1), fail-closed emission (C2), schema-only output (C3),
+  no `load_eligible: true` on executable/service/unknown kinds (C4), no auto-traversal below
+  `trusted` (C5), recorded drops and quarantines (C6), LLM-free (C7), data-framed content at
+  every tier (C8), consumer-installed renderer only (C9), in-session artifact verification (C10).
+- **C11** (v0.18): Verifies every declared `content_hash` at render time; forces
+  `load_eligible: false` with both digests recorded on mismatch; never emits
+  `content_verified: true` without a matching digest.
+- **C12** (v0.18, runtime): Re-verifies the content hash against the exact bytes being injected
+  at load time; refuses to load on mismatch.
+- **C13** (v0.18): Records `origin_evidence` for every render; never satisfies the `trusted`
+  tier's scope condition with `derived` or `none` evidence unless the consumer has explicitly
+  configured `allow_derived_origin: true`.
+- **C14** (v0.18): When the `trusted` tier rests on a corroboration upgrade, never grants
+  standing-context eligibility to a unit without a verified `content_hash`.
+
+The reference implementation is `kcp render` in [`cli/`](./cli/); the validation corpus lives
+in [`experiments/rfc-0018-render/`](./experiments/rfc-0018-render/) (cases A10–A12, B17–B20
+cover v0.18 conformance).
 
 ---
 

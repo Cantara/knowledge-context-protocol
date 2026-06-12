@@ -95,6 +95,7 @@ const KNOWN_KCP_VERSIONS = new Set([
   "0.14",
   "0.16",
   "0.17",
+  "0.18",
 ]);
 // content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
 const VALID_CONTENT_MODALITIES = new Set([

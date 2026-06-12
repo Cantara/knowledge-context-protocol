@@ -10,6 +10,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.18.0] — 2026-06-12 — Unit Integrity Release
+
+### Spec
+
+- **v0.18.0 — Unit Integrity Release** (RFC-0019 promoted)
+  - **`content_hash` (§4.21):** optional per-unit digest block (`algorithm: sha256 | sha384 | sha512`, `value: <hex>`). Because the block lives inside `knowledge.yaml`, the existing detached JWS covers it — signing the manifest now signs the expected content. Closes T9 (manifest relocation attack) for hashed units: a relocated genuine signed manifest whose unit paths resolve to attacker-authored files produces `content_hash_mismatch` for every hashed unit, demoting each to a pointer and recording the observed digest. `kcp sign` computes or refreshes `content_hash` before signing; `kcp validate` recomputes and compares.
+  - **Origin evidence classes (§16.2):** each derived origin now carries an evidence class — `asserted` (consumer-provided `--origin`), `fetched` (federation channel), `derived` (git remote from checkout's own `.git/config`), or `none`. Trust-tier escalation to `trusted` requires `asserted` or `fetched` evidence; a manifest that would otherwise qualify with only `derived` evidence renders at `known` with `reason: origin_evidence_derived` (C13). Scope pinning (→ `failed`) accepts any evidence class.
+  - **Corroboration (§16.2):** `kcp render --corroborate` upgrades `derived` to `fetched` by fetching and byte-comparing the manifest from the claimed origin. When `trusted` tier rests on a corroboration upgrade, standing context is restricted to units with a verified `content_hash` (C14) — corroboration confirms the manifest, not the checkout.
+  - **Conformance C11–C14 (§16.5):** C11 (render-time hash verification), C12 (runtime re-verification before load), C13 (origin evidence gate for `trusted`), C14 (corroboration-only escalation restricted to hash-verified units).
+  - `KNOWN_KCP_VERSIONS` updated to include `"0.18"` in all validators. Appendix examples updated to `kcp_version: "0.18"`.
+
+### RFC Status
+
+- **RFC-0019 (Unit Content Integrity and Origin Evidence):** Accepted — promoted to SPEC.md §4.21 and §16.2/§16.5 (v0.18). Validated by 7 new executable experiments (A10–A12, B17–B20) in `experiments/rfc-0018-render/`, including B20 (corroborated relocation: verbatim-copy attack corroborates clean but yields zero load-eligible units via C11+C14).
+
+### CLI (`kcp`) — v0.18.0
+
+- `kcp sign` — new command: computes `content_hash` for declared units and produces a detached JWS over the canonical manifest bytes.
+- `kcp validate` — extended: recomputes and compares `content_hash` values; reports mismatches with expected and observed digests.
+- `kcp render` — extended: C11 hash verification with mismatch recording, C13 origin evidence gate, `--corroborate` flag for evidence upgrade, C14 corroboration-rested escalation guard.
+
+### Parsers
+
+- TypeScript, Java, Python: `content_hash` field parsed and exposed; `KNOWN_KCP_VERSIONS` updated.
+
+---
+
 ## [0.17.0] — 2026-06-11 — Content Wave
 
 ### Spec
