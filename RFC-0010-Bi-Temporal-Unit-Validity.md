@@ -1,6 +1,6 @@
 # RFC-0010: Bi-Temporal Unit Validity
 
-**Status:** Request for Comments
+**Status:** Accepted — schema phase promoted to SPEC.md §4.22 via RFC-0020 (v0.19). Query extensions (`as_of`, `include_all_temporal`) deferred to v0.20.
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-03-15
 **Discussion:** [#50 KCP Treasure Map Service](https://github.com/Cantara/knowledge-context-protocol/discussions/50)

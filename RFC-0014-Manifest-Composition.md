@@ -1,6 +1,6 @@
 # RFC-0014: Manifest Composition
 
-**Status:** Request for Comments
+**Status:** Accepted — promoted to SPEC.md §3.11 via RFC-0020 (v0.19).
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-03-25
 **Discussion:** [GitHub Discussions](https://github.com/Cantara/knowledge-context-protocol/discussions)
