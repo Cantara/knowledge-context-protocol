@@ -29,7 +29,8 @@ public record KnowledgeManifest(
         Visibility visibility,
         Authority authority,
         Discovery discovery,
-        List<String> notFor
+        List<String> notFor,
+        Temporal temporal
 ) {
     public KnowledgeManifest {
         units = units != null ? List.copyOf(units) : List.of();

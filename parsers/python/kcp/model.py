@@ -101,6 +101,22 @@ class ContentHash:
 
 
 @dataclass
+class Temporal:
+    """Bi-temporal validity block for a unit or manifest root default.
+    See SPEC.md §4.22 (v0.19) and §15.13 (v0.20).
+
+    - ``valid_from``: ISO 8601 date — unit becomes active on this date
+    - ``valid_until``: ISO 8601 date — unit expires after this date (null = open-ended)
+    - ``recorded_at``: ISO 8601 date — when this version was added (informational)
+    - ``superseded_by``: id of the unit within this manifest that replaces this one
+    """
+    valid_from: Optional[str] = None
+    valid_until: Optional[str] = None
+    recorded_at: Optional[str] = None
+    superseded_by: Optional[str] = None
+
+
+@dataclass
 class FreshnessPolicy:
     """Freshness policy for a knowledge unit or manifest default. See SPEC.md §3.7 (v0.11)."""
     max_age_days: Optional[int] = None
@@ -145,6 +161,7 @@ class KnowledgeUnit:
     not_for_strict: Optional[bool] = None  # RFC-0015 (v0.17), default false
     content_structure: Optional[ContentStructure] = None  # RFC-0016 (v0.17)
     content_hash: Optional[ContentHash] = None  # RFC-0019 (draft)
+    temporal: Optional[Temporal] = None  # RFC-0010 / §4.22 (v0.19)
 
 
 @dataclass
@@ -254,3 +271,4 @@ class KnowledgeManifest:
     authority: Optional[Authority] = None
     discovery: Optional[Discovery] = None
     not_for: list[str] = field(default_factory=list)  # RFC-0015 (v0.17), manifest-level
+    temporal: Optional[Temporal] = None  # RFC-0010 / §4.22 (v0.19) — manifest-level defaults

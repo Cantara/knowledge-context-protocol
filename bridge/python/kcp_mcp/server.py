@@ -3,6 +3,7 @@ KCP MCP server — low-level Server API matching the TypeScript bridge pattern.
 """
 import json
 import sys
+from datetime import date as _date
 from pathlib import Path
 
 from mcp.server import Server
@@ -201,6 +202,14 @@ def create_server(
                             "type": "boolean",
                             "description": "Exclude units marked deprecated: true. Default: true.",
                         },
+                        "as_of": {
+                            "type": "string",
+                            "description": "ISO 8601 date for point-in-time temporal query (§15.13). Default: today.",
+                        },
+                        "include_all_temporal": {
+                            "type": "boolean",
+                            "description": "If true, skip temporal filtering and return all units regardless of valid_from/valid_until (§15.13). Mutually exclusive with as_of.",
+                        },
                     },
                     "required": ["query"],
                 },
@@ -283,6 +292,18 @@ def _score_unit(unit, terms: list[str], slug: str) -> dict:
     }
 
 
+def _is_temporally_active(unit, as_of: str) -> bool:
+    """Return True if unit is active on as_of (§15.13). Units without temporal block are always active."""
+    t = getattr(unit, "temporal", None)
+    if t is None:
+        return True
+    if t.valid_from is not None and t.valid_from > as_of:
+        return False
+    if t.valid_until is not None and t.valid_until < as_of:
+        return False
+    return True
+
+
 def _match_not_for(unit, terms: list[str]) -> str | None:
     """Return the first not_for phrase matched by any query term, or None (§15.11)."""
     not_for = getattr(unit, "not_for", None) or []
@@ -308,6 +329,14 @@ def _handle_search_knowledge(
     scope_filter = arguments.get("scope")
     sensitivity_max = arguments.get("sensitivity_max")
     exclude_deprecated = arguments.get("exclude_deprecated", True)
+    as_of = arguments.get("as_of")
+    include_all_temporal = arguments.get("include_all_temporal", False)
+    if as_of is not None and include_all_temporal:
+        return [TextContent(type="text", text=json.dumps({
+            "error": "temporal_query_conflict",
+            "message": "as_of and include_all_temporal are mutually exclusive.",
+        }))]
+    temporal_date = as_of if as_of is not None else _date.today().isoformat()
 
     terms = query.split()
     results = []
@@ -345,6 +374,13 @@ def _handle_search_knowledge(
         if getattr(unit, "not_for_strict", False):
             continue
         final_results.append({**r, "score": max(1, r["score"] // 2), "caution": f"not_for match: '{matched}'"})
+
+    # §15.13 temporal filter: applied after not_for, before top-N cut
+    if not include_all_temporal:
+        final_results = [
+            r for r in final_results
+            if _is_temporally_active(unit_context.get(r["id"], (None, None))[0], temporal_date)
+        ]
 
     if not final_results:
         ids = ", ".join(unit_context.keys())

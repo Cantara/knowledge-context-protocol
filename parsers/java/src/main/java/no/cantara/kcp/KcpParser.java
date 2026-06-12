@@ -21,6 +21,7 @@ import no.cantara.kcp.model.Relationship;
 import no.cantara.kcp.model.Trust;
 import no.cantara.kcp.model.TrustAudit;
 import no.cantara.kcp.model.TrustProvenance;
+import no.cantara.kcp.model.Temporal;
 import no.cantara.kcp.model.Visibility;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
@@ -90,7 +91,8 @@ public class KcpParser {
         Authority authority = parseAuthority((Map<String, Object>) data.get("authority"));
         Discovery discovery = parseDiscovery((Map<String, Object>) data.get("discovery"));
         List<String> notFor = asStringList(data.get("not_for"));
-        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, rateLimits, units, relationships, manifests, externalRelationships, freshnessPolicy, visibility, authority, discovery, notFor);
+        Temporal temporal = parseTemporal((Map<String, Object>) data.get("temporal"));
+        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, rateLimits, units, relationships, manifests, externalRelationships, freshnessPolicy, visibility, authority, discovery, notFor, temporal);
     }
 
     /**
@@ -155,7 +157,8 @@ public class KcpParser {
                 asStringList(u.get("not_for")),
                 asBoolean(u.get("not_for_strict")),
                 parseContentStructure(u.get("content_structure")),
-                parseContentHash(u.get("content_hash"))
+                parseContentHash(u.get("content_hash")),
+                parseTemporal((Map<String, Object>) u.get("temporal"))
         );
     }
 
@@ -361,6 +364,17 @@ public class KcpParser {
         return new ContentHash(
                 c.get("algorithm") == null ? null : c.get("algorithm").toString(),
                 c.get("value") == null ? null : c.get("value").toString()
+        );
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Temporal parseTemporal(Map<String, Object> raw) {
+        if (raw == null) return null;
+        return new Temporal(
+                raw.get("valid_from") == null ? null : raw.get("valid_from").toString(),
+                raw.get("valid_until") == null ? null : raw.get("valid_until").toString(),
+                raw.get("recorded_at") == null ? null : raw.get("recorded_at").toString(),
+                raw.get("superseded_by") == null ? null : raw.get("superseded_by").toString()
         );
     }
 

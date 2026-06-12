@@ -1,6 +1,6 @@
 # RFC-0010: Bi-Temporal Unit Validity
 
-**Status:** Accepted — schema phase promoted to SPEC.md §4.22 via RFC-0020 (v0.19). Query extensions (`as_of`, `include_all_temporal`) deferred to v0.20.
+**Status:** Accepted — fully promoted. Schema phase: SPEC.md §4.22 via RFC-0020 (v0.19). Query phase: SPEC.md §15.2, §15.13 via v0.20.
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-03-15
 **Discussion:** [#50 KCP Treasure Map Service](https://github.com/Cantara/knowledge-context-protocol/discussions/50)
@@ -254,10 +254,9 @@ is used, because temporal metadata is most commonly set manifest-wide by tooling
 
 ---
 
-## Query Extensions (v0.13 — deferred)
+## Query Extensions (v0.20 — promoted)
 
-> **Deferred to v0.13.** The query extensions require the RFC-0008 structured query baseline
-> to be implemented in all three bridges first.
+> **Promoted to SPEC.md §15.13 (v0.20).** Both parameters are now normative; see §15.13 for the full specification.
 
 The RFC-0007 query request object gains two optional temporal parameters:
 

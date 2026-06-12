@@ -1,7 +1,8 @@
 // §15.11 negative-space filtering — soft demotion vs strict exclusion.
+// §15.13 temporal query filtering.
 
 import { describe, expect, it } from "vitest";
-import { applyNotFor, matchNotFor } from "./query.js";
+import { applyNotFor, isTemporallyActive, matchNotFor } from "./query.js";
 import type { KnowledgeUnit } from "./model.js";
 
 function unit(over: Partial<KnowledgeUnit>): KnowledgeUnit {
@@ -48,5 +49,32 @@ describe("§15.11 negative-space filtering", () => {
     const out = applyNotFor([u], [scored("gerber", 5)], ["gerber", "drc"]);
     expect(out[0].score).toBe(5);
     expect(out[0].caution).toBeNull();
+  });
+});
+
+describe("§15.13 temporal query filtering", () => {
+  it("returns true for units without a temporal block", () => {
+    const u = unit({});
+    expect(isTemporallyActive(u, "2026-06-12")).toBe(true);
+  });
+
+  it("returns false when valid_from is in the future", () => {
+    const u = unit({ temporal: { valid_from: "2099-01-01" } });
+    expect(isTemporallyActive(u, "2026-06-12")).toBe(false);
+  });
+
+  it("returns false when valid_until is in the past", () => {
+    const u = unit({ temporal: { valid_until: "2020-12-31" } });
+    expect(isTemporallyActive(u, "2026-06-12")).toBe(false);
+  });
+
+  it("returns true when asOf is within the validity window", () => {
+    const u = unit({ temporal: { valid_from: "2025-01-01", valid_until: "2027-12-31" } });
+    expect(isTemporallyActive(u, "2026-06-12")).toBe(true);
+  });
+
+  it("returns true when temporal block is present but both bounds are null", () => {
+    const u = unit({ temporal: {} });
+    expect(isTemporallyActive(u, "2026-06-12")).toBe(true);
   });
 });

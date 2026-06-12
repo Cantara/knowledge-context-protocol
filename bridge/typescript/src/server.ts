@@ -127,6 +127,19 @@ function scoreUnit(
   };
 }
 
+/**
+ * §15.12 / §15.13 temporal activity check.
+ * Returns true when the unit should be included for the given date string (YYYY-MM-DD).
+ * A unit with no temporal block is always active.
+ */
+function isTemporallyActive(unit: KnowledgeUnit, asOf: string): boolean {
+  const t = unit.temporal;
+  if (!t) return true;
+  if (t.valid_from && t.valid_from > asOf) return false;
+  if (t.valid_until && t.valid_until < asOf) return false;
+  return true;
+}
+
 /** Returns the first not_for phrase matched by any query term, or null (§15.11). */
 function matchNotFor(unit: KnowledgeUnit, terms: string[]): string | null {
   if (!unit.not_for || unit.not_for.length === 0) return null;
@@ -345,6 +358,14 @@ export function createKcpServer(
             type: "boolean",
             description: "Exclude units marked deprecated: true. Default: true.",
           },
+          as_of: {
+            type: "string",
+            description: "ISO 8601 date (YYYY-MM-DD). Return only units active on this date (§15.13). Default: today.",
+          },
+          include_all_temporal: {
+            type: "boolean",
+            description: "When true, bypass temporal filtering and return all units regardless of validity window (§15.13). Mutually exclusive with as_of.",
+          },
         },
         required: ["query"],
       },
@@ -406,6 +427,17 @@ export function createKcpServer(
         const scopeFilter = args?.["scope"] as string | undefined;
         const sensitivityMax = args?.["sensitivity_max"] as string | undefined;
         const excludeDeprecated = args?.["exclude_deprecated"] !== false; // default true
+        const asOf = args?.["as_of"] as string | undefined;
+        const includeAllTemporal = args?.["include_all_temporal"] === true;
+
+        // §15.13: as_of and include_all_temporal are mutually exclusive
+        if (asOf && includeAllTemporal) {
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify({ error: "temporal_query_conflict", message: "as_of and include_all_temporal are mutually exclusive" }) }],
+            isError: true,
+          };
+        }
+        const temporalDate = asOf ?? new Date().toISOString().slice(0, 10);
 
         if (!query.trim()) {
           return {
@@ -443,9 +475,17 @@ export function createKcpServer(
           }
         }
 
+        // §15.12 / §15.13 temporal filter: applied after scoring, before not_for filter
+        const temporalFiltered = includeAllTemporal
+          ? results
+          : results.filter((r) => {
+              const uctx = unitContextMap.get(r.id);
+              return uctx ? isTemporallyActive(uctx.unit, temporalDate) : true;
+            });
+
         // §15.11 not_for filter: strict exclusion, soft demotion (score → not_for → top-N per §15.12)
         const finalResults: SearchResult[] = [];
-        for (const r of results) {
+        for (const r of temporalFiltered) {
           const uctx = unitContextMap.get(r.id);
           const matched = uctx ? matchNotFor(uctx.unit, terms) : null;
           if (!matched) { finalResults.push(r); continue; }

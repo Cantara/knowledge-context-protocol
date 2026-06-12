@@ -41,7 +41,8 @@ public record KnowledgeUnit(
         List<String> notFor,
         Boolean notForStrict,
         ContentStructure contentStructure,
-        ContentHash contentHash
+        ContentHash contentHash,
+        Temporal temporal
 ) {
     public KnowledgeUnit {
         audience = audience != null ? List.copyOf(audience) : List.of();

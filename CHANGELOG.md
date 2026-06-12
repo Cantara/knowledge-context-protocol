@@ -10,6 +10,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.20.0] — 2026-06-12 — Temporal Query Release
+
+**Spec version:** `"0.20"` | **Prior:** `"0.19"` (v0.19.0, 2026-06-12)
+
+### What changed
+
+- **`as_of` query parameter (§15.2, §15.13):** Point-in-time reconstruction for
+  `search_knowledge`. Return only units whose `valid_from ≤ as_of` AND (`valid_until`
+  is null OR `valid_until ≥ as_of`). Bridges without temporal evaluation MUST ignore
+  the parameter.
+- **`include_all_temporal` query parameter (§15.2, §15.13):** Audit mode — bypass
+  temporal filtering, return all units with their full `temporal` metadata. Mutually
+  exclusive with a non-default `as_of`.
+- **`temporal_query_conflict` error:** Returned when both `as_of` (non-default) and
+  `include_all_temporal: true` are present in the same request.
+- **New §15.13:** Normative section for the two temporal query parameters.
+- **§15.12:** Cross-reference to §15.13 added.
+- **§16.5 C16:** Conformance requirement for bridges implementing temporal query evaluation.
+- **RFC-0010 Accepted:** Query phase (as_of + include_all_temporal) promoted to SPEC.md
+  §15.13 (schema phase already promoted in v0.19).
+
+### RFC status
+- RFC-0010: Accepted — fully promoted (schema: v0.19 §4.22; query: v0.20 §15.13)
+
+---
+
 ## [0.19.0] — 2026-06-12 — Temporal Composition Release
 
 ### Spec

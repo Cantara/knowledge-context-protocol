@@ -48,6 +48,14 @@ export interface ContentHash {
   value?: string;          // hex digest per RFC-0019 §3.2
 }
 
+/** Bi-temporal validity block. See SPEC.md §4.22 (v0.19). */
+export interface Temporal {
+  valid_from?: string;     // ISO 8601 date — unit becomes active on this date
+  valid_until?: string;    // ISO 8601 date — unit expires after this date (null = open-ended)
+  recorded_at?: string;    // ISO 8601 date — when this version was added to the manifest
+  superseded_by?: string;  // id of the unit that replaces this one
+}
+
 /** Content structure block. See RFC-0016 (v0.17). */
 export interface ContentStructure {
   primary?: string;        // prose | table | code | list | diagram | reference | mixed
@@ -98,6 +106,7 @@ export interface KnowledgeUnit {
   not_for_strict?: boolean;  // RFC-0015 (v0.17) — default false
   content_structure?: ContentStructure;  // RFC-0016 (v0.17)
   content_hash?: ContentHash;  // RFC-0019 (draft)
+  temporal?: Temporal;     // RFC-0010 / §4.22 (v0.19)
 }
 
 export interface Relationship {
@@ -226,6 +235,7 @@ export interface KnowledgeManifest {
   authority?: Authority;
   discovery?: Discovery;
   not_for?: string[];      // RFC-0015 (v0.17) — manifest-level negative-space declarations
+  temporal?: Temporal;     // RFC-0010 / §4.22 (v0.19) — manifest-level defaults
 }
 
 export interface ValidationResult {

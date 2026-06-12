@@ -441,6 +441,34 @@ async def test_search_knowledge_strictly_excludes_not_for_strict_match():
         assert "internal-ops" not in ids, "Strict not_for unit must be excluded when query matches"
 
 
+# ── §15.13 temporal query filtering ───────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_search_knowledge_excludes_temporally_inactive_by_default():
+    # future-feature (valid_from: 2099) and legacy-guide (valid_until: 2020) excluded by default
+    server = get_server(RFC007_DIR)
+    result = await call_tool(server, "search_knowledge", {"query": "future legacy integration"})
+    text = result.content[0].text
+    if text.startswith("["):
+        results = json.loads(text)
+        ids = [r["id"] for r in results]
+        assert "future-feature" not in ids, "future-feature (valid_from 2099) must be excluded"
+        assert "legacy-guide" not in ids, "legacy-guide (valid_until 2020) must be excluded"
+
+
+@pytest.mark.asyncio
+async def test_search_knowledge_includes_inactive_when_include_all_temporal():
+    # include_all_temporal=True bypasses temporal filtering
+    server = get_server(RFC007_DIR)
+    result = await call_tool(
+        server, "search_knowledge",
+        {"query": "future feature upcoming", "include_all_temporal": True},
+    )
+    results = json.loads(result.content[0].text)
+    ids = [r["id"] for r in results]
+    assert "future-feature" in ids, "future-feature must appear when include_all_temporal is true"
+
+
 @pytest.mark.asyncio
 async def test_search_knowledge_match_reason_intent():
     server = get_server(RFC007_DIR)

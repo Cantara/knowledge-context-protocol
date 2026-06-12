@@ -70,6 +70,8 @@ async function main(): Promise<void> {
       timestamp: { type: "boolean", default: false },
       "allow-derived-origin": { type: "boolean", default: false },
       "require-unit-hashes":  { type: "boolean", default: false },
+      "as-of":                { type: "string" },
+      "include-all-temporal": { type: "boolean", default: false },
       corroborate:        { type: "boolean", default: false },
       "corroborate-url":  { type: "string" },
       key:                { type: "string" },
@@ -154,7 +156,10 @@ async function main(): Promise<void> {
       process.exit(1);
     }
 
-    runQuery(manifest, query);
+    runQuery(manifest, query, {
+      asOf: values["as-of"] as string | undefined,
+      includeAllTemporal: values["include-all-temporal"] as boolean,
+    });
     return;
   }
 

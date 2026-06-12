@@ -384,4 +384,31 @@ class KcpServerToolsTest {
         assertFalse(text.contains("\"id\":\"internal-ops\""),
             "Strict not_for unit should be excluded when query term matches not_for phrase");
     }
+
+    // ── §15.13 temporal query filtering ──────────────────────────────────────
+
+    @Test void searchKnowledgeExcludesTemporallyInactiveUnitsByDefault() {
+        // future-feature (valid_from: 2099) and legacy-guide (valid_until: 2020) should be excluded
+        McpSchema.CallToolRequest request = new McpSchema.CallToolRequest("search_knowledge",
+            Map.of("query", "future legacy integration"));
+        McpSchema.CallToolResult result = KcpServer.handleSearchKnowledge(request, rfc007Rs, rfc007Slug);
+
+        String text = ((McpSchema.TextContent) result.content().get(0)).text();
+        assertFalse(text.contains("\"id\":\"future-feature\""),
+            "future-feature (valid_from 2099) should be excluded by default temporal filter");
+        assertFalse(text.contains("\"id\":\"legacy-guide\""),
+            "legacy-guide (valid_until 2020) should be excluded by default temporal filter");
+    }
+
+    @Test void searchKnowledgeIncludesTemporallyInactiveWhenFlagSet() {
+        // include_all_temporal: true bypasses temporal filtering
+        McpSchema.CallToolRequest request = new McpSchema.CallToolRequest("search_knowledge",
+            Map.of("query", "future feature upcoming", "include_all_temporal", true));
+        McpSchema.CallToolResult result = KcpServer.handleSearchKnowledge(request, rfc007Rs, rfc007Slug);
+
+        assertFalse(result.isError());
+        String text = ((McpSchema.TextContent) result.content().get(0)).text();
+        assertTrue(text.contains("\"id\":\"future-feature\""),
+            "future-feature should appear when include_all_temporal is true");
+    }
 }

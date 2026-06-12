@@ -20,6 +20,7 @@ import type {
   ManifestRef,
   RateLimits,
   Relationship,
+  Temporal,
   Trust,
   TrustAudit,
   TrustProvenance,
@@ -146,6 +147,7 @@ function parseUnit(raw: RawMap): KnowledgeUnit {
       raw["not_for_strict"] !== undefined ? Boolean(raw["not_for_strict"]) : undefined,
     content_structure: parseContentStructure(raw["content_structure"]),
     content_hash: parseContentHash(raw["content_hash"]),
+    temporal: parseTemporal(raw["temporal"]),
   };
 }
 
@@ -358,6 +360,20 @@ function parseContentHash(raw: unknown): ContentHash | undefined {
   };
 }
 
+// --- Temporal parsing (RFC-0010 / §4.22, v0.19) ---
+
+function parseTemporal(raw: unknown): Temporal | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== "object" || Array.isArray(raw)) return {};
+  const c = raw as RawMap;
+  return {
+    valid_from: c["valid_from"] !== undefined ? String(c["valid_from"]) : undefined,
+    valid_until: c["valid_until"] !== undefined ? String(c["valid_until"]) : undefined,
+    recorded_at: c["recorded_at"] !== undefined ? String(c["recorded_at"]) : undefined,
+    superseded_by: c["superseded_by"] !== undefined ? String(c["superseded_by"]) : undefined,
+  };
+}
+
 // --- Federation parsing (§3.6) ---
 
 function parseExternalDependency(raw: RawMap): ExternalDependency {
@@ -438,6 +454,7 @@ export function parseDict(data: RawMap): KnowledgeManifest {
     authority: parseAuthority(data["authority"]),
     discovery: parseDiscovery(data["discovery"]),
     not_for: data["not_for"] !== undefined ? asStringArray(data["not_for"]) : undefined,
+    temporal: parseTemporal(data["temporal"]),
   };
 }
 

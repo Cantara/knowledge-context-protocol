@@ -13,6 +13,7 @@ import no.cantara.kcp.model.ManifestRef;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.*;
 
 /**
@@ -234,6 +235,18 @@ public final class KcpServer {
         return null;
     }
 
+    /**
+     * Returns true if the unit is active on the given ISO 8601 date (§15.13).
+     * Units without a temporal block are always active.
+     */
+    static boolean isTemporallyActive(KnowledgeUnit unit, String asOf) {
+        var t = unit.temporal();
+        if (t == null) return true;
+        if (t.validFrom()  != null && t.validFrom().compareTo(asOf)  > 0) return false;
+        if (t.validUntil() != null && t.validUntil().compareTo(asOf) < 0) return false;
+        return true;
+    }
+
     // ── Public factories ──────────────────────────────────────────────────────
 
     /**
@@ -333,20 +346,22 @@ public final class KcpServer {
             Map<String, KcpCommands.CommandManifest> commandManifests) {
 
         // Tool: search_knowledge
+        Map<String, Object> searchProps = new LinkedHashMap<>();
+        searchProps.put("query", Map.of("type", "string", "description", "Search terms (space-separated)"));
+        searchProps.put("audience", Map.of("type", "string", "description",
+            "Filter by audience: agent | developer | architect | operator | human"));
+        searchProps.put("scope", Map.of("type", "string", "description",
+            "Filter by scope: global | project | module"));
+        searchProps.put("sensitivity_max", Map.of("type", "string", "description",
+            "Maximum sensitivity to include: public | internal | confidential | restricted. Units above this level are excluded."));
+        searchProps.put("exclude_deprecated", Map.of("type", "boolean", "description",
+            "Exclude units marked deprecated: true. Default: true."));
+        searchProps.put("as_of", Map.of("type", "string", "description",
+            "ISO 8601 date for point-in-time temporal query (§15.13). Default: today."));
+        searchProps.put("include_all_temporal", Map.of("type", "boolean", "description",
+            "If true, skip temporal filtering and return all units regardless of valid_from/valid_until (§15.13). Mutually exclusive with as_of."));
         McpSchema.JsonSchema searchSchema = new McpSchema.JsonSchema(
-            "object",
-            Map.of(
-                "query", Map.of("type", "string", "description", "Search terms (space-separated)"),
-                "audience", Map.of("type", "string", "description",
-                    "Filter by audience: agent | developer | architect | operator | human"),
-                "scope", Map.of("type", "string", "description",
-                    "Filter by scope: global | project | module"),
-                "sensitivity_max", Map.of("type", "string", "description",
-                    "Maximum sensitivity to include: public | internal | confidential | restricted. Units above this level are excluded."),
-                "exclude_deprecated", Map.of("type", "boolean", "description",
-                    "Exclude units marked deprecated: true. Default: true.")
-            ),
-            List.of("query"), null, null, null
+            "object", searchProps, List.of("query"), null, null, null
         );
 
         server.addTool(new McpServerFeatures.SyncToolSpecification(
@@ -424,6 +439,18 @@ public final class KcpServer {
         // exclude_deprecated defaults to true
         boolean excludeDeprecated = args == null || args.get("exclude_deprecated") == null
             || Boolean.TRUE.equals(args.get("exclude_deprecated"));
+        // temporal query parameters (§15.13)
+        String asOf = args != null && args.get("as_of") != null
+            ? String.valueOf(args.get("as_of")) : null;
+        boolean includeAllTemporal = args != null
+            && Boolean.TRUE.equals(args.get("include_all_temporal"));
+        if (asOf != null && includeAllTemporal) {
+            return new McpSchema.CallToolResult(
+                List.of(new McpSchema.TextContent(
+                    "{\"error\":\"temporal_query_conflict\",\"message\":\"as_of and include_all_temporal are mutually exclusive.\"}")),
+                true, null, null);
+        }
+        String temporalDate = asOf != null ? asOf : LocalDate.now().toString();
 
         if (query.isBlank()) {
             return new McpSchema.CallToolResult(
@@ -473,6 +500,14 @@ public final class KcpServer {
                 Math.max(1, r.score() / 2),
                 r.matchReason(), r.tokenEstimate(), r.summaryUnit(),
                 "not_for match: '" + matched + "'"));
+        }
+
+        // §15.13 temporal filter: applied after not_for, before top-N cut
+        if (!includeAllTemporal) {
+            finalResults.removeIf(r -> {
+                KnowledgeUnit u = rs.units().get(r.id());
+                return u != null && !isTemporallyActive(u, temporalDate);
+            });
         }
 
         if (finalResults.isEmpty()) {

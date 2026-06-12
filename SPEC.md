@@ -1,6 +1,6 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.19
+**Version:** 0.20
 **Status:** Draft
 **Date:** 2026-06-12
 **Repository:** github.com/cantara/knowledge-context-protocol
@@ -92,7 +92,7 @@ Example:
 
 ```json
 {
-  "kcp_version": "0.19",
+  "kcp_version": "0.20",
   "manifest": "/knowledge.yaml",
   "title": "My Project Knowledge Base",
   "description": "Architecture decisions, API reference, and onboarding guides.",
@@ -143,7 +143,7 @@ version.
 ## 3. Root Manifest Structure
 
 ```yaml
-kcp_version: "0.19"         # RECOMMENDED
+kcp_version: "0.20"         # RECOMMENDED
 project: <string>            # REQUIRED
 version: <semver string>     # RECOMMENDED
 updated: "<ISO date>"        # RECOMMENDED; quote the value (see §4.1.1)
@@ -176,7 +176,7 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
-| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.19"` for conformance with this document. |
+| `kcp_version` | RECOMMENDED | string | Version of this specification. MUST be `"0.20"` for conformance with this document. |
 | `project` | REQUIRED | string | Human-readable name of the project or documentation site. |
 | `version` | RECOMMENDED | string | Semver version of this manifest. Increment when units are added or removed. |
 | `updated` | RECOMMENDED | string | ISO 8601 date (`YYYY-MM-DD`) when this manifest was last modified. |
@@ -879,7 +879,7 @@ a whole does NOT cover. It is an advisory scope boundary that helps an agent dec
 to federate to another manifest (§3.6) rather than searching this one at all.
 
 ```yaml
-kcp_version: "0.19"
+kcp_version: "0.20"
 project: "Payments Service Docs"
 
 not_for:
@@ -909,7 +909,7 @@ multi-team manifests to share a common base, adapt individual units, and suppres
 units — without forking or copying.
 
 ```yaml
-kcp_version: "0.19"
+kcp_version: "0.20"
 
 composition:
   includes:
@@ -2274,7 +2274,7 @@ Unknown relationship types MUST be silently ignored.
 ### 6.1 Spec Version (`kcp_version`)
 
 `kcp_version` identifies which version of this specification the manifest conforms to. Current
-valid value: `"0.19"`. The values `"0.1"` through `"0.14"`, `"0.16"`, `"0.17"`, and `"0.18"`,
+valid value: `"0.20"`. The values `"0.1"` through `"0.14"`, `"0.16"`, `"0.17"`, `"0.18"`, and `"0.19"`,
 refer to prior drafts (January–June 2026); parsers SHOULD treat these manifests as conformant
 with this version, as each release since v0.11 is a strict superset of its predecessor (new
 fields only, no removals or breaking changes). There is no `"0.15"` spec version: that number
@@ -2699,6 +2699,8 @@ federation_scope: declared
 | `has_capabilities` | `list[string]` | absent | Agent-declared capability set. Units whose `requires_capabilities` contains values not in this list are excluded. See §15.5. |
 | `exclude_stale` | `boolean` | `false` | When `true`, exclude units that compute as stale per their `freshness_policy`. See §15.6. |
 | `federation_scope` | `string` | `local` | Controls cross-manifest query range. See §15.7. |
+| `as_of` | ISO 8601 date | current date | Point-in-time query. Return only units active on this date: `valid_from ≤ as_of` AND (`valid_until` is null OR `valid_until ≥ as_of`). Bridges without temporal evaluation MUST ignore this parameter. See §15.13. v0.20. |
+| `include_all_temporal` | boolean | `false` | When `true`, return all units regardless of temporal validity. Overrides default temporal filtering. Mutually exclusive with a non-default `as_of` — if both are supplied, the bridge MUST return error code `temporal_query_conflict`. Bridges without temporal evaluation MUST ignore this parameter. See §15.13. v0.20. |
 
 ---
 
@@ -3044,6 +3046,64 @@ exclude units solely because a `temporal` block is present. This ensures backwar
 behaviour: a manifest authored with `valid_until` dates will degrade gracefully on older bridges
 (all units remain visible) rather than silently losing content.
 
+Query parameters `as_of` and `include_all_temporal` extend this default behaviour. See §15.13.
+
+---
+
+### 15.13 Temporal Query Parameters (`as_of`, `include_all_temporal`) (v0.20)
+
+The two temporal query parameters from RFC-0010 extend §15.12 for point-in-time
+reconstruction and audit mode.
+
+#### `as_of` (ISO 8601 date, default: current date)
+
+When `as_of` is set, a unit is **temporally included** if and only if:
+
+- The unit has no `temporal` block, **or**
+- `valid_from` is null **or** `valid_from ≤ as_of`, **and**
+- `valid_until` is null **or** `valid_until ≥ as_of`
+
+This enables point-in-time queries: an agent or auditor can reconstruct which
+units were active on any past or future date.
+
+When `as_of` is absent, the current date (`today`) is used — equivalent to the
+default behaviour described in §15.12.
+
+#### `include_all_temporal` (boolean, default: false)
+
+When `include_all_temporal: true`, temporal filtering is bypassed entirely. All
+units are returned regardless of `valid_from`, `valid_until`, or `superseded_by`.
+The `temporal` block is included in every result, allowing audit tooling to inspect
+validity windows.
+
+#### Mutual exclusion
+
+If both `as_of` (a date other than today) and `include_all_temporal: true` are
+present in the same request, the bridge MUST return an error with code
+`temporal_query_conflict`. It MUST NOT silently ignore either parameter.
+
+#### Filter order
+
+The complete filter order remains:
+
+> **score → `not_for` filter → temporal filter → top-N cut**
+
+The temporal filter step applies `as_of` or `include_all_temporal` instead of the
+default today-based evaluation.
+
+#### Conformance
+
+Bridges that declare Level 2 temporal support (§8) MUST implement both parameters
+per C16 (§16.5). Bridges that do not implement temporal evaluation MUST ignore both
+parameters and return currently-active units as usual.
+
+| Feature | Level | Notes |
+|---------|-------|-------|
+| Default temporal filtering (§15.12) | Level 2 | RECOMMENDED. Absent = all units treated as active. |
+| `as_of` parameter | Level 2 | Part of C16 (§16.5). |
+| `include_all_temporal` parameter | Level 2 | Part of C16 (§16.5). |
+| `temporal_query_conflict` error | Level 2 | MUST when both non-default params present. |
+
 ---
 
 ## 16. Trusted Render Pipeline (v0.16)
@@ -3154,7 +3214,7 @@ minimum trigger `on_failure: warn` (§3.6). Pinning applies per-edge.
 
 ### 16.5 Renderer conformance
 
-A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18), and C15 (RFC-0020, v0.19):
+A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18), C15 (RFC-0020, v0.19), and C16 (v0.20):
 
 - **C1–C10** (RFC-0018): determinism (C1), fail-closed emission (C2), schema-only output (C3),
   no `load_eligible: true` on executable/service/unknown kinds (C4), no auto-traversal below
@@ -3175,6 +3235,12 @@ A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18)
   §7 warnings for `integrity` mismatches, circular includes, and override/exclude references to
   nonexistent unit ids; never allows included sources with lower-tier signatures to elevate the
   composed result's tier.
+- **C16** (v0.20): Bridges that implement temporal query evaluation (§15.13) MUST: (a) apply
+  default temporal filtering against today when neither `as_of` nor `include_all_temporal`
+  is set; (b) honor `as_of` for point-in-time reconstruction using `valid_from`/`valid_until`
+  bounds; (c) bypass temporal filtering when `include_all_temporal: true`; (d) return error
+  code `temporal_query_conflict` when both a non-default `as_of` and `include_all_temporal:
+  true` are present in the same request.
 
 The reference implementation is `kcp render` in [`cli/`](./cli/); the validation corpus lives
 in [`experiments/rfc-0018-render/`](./experiments/rfc-0018-render/) (cases A10–A12, B17–B20
@@ -3207,7 +3273,7 @@ between commits is a security signal, diffable in CI.
 ## Appendix A: Minimal Example
 
 ```yaml
-kcp_version: "0.19"
+kcp_version: "0.20"
 project: my-project
 version: 1.0.0
 units:
@@ -3223,7 +3289,7 @@ units:
 ## Appendix B: Full Example
 
 ```yaml
-kcp_version: "0.19"
+kcp_version: "0.20"
 project: wiki.example.org
 version: 2.3.0
 updated: "2026-03-07"

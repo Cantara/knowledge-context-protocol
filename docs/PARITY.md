@@ -3,7 +3,7 @@
 All three bridges (TypeScript, Java, Python) are required to stay at feature parity on **MCP tools and prompts**.
 Static generation CLI flags (Tier 2) are currently TS + Java only — Python support is planned.
 
-**Current version:** 0.15.0 (all three bridges)
+**Current version:** 0.20.0 (all three bridges — aligned with KCP spec version)
 
 > Scope note: the `kcp` developer CLI (`cli/` — init, validate, query, stats, and as of
 > spec v0.16 `render`) versions independently of the bridges and is outside this parity
@@ -38,6 +38,7 @@ When adding any MCP capability:
 | `search_knowledge`: `token_estimate` field | ✅ | ✅ | ✅ | from hints.token_estimate |
 | `search_knowledge`: `summary_unit` field | ✅ | ✅ | ✅ | from hints.summary_unit |
 | `search_knowledge`: `not_for` filter (§15.11) | ✅ | ✅ | ✅ | strict exclusion + soft demotion with `caution` field |
+| `search_knowledge`: temporal query `as_of` / `include_all_temporal` (§15.13) | ✅ | ✅ | ✅ | point-in-time filtering, conflict error on mutual exclusion |
 | `get_unit` tool | ✅ | ✅ | ❌ | **gap — Python needs this** |
 | `list_manifests` tool | ✅ | ✅ | ✅ | lists declared sub-manifests (federation §3.6) |
 | `get_command_syntax` tool | ✅ | ✅ | ❌ | **gap — Python needs this** (requires `--commands-dir`) |
@@ -74,14 +75,14 @@ When adding any MCP capability:
 
 ---
 
-## Test counts (v0.15.0)
+## Test counts (v0.20.0)
 
 | Bridge | Tests |
 |--------|------:|
-| TypeScript (vitest) | 160 |
-| Java (JUnit) | 145 |
-| Python (pytest) | 132 |
-| **Total** | **437** |
+| TypeScript (vitest) | 163 |
+| Java (JUnit) | 147 |
+| Python (pytest) | 135 |
+| **Total** | **445** |
 
 ---
 
@@ -109,6 +110,7 @@ Closing these gaps is the next Python bridge milestone (target: v0.15.0).
 | 0.10.0 | 2026-03-06 | Three-tier static integration, `--generate-all`, full parity |
 | 0.14.0 | 2026-03-15 | RFC-0007 query baseline: `sensitivity_max`, `exclude_deprecated`, `match_reason`, `token_estimate`, `summary_unit` — all three bridges. Python bridge added to parity tracking. |
 | 0.15.0 | 2026-06-12 | §15.11 `not_for` filtering: strict exclusion + soft score halving with `caution` annotation — all three bridges. |
+| 0.20.0 | 2026-06-12 | §15.13 temporal query: `as_of` + `include_all_temporal` parameters, `temporal_query_conflict` error — all three bridges. Bridge versions now aligned with KCP spec version. |
 
 > **Note:** v0.7.0--v0.9.0 were internal development milestones that shipped combined as v0.10.0.
 > v0.11.0--v0.13.0 were bridge feature additions that culminated in v0.14.0.

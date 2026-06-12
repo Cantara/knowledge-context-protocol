@@ -2,6 +2,7 @@
 
 import type { KnowledgeManifest, KnowledgeUnit } from "./model.js";
 
+
 interface SearchResult {
   id: string;
   intent: string;
@@ -10,6 +11,18 @@ interface SearchResult {
   score: number;
   match_reason: string[];
   caution: string | null;
+}
+
+/**
+ * Temporal activity check (§15.13): returns false if the unit has expired
+ * before asOf or has not started yet. Units without a temporal block are always active.
+ */
+export function isTemporallyActive(unit: KnowledgeUnit, asOf: string): boolean {
+  const t = unit.temporal;
+  if (!t) return true;
+  if (t.valid_from && t.valid_from > asOf) return false;
+  if (t.valid_until && t.valid_until < asOf) return false;
+  return true;
 }
 
 /**
@@ -104,7 +117,11 @@ export function applyNotFor(
   return out;
 }
 
-export function runQuery(manifest: KnowledgeManifest, query: string): void {
+export function runQuery(
+  manifest: KnowledgeManifest,
+  query: string,
+  options?: { asOf?: string; includeAllTemporal?: boolean }
+): void {
   const terms = query
     .toLowerCase()
     .split(/\s+/)
@@ -119,9 +136,16 @@ export function runQuery(manifest: KnowledgeManifest, query: string): void {
     .map((unit) => scoreUnit(unit, terms))
     .filter((r) => r.score > 0);
   // §15.11: not_for is evaluated after scoring, before the top-N cut.
-  const results = applyNotFor(manifest.units, scored, terms)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5);
+  const withNotFor = applyNotFor(manifest.units, scored, terms);
+  // §15.13: temporal filter applied after not_for, before top-N cut.
+  const temporalDate = options?.asOf ?? new Date().toISOString().slice(0, 10);
+  const withTemporal = options?.includeAllTemporal
+    ? withNotFor
+    : withNotFor.filter((r) => {
+        const unit = manifest.units.find((u) => u.id === r.id);
+        return unit ? isTemporallyActive(unit, temporalDate) : true;
+      });
+  const results = withTemporal.sort((a, b) => b.score - a.score).slice(0, 5);
 
   if (results.length === 0) {
     process.stdout.write(`No units matched "${query}".\n`);

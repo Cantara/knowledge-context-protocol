@@ -276,6 +276,39 @@ describe("search_knowledge tool", () => {
     }
     await client.close();
   });
+
+  // ── §15.13 temporal query filtering ──────────────────────────────────────
+
+  it("excludes future and expired units by default temporal filter (§15.13)", async () => {
+    const client = await connectClient(join(RFC007_DIR, "knowledge.yaml"));
+    // "future" matches future-feature trigger (valid_from: 2099) → excluded by default temporal
+    // "legacy" matches legacy-guide trigger (valid_until: 2020) → excluded by default temporal
+    const result = await client.callTool({
+      name: "search_knowledge",
+      arguments: { query: "future legacy integration" },
+    });
+    const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+    if (text.startsWith("[")) {
+      const results = JSON.parse(text);
+      const ids = results.map((r: { id: string }) => r.id);
+      expect(ids).not.toContain("future-feature");
+      expect(ids).not.toContain("legacy-guide");
+    }
+    await client.close();
+  });
+
+  it("includes temporally inactive units when include_all_temporal is true (§15.13)", async () => {
+    const client = await connectClient(join(RFC007_DIR, "knowledge.yaml"));
+    const result = await client.callTool({
+      name: "search_knowledge",
+      arguments: { query: "future feature upcoming", include_all_temporal: true },
+    });
+    const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+    const results = JSON.parse(text);
+    const ids = results.map((r: { id: string }) => r.id);
+    expect(ids).toContain("future-feature");
+    await client.close();
+  });
 });
 
 describe("get_unit tool", () => {

@@ -217,6 +217,21 @@ def _parse_content_hash(data) -> Optional[ContentHash]:
     )
 
 
+def _parse_temporal(data) -> Optional["Temporal"]:
+    """Parse a temporal block (unit or manifest root). See RFC-0010 / §4.22 (v0.19)."""
+    if data is None:
+        return None
+    if not isinstance(data, dict):
+        return None
+    from kcp.model import Temporal
+    return Temporal(
+        valid_from=str(data["valid_from"]) if data.get("valid_from") is not None else None,
+        valid_until=str(data["valid_until"]) if data.get("valid_until") is not None else None,
+        recorded_at=str(data["recorded_at"]) if data.get("recorded_at") is not None else None,
+        superseded_by=str(data["superseded_by"]) if data.get("superseded_by") is not None else None,
+    )
+
+
 def _parse_external_dependency(data: dict) -> ExternalDependency:
     """Parse an external_depends_on entry."""
     return ExternalDependency(
@@ -294,6 +309,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
             not_for_strict=None if u.get("not_for_strict") is None else bool(u.get("not_for_strict")),
             content_structure=_parse_content_structure(u.get("content_structure")),
             content_hash=_parse_content_hash(u.get("content_hash")),
+            temporal=_parse_temporal(u.get("temporal")),
         )
         for u in data.get("units", [])
     ]
@@ -333,4 +349,5 @@ def parse_dict(data: dict) -> KnowledgeManifest:
         authority=_parse_authority(data.get("authority")),
         discovery=_parse_discovery(data.get("discovery")),
         not_for=_as_string_list(data.get("not_for"), default=[]),
+        temporal=_parse_temporal(data.get("temporal")),
     )

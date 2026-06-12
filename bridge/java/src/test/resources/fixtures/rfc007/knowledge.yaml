@@ -60,3 +60,21 @@ units:
     not_for:
       - "external"
     not_for_strict: true
+
+  - id: future-feature
+    path: README.md
+    intent: "Future feature documentation not yet released"
+    scope: global
+    audience: [agent, developer]
+    triggers: [future, feature, upcoming]
+    temporal:
+      valid_from: "2099-01-01"
+
+  - id: legacy-guide
+    path: README.md
+    intent: "Legacy integration guide for retired systems"
+    scope: global
+    audience: [agent, developer]
+    triggers: [legacy, integration, retired]
+    temporal:
+      valid_until: "2020-12-31"
