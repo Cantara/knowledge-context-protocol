@@ -8,7 +8,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### Security — RFC-0022 Composition Integrity (draft, targets v0.21)
+---
+
+## [0.21.0] — 2026-06-13 — Composition Integrity & Federation Temporal
+
+**Spec version:** `"0.21"` | **Prior:** `"0.20"` (v0.20.0, 2026-06-12)
+
+### Federation temporal — RFC-0021 (promoted to SPEC §3.6, §16.5 C18)
+
+- **`manifests[].temporal` block:** an OPTIONAL source-level validity window
+  (`valid_from`, `valid_until`, `superseded_by`) on federation entries. Declares when a
+  sub-manifest is relevant *as a knowledge source*, distinct from unit-level `temporal`
+  (§4.22) which declares when individual knowledge is valid. Hub author controls source
+  relevance; sub-manifest author controls unit validity.
+- **Skip-before-fetch (Level 2):** bridges MUST NOT fetch sub-manifests outside their
+  validity window for the effective date (`as_of` or today) — no HTTP request, no unit
+  loading. `include_all_temporal: true` bypasses. Manifest-level temporal applies before
+  unit-level temporal. Filtering removes sources only; it never elevates trust.
+- **Validation:** `superseded_by` cycles among `manifests[]` entries are a manifest error;
+  dangling/stale/empty-window cases are §7 warnings.
+
+### Security — RFC-0022 Composition Integrity (promoted to SPEC §3.11, §16.5 C17, §4.22)
 
 - **T10 (composition include substitution):** a `trusted`, signed manifest that
   `composition.includes` a source it does not authenticate would have its included
@@ -32,6 +52,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   validity window (`valid_until` earlier than `valid_from`).
 - Regression guards added (`cli/src/consistency.test.ts`) asserting the enforcing
   composition language and the corrected temporal warnings remain in the spec.
+
+### Notes
+
+- `manifests[].temporal` parser exposure (Level 1) and the composition resolver (which C17
+  governs) are not yet implemented in the reference bridges/renderer; the spec promotion lands
+  ahead of implementation, as the composition-integrity correction (RFC-0022) did deliberately.
 
 ---
 

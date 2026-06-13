@@ -10,7 +10,7 @@ The Knowledge Context Protocol (KCP) specification -- a structured metadata stan
 
 ## Architecture
 KCP defines a `knowledge.yaml` manifest format with hierarchical units, each having intent, scope, audience, triggers, and dependency relationships. The spec supports 4 levels of adoption (L1-L4) from basic file listing to full agent orchestration. Includes:
-- **Spec:** `SPEC.md` (core specification, currently v0.20; note: there is no v0.15 — the number was skipped to re-sync with the CLI release train)
+- **Spec:** `SPEC.md` (core specification, currently v0.21; note: there is no v0.15 — the number was skipped to re-sync with the CLI release train)
 - **RFCs:** 22 RFCs (auth, federation, trust, payments, context-window hints, query vocabulary, visibility/authority, discovery provenance, catalog, composition, negative space, content structure, observability, trusted render pipeline, unit content integrity, bi-temporal validity, temporal composition, federation temporal, composition integrity); promoted ones are marked Accepted in their headers
 - **Bridges:** TypeScript, Java, Python parsers that surface KCP metadata via MCP
 - **CLI:** `kcp` developer CLI — init, validate, query, stats, render (§16 trusted render pipeline)

@@ -1,6 +1,6 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.20
+**Version:** 0.21
 **Status:** Draft
 **Date:** 2026-06-12
 **Repository:** github.com/cantara/knowledge-context-protocol
@@ -621,6 +621,7 @@ manifests:
 | `local_mirror` | OPTIONAL | string | Relative path (forward slashes, relative to this manifest) to a local copy of the remote manifest. When present and the file exists, parsers MUST load from that path instead of fetching `url`. |
 | `version_pin` | OPTIONAL | string | Semver version to pin this sub-manifest to. When present, validators SHOULD compare against the remote manifest's `version` field. See version pinning below. |
 | `version_policy` | OPTIONAL | string | How to interpret `version_pin`. Values: `exact` (versions must be equal), `minimum` (remote version >= pin), `compatible` (same major version, default). Unknown values MUST be treated as `compatible`. |
+| `temporal` | OPTIONAL | object | Source-level validity window. See `manifests[].temporal` below (v0.21). |
 
 #### `manifests[].relationship` values
 
@@ -633,6 +634,60 @@ manifests:
 | `archive` | Sub-manifest is historical. Agents MAY skip unless specifically requested. |
 
 Unknown `relationship` values MUST be silently ignored.
+
+#### `manifests[].temporal` (v0.21)
+
+Promoted from [RFC-0021](./RFC-0021-Federation-Temporal.md). An OPTIONAL `temporal` block on a
+`manifests[]` entry declares when the sub-manifest is relevant **as a knowledge source** —
+distinct from unit-level `temporal` (§4.22), which declares when individual knowledge is valid
+in the world. The hub author controls source relevance; the sub-manifest author controls unit
+validity. The two compose as independent filter stages.
+
+```yaml
+manifests:
+  - id: gdpr-corpus-2018
+    url: "https://legal.example.com/gdpr-2018/knowledge.yaml"
+    relationship: governs
+    temporal:
+      valid_from: "2018-05-25"
+      valid_until: "2023-09-01"
+      superseded_by: gdpr-corpus-2023   # references another manifests[].id
+```
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `valid_from` | OPTIONAL | ISO 8601 date or datetime | When the sub-manifest became relevant as a source. Absent = relevant from an unbounded past. |
+| `valid_until` | OPTIONAL | ISO 8601 date or datetime | When the sub-manifest ceased to be relevant. Absent = relevant indefinitely. |
+| `superseded_by` | OPTIONAL | string | The `id` of another `manifests[]` entry that replaces this one. Cycles MUST be detected and reported as a manifest error. |
+
+`recorded_at` is intentionally omitted — transaction time is a unit-authoring concept; the hub's
+own root-level `temporal.recorded_at` already covers when the hub recorded its federation list.
+
+**Resolution behaviour (Level 2):**
+- The effective date is `as_of` if set, else today (§15.13).
+- A sub-manifest is *temporally included* iff it has no `temporal` block, OR
+  (`valid_from` is null or `valid_from <= effective_date`) AND
+  (`valid_until` is null or `valid_until >= effective_date`).
+- Sub-manifests that fail this filter MUST NOT be fetched: the bridge skips them entirely — no
+  HTTP request, no unit loading, no unit-level temporal evaluation.
+- `include_all_temporal: true` (§15.13) bypasses manifest-level filtering and traverses all
+  sub-manifests, consistent with its unit-level semantics.
+- Manifest-level temporal applies *before* unit-level temporal. The full federated filter order
+  is: manifest-level temporal filter → fetch sub-manifest → score → `not_for` → unit-level
+  temporal → top-N cut. A skipped sub-manifest simply produces no results — invisible to the
+  caller, identical to a sub-manifest with no matching units.
+- Manifest-level temporal removes sources only; it never elevates trust. Filtering and trust
+  tiering (§16) are orthogonal — a temporally-included edge is still tiered per §16.
+
+**Validation:**
+- `superseded_by` referencing a nonexistent `manifests[].id`: §7 warning.
+- `valid_until` in the past with no `superseded_by`: §7 warning (stale federation link).
+- `valid_until` earlier than `valid_from`: §7 warning (empty window).
+- `superseded_by` cycles among `manifests[]` entries: manifest ERROR (parsers MUST detect),
+  consistent with the unit-level rule (§4.22).
+
+**Conformance:** Parse and expose `manifests[].temporal` and detect `superseded_by` cycles —
+Level 1. Manifest-level temporal filtering at resolution time — Level 2 (C18).
 
 #### Transitive resolution
 
@@ -3235,7 +3290,7 @@ minimum trigger `on_failure: warn` (§3.6). Pinning applies per-edge.
 
 ### 16.5 Renderer conformance
 
-A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18), C15 (RFC-0020, v0.19), C16 (v0.20), and C17 (RFC-0022, v0.21):
+A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18), C15 (RFC-0020, v0.19), C16 (v0.20), C17 (RFC-0022, v0.21), and C18 (RFC-0021, v0.21):
 
 - **C1–C10** (RFC-0018): determinism (C1), fail-closed emission (C2), schema-only output (C3),
   no `load_eligible: true` on executable/service/unknown kinds (C4), no auto-traversal below
@@ -3269,6 +3324,12 @@ A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18)
   MUST emit a §7 warning for every `failed` include recording field, expected, and observed
   values. A signature over the composing file does not authenticate the bytes its includes
   resolve to.
+- **C18** (v0.21): Bridges that implement federated temporal evaluation (§3.6
+  `manifests[].temporal`) MUST: (a) compute the effective date as `as_of` if set, else today;
+  (b) skip — never fetch — sub-manifests outside their validity window; (c) bypass
+  manifest-level filtering when `include_all_temporal: true`; (d) apply manifest-level temporal
+  before unit-level temporal. Parsers MUST detect `superseded_by` cycles among `manifests[]`
+  entries as a manifest error.
 
 The reference implementation is `kcp render` in [`cli/`](./cli/); the validation corpus lives
 in [`experiments/rfc-0018-render/`](./experiments/rfc-0018-render/) (cases A10–A12, B17–B20

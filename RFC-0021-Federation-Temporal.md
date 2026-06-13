@@ -1,6 +1,6 @@
 # RFC-0021: Federation-Level Temporal Validity
 
-**Status:** Request for Comments
+**Status:** Accepted — promoted to SPEC.md §3.6 (`manifests[].temporal`) and §16.5 C18 (v0.21).
 **Author:** Thor Henning Hetland (eXOReaction AS)
 **Created:** 2026-06-13
 **Target version:** v0.21
