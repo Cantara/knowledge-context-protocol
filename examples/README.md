@@ -105,6 +105,21 @@ Validates clean: `kcp validate examples/temporal-validity/knowledge.yaml`.
 
 ---
 
+## [trusted-render-demo/](./trusted-render-demo/)
+
+**Interactive walk-through of the trusted render pipeline (RFC-0018/0019/0022, SPEC §16).**
+
+A runnable, narrated demo that drives the shipping `kcp render` through one scenario per attack in its threat model — the happy path (org-signed, allowlisted → `trusted`), an unknown source (`unsigned`), manifest relocation (T9), signature stripping (T7), imperative injection (T1), and composition substitution (T10). Each scenario shows the real render command, its authentic output, and what the verdict means.
+
+```bash
+(cd cli && npm install && npm run build)   # one-time
+node examples/trusted-render-demo/demo.js   # all scenarios
+```
+
+The browser version at [`docs/render-simulator.html`](../docs/render-simulator.html) replays captures from this demo (`node demo.js --capture`) — it never reimplements the renderer, so it can't drift.
+
+---
+
 ## Simulation Scenarios
 
 Five runnable Java simulators that stress-test the A2A + KCP composition model at increasing complexity. Each surfaces specific spec behaviours and gaps, contributing to the v0.9+ roadmap (now through v0.10).
