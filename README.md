@@ -17,7 +17,7 @@ MCP solved the tool connectivity problem. KCP addresses the knowledge structure 
 Drop a `knowledge.yaml` at the root of any project. Agents stop guessing and start navigating.
 
 ```yaml
-kcp_version: "0.17"
+kcp_version: "0.21"
 project: my-project
 version: 1.0.0
 units:
@@ -67,6 +67,9 @@ project or documentation site. It adds the metadata layer that llms.txt cannot e
 - **Freshness**: when each unit was last validated, and against what
 - **Selective loading**: agents query by task context, not by URL guessing
 - **Audience targeting**: which units are for humans, which for agents, which for both
+- **Trust & integrity** (v0.16+): signed manifests, per-unit content hashes, and a trusted render pipeline so execution-capable agents never ingest unauthenticated prose
+- **Temporal validity** (v0.19+): validity windows (`valid_from`/`valid_until`), supersession chains, and point-in-time (`as_of`) queries for audit and future-dated policy
+- **Composition** (v0.19+): compose manifests from other manifests — include, override, exclude — without forking
 
 ---
 
@@ -206,7 +209,7 @@ external_relationships:                # optional — cross-manifest relationshi
 Five fields per unit are enough to start:
 
 ```yaml
-kcp_version: "0.17"
+kcp_version: "0.21"
 project: my-project
 version: 1.0.0
 units:
@@ -225,7 +228,7 @@ The standard allows complexity but does not demand it.
 
 ```yaml
 # knowledge.yaml
-kcp_version: "0.17"
+kcp_version: "0.21"
 project: wiki.example.org
 version: 1.0.0
 updated: "2026-02-28"
@@ -411,7 +414,7 @@ Until formal acceptance, KCP remains an Apache 2.0 open specification proposed b
 
 ## Status
 
-**Current:** Draft specification — v0.17 (there is no v0.15 spec; the number was skipped to re-sync with the `kcp` CLI release train)
+**Current:** Draft specification — v0.21 (there is no v0.15 spec; the number was skipped to re-sync with the `kcp` CLI release train)
 
 The format is intentionally minimal and builds incrementally through promoted RFCs. Feedback, use cases, and pull requests are welcome.
 
@@ -424,20 +427,38 @@ The format is intentionally minimal and builds incrementally through promoted RF
 - **[RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md)** — Payment and rate-limit metadata proposal (`payment.default_tier` promoted to core in v0.5; `rate_limits` promoted to core in v0.8; payment methods and x402 remain RFC)
 - **[RFC-0006](./RFC-0006-Context-Window-Hints.md)** — Context window hints (accepted; promoted to SPEC.md §4.10 in v0.4)
 - **[RFC-0007](./RFC-0007-Query-Vocabulary.md)** — Query vocabulary (accepted; promoted to SPEC.md §15 in v0.14): `terms`, `audience`, `max_token_budget`, `has_capabilities`, `exclude_stale`, `federation_scope`
-- **[RFC-0008](./RFC-0008-Budget-Constrained-Selection.md)** — Budget-constrained selection (accepted; promoted to SPEC.md §15 in v0.14): scored results, token-budget-aware ranking
-- **[RFC-0012](./RFC-0012-Capability-Discovery-Provenance.md)** — Capability discovery provenance (accepted; promoted to SPEC.md v0.12): `discovery` block with `verification_status`, `confidence`, `source`, `contradicted_by`
-- **[RFC-0014](./RFC-0014-Manifest-Composition.md)** — Manifest composition (open RFC): `includes`, `overrides`, `excludes` — inherit base manifests without forking. Open for discussion.
+- **[RFC-0008](./RFC-0008-Agent-Readiness.md)** — Agent readiness and budget-constrained selection (accepted; promoted to SPEC.md §15 in v0.14): scored results, token-budget-aware ranking, `freshness_policy`
+- **[RFC-0009](./RFC-0009-Visibility-and-Authority.md)** — Visibility and authority (accepted; promoted to SPEC.md in v0.12): `visibility` conditions and `authority` action permissions (read/summarize/modify/share/execute)
+- **[RFC-0010](./RFC-0010-Bi-Temporal-Unit-Validity.md)** — Bi-temporal unit validity (accepted; schema promoted §4.22 in v0.19, query layer §15.13 in v0.20): `temporal` block with valid-time (`valid_from`/`valid_until`) and transaction-time (`recorded_at`/`superseded_by`), plus `as_of` / `include_all_temporal` queries
+- **[RFC-0011](./RFC-0011-Org-Federation.md)** — Organisational federation patterns (RFC): hub-and-spoke and multi-org topologies over the §3.6 federation core
+- **[RFC-0012](./RFC-0012-Capability-Discovery-Provenance.md)** — Capability discovery provenance (accepted; promoted to SPEC.md v0.12): `discovery` block with `verification_status`, `confidence`, `source`, `contradicted_by`; `verified_by`/`evidence` added in v0.19
+- **[RFC-0013](./RFC-0013-Cartridge-Catalog-Distribution.md)** — Cartridge catalog and distribution (RFC; see [CATALOG-SPEC.md](./CATALOG-SPEC.md)): packaging and distributing reusable knowledge cartridges
+- **[RFC-0014](./RFC-0014-Manifest-Composition.md)** — Manifest composition (accepted; core promoted to SPEC.md §3.11 in v0.19 via RFC-0020): `includes`, `overrides`, `excludes` — inherit base manifests without forking
 - **[RFC-0015](./RFC-0015-Negative-Space-Declarations.md)** — Negative space declarations (accepted; promoted to SPEC.md in v0.17): `not_for` declares what a unit does NOT answer. `not_for_strict: true` for hard exclusion. First subtractive field in the spec.
 - **[RFC-0016](./RFC-0016-Content-Structure-Declaration.md)** — Content structure declaration (accepted; promoted to SPEC.md in v0.17): `content_structure.primary` (prose/table/code/list/diagram/reference/mixed), `contains`, `density` (sparse/normal/dense). Lets RAG pipelines route before fetching.
 - **[RFC-0017](./RFC-0017-Observability-Hooks.md)** — Observability hooks (accepted; promoted to SPEC.md §17 in v0.16): local-first usage event schema at `~/.kcp/usage.db`, extended with `render_events`/`quarantine_events`. Powers `kcp stats`.
-- **[RFC-0018](./RFC-0018-Trusted-Render-Pipeline.md)** — Trusted render pipeline (accepted; promoted to SPEC.md §16 in v0.16): `kcp render` emits a sanitized, trust-tiered artifact so execution-capable agents never ingest raw manifest prose. Activates RFC-0004 `content_integrity` (EdDSA/JWS); adds `declared` to the RFC-0012 vocabulary. Validated by 22 executable experiments (`experiments/rfc-0018-render/`).
-- **parsers/** — Reference parser/validator implementations (Python, Java) — 401 tests passing
+- **[RFC-0018](./RFC-0018-Trusted-Render-Pipeline.md)** — Trusted render pipeline (accepted; promoted to SPEC.md §16 in v0.16): `kcp render` emits a sanitized, trust-tiered artifact so execution-capable agents never ingest raw manifest prose. Activates RFC-0004 `content_integrity` (EdDSA/JWS); adds `declared` to the RFC-0012 vocabulary. Validated by executable experiments (`experiments/rfc-0018-render/`).
+- **[RFC-0019](./RFC-0019-Unit-Content-Integrity-and-Origin-Evidence.md)** — Unit content integrity and origin evidence (accepted; promoted in v0.18): per-unit `content_hash` binds referenced files to the signed manifest; origin evidence classes close the manifest-relocation attack (T9). Conformance C11–C14.
+- **[RFC-0020](./RFC-0020-Temporal-Composition.md)** — Temporal composition (accepted; promoted to SPEC.md §4.22/§3.11 in v0.19): promotes the bi-temporal schema and manifest composition together, with integrity-pinned includes and `discovery.verified_by`/`evidence`. Conformance C15.
+- **[RFC-0021](./RFC-0021-Federation-Temporal.md)** — Federation-level temporal validity (accepted; promoted to SPEC.md §3.6 in v0.21): `manifests[].temporal` lets a hub declare when a federated source is relevant; bridges skip out-of-window sub-manifests before fetching. Conformance C18.
+- **[RFC-0022](./RFC-0022-Composition-Integrity.md)** — Composition integrity (accepted; promoted in v0.21): makes composition `integrity` enforcing at `trusted` tier (an unauthenticated include can't reach standing context), closing the composition-substitution attack (T10). Conformance C17.
+- **parsers/** — Reference parser/validator implementations (Python, Java) with full cross-language test suites (parser, validator, conformance)
 - **bridge/** — MCP servers: expose any `knowledge.yaml` as MCP resources (TypeScript · Python · Java). The TypeScript parser, validator, and mapper live in `bridge/typescript/src/` (parser.ts, validator.ts, mapper.ts).
 - **cli/** — Developer CLI: `init`, `validate`, `query`, `stats`. Installed automatically by [kcp-commands](https://github.com/Cantara/kcp-commands) — run `kcp stats` to see queries served, tokens saved, and top units from your local usage log.
 - **plugins/opencode/** — OpenCode plugin (`opencode-kcp-plugin` on npm)
 - **examples/** — Reference manifests at four adoption levels plus 4 simulation scenarios (150 adversarial tests: A2A+KCP clinical research, energy metering HITL, legal delegation chains, financial AML)
 - **[kcp-memory](https://github.com/Cantara/kcp-memory)** — Episodic memory daemon for Claude Code (separate repo)
 - **[kcp-dashboard](https://github.com/Cantara/kcp-dashboard)** — Live terminal dashboard for KCP usage stats (Go + Bubble Tea, single binary)
+
+---
+
+## Further Reading
+
+Background writing on the design and practice of KCP and AI-augmented development by the author:
+
+- **[Thor Henning Hetland — Writing](https://wiki.totto.org/blog/)** · the blog index
+- **[AI-Augmented Development](https://wiki.totto.org/blog/category/ai-augmented-development/)** · the series the KCP articles belong to (manifest design, the knowledge layer, applying KCP to agent frameworks)
+- **[The Prompt Cache as Infrastructure](https://wiki.totto.org/blog/2026/03/04/the-prompt-cache-as-infrastructure-lessons-from-3007-claude-code-sessions/)** · why a structured knowledge layer belongs in the cache between sessions
 
 ---
 

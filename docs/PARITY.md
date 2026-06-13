@@ -3,7 +3,7 @@
 All three bridges (TypeScript, Java, Python) are required to stay at feature parity on **MCP tools and prompts**.
 Static generation CLI flags (Tier 2) are currently TS + Java only — Python support is planned.
 
-**Current version:** 0.20.0 (all three bridges — aligned with KCP spec version)
+**Current version:** 0.21.0 (all three bridges — aligned with KCP spec version)
 
 > Scope note: the `kcp` developer CLI (`cli/` — init, validate, query, stats, and as of
 > spec v0.16 `render`) versions independently of the bridges and is outside this parity
@@ -103,6 +103,7 @@ No known gaps — all three bridges are at full parity.
 | 0.15.0 | 2026-06-12 | §15.11 `not_for` filtering: strict exclusion + soft score halving with `caution` annotation — all three bridges. |
 | 0.20.0 | 2026-06-12 | §15.13 temporal query: `as_of` + `include_all_temporal` parameters, `temporal_query_conflict` error — all three bridges. Bridge versions now aligned with KCP spec version. |
 | 0.20.1 | 2026-06-13 | Python bridge: added `sdd-review` and `kcp-explore` MCP prompts — closes last Tier 1 parity gaps. |
+| 0.21.0 | 2026-06-13 | Spec v0.21: parsers expose `manifests[].temporal` (RFC-0021) and `discovery.verified_by`/`evidence`; temporal validation (`superseded_by` cycle detection, validity-window §7 warnings) implemented in all four parser/validator implementations. Bridge skip-before-fetch federation temporal filtering deferred. |
 
 > **Note:** v0.7.0--v0.9.0 were internal development milestones that shipped combined as v0.10.0.
 > v0.11.0--v0.13.0 were bridge feature additions that culminated in v0.14.0.

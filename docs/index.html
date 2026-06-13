@@ -102,7 +102,7 @@
   <section class="hero" id="hero">
     <div class="container">
       <div class="hero__badge">
-        <span>v0.16 Spec</span>
+        <span>v0.21 Spec</span>
         &middot;
         <span>Open Standard</span>
         &middot;
@@ -644,7 +644,7 @@ relationships:
               <pre><code id="ex-minimal" class="language-yaml"># Minimal KCP example — five minutes to add.
 # This is a valid knowledge.yaml at Level 1 conformance.
 
-kcp_version: "0.16"
+kcp_version: "0.21"
 project: my-project
 version: 1.0.0
 
@@ -672,7 +672,7 @@ units:
               <pre><code id="ex-personal" class="language-yaml"># Personal site / portfolio example
 # Shows: audience differentiation, freshness, depends_on
 
-kcp_version: "0.16"
+kcp_version: "0.21"
 project: wiki.example.org
 version: 1.0.0
 updated: "2026-02-28"
@@ -746,7 +746,7 @@ relationships:
 # Dependency chains across architecture layers
 # Freshness: archived (2022) vs active (2026) content
 
-kcp_version: "0.16"
+kcp_version: "0.21"
 project: community-wiki
 version: 1.0.0
 updated: "2026-02-28"
@@ -1803,7 +1803,7 @@ units:
               </button>
             </div>
             <div class="code-block__body">
-              <pre><code id="qs-code-l1" class="language-yaml">kcp_version: "0.16"
+              <pre><code id="qs-code-l1" class="language-yaml">kcp_version: "0.21"
 project: my-project
 version: 1.0.0
 
@@ -1840,7 +1840,7 @@ units:
               </button>
             </div>
             <div class="code-block__body">
-              <pre><code id="qs-code-l2" class="language-yaml">kcp_version: "0.16"
+              <pre><code id="qs-code-l2" class="language-yaml">kcp_version: "0.21"
 project: my-project
 version: 1.0.0
 updated: "2026-01-01"
@@ -1894,7 +1894,7 @@ units:
               </button>
             </div>
             <div class="code-block__body">
-              <pre><code id="qs-code-l3" class="language-yaml">kcp_version: "0.16"
+              <pre><code id="qs-code-l3" class="language-yaml">kcp_version: "0.21"
 project: my-project
 version: 1.0.0
 updated: "2026-01-01"
@@ -2004,7 +2004,7 @@ relationships:
       <div class="adopters-cta-box reveal">
         <h3>Add your project</h3>
         <p>Using KCP in a public repository? Open an issue and we'll add you to this list. You can also add a badge to your own README.</p>
-        <div class="adopter-snippet">[![KCP](https://img.shields.io/badge/KCP-v0.16-2563eb?style=flat-square&logo=yaml&logoColor=white)](https://cantara.github.io/knowledge-context-protocol/)</div>
+        <div class="adopter-snippet">[![KCP](https://img.shields.io/badge/KCP-v0.21-2563eb?style=flat-square&logo=yaml&logoColor=white)](https://cantara.github.io/knowledge-context-protocol/)</div>
         <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
           <a href="https://github.com/Cantara/knowledge-context-protocol/issues/new?title=Add+adopter:+[your+project]&body=Project+name:%0ARepository+URL:%0ABrief+description:" target="_blank" rel="noopener" class="btn btn--primary">Open issue to add your project</a>
           <a href="https://github.com/Cantara/knowledge-context-protocol" target="_blank" rel="noopener" class="btn btn--outline">View on GitHub</a>
@@ -2013,7 +2013,7 @@ relationships:
 
       <div class="adopters-badges reveal">
         <img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License: Apache 2.0" height="20">
-        <img src="https://img.shields.io/badge/KCP-v0.16-22c55e?style=flat-square&logo=yaml&logoColor=white" alt="KCP v0.16" height="20">
+        <img src="https://img.shields.io/badge/KCP-v0.21-22c55e?style=flat-square&logo=yaml&logoColor=white" alt="KCP v0.21" height="20">
         <img src="https://img.shields.io/badge/spec-stable-22c55e?style=flat-square" alt="Spec: Stable" height="20">
       </div>
 
@@ -2034,7 +2034,7 @@ relationships:
             <p>The KCP specification repository ships its own <code>knowledge.yaml</code> &mdash; dogfooding the protocol with the spec, RFCs, parsers, and guides as declared units.</p>
             <div class="usecase-card__fields">
               <span class="usecase-field-tag">L3 conformance</span>
-              <span class="usecase-field-tag">6 RFCs</span>
+              <span class="usecase-field-tag">22 RFCs</span>
               <span class="usecase-field-tag">Cantara</span>
             </div>
           </div>
@@ -2070,7 +2070,7 @@ relationships:
       <div class="section-header reveal">
         <span class="section-label">Roadmap</span>
         <h2>Where KCP is headed</h2>
-        <p>v0.16 is the current release. Fields are promoted from RFC proposals to core as they accumulate real-world validation. Remaining RFCs are open for community feedback through 2026.</p>
+        <p>v0.21 is the current release. Fields are promoted from RFC proposals to core as they accumulate real-world validation. Remaining RFCs are open for community feedback through 2026.</p>
       </div>
 
       <div class="roadmap-core reveal">
@@ -2250,7 +2250,7 @@ relationships:
 
       <div class="roadmap-core reveal">
         <div class="roadmap-core__info">
-          <span class="roadmap-core__badge">v0.17 — Current</span>
+          <span class="roadmap-core__badge">v0.17 — Shipped</span>
           <h3>Content Wave</h3>
           <p>Two unit-level routing signals promoted to core. <code>content_structure</code> (SPEC §4.19) declares the internal modality composition and density of a unit (<code>primary</code>, <code>contains</code>, <code>density</code>) so RAG pipelines route and pick an extraction strategy before fetching. <code>not_for</code> (SPEC §4.20) is the spec's first <em>subtractive</em> field — it declares what a unit does NOT answer, with soft demotion by default and <code>not_for_strict</code> for hard exclusion. Promoted from RFC-0016 and RFC-0015.</p>
         </div>
@@ -2260,6 +2260,62 @@ relationships:
           <span class="roadmap-field-pill">not_for_strict</span>
           <span class="roadmap-field-pill">RFC-0015</span>
           <span class="roadmap-field-pill">RFC-0016</span>
+        </div>
+      </div>
+
+      <div class="roadmap-core reveal">
+        <div class="roadmap-core__info">
+          <span class="roadmap-core__badge">v0.18 — Shipped</span>
+          <h3>Unit Integrity</h3>
+          <p>Per-unit <code>content_hash</code> (SPEC §3.2) binds the bytes a unit points at to the signed manifest, so a <code>trusted</code>-tier render can't serve content the signing key never covered. Origin evidence classes (asserted / fetched / derived) close the manifest-relocation attack (T9): a copied signature behind a fabricated git origin can pin but never escalate. Promoted from RFC-0019; conformance C11–C14.</p>
+        </div>
+        <div class="roadmap-core__fields">
+          <span class="roadmap-field-pill">content_hash</span>
+          <span class="roadmap-field-pill">origin_evidence</span>
+          <span class="roadmap-field-pill">kcp sign</span>
+          <span class="roadmap-field-pill">RFC-0019</span>
+        </div>
+      </div>
+
+      <div class="roadmap-core reveal">
+        <div class="roadmap-core__info">
+          <span class="roadmap-core__badge">v0.19 — Shipped</span>
+          <h3>Temporal Composition</h3>
+          <p>Knowledge gains a time axis and a layering model. The bi-temporal <code>temporal</code> block (SPEC §4.22) declares valid-time (<code>valid_from</code>/<code>valid_until</code>) and transaction-time (<code>recorded_at</code>/<code>superseded_by</code>). Manifest <code>composition</code> (SPEC §3.11) includes, overrides, and excludes units from other manifests without forking. Promoted from RFC-0010 and RFC-0020; conformance C15.</p>
+        </div>
+        <div class="roadmap-core__fields">
+          <span class="roadmap-field-pill">temporal</span>
+          <span class="roadmap-field-pill">composition</span>
+          <span class="roadmap-field-pill">verified_by</span>
+          <span class="roadmap-field-pill">RFC-0010</span>
+          <span class="roadmap-field-pill">RFC-0020</span>
+        </div>
+      </div>
+
+      <div class="roadmap-core reveal">
+        <div class="roadmap-core__info">
+          <span class="roadmap-core__badge">v0.20 — Shipped</span>
+          <h3>Temporal Query</h3>
+          <p>Point-in-time reconstruction for agents and auditors. <code>as_of</code> (SPEC §15.13) returns the units valid on a given date; <code>include_all_temporal</code> is audit mode, returning every version with its temporal metadata. Bridges without temporal evaluation safely ignore both. Promoted from RFC-0010's query phase; conformance C16.</p>
+        </div>
+        <div class="roadmap-core__fields">
+          <span class="roadmap-field-pill">as_of</span>
+          <span class="roadmap-field-pill">include_all_temporal</span>
+          <span class="roadmap-field-pill">RFC-0010</span>
+        </div>
+      </div>
+
+      <div class="roadmap-core reveal">
+        <div class="roadmap-core__info">
+          <span class="roadmap-core__badge">v0.21 — Current</span>
+          <h3>Federation Temporal &amp; Composition Integrity</h3>
+          <p><code>manifests[].temporal</code> (SPEC §3.6) lets a hub declare when a federated source is relevant, so bridges skip out-of-window sub-manifests before fetching. Composition <code>integrity</code> becomes enforcing at <code>trusted</code> tier (SPEC §3.11 / C17): an unverified or substituted include can't reach an agent's standing context — closing the composition-substitution attack (T10). Promoted from RFC-0021 and RFC-0022.</p>
+        </div>
+        <div class="roadmap-core__fields">
+          <span class="roadmap-field-pill">manifests[].temporal</span>
+          <span class="roadmap-field-pill">integrity</span>
+          <span class="roadmap-field-pill">RFC-0021</span>
+          <span class="roadmap-field-pill">RFC-0022</span>
         </div>
       </div>
 
