@@ -40,9 +40,9 @@ It also corrects a temporal-validity warning promoted in v0.19 that fires on
 RFC-0010's own foundational use case (§4).
 
 All changes preserve backward compatibility for manifests that declare no
-`composition` block. Composition resolution is not yet implemented in the
-reference renderer, so this correction lands *before* the insecure behavior
-ships in code — the ideal time to fix it.
+`composition` block. This correction was specified *before* composition
+resolution shipped in the reference renderer — the ideal time to fix it — and
+the enforcing C17 rule is now implemented in `kcp render` (§5, harness B21–B23).
 
 ---
 
