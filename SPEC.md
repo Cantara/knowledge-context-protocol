@@ -3331,9 +3331,13 @@ A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18)
   before unit-level temporal. Parsers MUST detect `superseded_by` cycles among `manifests[]`
   entries as a manifest error.
 
-The reference implementation is `kcp render` in [`cli/`](./cli/); the validation corpus lives
-in [`experiments/rfc-0018-render/`](./experiments/rfc-0018-render/) (cases A10–A12, B17–B20
-cover v0.18 conformance; v0.19 cases to be added).
+The reference implementation is `kcp render` in [`cli/`](./cli/); the render validation corpus
+lives in [`experiments/rfc-0018-render/`](./experiments/rfc-0018-render/) (cases A10–A12, B17–B20
+cover the v0.18 content-integrity conformance, C11–C14). Validator-level conformance for the
+v0.18/v0.19 fields (`content_hash`, `temporal`) lives in
+[`conformance/fixtures/`](./conformance/); cross-language temporal validation is exercised by the
+parser test suites. Renderer cases for composition integrity (C15/C17) are tracked PENDING in the
+render corpus until composition resolution lands in `kcp render` (RFC-0022 §6).
 
 ---
 

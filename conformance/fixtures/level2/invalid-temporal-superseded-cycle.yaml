@@ -1,0 +1,20 @@
+# Level 2 — invalid: a superseded_by cycle is a manifest error (RFC-0010, SPEC §4.22)
+kcp_version: "0.21"
+project: test-temporal-cycle
+version: "1.0.0"
+
+units:
+  - id: policy-a
+    path: policies/a.md
+    intent: "Policy A, superseded by B"
+    scope: project
+    audience: [agent]
+    temporal:
+      superseded_by: policy-b
+  - id: policy-b
+    path: policies/b.md
+    intent: "Policy B, superseded by A — forms a cycle"
+    scope: project
+    audience: [agent]
+    temporal:
+      superseded_by: policy-a

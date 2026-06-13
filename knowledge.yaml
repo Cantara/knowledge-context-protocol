@@ -1,6 +1,6 @@
 # KCP eats its own dogfood.
 # This manifest describes the Knowledge Context Protocol repository itself.
-version: "0.17"
+version: "0.21"
 
 entity:
   name: Knowledge Context Protocol (KCP)
@@ -31,10 +31,10 @@ signing:
   signature: https://cantara.github.io/knowledge-context-protocol/knowledge.yaml.sig
 
 # Legacy header fields (preserved for consumers that read them directly)
-kcp_version: "0.17"
+kcp_version: "0.21"
 project: knowledge-context-protocol
-spec_version: 0.17.0
-updated: "2026-06-11"
+spec_version: 0.21.0
+updated: "2026-06-13"
 language: en
 license: "Apache-2.0"
 indexing: open
@@ -129,8 +129,8 @@ units:
     triggers: [query, query vocabulary, terms, audience filter, token budget, has_capabilities, exclude_stale, federation_scope, scored results, rfc-0007]
 
   - id: rfc-0008
-    path: RFC-0008-Budget-Constrained-Selection.md
-    intent: "RFC-0008 (accepted): budget-constrained selection — how manifest responses rank and filter units by score within a declared token budget. Promoted to SPEC.md §15 in v0.14."
+    path: RFC-0008-Agent-Readiness.md
+    intent: "RFC-0008 (accepted): agent readiness and budget-constrained selection — how manifest responses rank and filter units by score within a declared token budget, plus freshness_policy. Promoted to SPEC.md §15 in v0.14."
     scope: global
     audience: [human, agent, architect, developer]
     validated: "2026-03-25"
@@ -190,6 +190,78 @@ units:
     validated: "2026-06-11"
     depends_on: [spec]
     triggers: [content structure, modality, density, table, prose, code, diagram, rag routing, rfc-0016]
+
+  - id: rfc-0009
+    path: RFC-0009-Visibility-and-Authority.md
+    intent: "RFC-0009 (accepted): visibility and authority — conditional visibility rules and per-action authority (read, summarize, modify, share_externally, execute) with safe defaults. Promoted to SPEC.md in v0.12."
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-06-13"
+    depends_on: [spec]
+    triggers: [visibility, authority, permissions, access control, action gating, rfc-0009]
+
+  - id: rfc-0010
+    path: RFC-0010-Bi-Temporal-Unit-Validity.md
+    intent: "RFC-0010 (accepted): bi-temporal unit validity — the temporal block declares valid-time (valid_from/valid_until) and transaction-time (recorded_at/superseded_by), plus as_of point-in-time queries. Schema promoted to SPEC.md section 4.22 in v0.19; query layer section 15.13 in v0.20."
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-06-13"
+    depends_on: [spec]
+    triggers: [temporal, bi-temporal, valid_from, valid_until, superseded_by, as_of, audit, point-in-time, rfc-0010]
+
+  - id: rfc-0011
+    path: RFC-0011-Org-Federation.md
+    intent: "RFC-0011 (RFC): organisational federation patterns — hub-and-spoke and multi-org topologies layered over the section 3.6 federation core."
+    scope: global
+    audience: [human, agent, architect]
+    validated: "2026-06-13"
+    depends_on: [rfc-0003]
+    triggers: [org federation, hub and spoke, multi-org, federation topology, rfc-0011]
+
+  - id: rfc-0013
+    path: RFC-0013-Cartridge-Catalog-Distribution.md
+    intent: "RFC-0013 (RFC): cartridge catalog and distribution — packaging and distributing reusable knowledge cartridges. See CATALOG-SPEC.md."
+    scope: global
+    audience: [human, agent, architect]
+    validated: "2026-06-13"
+    depends_on: [spec]
+    triggers: [cartridge, catalog, distribution, packaging, reusable knowledge, rfc-0013]
+
+  - id: rfc-0019
+    path: RFC-0019-Unit-Content-Integrity-and-Origin-Evidence.md
+    intent: "RFC-0019 (accepted): unit content integrity and origin evidence — per-unit content_hash binds referenced files to the signed manifest; origin evidence classes close the manifest-relocation attack (T9). Promoted to SPEC.md section 3.2 in v0.18; conformance C11-C14."
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-06-13"
+    depends_on: [rfc-0018]
+    triggers: [content_hash, integrity, origin evidence, relocation, T9, content_verified, rfc-0019]
+
+  - id: rfc-0020
+    path: RFC-0020-Temporal-Composition.md
+    intent: "RFC-0020 (accepted): temporal composition — promotes the bi-temporal schema and manifest composition (includes/overrides/excludes) together, with integrity-pinned includes and discovery.verified_by/evidence. Promoted to SPEC.md section 3.11/4.22 in v0.19; conformance C15."
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-06-13"
+    depends_on: [rfc-0010, rfc-0014]
+    triggers: [composition, includes, overrides, excludes, temporal, verified_by, rfc-0020]
+
+  - id: rfc-0021
+    path: RFC-0021-Federation-Temporal.md
+    intent: "RFC-0021 (accepted): federation-level temporal validity — manifests[].temporal lets a hub declare when a federated source is relevant; bridges skip out-of-window sub-manifests before fetching. Promoted to SPEC.md section 3.6 in v0.21; conformance C18."
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-06-13"
+    depends_on: [rfc-0010, rfc-0003]
+    triggers: [federation temporal, manifests temporal, source validity, skip before fetch, rfc-0021]
+
+  - id: rfc-0022
+    path: RFC-0022-Composition-Integrity.md
+    intent: "RFC-0022 (accepted): composition integrity — makes composition integrity enforcing at trusted tier so an unverified or substituted include can't reach standing context, closing the composition-substitution attack (T10). Promoted to SPEC.md section 3.11 in v0.21; conformance C17."
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-06-13"
+    depends_on: [rfc-0020, rfc-0019]
+    triggers: [composition integrity, T10, enforcing, trusted tier, include substitution, rfc-0022]
 
   - id: readme
     path: README.md

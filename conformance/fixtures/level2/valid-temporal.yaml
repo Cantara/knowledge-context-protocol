@@ -1,0 +1,22 @@
+# Level 2 — valid: unit-level temporal validity (RFC-0010, SPEC §4.22, v0.19)
+kcp_version: "0.21"
+project: test-temporal
+version: "1.0.0"
+
+units:
+  - id: policy-current
+    path: policies/current.md
+    intent: "The currently active policy"
+    scope: project
+    audience: [agent]
+    temporal:
+      valid_from: "2020-01-01"
+      valid_until: "2099-12-31"
+      recorded_at: "2026-01-01"
+  - id: policy-future
+    path: policies/future.md
+    intent: "A future-dated policy that activates later"
+    scope: project
+    audience: [agent]
+    temporal:
+      valid_from: "2099-01-01"

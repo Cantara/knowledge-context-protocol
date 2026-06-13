@@ -1,7 +1,7 @@
 # KCP eats its own dogfood.
 # This manifest describes the Knowledge Context Protocol repository itself.
 # Served via GitHub Pages — canonical: https://cantara.github.io/knowledge-context-protocol/knowledge.yaml
-version: "0.17"
+version: "0.21"
 
 entity:
   name: Knowledge Context Protocol (KCP)
@@ -28,10 +28,10 @@ signing:
   public_key: https://cantara.github.io/knowledge-context-protocol/.well-known/kcp-signing-key.pub
   signature: https://cantara.github.io/knowledge-context-protocol/knowledge.yaml.sig
 
-kcp_version: "0.17"
+kcp_version: "0.21"
 project: knowledge-context-protocol
-spec_version: 0.17.0
-updated: "2026-06-11"
+spec_version: 0.21.0
+updated: "2026-06-13"
 language: en
 license: "Apache-2.0"
 indexing: open
@@ -151,6 +151,51 @@ units:
     validated: "2026-06-11"
     depends_on: [spec]
     triggers: [content structure, modality, density, table, prose, code, diagram, rag routing, rfc-0016]
+
+  - id: rfc-0010
+    path: RFC-0010-Bi-Temporal-Unit-Validity.md
+    intent: "RFC-0010 (accepted): bi-temporal unit validity — the temporal block declares valid-time and transaction-time, plus as_of point-in-time queries. Promoted to SPEC.md section 4.22 in v0.19; section 15.13 in v0.20."
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-06-13"
+    depends_on: [spec]
+    triggers: [temporal, bi-temporal, valid_until, superseded_by, as_of, audit, rfc-0010]
+
+  - id: rfc-0019
+    path: RFC-0019-Unit-Content-Integrity-and-Origin-Evidence.md
+    intent: "RFC-0019 (accepted): unit content integrity and origin evidence — per-unit content_hash binds referenced files to the signed manifest; origin evidence closes the relocation attack (T9). Promoted to SPEC.md section 3.2 in v0.18; conformance C11-C14."
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-06-13"
+    depends_on: [rfc-0018]
+    triggers: [content_hash, integrity, origin evidence, relocation, T9, rfc-0019]
+
+  - id: rfc-0020
+    path: RFC-0020-Temporal-Composition.md
+    intent: "RFC-0020 (accepted): temporal composition — promotes the bi-temporal schema and manifest composition (includes/overrides/excludes) together, with integrity-pinned includes and discovery.verified_by. Promoted to SPEC.md section 3.11/4.22 in v0.19; conformance C15."
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-06-13"
+    depends_on: [rfc-0010]
+    triggers: [composition, includes, overrides, excludes, temporal, verified_by, rfc-0020]
+
+  - id: rfc-0021
+    path: RFC-0021-Federation-Temporal.md
+    intent: "RFC-0021 (accepted): federation-level temporal validity — manifests[].temporal lets a hub declare when a federated source is relevant; bridges skip out-of-window sub-manifests. Promoted to SPEC.md section 3.6 in v0.21; conformance C18."
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-06-13"
+    depends_on: [rfc-0010]
+    triggers: [federation temporal, manifests temporal, source validity, rfc-0021]
+
+  - id: rfc-0022
+    path: RFC-0022-Composition-Integrity.md
+    intent: "RFC-0022 (accepted): composition integrity — makes composition integrity enforcing at trusted tier, closing the composition-substitution attack (T10). Promoted to SPEC.md section 3.11 in v0.21; conformance C17."
+    scope: global
+    audience: [human, agent, architect, developer]
+    validated: "2026-06-13"
+    depends_on: [rfc-0020, rfc-0019]
+    triggers: [composition integrity, T10, enforcing, trusted tier, rfc-0022]
 
   - id: readme
     path: README.md

@@ -1,0 +1,6 @@
+{
+  "valid": false,
+  "errors": ["temporal.superseded_by cycle detected"],
+  "unit_count": 2,
+  "relationship_count": 0
+}

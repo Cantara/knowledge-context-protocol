@@ -1,0 +1,14 @@
+# Level 2 — valid: per-unit content_hash shape (RFC-0019, SPEC §3.2, v0.18)
+kcp_version: "0.21"
+project: test-content-hash
+version: "1.0.0"
+
+units:
+  - id: signed-doc
+    path: docs/signed.md
+    intent: "A unit whose referenced content is bound to the signed manifest"
+    scope: project
+    audience: [agent]
+    content_hash:
+      algorithm: sha256
+      value: "4be1d6f2c9a0b3e7d8f1029384756abcdef0123456789abcdef0123456789abcd"
