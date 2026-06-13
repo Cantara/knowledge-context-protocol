@@ -33,9 +33,15 @@ Example: "How do I validate a knowledge.yaml file?" → trigger `validation, sch
 - /guides/adopting-kcp-in-existing-projects.md — How to add KCP to your project in under 30 minutes
 - /examples/README.md — Example manifests at four adoption levels plus simulation scenarios (A2A+KCP, energy metering, legal delegation, financial AML)
 - /RFC-0001-KCP-Extended.md — Extensions: payments, compliance, federation, context hints
+- /RFC-0010-Bi-Temporal-Unit-Validity.md — Bi-temporal validity: `temporal` block (valid-time + transaction-time) and `as_of` point-in-time queries (promoted to SPEC.md §4.22 in v0.19, §15.13 in v0.20)
 - /RFC-0015-Negative-Space-Declarations.md — Negative-space declarations: `not_for` / `not_for_strict` (promoted to SPEC.md §4.20 in v0.17)
 - /RFC-0016-Content-Structure-Declaration.md — Content structure: `content_structure` modality + density (promoted to SPEC.md §4.19 in v0.17)
+- /RFC-0017-Observability-Hooks.md — Local-first usage events at `~/.kcp/usage.db`, read by `kcp stats` (promoted to SPEC.md §17 in v0.16)
 - /RFC-0018-Trusted-Render-Pipeline.md — Trusted render pipeline: `kcp render` emits a sanitized, trust-tiered artifact (promoted to SPEC.md §16 in v0.16)
+- /RFC-0019-Unit-Content-Integrity-and-Origin-Evidence.md — Per-unit `content_hash` + origin evidence classes; closes the manifest-relocation attack T9 (promoted to SPEC.md §3.2 in v0.18)
+- /RFC-0020-Temporal-Composition.md — Manifest `composition` (include/override/exclude) + bi-temporal schema (promoted to SPEC.md §3.11/§4.22 in v0.19)
+- /RFC-0021-Federation-Temporal.md — `manifests[].temporal`: when a federated source is relevant; bridges skip out-of-window sub-manifests (promoted to SPEC.md §3.6 in v0.21)
+- /RFC-0022-Composition-Integrity.md — Enforcing composition integrity at `trusted` tier; closes the composition-substitution attack T10 (promoted to SPEC.md §3.11 in v0.21)
 - /docs/ecosystem/webmcp-comparison.md — WebMCP vs KCP: Google+Microsoft browser-action standard vs KCP knowledge layer (complementary, not competing)
 
 ## How KCP Relates to llms.txt and MCP
