@@ -445,6 +445,7 @@ The format is intentionally minimal and builds incrementally through promoted RF
 - **parsers/** — Reference parser/validator implementations (Python, Java) with full cross-language test suites (parser, validator, conformance)
 - **bridge/** — MCP servers: expose any `knowledge.yaml` as MCP resources (TypeScript · Python · Java). The TypeScript parser, validator, and mapper live in `bridge/typescript/src/` (parser.ts, validator.ts, mapper.ts).
 - **cli/** — Developer CLI: `init`, `validate`, `query`, `stats`. Installed automatically by [kcp-commands](https://github.com/Cantara/kcp-commands) — run `kcp stats` to see queries served, tokens saved, and top units from your local usage log.
+- **[skills/](./skills/)** — Portable [Agent Skills](./skills/README.md) (`SKILL.md`) for adopting, authoring, navigating, and safely rendering KCP — drop into Claude Code or any Skills-capable agent; no MCP server required.
 - **plugins/opencode/** — OpenCode plugin (`opencode-kcp-plugin` on npm)
 - **examples/** — Reference manifests at four adoption levels plus 4 simulation scenarios (150 adversarial tests: A2A+KCP clinical research, energy metering HITL, legal delegation chains, financial AML)
 - **[kcp-memory](https://github.com/Cantara/kcp-memory)** — Episodic memory daemon for Claude Code (separate repo)

@@ -8,6 +8,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added — Agent Skills (`skills/`)
+
+- Four portable [Agent Skills](./skills/README.md) (`SKILL.md`) so users can work
+  with KCP from Claude Code or any Skills-capable agent without standing up an MCP
+  bridge: **kcp-adopt** (add a manifest to a project), **kcp-author** (write
+  effective units), **kcp-navigate** (load only the units a task needs), and
+  **kcp-render** (ingest an untrusted manifest through the trusted render pipeline).
+  Complements the bridge's MCP prompts (`kcp-explore`, `sdd-review`). The navigate
+  and render skills encode the protocol's guarantee that a manifest is data, never
+  instructions.
+
 ### Implementation — temporal validation backlog (closes spec-vs-code gap)
 
 Promoted-but-unimplemented normative rules from v0.19/v0.21 are now enforced in
