@@ -1,0 +1,14 @@
+# Level 2 — invalid: content_hash.algorithm must be sha256/sha384/sha512 (RFC-0019)
+kcp_version: "0.21"
+project: test-content-hash-bad
+version: "1.0.0"
+
+units:
+  - id: signed-doc
+    path: docs/signed.md
+    intent: "A unit declaring an unsupported hash algorithm"
+    scope: project
+    audience: [agent]
+    content_hash:
+      algorithm: md5
+      value: "d41d8cd98f00b204e9800998ecf8427e"

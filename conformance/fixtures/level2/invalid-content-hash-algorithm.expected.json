@@ -1,0 +1,6 @@
+{
+  "valid": false,
+  "errors": ["content_hash.algorithm must be one of sha256, sha384, sha512"],
+  "unit_count": 1,
+  "relationship_count": 0
+}
