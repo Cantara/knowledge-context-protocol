@@ -2409,6 +2409,195 @@ relationships:
           </div>
         </div>
 
+        <div class="rfc-card">
+          <div class="rfc-card__header">
+            <span class="rfc-card__num">RFC-0007 / 0008</span>
+            <span class="rfc-card__theme">Query</span>
+          </div>
+          <h4>Query Vocabulary &amp; Agent Readiness</h4>
+          <div class="rfc-card__blocks">
+            <span class="rfc-card__block">terms</span>
+            <span class="rfc-card__block">max_token_budget</span>
+            <span class="rfc-card__block">freshness_policy</span>
+          </div>
+          <p>A structured query shape for agent tools — <code>terms</code>, <code>audience</code>, <code>has_capabilities</code>, <code>federation_scope</code> — plus token-budget-aware scored selection and freshness policy, so a bridge returns the right units within a budget instead of the whole manifest.</p>
+          <div class="rfc-card__footer">
+            <span class="rfc-card__status">Promoted &mdash; v0.14 &sect;15</span>
+            <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0007-Query-Vocabulary.md" target="_blank" rel="noopener">Read RFC →</a>
+          </div>
+        </div>
+
+        <div class="rfc-card">
+          <div class="rfc-card__header">
+            <span class="rfc-card__num">RFC-0009</span>
+            <span class="rfc-card__theme">Authority</span>
+          </div>
+          <h4>Visibility &amp; Authority</h4>
+          <div class="rfc-card__blocks">
+            <span class="rfc-card__block">visibility</span>
+            <span class="rfc-card__block">authority</span>
+          </div>
+          <p>Conditional visibility rules and per-action authority (<code>read</code>, <code>summarize</code>, <code>modify</code>, <code>share_externally</code>, <code>execute</code>) with safe defaults — knowledge declares what an agent may do with it, not just what it says.</p>
+          <div class="rfc-card__footer">
+            <span class="rfc-card__status">Promoted &mdash; v0.12</span>
+            <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0009-Visibility-and-Authority.md" target="_blank" rel="noopener">Read RFC →</a>
+          </div>
+        </div>
+
+        <div class="rfc-card">
+          <div class="rfc-card__header">
+            <span class="rfc-card__num">RFC-0010</span>
+            <span class="rfc-card__theme">Time</span>
+          </div>
+          <h4>Bi-Temporal Validity</h4>
+          <div class="rfc-card__blocks">
+            <span class="rfc-card__block">temporal</span>
+            <span class="rfc-card__block">as_of</span>
+            <span class="rfc-card__block">superseded_by</span>
+          </div>
+          <p>Two clocks for knowledge: valid-time (<code>valid_from</code>/<code>valid_until</code>) for when a fact is true in the world, and transaction-time (<code>recorded_at</code>/<code>superseded_by</code>) for when the manifest recorded it. <code>as_of</code> queries reconstruct what a manifest declared on any past date — for audits and future-dated policy.</p>
+          <div class="rfc-card__footer">
+            <span class="rfc-card__status">Promoted &mdash; v0.19 &sect;4.22 / v0.20 &sect;15.13</span>
+            <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0010-Bi-Temporal-Unit-Validity.md" target="_blank" rel="noopener">Read RFC →</a>
+          </div>
+        </div>
+
+        <div class="rfc-card">
+          <div class="rfc-card__header">
+            <span class="rfc-card__num">RFC-0012</span>
+            <span class="rfc-card__theme">Provenance</span>
+          </div>
+          <h4>Capability Discovery Provenance</h4>
+          <div class="rfc-card__blocks">
+            <span class="rfc-card__block">discovery</span>
+            <span class="rfc-card__block">verification_status</span>
+            <span class="rfc-card__block">verified_by</span>
+          </div>
+          <p>Every claim a manifest makes about itself carries provenance: <code>verification_status</code> (rumored &lt; declared &lt; observed &lt; verified), <code>confidence</code>, <code>source</code>, <code>contradicted_by</code>, and (v0.19) <code>verified_by</code>/<code>evidence</code> attributing who verified what.</p>
+          <div class="rfc-card__footer">
+            <span class="rfc-card__status">Promoted &mdash; v0.12 &sect;4.18</span>
+            <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0012-Capability-Discovery-Provenance.md" target="_blank" rel="noopener">Read RFC →</a>
+          </div>
+        </div>
+
+        <div class="rfc-card">
+          <div class="rfc-card__header">
+            <span class="rfc-card__num">RFC-0015 / 0016</span>
+            <span class="rfc-card__theme">Content</span>
+          </div>
+          <h4>Negative Space &amp; Content Structure</h4>
+          <div class="rfc-card__blocks">
+            <span class="rfc-card__block">not_for</span>
+            <span class="rfc-card__block">content_structure</span>
+          </div>
+          <p>Two routing signals. <code>not_for</code> is the spec's first <em>subtractive</em> field — it declares what a unit does NOT answer. <code>content_structure</code> declares a unit's modality (prose/table/code/&hellip;) and density so RAG pipelines route and pick an extraction strategy before fetching.</p>
+          <div class="rfc-card__footer">
+            <span class="rfc-card__status">Promoted &mdash; v0.17 &sect;4.19/&sect;4.20</span>
+            <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0016-Content-Structure-Declaration.md" target="_blank" rel="noopener">Read RFC →</a>
+          </div>
+        </div>
+
+        <div class="rfc-card">
+          <div class="rfc-card__header">
+            <span class="rfc-card__num">RFC-0017</span>
+            <span class="rfc-card__theme">Observability</span>
+          </div>
+          <h4>Observability Hooks</h4>
+          <div class="rfc-card__blocks">
+            <span class="rfc-card__block">usage_events</span>
+            <span class="rfc-card__block">kcp stats</span>
+          </div>
+          <p>A local-first usage event store at <code>~/.kcp/usage.db</code> — queries served, units fetched, tokens saved — so adopters can prove KCP is working. <code>kcp stats</code> reads it; render and quarantine events make security drift diffable in CI.</p>
+          <div class="rfc-card__footer">
+            <span class="rfc-card__status">Promoted &mdash; v0.16 &sect;17</span>
+            <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0017-Observability-Hooks.md" target="_blank" rel="noopener">Read RFC →</a>
+          </div>
+        </div>
+
+        <div class="rfc-card">
+          <div class="rfc-card__header">
+            <span class="rfc-card__num">RFC-0018</span>
+            <span class="rfc-card__theme">Trust</span>
+          </div>
+          <h4>Trusted Render Pipeline</h4>
+          <div class="rfc-card__blocks">
+            <span class="rfc-card__block">kcp render</span>
+            <span class="rfc-card__block">trust tiers</span>
+          </div>
+          <p>A deterministic, LLM-free, fail-closed renderer (<code>kcp render</code>) emits a sanitized, trust-tiered artifact so an execution-capable agent never ingests raw third-party manifest prose. Signatures gate placement; they never endorse content. Validated by 30 executable adversarial experiments.</p>
+          <div class="rfc-card__footer">
+            <span class="rfc-card__status">Promoted &mdash; v0.16 &sect;16</span>
+            <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0018-Trusted-Render-Pipeline.md" target="_blank" rel="noopener">Read RFC →</a>
+          </div>
+        </div>
+
+        <div class="rfc-card">
+          <div class="rfc-card__header">
+            <span class="rfc-card__num">RFC-0019</span>
+            <span class="rfc-card__theme">Integrity</span>
+          </div>
+          <h4>Unit Content Integrity</h4>
+          <div class="rfc-card__blocks">
+            <span class="rfc-card__block">content_hash</span>
+            <span class="rfc-card__block">origin_evidence</span>
+          </div>
+          <p>Per-unit <code>content_hash</code> binds the bytes a unit points at to the signed manifest — the signature now covers the territory, not just the map. Origin evidence classes close the manifest-relocation attack (T9): a copied signature behind a fabricated git origin can pin but never escalate.</p>
+          <div class="rfc-card__footer">
+            <span class="rfc-card__status">Promoted &mdash; v0.18 &sect;3.2 (C11&ndash;C14)</span>
+            <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0019-Unit-Content-Integrity-and-Origin-Evidence.md" target="_blank" rel="noopener">Read RFC →</a>
+          </div>
+        </div>
+
+        <div class="rfc-card">
+          <div class="rfc-card__header">
+            <span class="rfc-card__num">RFC-0020</span>
+            <span class="rfc-card__theme">Composition</span>
+          </div>
+          <h4>Temporal Composition</h4>
+          <div class="rfc-card__blocks">
+            <span class="rfc-card__block">composition</span>
+            <span class="rfc-card__block">temporal</span>
+          </div>
+          <p>Promotes the bi-temporal schema and manifest <code>composition</code> together: include, override, and exclude units from other manifests without forking, with integrity-pinned includes and <code>discovery.verified_by</code>/<code>evidence</code> attribution.</p>
+          <div class="rfc-card__footer">
+            <span class="rfc-card__status">Promoted &mdash; v0.19 &sect;3.11/&sect;4.22 (C15)</span>
+            <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0020-Temporal-Composition.md" target="_blank" rel="noopener">Read RFC →</a>
+          </div>
+        </div>
+
+        <div class="rfc-card">
+          <div class="rfc-card__header">
+            <span class="rfc-card__num">RFC-0021</span>
+            <span class="rfc-card__theme">Federation</span>
+          </div>
+          <h4>Federation Temporal</h4>
+          <div class="rfc-card__blocks">
+            <span class="rfc-card__block">manifests[].temporal</span>
+          </div>
+          <p>A hub manifest declares when a federated source is relevant as a knowledge provider (<code>valid_from</code>/<code>valid_until</code>/<code>superseded_by</code>), so bridges skip out-of-window sub-manifests before fetching — distinct from when individual units are valid.</p>
+          <div class="rfc-card__footer">
+            <span class="rfc-card__status">Promoted &mdash; v0.21 &sect;3.6 (C18)</span>
+            <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0021-Federation-Temporal.md" target="_blank" rel="noopener">Read RFC →</a>
+          </div>
+        </div>
+
+        <div class="rfc-card">
+          <div class="rfc-card__header">
+            <span class="rfc-card__num">RFC-0022</span>
+            <span class="rfc-card__theme">Integrity</span>
+          </div>
+          <h4>Composition Integrity</h4>
+          <div class="rfc-card__blocks">
+            <span class="rfc-card__block">integrity</span>
+            <span class="rfc-card__block">C17</span>
+          </div>
+          <p>Makes composition <code>integrity</code> enforcing at <code>trusted</code> tier: an unverified or substituted include can't reach an agent's standing context. Closes the composition-substitution attack (T10) — the same map-vs-territory boundary RFC-0019 drew for local content, applied to composed includes.</p>
+          <div class="rfc-card__footer">
+            <span class="rfc-card__status">Promoted &mdash; v0.21 &sect;3.11 (C17)</span>
+            <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0022-Composition-Integrity.md" target="_blank" rel="noopener">Read RFC →</a>
+          </div>
+        </div>
+
       </div>
     </div>
   </section>
