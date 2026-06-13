@@ -596,7 +596,7 @@ units:
       ]
     content_hash:
       algorithm: sha256
-      value: 8e745416fa1c7980a463c0a919fbfc361ebf36115d833d58b9f1fb42eae0cb18
+      value: 2ee51565cd8df5fc7d8c748375390b868da89f1f5a32cfd67e164bde93e74d5f
 
   - id: readme
     path: README.md
