@@ -60,6 +60,62 @@ describe("cross-language version-list consistency", () => {
   });
 });
 
+// Version-drift guard. The shipped version string lives in seven places across
+// four languages (renderer banner, CLI help banner, cli/package.json, and the
+// three bridge package descriptors) plus the SPEC.md minor. Nothing forces them
+// to agree, and the v0.16 pass found three of them stale. These assertions pin
+// every runtime version source to the cli/package.json version and pin that
+// package's minor to SPEC.md — so a release bump that misses a file fails CI.
+describe("version-drift guard", () => {
+  const specMinor = (() => {
+    const m = readFileSync(r("SPEC.md"), "utf8").match(/\*\*Version:\*\*\s*(\d+\.\d+)/);
+    if (!m) throw new Error("SPEC.md version header not found");
+    return m[1];
+  })();
+
+  const cliPkgVersion = (() => {
+    const pkg = JSON.parse(readFileSync(r("cli/package.json"), "utf8"));
+    return pkg.version as string;
+  })();
+
+  it("cli/package.json version matches the SPEC.md minor", () => {
+    expect(cliPkgVersion.startsWith(specMinor + "."), `cli ${cliPkgVersion} vs SPEC ${specMinor}`).toBe(true);
+  });
+
+  it("RENDERER_VERSION matches the cli package version", () => {
+    const text = readFileSync(r("cli/src/render.ts"), "utf8");
+    const m = text.match(/RENDERER_VERSION\s*=\s*"kcp-cli\s+([\d.]+)"/);
+    expect(m, "RENDERER_VERSION literal not found").toBeTruthy();
+    expect(m![1]).toBe(cliPkgVersion);
+  });
+
+  it("the CLI help banner matches the cli package version", () => {
+    const text = readFileSync(r("cli/src/cli.ts"), "utf8");
+    const m = text.match(/KCP Developer CLI — v([\d.]+)/);
+    expect(m, "CLI banner version not found").toBeTruthy();
+    expect(m![1]).toBe(cliPkgVersion);
+  });
+
+  it("every bridge package shares the cli minor version", () => {
+    const ts = JSON.parse(readFileSync(r("bridge/typescript/package.json"), "utf8")).version as string;
+
+    const pyText = readFileSync(r("bridge/python/pyproject.toml"), "utf8");
+    const py = pyText.match(/^version\s*=\s*"([\d.]+)"/m)?.[1];
+
+    const pomText = readFileSync(r("bridge/java/pom.xml"), "utf8");
+    // Project version only — slice before the dependency block so a dependency's
+    // <version> can't be mistaken for the artifact version.
+    const projectPom = pomText.slice(0, pomText.indexOf("<dependencies"));
+    const java = projectPom.match(/<version>([\d.]+)<\/version>/)?.[1];
+
+    const minor = cliPkgVersion.split(".").slice(0, 2).join(".") + ".";
+    for (const [name, v] of [["typescript", ts], ["python", py], ["java", java]] as const) {
+      expect(v, `bridge/${name} version not found`).toBeTruthy();
+      expect(v!.startsWith(minor), `bridge/${name} ${v} vs cli ${cliPkgVersion}`).toBe(true);
+    }
+  });
+});
+
 describe("validator duplication guard", () => {
   it("cli and bridge TypeScript validators are byte-identical", () => {
     // They are copy-paste twins with no shared module; until that is fixed,
