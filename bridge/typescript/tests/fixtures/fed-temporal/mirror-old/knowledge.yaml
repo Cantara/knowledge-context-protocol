@@ -1,0 +1,11 @@
+kcp_version: "0.21"
+project: gdpr-2018-corpus
+version: 1.0.0
+
+units:
+  - id: gdpr-2018-consent
+    path: consent.md
+    intent: "GDPR 2018 consent requirements and lawful basis under the original corpus"
+    scope: global
+    audience: [developer, agent]
+    triggers: ["consent", "gdpr", "lawful basis"]

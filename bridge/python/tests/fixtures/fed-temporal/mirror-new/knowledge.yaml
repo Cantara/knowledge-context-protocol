@@ -1,0 +1,11 @@
+kcp_version: "0.21"
+project: gdpr-2023-corpus
+version: 1.0.0
+
+units:
+  - id: gdpr-2023-consent
+    path: consent.md
+    intent: "GDPR 2023 updated consent requirements and lawful basis"
+    scope: global
+    audience: [developer, agent]
+    triggers: ["consent", "gdpr", "lawful basis"]

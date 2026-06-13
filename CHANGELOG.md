@@ -8,6 +8,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Implemented — federated temporal filtering (C18) in all three bridges
+
+- The TypeScript, Python, and Java MCP bridges now apply manifest-level (federation source)
+  temporal filtering at query time (RFC-0021, SPEC §3.6 / §16.5 C18). Each `manifests[]`
+  entry's `local_mirror` is associated with the sub-manifest loaded from it, so its units
+  inherit the source's `temporal` window. On `search_knowledge`, a sub-manifest whose source
+  window excludes the effective date (`as_of`, else today) is skipped *before* scoring and
+  *before* unit-level temporal — none of its units are scored or returned. `include_all_temporal`
+  bypasses the stage, consistent with the unit-level semantics. This is the resolution-time half
+  of C18; parsers already exposed `manifests[].temporal` and detected `superseded_by` cycles.
+- `list_manifests` now surfaces each federation entry's `temporal` block and a computed
+  `temporally_active` flag (evaluated against today).
+- Validated: 5 discriminating tests per bridge (mutation-verified) over a shared `fed-temporal`
+  fixture — a compliance hub federating an expired GDPR-2018 corpus and an active GDPR-2023
+  corpus with disjoint source windows, where neither corpus declares unit-level temporal so the
+  source window is the only discriminator.
+
 ### Implemented — composition resolution + enforcing C17 in `kcp render`
 
 - `kcp render` now resolves a `composition` block (RFC-0020/0022 §3.11): fetches/reads

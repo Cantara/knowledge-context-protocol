@@ -9,6 +9,7 @@ import no.cantara.kcp.KcpParser;
 import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
 import no.cantara.kcp.model.ManifestRef;
+import no.cantara.kcp.model.Temporal;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -36,6 +37,10 @@ public final class KcpServer {
         Map<String, ResourceHandler> handlers,
         Map<String, KnowledgeUnit> units,
         Map<String, Path> unitDirs,
+        // unit.id -> the federation source's temporal window (manifests[].temporal, §3.6),
+        // for units from a sub-manifest associated with a manifests[] entry via local_mirror.
+        // Primary units and unassociated sub-manifests have no entry (always included).
+        Map<String, Temporal> sourceTemporals,
         KnowledgeManifest primaryManifest,
         int totalUnits,
         int manifestTokenTotal
@@ -85,15 +90,27 @@ public final class KcpServer {
         // ── unit context: unit.id -> [unit, manifestDir]  (primary wins on dup) ───
         Map<String, KnowledgeUnit> unitMap  = new LinkedHashMap<>();
         Map<String, Path>          dirMap   = new LinkedHashMap<>();
+        Map<String, Temporal>      srcTempMap = new LinkedHashMap<>();
         for (KnowledgeUnit unit : manifest.units()) {
             unitMap.put(unit.id(), unit);
             dirMap.put(unit.id(), manifestDir);
+        }
+
+        // Associate each federation entry's local_mirror (resolved against the primary dir)
+        // with its manifests[] declaration so a sub-manifest loaded from disk inherits its
+        // source temporal window (§3.6 / C18). Keyed by the resolved absolute mirror path.
+        Map<Path, ManifestRef> mirrorToRef = new LinkedHashMap<>();
+        for (ManifestRef ref : manifest.manifests()) {
+            if (ref.localMirror() != null && !ref.localMirror().isEmpty() && manifestDir != null) {
+                mirrorToRef.put(manifestDir.resolve(ref.localMirror()).normalize().toAbsolutePath(), ref);
+            }
         }
 
         // ── merge sub-manifests ───────────────────────────────────────────────────
         for (Path subPath : subManifestPaths) {
             Path resolvedSub = subPath.toAbsolutePath();
             Path subDir = resolvedSub.getParent();
+            ManifestRef sourceRef = mirrorToRef.get(resolvedSub.normalize());
             KnowledgeManifest subManifest;
             try {
                 subManifest = KcpParser.parse(resolvedSub);
@@ -112,6 +129,9 @@ public final class KcpServer {
                 }
                 unitMap.put(unit.id(), unit);
                 dirMap.put(unit.id(), subDir);
+                if (sourceRef != null && sourceRef.temporal() != null) {
+                    srcTempMap.put(unit.id(), sourceRef.temporal());
+                }
                 added++;
             }
             System.err.printf("  [kcp-mcp] loaded sub-manifest %s — %d unit(s)%n",
@@ -159,7 +179,7 @@ public final class KcpServer {
                 if (te instanceof Number n) manifestTokenTotal += n.intValue();
             }
         }
-        return new ResourceSet(resources, handlers, unitMap, dirMap, manifest, unitMap.size(), manifestTokenTotal);
+        return new ResourceSet(resources, handlers, unitMap, dirMap, srcTempMap, manifest, unitMap.size(), manifestTokenTotal);
     }
 
     // ── Search scoring (package-private for tests) ─────────────────────────────
@@ -244,6 +264,19 @@ public final class KcpServer {
         if (t == null) return true;
         if (t.validFrom()  != null && t.validFrom().compareTo(asOf)  > 0) return false;
         if (t.validUntil() != null && t.validUntil().compareTo(asOf) < 0) return false;
+        return true;
+    }
+
+    /**
+     * §3.6 / C18 manifest-level (federation source) temporal check. Returns true when a
+     * sub-manifest is relevant as a knowledge source on the effective date. A source with no
+     * temporal block is always included. Applied <em>before</em> unit-level temporal: a source
+     * filtered out here contributes no units at all — the bridge skips it entirely.
+     */
+    static boolean isSourceTemporallyIncluded(Temporal t, String effectiveDate) {
+        if (t == null) return true;
+        if (t.validFrom()  != null && t.validFrom().compareTo(effectiveDate)  > 0) return false;
+        if (t.validUntil() != null && t.validUntil().compareTo(effectiveDate) < 0) return false;
         return true;
     }
 
@@ -464,6 +497,15 @@ public final class KcpServer {
         for (Map.Entry<String, KnowledgeUnit> entry : rs.units().entrySet()) {
             KnowledgeUnit unit = entry.getValue();
 
+            // §3.6 / C18: manifest-level (federation source) temporal filter, applied before
+            // scoring and before unit-level temporal. A source outside its validity window is
+            // skipped entirely — none of its units are scored or returned. Bypassed by
+            // include_all_temporal, consistent with the unit-level semantics below.
+            if (!includeAllTemporal && !isSourceTemporallyIncluded(
+                    rs.sourceTemporals().get(entry.getKey()), temporalDate)) {
+                continue;
+            }
+
             // Apply filters
             if (audienceFilter != null && (unit.audience() == null
                     || !unit.audience().contains(audienceFilter))) {
@@ -666,7 +708,10 @@ public final class KcpServer {
             sb.append("\"has_local_mirror\":").append(m.localMirror() != null && !m.localMirror().isEmpty()).append(",");
             sb.append("\"update_frequency\":").append(m.updateFrequency() != null ? "\"" + escapeJson(m.updateFrequency()) + "\"" : "null").append(",");
             sb.append("\"version_pin\":").append(m.versionPin() != null ? "\"" + escapeJson(m.versionPin()) + "\"" : "null").append(",");
-            sb.append("\"version_policy\":").append(m.versionPolicy() != null ? "\"" + escapeJson(m.versionPolicy()) + "\"" : "null");
+            sb.append("\"version_policy\":").append(m.versionPolicy() != null ? "\"" + escapeJson(m.versionPolicy()) + "\"" : "null").append(",");
+            sb.append("\"temporal\":").append(temporalJson(m.temporal())).append(",");
+            sb.append("\"temporally_active\":").append(
+                isSourceTemporallyIncluded(m.temporal(), LocalDate.now().toString()));
             sb.append("}");
         }
         sb.append("\n]");
@@ -674,6 +719,19 @@ public final class KcpServer {
         return new McpSchema.CallToolResult(
             List.of(new McpSchema.TextContent(sb.toString())),
             false, null, null);
+    }
+
+    /** Serialize a Temporal block to a JSON object (only non-null fields), or {@code null}. */
+    static String temporalJson(Temporal t) {
+        if (t == null) return "null";
+        StringBuilder sb = new StringBuilder("{");
+        boolean first = true;
+        if (t.validFrom() != null)    { sb.append("\"valid_from\":\"").append(escapeJson(t.validFrom())).append("\""); first = false; }
+        if (t.validUntil() != null)   { if (!first) sb.append(","); sb.append("\"valid_until\":\"").append(escapeJson(t.validUntil())).append("\""); first = false; }
+        if (t.recordedAt() != null)   { if (!first) sb.append(","); sb.append("\"recorded_at\":\"").append(escapeJson(t.recordedAt())).append("\""); first = false; }
+        if (t.supersededBy() != null) { if (!first) sb.append(","); sb.append("\"superseded_by\":\"").append(escapeJson(t.supersededBy())).append("\""); }
+        sb.append("}");
+        return sb.toString();
     }
 
     // ── Prompt registration ───────────────────────────────────────────────────

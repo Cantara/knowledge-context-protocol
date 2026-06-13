@@ -449,6 +449,89 @@ describe("list_manifests tool", () => {
   });
 });
 
+// RFC-0021 / C18: manifest-level (federation source) temporal filtering. The hub federates
+// two GDPR corpora via local_mirror with disjoint source windows — gdpr-2018
+// (valid_until 2023-09-01) and gdpr-2023 (valid_from 2023-09-01). Neither corpus declares
+// unit-level temporal, so the *only* thing that can include or exclude their units is the
+// manifests[].temporal source window. Both consent units match the query "consent gdpr".
+describe("federation temporal (C18)", () => {
+  const FED_TEMPORAL_DIR = join(import.meta.dirname, "fixtures/fed-temporal");
+  const HUB = join(FED_TEMPORAL_DIR, "knowledge.yaml");
+  const MIRRORS = [
+    join(FED_TEMPORAL_DIR, "mirror-old/knowledge.yaml"),
+    join(FED_TEMPORAL_DIR, "mirror-new/knowledge.yaml"),
+  ];
+
+  async function connectFed() {
+    const { server } = createKcpServer(HUB, {
+      warnOnValidation: false,
+      subManifests: MIRRORS,
+    });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    const client = new Client({ name: "test-client", version: "0.1.0" }, { capabilities: {} });
+    await client.connect(clientTransport);
+    return client;
+  }
+
+  async function searchIds(args: Record<string, unknown>): Promise<string[]> {
+    const client = await connectFed();
+    const result = await client.callTool({ name: "search_knowledge", arguments: args });
+    await client.close();
+    const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+    const parsed = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed.map((r: { id: string }) => r.id) : [];
+  }
+
+  it("as_of inside only the active window excludes the expired source's units", async () => {
+    // 2026 is after gdpr-2018's valid_until and inside gdpr-2023's window.
+    const ids = await searchIds({ query: "consent gdpr", as_of: "2026-06-13" });
+    expect(ids).toContain("gdpr-2023-consent");
+    expect(ids).not.toContain("gdpr-2018-consent");
+  });
+
+  it("as_of inside the expired window includes it and excludes the not-yet-valid source", async () => {
+    // 2020 is inside gdpr-2018's window and before gdpr-2023's valid_from.
+    const ids = await searchIds({ query: "consent gdpr", as_of: "2020-01-01" });
+    expect(ids).toContain("gdpr-2018-consent");
+    expect(ids).not.toContain("gdpr-2023-consent");
+  });
+
+  it("include_all_temporal bypasses manifest-level filtering and returns both sources", async () => {
+    const ids = await searchIds({ query: "consent gdpr", include_all_temporal: true });
+    expect(ids).toContain("gdpr-2018-consent");
+    expect(ids).toContain("gdpr-2023-consent");
+  });
+
+  it("as_of and include_all_temporal together are a conflict error", async () => {
+    const client = await connectFed();
+    const result = await client.callTool({
+      name: "search_knowledge",
+      arguments: { query: "consent gdpr", as_of: "2020-01-01", include_all_temporal: true },
+    });
+    await client.close();
+    const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+    expect(JSON.parse(text).error).toBe("temporal_query_conflict");
+  });
+
+  it("list_manifests exposes the temporal block and computed activity", async () => {
+    const client = await connectFed();
+    const result = await client.callTool({ name: "list_manifests", arguments: {} });
+    await client.close();
+    const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+    const entries = JSON.parse(text) as Array<{
+      id: string;
+      temporal: { valid_until?: string } | null;
+      temporally_active: boolean;
+    }>;
+    const old = entries.find((e) => e.id === "gdpr-2018")!;
+    const cur = entries.find((e) => e.id === "gdpr-2023")!;
+    expect(old.temporal?.valid_until).toBe("2023-09-01");
+    expect(old.temporally_active).toBe(false); // expired as of today
+    expect(cur.temporally_active).toBe(true);
+  });
+});
+
 describe("prompts/list", () => {
   it("lists both prompts", async () => {
     const client = await connectClient(join(MINIMAL_DIR, "knowledge.yaml"));

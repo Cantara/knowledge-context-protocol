@@ -23,7 +23,7 @@ import {
   type McpResourceMeta,
 } from "./mapper.js";
 import { readUnitContent } from "./content.js";
-import type { KnowledgeManifest, KnowledgeUnit } from "./model.js";
+import type { KnowledgeManifest, KnowledgeUnit, Temporal } from "./model.js";
 import type { CommandManifest } from "./commands.js";
 import { formatSyntaxBlock, lookupCommand } from "./commands.js";
 
@@ -48,6 +48,10 @@ export interface KcpMcpServer {
 interface UnitContext {
   unit: KnowledgeUnit;
   manifestDir: string;
+  /** The `manifests[].id` of the sub-manifest this unit came from; undefined for primary units. */
+  sourceManifestId?: string;
+  /** The federation source's validity window (`manifests[].temporal`, §3.6); undefined when none. */
+  sourceTemporal?: Temporal;
 }
 
 // ── Search scoring ───────────────────────────────────────────────────────────
@@ -140,6 +144,20 @@ function isTemporallyActive(unit: KnowledgeUnit, asOf: string): boolean {
   return true;
 }
 
+/**
+ * §3.6 / C18 manifest-level (federation source) temporal check. Returns true when a
+ * sub-manifest is relevant *as a knowledge source* on the effective date. A source with no
+ * `manifests[].temporal` block is always included. This applies *before* unit-level temporal
+ * (§4.22): a source filtered out here contributes no units at all — the bridge skips it
+ * entirely, equivalent to never fetching it.
+ */
+function isSourceTemporallyIncluded(t: Temporal | undefined, effectiveDate: string): boolean {
+  if (!t) return true;
+  if (t.valid_from && t.valid_from > effectiveDate) return false;
+  if (t.valid_until && t.valid_until < effectiveDate) return false;
+  return true;
+}
+
 /** Returns the first not_for phrase matched by any query term, or null (§15.11). */
 function matchNotFor(unit: KnowledgeUnit, terms: string[]): string | null {
   if (!unit.not_for || unit.not_for.length === 0) return null;
@@ -201,10 +219,21 @@ export function createKcpServer(
     manifest.units.map((u) => [u.id, { unit: u, manifestDir: primaryDir }])
   );
 
+  // Associate each federation entry's local_mirror with its manifests[] declaration so a
+  // sub-manifest loaded from disk inherits its source id + temporal window (§3.6 / C18).
+  // Keyed by the resolved absolute path of the mirror file.
+  const mirrorToRef = new Map<string, { id: string; temporal?: Temporal }>();
+  for (const ref of manifest.manifests) {
+    if (ref.local_mirror) {
+      mirrorToRef.set(resolve(primaryDir, ref.local_mirror), { id: ref.id, temporal: ref.temporal });
+    }
+  }
+
   // Load each sub-manifest and merge its units
   for (const subPath of subManifests) {
     const resolvedSub = resolve(subPath);
     const subDir = dirname(resolvedSub);
+    const sourceRef = mirrorToRef.get(resolvedSub);
 
     let subManifest: KnowledgeManifest;
     try {
@@ -239,7 +268,12 @@ export function createKcpServer(
         );
         continue;
       }
-      unitContextMap.set(unit.id, { unit, manifestDir: subDir });
+      unitContextMap.set(unit.id, {
+        unit,
+        manifestDir: subDir,
+        sourceManifestId: sourceRef?.id,
+        sourceTemporal: sourceRef?.temporal,
+      });
       added++;
     }
     if (warnOnValidation || added > 0) {
@@ -453,7 +487,17 @@ export function createKcpServer(
         const terms = query.trim().split(/\s+/);
         const results: SearchResult[] = [];
 
-        for (const { unit } of unitContextMap.values()) {
+        for (const ctx of unitContextMap.values()) {
+          const unit = ctx.unit;
+
+          // §3.6 / C18: manifest-level (federation source) temporal filter, applied before
+          // scoring and before unit-level temporal. A source outside its validity window is
+          // skipped entirely — none of its units are scored or returned. Bypassed by
+          // include_all_temporal, consistent with the unit-level semantics below.
+          if (!includeAllTemporal && !isSourceTemporallyIncluded(ctx.sourceTemporal, temporalDate)) {
+            continue;
+          }
+
           // Apply filters
           if (
             audienceFilter &&
@@ -570,6 +614,11 @@ export function createKcpServer(
           update_frequency: m.update_frequency ?? null,
           version_pin: m.version_pin ?? null,
           version_policy: m.version_policy ?? null,
+          temporal: m.temporal ?? null,
+          temporally_active: isSourceTemporallyIncluded(
+            m.temporal,
+            new Date().toISOString().slice(0, 10)
+          ),
         }));
         return {
           content: [
