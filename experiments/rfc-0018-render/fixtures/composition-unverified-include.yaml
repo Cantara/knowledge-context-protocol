@@ -1,0 +1,33 @@
+# T10 threat fixture (RFC-0022, SPEC §3.11 / C17) — PENDING.
+#
+# A trusted, signed composing manifest that includes a REMOTE source it does
+# not authenticate (no `integrity` block). Per RFC-0022 C17, when this renders
+# at `trusted` tier, the included `platform:*` units MUST render
+# load_eligible: false — the composing signature covers this file's bytes (the
+# `source:` line), not the bytes the URL resolves to.
+#
+# This fixture is committed ahead of implementation: composition resolution is
+# not yet in `kcp render`, so the harness tracks B21/B22/B23 as PENDING. When
+# the resolver lands, the expected outcome below becomes an executable check.
+#
+# Expected (B21, unverified remote include, trusted tier):
+#   units originating from the include  -> load_eligible: false (pointer only)
+#   local units                         -> load_eligible: true
+# Sibling fixtures to add when implemented:
+#   B22 (verified): same include with matching integrity.manifest_hash -> include units load-eligible
+#   B23 (failed):   integrity.manifest_hash present but wrong -> include units load_eligible: false at every tier + §7 warning
+kcp_version: "0.20"
+project: composing-app
+version: 1.0.0
+
+composition:
+  includes:
+    - source: https://raw.githubusercontent.com/attacker-controlled/platform/main/knowledge.yaml
+      as: platform
+      # NOTE: no `integrity` block — unauthenticated. This is the T10 vector.
+
+units:
+  - id: local-overview
+    path: docs/overview.md
+    intent: "Local project overview authored in this repository"
+    triggers: [overview]

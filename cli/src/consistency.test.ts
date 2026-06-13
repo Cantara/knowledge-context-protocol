@@ -69,3 +69,42 @@ describe("validator duplication guard", () => {
     expect(a).toBe(b);
   });
 });
+
+// Security/correctness invariants that were violated by the v0.19/v0.20
+// composition + temporal promotion and corrected in v0.21 (RFC-0022). These
+// guard the *spec text* so the insecure/incorrect phrasing cannot silently
+// return — each assertion would have FAILED on the pre-RFC-0022 spec.
+describe("composition + temporal spec invariants (RFC-0022)", () => {
+  const spec = readFileSync(r("SPEC.md"), "utf8");
+
+  it("§3.11 makes composition include integrity enforcing, not advisory", () => {
+    // The T10 hole: a trusted composing signature must not launder
+    // unauthenticated included content into standing context.
+    expect(spec).toContain("Include integrity is enforcing at `trusted` tier");
+    // and the old advisory-only disposition must be gone
+    expect(spec).not.toContain(
+      "advisory warnings, not hard failures. A mismatch\n  produces a §7 warning but does not lower the composed result's trust tier"
+    );
+  });
+
+  it("§16.5 defines C17 (the enforcing renderer rule)", () => {
+    expect(spec).toContain("**C17**");
+    expect(spec).toContain(
+      "MUST NOT emit `load_eligible: true` for any unit originating from an `unverified` or `failed`"
+    );
+  });
+
+  it("composition integrity uses the {algorithm, value} hash shape, not a colon string", () => {
+    // unifies with RFC-0004 content_integrity.manifest_hash and RFC-0019 content_hash
+    expect(spec).not.toContain('manifest_hash: "sha256:');
+  });
+
+  it("§4.22 does not warn on recorded_at later than valid_from (RFC-0010 core case)", () => {
+    // the removed false-positive bullet — present tense as an active warning
+    expect(spec).not.toContain("is later than `valid_from` (manifest authored after the fact");
+  });
+
+  it("§4.22 warns on an empty validity window (valid_until before valid_from)", () => {
+    expect(spec).toContain("`valid_until` is earlier than `valid_from`");
+  });
+});
