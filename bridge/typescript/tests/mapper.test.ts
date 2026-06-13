@@ -15,8 +15,8 @@ import {
   mapDiscovery,
   mapVisibility,
 } from "../src/mapper.js";
-import { parseDict } from "../../shared/src/parser.ts";
-import type { KnowledgeUnit } from "../../shared/src/model.ts";
+import { parseDict } from "../src/parser.js";
+import type { KnowledgeUnit } from "../src/model.js";
 
 function makeUnit(overrides: Partial<KnowledgeUnit> = {}): KnowledgeUnit {
   return {

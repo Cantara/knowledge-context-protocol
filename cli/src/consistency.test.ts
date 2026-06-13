@@ -5,7 +5,7 @@
 // cli/ package (cwd = cli) and read sibling files directly.
 
 import { describe, expect, it } from "vitest";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const REPO = resolve(process.cwd(), "..");
@@ -116,29 +116,21 @@ describe("version-drift guard", () => {
   });
 });
 
-describe("validator duplication guard", () => {
-  it("shared/src/validator.ts is the single source of truth", () => {
-    // The validator logic lives in shared/src/ — cli and bridge compile it
-    // via rootDirs; neither package has its own copy.
-    const shared = readFileSync(r("shared/src/validator.ts"), "utf8");
-    expect(shared.length, "shared/src/validator.ts is empty").toBeGreaterThan(100);
-    expect(existsSync(r("cli/src/validator.ts")), "cli/src/validator.ts should be removed").toBe(false);
-    expect(existsSync(r("bridge/typescript/src/validator.ts")), "bridge/typescript/src/validator.ts should be removed").toBe(false);
-  });
-
-  it("shared/src/model.ts is the single source of truth", () => {
-    const shared = readFileSync(r("shared/src/model.ts"), "utf8");
-    expect(shared.length).toBeGreaterThan(100);
-    expect(existsSync(r("cli/src/model.ts")), "cli/src/model.ts should be removed").toBe(false);
-    expect(existsSync(r("bridge/typescript/src/model.ts")), "bridge/typescript/src/model.ts should be removed").toBe(false);
-  });
-
-  it("shared/src/parser.ts is the single source of truth", () => {
-    const shared = readFileSync(r("shared/src/parser.ts"), "utf8");
-    expect(shared.length).toBeGreaterThan(100);
-    expect(existsSync(r("cli/src/parser.ts")), "cli/src/parser.ts should be removed").toBe(false);
-    expect(existsSync(r("bridge/typescript/src/parser.ts")), "bridge/typescript/src/parser.ts should be removed").toBe(false);
-  });
+describe("shared-core single-source-of-truth guard", () => {
+  // model.ts, parser.ts, validator.ts live in shared/src/ and are symlinked
+  // into cli/src/ and bridge/typescript/src/. readFileSync follows symlinks,
+  // so reading the symlink paths yields the shared content — any divergence
+  // (e.g. someone replaces a symlink with a copy) is caught here.
+  for (const name of ["model", "parser", "validator"] as const) {
+    it(`cli, bridge, and shared agree on ${name}.ts`, () => {
+      const shared = readFileSync(r(`shared/src/${name}.ts`), "utf8");
+      const cli = readFileSync(r(`cli/src/${name}.ts`), "utf8");
+      const bridge = readFileSync(r(`bridge/typescript/src/${name}.ts`), "utf8");
+      expect(shared.length).toBeGreaterThan(100);
+      expect(cli, `cli/src/${name}.ts diverged from shared/src/${name}.ts`).toBe(shared);
+      expect(bridge, `bridge/typescript/src/${name}.ts diverged from shared/src/${name}.ts`).toBe(shared);
+    });
+  }
 });
 
 // Security/correctness invariants that were violated by the v0.19/v0.20
