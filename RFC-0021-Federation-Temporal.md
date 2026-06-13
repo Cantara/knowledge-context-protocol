@@ -136,26 +136,36 @@ manifest-level temporal filtering before fetching and evaluating sub-manifest un
 The effective date for manifest-level filtering is determined identically to unit-level
 temporal filtering (§15.13):
 
-- If `as_of` is set: effective date = `as_of`.
-- If `as_of` is absent: effective date = current date (today).
+- If `as_of` is set: effective date = `as_of`. An `as_of` that is not a valid ISO-8601
+  date/datetime MUST be **rejected** (error), not compared lexically.
+- If `as_of` is absent: effective date = current date (today), computed in **UTC** so all
+  implementations agree at a timezone boundary.
 
 #### Filter rule
 
 A sub-manifest is **temporally included** if and only if:
 
 - The entry has no `temporal` block, **or**
-- `valid_from` is null **or** `valid_from <= effective_date`, **and**
-- `valid_until` is null **or** `valid_until >= effective_date`
+- (`valid_from` is null **or** `valid_from <= effective_date`) **and**
+  (`valid_until` is null **or** `valid_until >= effective_date`), **and**
+- it is **not superseded** — i.e. `temporal.superseded_by` is absent, references an unknown
+  entry, or references an entry that is *not itself temporally included* on the effective date
+  (see *Supersession*, below).
 
 Sub-manifests that fail this filter MUST NOT be fetched. The bridge skips them entirely —
-no HTTP request, no unit loading, no unit-level temporal filtering.
+no HTTP request, no unit loading, no unit-level temporal filtering. The filter applies on
+**every retrieval path** (search, point lookups, resource enumeration), so an excluded
+source's units are unreadable, not merely unsearchable. Bare retrieval paths carry no
+`as_of` and use today (UTC); point-in-time access is via the query path's `as_of`.
 
 #### `include_all_temporal` override
 
 When `include_all_temporal: true`, manifest-level temporal filtering is also bypassed.
 All sub-manifests are traversed regardless of their validity window. This is consistent
 with the parameter's existing semantics: it disables all temporal filtering, not just
-unit-level.
+unit-level. Because the bypass can surface expired or not-yet-valid sources, query results
+returned through it SHOULD carry a `caution` marker so the bypass is observable rather than
+silent.
 
 #### Two-layer composition
 
@@ -176,15 +186,23 @@ The complete filter order for federated queries becomes:
 
 > **manifest-level temporal filter → fetch sub-manifest → score → `not_for` filter → unit-level temporal filter → top-N cut**
 
-#### Overlapping validity windows
+#### Overlapping validity windows and supersession
 
-Multiple sub-manifests MAY be temporally active at the same effective date. This is
-expected and correct — a hub may federate a 2018 corpus (no `valid_until`) alongside a
-2023 corpus (valid from 2023-09-01), and both will be active after that date. Bridges
-query all temporally-included sub-manifests and merge results identically to the existing
-`federation_scope: declared` behaviour. The `source_manifest` field in each result
-identifies the origin. Prioritising results from one sub-manifest over another is a
+Multiple sub-manifests MAY be temporally active at the same effective date when their
+windows merely *overlap* — a hub may federate two unrelated corpora whose windows coincide,
+and both are served. Bridges query all temporally-included sub-manifests and merge results;
+the `source_manifest` field identifies the origin, and prioritising one over another is a
 scoring decision, not a temporal one.
+
+**Supersession is different from mere overlap (v0.21).** When a source declares
+`temporal.superseded_by: <id>` and that successor entry is *itself temporally included* on
+the effective date, the superseded source is **excluded** — the two are not co-served. A
+supersession is an explicit statement that one corpus *replaces* another, not that they
+coexist; once the successor is live, continuing to serve the predecessor is the exact
+compliance hazard (e.g. an expired GDPR-2018 corpus alongside the active GDPR-2023 one) the
+field exists to prevent. Before the successor's `valid_from`, the predecessor is still
+served on its own window. Authors who want two corpora genuinely co-active should use
+overlapping windows *without* `superseded_by`.
 
 #### Response fields
 

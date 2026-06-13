@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.*;
 
 /**
@@ -41,6 +42,8 @@ public final class KcpServer {
         // for units from a sub-manifest associated with a manifests[] entry via local_mirror.
         // Primary units and unassociated sub-manifests have no entry (always included).
         Map<String, Temporal> sourceTemporals,
+        // manifests[].id -> temporal, for supersession resolution (issue #98 F4).
+        Map<String, Temporal> refTemporals,
         KnowledgeManifest primaryManifest,
         int totalUnits,
         int manifestTokenTotal
@@ -96,13 +99,19 @@ public final class KcpServer {
             dirMap.put(unit.id(), manifestDir);
         }
 
-        // Associate each federation entry's local_mirror (resolved against the primary dir)
-        // with its manifests[] declaration so a sub-manifest loaded from disk inherits its
-        // source temporal window (§3.6 / C18). Keyed by the resolved absolute mirror path.
+        // manifests[].id -> temporal, for supersession resolution (issue #98 F4).
+        Map<String, Temporal> refTemporalById = new LinkedHashMap<>();
+        for (ManifestRef ref : manifest.manifests()) {
+            refTemporalById.put(ref.id(), ref.temporal());
+        }
+
+        // Associate each federation entry's local_mirror with its manifests[] declaration so a
+        // sub-manifest loaded from disk inherits its source temporal window (§3.6 / C18).
+        // Keyed by the canonical (symlink-resolved) absolute mirror path (issue #98 F2).
         Map<Path, ManifestRef> mirrorToRef = new LinkedHashMap<>();
         for (ManifestRef ref : manifest.manifests()) {
             if (ref.localMirror() != null && !ref.localMirror().isEmpty() && manifestDir != null) {
-                mirrorToRef.put(manifestDir.resolve(ref.localMirror()).normalize().toAbsolutePath(), ref);
+                mirrorToRef.put(canonical(manifestDir.resolve(ref.localMirror())), ref);
             }
         }
 
@@ -110,7 +119,13 @@ public final class KcpServer {
         for (Path subPath : subManifestPaths) {
             Path resolvedSub = subPath.toAbsolutePath();
             Path subDir = resolvedSub.getParent();
-            ManifestRef sourceRef = mirrorToRef.get(resolvedSub.normalize());
+            ManifestRef sourceRef = mirrorToRef.get(canonical(resolvedSub));
+            // A federation that declares mirrors but loads a sub-manifest matching none means
+            // that sub-manifest's units would bypass temporal filtering — surface it (F2).
+            if (sourceRef == null && !mirrorToRef.isEmpty()) {
+                System.err.printf("  [kcp-mcp] warning: sub-manifest %s matched no manifests[].local_mirror"
+                    + " — its units are not subject to federation temporal filtering (§3.6 / C18)%n", resolvedSub);
+            }
             KnowledgeManifest subManifest;
             try {
                 subManifest = KcpParser.parse(resolvedSub);
@@ -139,11 +154,17 @@ public final class KcpServer {
         }
 
         // ── build unit resources from merged context ──────────────────────────────
+        // Resources are registered statically with the SDK, so temporally-excluded units are
+        // filtered here (effective date = today, UTC): they are neither listed nor readable —
+        // not just hidden from search (issue #98 F1). Historical access remains via
+        // search_knowledge's as_of, which reads rs.units() directly.
+        String resourceToday = effectiveToday();
         for (Map.Entry<String, KnowledgeUnit> entry : unitMap.entrySet()) {
             KnowledgeUnit unit    = entry.getValue();
             Path          unitDir = dirMap.get(entry.getKey());
 
             if (agentOnly && !unit.audience().contains("agent")) continue;
+            if (!isUnitServable(unit, srcTempMap.get(entry.getKey()), resourceToday, refTemporalById)) continue;
 
             resources.add(KcpMapper.buildUnitResource(slug, unit));
 
@@ -179,7 +200,7 @@ public final class KcpServer {
                 if (te instanceof Number n) manifestTokenTotal += n.intValue();
             }
         }
-        return new ResourceSet(resources, handlers, unitMap, dirMap, srcTempMap, manifest, unitMap.size(), manifestTokenTotal);
+        return new ResourceSet(resources, handlers, unitMap, dirMap, srcTempMap, refTemporalById, manifest, unitMap.size(), manifestTokenTotal);
     }
 
     // ── Search scoring (package-private for tests) ─────────────────────────────
@@ -256,28 +277,67 @@ public final class KcpServer {
     }
 
     /**
-     * Returns true if the unit is active on the given ISO 8601 date (§15.13).
-     * Units without a temporal block are always active.
+     * Unified bi-temporal inclusion check (§4.22 unit / §3.6 source, §15.13). True when a
+     * {@code temporal} block is valid on {@code asOf}; a null block is always included. One
+     * predicate for both unit and source temporal (issue #98 F7).
      */
-    static boolean isTemporallyActive(KnowledgeUnit unit, String asOf) {
-        var t = unit.temporal();
+    static boolean isTemporallyIncluded(Temporal t, String asOf) {
         if (t == null) return true;
         if (t.validFrom()  != null && t.validFrom().compareTo(asOf)  > 0) return false;
         if (t.validUntil() != null && t.validUntil().compareTo(asOf) < 0) return false;
         return true;
     }
 
+    /** UTC effective date (YYYY-MM-DD). Pinned to UTC so all three bridges agree at a
+     *  timezone boundary (issue #98 F6). */
+    static String effectiveToday() {
+        return LocalDate.now(ZoneOffset.UTC).toString();
+    }
+
+    private static final java.util.regex.Pattern AS_OF_RE =
+        java.util.regex.Pattern.compile("^\\d{4}-\\d{2}-\\d{2}([T ][0-9:.+\\-Z]*)?$");
+
+    /** Validate an {@code as_of} value as an ISO-8601 date or datetime (issue #98 F3). */
+    static boolean isValidAsOf(String s) {
+        return s != null && AS_OF_RE.matcher(s).matches();
+    }
+
     /**
-     * §3.6 / C18 manifest-level (federation source) temporal check. Returns true when a
-     * sub-manifest is relevant as a knowledge source on the effective date. A source with no
-     * temporal block is always included. Applied <em>before</em> unit-level temporal: a source
-     * filtered out here contributes no units at all — the bridge skips it entirely.
+     * §3.6 / C18 manifest-level inclusion with supersession (issue #98 F4). A source is included
+     * iff its window is valid on {@code asOf} AND it is not superseded by another manifests[]
+     * entry whose own window is active — once a successor is live, the superseded source is
+     * dropped, not co-served. {@code refTemporalById} maps manifests[].id → that entry's temporal.
      */
-    static boolean isSourceTemporallyIncluded(Temporal t, String effectiveDate) {
-        if (t == null) return true;
-        if (t.validFrom()  != null && t.validFrom().compareTo(effectiveDate)  > 0) return false;
-        if (t.validUntil() != null && t.validUntil().compareTo(effectiveDate) < 0) return false;
+    static boolean isSourceServable(Temporal t, String asOf, Map<String, Temporal> refTemporalById) {
+        if (!isTemporallyIncluded(t, asOf)) return false;
+        String succ = t != null ? t.supersededBy() : null;
+        if (succ != null && refTemporalById.containsKey(succ)
+                && isTemporallyIncluded(refTemporalById.get(succ), asOf)) {
+            return false;
+        }
         return true;
+    }
+
+    /**
+     * A unit is servable on a date iff its federation source is servable (window valid AND not
+     * superseded) AND its own unit-level window is valid. Every retrieval path gates on this so
+     * get_unit / read_resource / list_resources can't leak temporally excluded content (F1).
+     */
+    static boolean isUnitServable(KnowledgeUnit unit, Temporal sourceT, String asOf,
+                                  Map<String, Temporal> refTemporalById) {
+        return isSourceServable(sourceT, asOf, refTemporalById)
+            && isTemporallyIncluded(unit.temporal(), asOf);
+    }
+
+    /** Canonical absolute path for matching a local_mirror to a loaded sub-manifest. Follows
+     *  symlinks when the file exists so the association can't fail open on a symlinked or
+     *  non-canonical path (issue #98 F2); falls back to lexical normalisation otherwise. */
+    static Path canonical(Path p) {
+        try {
+            return p.toRealPath();
+        } catch (IOException e) {
+            return p.toAbsolutePath().normalize();
+        }
     }
 
     // ── Public factories ──────────────────────────────────────────────────────
@@ -442,14 +502,17 @@ public final class KcpServer {
 
         // Tool: list_manifests
         McpSchema.JsonSchema listManifestsSchema = new McpSchema.JsonSchema(
-            "object", Map.of(), List.of(), null, null, null
+            "object",
+            Map.of("as_of", Map.of("type", "string", "description",
+                "ISO 8601 date (YYYY-MM-DD) to evaluate temporally_active against (§3.6). Default: today (UTC).")),
+            List.of(), null, null, null
         );
 
         server.addTool(new McpServerFeatures.SyncToolSpecification(
             new McpSchema.Tool("list_manifests", null,
                 "List the sub-manifests declared in this knowledge.yaml federation block.",
                 listManifestsSchema, null, null, null),
-            (exchange, request) -> handleListManifests(rs.primaryManifest())
+            (exchange, request) -> handleListManifests(request, rs)
         ));
     }
 
@@ -483,7 +546,14 @@ public final class KcpServer {
                     "{\"error\":\"temporal_query_conflict\",\"message\":\"as_of and include_all_temporal are mutually exclusive.\"}")),
                 true, null, null);
         }
-        String temporalDate = asOf != null ? asOf : LocalDate.now().toString();
+        // F3: reject an unparseable as_of rather than feeding it to lexicographic comparison.
+        if (asOf != null && !isValidAsOf(asOf)) {
+            return new McpSchema.CallToolResult(
+                List.of(new McpSchema.TextContent(
+                    "{\"error\":\"invalid_as_of\",\"message\":\"as_of must be an ISO-8601 date (YYYY-MM-DD)\"}")),
+                true, null, null);
+        }
+        String temporalDate = asOf != null ? asOf : effectiveToday();
 
         if (query.isBlank()) {
             return new McpSchema.CallToolResult(
@@ -501,8 +571,8 @@ public final class KcpServer {
             // scoring and before unit-level temporal. A source outside its validity window is
             // skipped entirely — none of its units are scored or returned. Bypassed by
             // include_all_temporal, consistent with the unit-level semantics below.
-            if (!includeAllTemporal && !isSourceTemporallyIncluded(
-                    rs.sourceTemporals().get(entry.getKey()), temporalDate)) {
+            if (!includeAllTemporal && !isSourceServable(
+                    rs.sourceTemporals().get(entry.getKey()), temporalDate, rs.refTemporals())) {
                 continue;
             }
 
@@ -548,7 +618,16 @@ public final class KcpServer {
         if (!includeAllTemporal) {
             finalResults.removeIf(r -> {
                 KnowledgeUnit u = rs.units().get(r.id());
-                return u != null && !isTemporallyActive(u, temporalDate);
+                return u != null && !isTemporallyIncluded(u.temporal(), temporalDate);
+            });
+        } else {
+            // F5: mark every result so a bypassed (possibly out-of-window) result is observable.
+            finalResults.replaceAll(r -> {
+                String note = r.caution() != null
+                    ? r.caution() + "; temporal filtering bypassed"
+                    : "temporal filtering bypassed (include_all_temporal)";
+                return new SearchResult(r.id(), r.intent(), r.path(), r.uri(), r.score(),
+                    r.matchReason(), r.tokenEstimate(), r.summaryUnit(), note);
             });
         }
 
@@ -629,6 +708,16 @@ public final class KcpServer {
                     "Unit not found: \"" + unitId + "\". Available units: " + ids)),
                 true, null, null);
         }
+        // F1: refuse a temporally-excluded unit by id, matching search / resource paths.
+        // Default effective date is today (UTC); historical access is via search's as_of.
+        String guToday = effectiveToday();
+        if (!isUnitServable(unit, rs.sourceTemporals().get(unitId), guToday, rs.refTemporals())) {
+            return new McpSchema.CallToolResult(
+                List.of(new McpSchema.TextContent(
+                    "{\"error\":\"temporally_unavailable\",\"message\":\"Unit '" + escapeJson(unitId)
+                        + "' is outside its temporal validity window as of " + guToday + "\"}")),
+                true, null, null);
+        }
 
         Path unitDir = rs.unitDirs().get(unitId);
         String mime = KcpMapper.resolveMime(unit);
@@ -694,7 +783,18 @@ public final class KcpServer {
             false, null, null);
     }
 
-    static McpSchema.CallToolResult handleListManifests(KnowledgeManifest manifest) {
+    static McpSchema.CallToolResult handleListManifests(McpSchema.CallToolRequest request, ResourceSet rs) {
+        KnowledgeManifest manifest = rs.primaryManifest();
+        Map<String, Object> args = request.arguments();
+        String asOf = args != null && args.get("as_of") != null ? String.valueOf(args.get("as_of")) : null;
+        // F3: validate as_of here too. F9: temporally_active reflects as_of (else today, UTC).
+        if (asOf != null && !isValidAsOf(asOf)) {
+            return new McpSchema.CallToolResult(
+                List.of(new McpSchema.TextContent(
+                    "{\"error\":\"invalid_as_of\",\"message\":\"as_of must be an ISO-8601 date (YYYY-MM-DD)\"}")),
+                true, null, null);
+        }
+        String lmDate = asOf != null ? asOf : effectiveToday();
         StringBuilder sb = new StringBuilder("[\n");
         List<ManifestRef> refs = manifest.manifests();
         for (int i = 0; i < refs.size(); i++) {
@@ -711,7 +811,7 @@ public final class KcpServer {
             sb.append("\"version_policy\":").append(m.versionPolicy() != null ? "\"" + escapeJson(m.versionPolicy()) + "\"" : "null").append(",");
             sb.append("\"temporal\":").append(temporalJson(m.temporal())).append(",");
             sb.append("\"temporally_active\":").append(
-                isSourceTemporallyIncluded(m.temporal(), LocalDate.now().toString()));
+                isSourceServable(m.temporal(), lmDate, rs.refTemporals()));
             sb.append("}");
         }
         sb.append("\n]");

@@ -2,6 +2,7 @@
 // Reads a knowledge.yaml and exposes its units as MCP resources, tools, and prompts.
 
 import { dirname, resolve } from "node:path";
+import { realpathSync } from "node:fs";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   ListResourcesRequestSchema,
@@ -132,30 +133,57 @@ function scoreUnit(
 }
 
 /**
- * §15.12 / §15.13 temporal activity check.
- * Returns true when the unit should be included for the given date string (YYYY-MM-DD).
- * A unit with no temporal block is always active.
+ * Unified bi-temporal inclusion check (§4.22 unit-level / §3.6 source-level, §15.13).
+ * Returns true when a `temporal` block is valid on the effective date (YYYY-MM-DD).
+ * A null/absent block is always included. One predicate for both unit and source temporal —
+ * callers pass `unit.temporal` or `ref.temporal` (was two body-identical twins; issue #98 F7).
  */
-function isTemporallyActive(unit: KnowledgeUnit, asOf: string): boolean {
-  const t = unit.temporal;
+function isTemporallyIncluded(t: Temporal | undefined, asOf: string): boolean {
   if (!t) return true;
   if (t.valid_from && t.valid_from > asOf) return false;
   if (t.valid_until && t.valid_until < asOf) return false;
   return true;
 }
 
+/** UTC effective date (YYYY-MM-DD). Pinned to UTC so all three bridges agree at a
+ *  timezone boundary (issue #98 F6; RFC-0021 §"Resolution behaviour"). */
+function effectiveToday(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Validate an `as_of` value as an ISO-8601 date or datetime (issue #98 F3).
+ *  Unparseable values are rejected rather than fed into lexicographic comparison. */
+function isValidAsOf(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}([T ][0-9:.+\-Z]*)?$/.test(s)) return false;
+  const d = new Date(s.length === 10 ? s + "T00:00:00Z" : s);
+  return !Number.isNaN(d.getTime());
+}
+
 /**
- * §3.6 / C18 manifest-level (federation source) temporal check. Returns true when a
- * sub-manifest is relevant *as a knowledge source* on the effective date. A source with no
- * `manifests[].temporal` block is always included. This applies *before* unit-level temporal
- * (§4.22): a source filtered out here contributes no units at all — the bridge skips it
- * entirely, equivalent to never fetching it.
+ * §3.6 / C18 manifest-level (federation source) inclusion, with supersession (issue #98 F4).
+ * A source is included iff its window is valid on `asOf` AND it is not superseded by another
+ * `manifests[]` entry whose own window is active on `asOf` — once a successor is live, the
+ * superseded source is dropped, not co-served. `refTemporalById` maps `manifests[].id` →
+ * that entry's temporal block.
  */
-function isSourceTemporallyIncluded(t: Temporal | undefined, effectiveDate: string): boolean {
-  if (!t) return true;
-  if (t.valid_from && t.valid_from > effectiveDate) return false;
-  if (t.valid_until && t.valid_until < effectiveDate) return false;
+function isSourceServable(
+  t: Temporal | undefined,
+  asOf: string,
+  refTemporalById: Map<string, Temporal | undefined>
+): boolean {
+  if (!isTemporallyIncluded(t, asOf)) return false;
+  const succ = t?.superseded_by;
+  if (succ && refTemporalById.has(succ) && isTemporallyIncluded(refTemporalById.get(succ), asOf)) {
+    return false;
+  }
   return true;
+}
+
+/** Canonical absolute path for matching a `local_mirror` to a loaded sub-manifest. Follows
+ *  symlinks and normalises when the file exists, so the association can't silently fail open
+ *  on a symlinked or non-canonical path (issue #98 F2). Falls back to a lexical resolve. */
+function canonicalPath(p: string): string {
+  try { return realpathSync(p); } catch { return resolve(p); }
 }
 
 /** Returns the first not_for phrase matched by any query term, or null (§15.11). */
@@ -225,7 +253,7 @@ export function createKcpServer(
   const mirrorToRef = new Map<string, { id: string; temporal?: Temporal }>();
   for (const ref of manifest.manifests) {
     if (ref.local_mirror) {
-      mirrorToRef.set(resolve(primaryDir, ref.local_mirror), { id: ref.id, temporal: ref.temporal });
+      mirrorToRef.set(canonicalPath(resolve(primaryDir, ref.local_mirror)), { id: ref.id, temporal: ref.temporal });
     }
   }
 
@@ -233,7 +261,15 @@ export function createKcpServer(
   for (const subPath of subManifests) {
     const resolvedSub = resolve(subPath);
     const subDir = dirname(resolvedSub);
-    const sourceRef = mirrorToRef.get(resolvedSub);
+    const sourceRef = mirrorToRef.get(canonicalPath(resolvedSub));
+    // A federation that declares mirrors but loads a sub-manifest matching none means that
+    // sub-manifest's units would bypass temporal filtering — surface it (issue #98 F2).
+    if (!sourceRef && mirrorToRef.size > 0) {
+      process.stderr.write(
+        `  [kcp-mcp] warning: sub-manifest ${resolvedSub} matched no manifests[].local_mirror — ` +
+        `its units are not subject to federation temporal filtering (§3.6 / C18)\n`
+      );
+    }
 
     let subManifest: KnowledgeManifest;
     try {
@@ -283,14 +319,29 @@ export function createKcpServer(
     }
   }
 
-  // ── Build static resource list ────────────────────────────────────────────
-  const resourceList: McpResourceMeta[] = [
-    buildManifestResource(manifest, projectSlug),
-  ];
-  for (const { unit } of unitContextMap.values()) {
-    const r = buildUnitResource(unit, projectSlug, agentOnly);
-    if (r !== null) resourceList.push(r);
-  }
+  // manifests[].id → temporal, for supersession resolution at query time (issue #98 F4).
+  const refTemporalById = new Map<string, Temporal | undefined>(
+    manifest.manifests.map((r) => [r.id, r.temporal])
+  );
+
+  // A unit is *servable* on a date iff its federation source is servable (window valid AND not
+  // superseded by an active successor) AND its own unit-level window is valid. Every retrieval
+  // path gates on this, so get_unit / read_resource / list_resources cannot leak temporally
+  // excluded content that search_knowledge already hides (issue #98 F1).
+  const isUnitServable = (ctx: UnitContext, asOf: string): boolean =>
+    isSourceServable(ctx.sourceTemporal, asOf, refTemporalById) &&
+    isTemporallyIncluded(ctx.unit.temporal, asOf);
+
+  // Build the resource list for a given effective date, omitting non-servable units (F1).
+  const buildResourceList = (asOf: string): McpResourceMeta[] => {
+    const list: McpResourceMeta[] = [buildManifestResource(manifest, projectSlug)];
+    for (const ctx of unitContextMap.values()) {
+      if (!isUnitServable(ctx, asOf)) continue;
+      const r = buildUnitResource(ctx.unit, projectSlug, agentOnly);
+      if (r !== null) list.push(r);
+    }
+    return list;
+  };
 
   const totalUnits = unitContextMap.size;
 
@@ -313,7 +364,7 @@ export function createKcpServer(
   // ── Resource handlers ──────────────────────────────────────────────────────
 
   server.setRequestHandler(ListResourcesRequestSchema, async () => ({
-    resources: resourceList,
+    resources: buildResourceList(effectiveToday()),
   }));
 
   server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
@@ -341,6 +392,12 @@ export function createKcpServer(
     const ctx = unitContextMap.get(unitId);
     if (!ctx) {
       throw new Error(`No unit with id '${unitId}'`);
+    }
+    // C18: a unit outside its (source or unit) temporal window is not served here either —
+    // not just hidden from search (issue #98 F1).
+    const today = effectiveToday();
+    if (!isUnitServable(ctx, today)) {
+      throw new Error(`Unit '${unitId}' is outside its temporal validity window as of ${today}`);
     }
 
     const content = readUnitContent(ctx.manifestDir, ctx.unit, uri);
@@ -441,7 +498,13 @@ export function createKcpServer(
         "List the sub-manifests declared in this knowledge.yaml federation block.",
       inputSchema: {
         type: "object" as const,
-        properties: {},
+        properties: {
+          as_of: {
+            type: "string",
+            description:
+              "ISO 8601 date (YYYY-MM-DD) to evaluate temporally_active against (§3.6). Default: today (UTC).",
+          },
+        },
         required: [],
       },
     },
@@ -471,7 +534,14 @@ export function createKcpServer(
             isError: true,
           };
         }
-        const temporalDate = asOf ?? new Date().toISOString().slice(0, 10);
+        // F3: reject an unparseable as_of rather than feeding it to lexicographic comparison.
+        if (asOf !== undefined && !isValidAsOf(asOf)) {
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify({ error: "invalid_as_of", message: `as_of must be an ISO-8601 date (YYYY-MM-DD); got ${JSON.stringify(asOf)}` }) }],
+            isError: true,
+          };
+        }
+        const temporalDate = asOf ?? effectiveToday();
 
         if (!query.trim()) {
           return {
@@ -494,7 +564,7 @@ export function createKcpServer(
           // scoring and before unit-level temporal. A source outside its validity window is
           // skipped entirely — none of its units are scored or returned. Bypassed by
           // include_all_temporal, consistent with the unit-level semantics below.
-          if (!includeAllTemporal && !isSourceTemporallyIncluded(ctx.sourceTemporal, temporalDate)) {
+          if (!includeAllTemporal && !isSourceServable(ctx.sourceTemporal, temporalDate, refTemporalById)) {
             continue;
           }
 
@@ -524,7 +594,7 @@ export function createKcpServer(
           ? results
           : results.filter((r) => {
               const uctx = unitContextMap.get(r.id);
-              return uctx ? isTemporallyActive(uctx.unit, temporalDate) : true;
+              return uctx ? isTemporallyIncluded(uctx.unit.temporal, temporalDate) : true;
             });
 
         // §15.11 not_for filter: strict exclusion, soft demotion (score → not_for → top-N per §15.12)
@@ -537,7 +607,18 @@ export function createKcpServer(
           finalResults.push({ ...r, score: Math.max(1, Math.floor(r.score / 2)), caution: `not_for match: '${matched}'` });
         }
 
-        if (finalResults.length === 0) {
+        // F5: when include_all_temporal bypasses the filter, stamp every result with a caution
+        // so a bypassed (potentially expired/out-of-window) result is observable, not silent.
+        const cautioned = includeAllTemporal
+          ? finalResults.map((r) => ({
+              ...r,
+              caution: r.caution
+                ? `${r.caution}; temporal filtering bypassed`
+                : "temporal filtering bypassed (include_all_temporal)",
+            }))
+          : finalResults;
+
+        if (cautioned.length === 0) {
           const ids = [...unitContextMap.keys()].join(", ");
           return {
             content: [
@@ -550,8 +631,8 @@ export function createKcpServer(
         }
 
         // Sort by score descending, take top 5
-        finalResults.sort((a, b) => b.score - a.score);
-        const top5 = finalResults.slice(0, 5);
+        cautioned.sort((a, b) => b.score - a.score);
+        const top5 = cautioned.slice(0, 5);
 
         return {
           content: [
@@ -574,6 +655,24 @@ export function createKcpServer(
               {
                 type: "text" as const,
                 text: `Unit not found: "${unitId}". Available units: ${ids}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+        // C18: refuse to serve a temporally-excluded unit by id, matching search/read_resource
+        // (issue #98 F1). The default effective date is today (UTC); historical access is via
+        // search_knowledge's as_of, not a bare get_unit.
+        const todayGu = effectiveToday();
+        if (!isUnitServable(ctx, todayGu)) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify({
+                  error: "temporally_unavailable",
+                  message: `Unit '${unitId}' is outside its temporal validity window as of ${todayGu}`,
+                }),
               },
             ],
             isError: true,
@@ -605,6 +704,16 @@ export function createKcpServer(
       }
 
       case "list_manifests": {
+        // F9: temporally_active reflects as_of (else today, UTC), so it can't contradict a
+        // search_knowledge call made with the same historical as_of. F4: supersession-aware.
+        const lmAsOf = args?.["as_of"] as string | undefined;
+        if (lmAsOf !== undefined && !isValidAsOf(lmAsOf)) {
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify({ error: "invalid_as_of", message: `as_of must be an ISO-8601 date (YYYY-MM-DD); got ${JSON.stringify(lmAsOf)}` }) }],
+            isError: true,
+          };
+        }
+        const lmDate = lmAsOf ?? effectiveToday();
         const manifestsList = manifest.manifests.map((m) => ({
           id: m.id,
           url: m.url,
@@ -615,10 +724,7 @@ export function createKcpServer(
           version_pin: m.version_pin ?? null,
           version_policy: m.version_policy ?? null,
           temporal: m.temporal ?? null,
-          temporally_active: isSourceTemporallyIncluded(
-            m.temporal,
-            new Date().toISOString().slice(0, 10)
-          ),
+          temporally_active: isSourceServable(m.temporal, lmDate, refTemporalById),
         }));
         return {
           content: [

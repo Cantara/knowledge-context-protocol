@@ -3,7 +3,7 @@
 All three bridges (TypeScript, Java, Python) are required to stay at feature parity on **MCP tools and prompts**.
 Static generation CLI flags (Tier 2) are currently TS + Java only — Python support is planned.
 
-**Current version:** 0.21.0 (all three bridges — aligned with KCP spec version)
+**Current version:** 0.21.1 (all three bridges — aligned with KCP spec version)
 
 > Scope note: the `kcp` developer CLI (`cli/` — init, validate, query, stats, and as of
 > spec v0.16 `render`) versions independently of the bridges and is outside this parity
@@ -39,8 +39,9 @@ When adding any MCP capability:
 | `search_knowledge`: `summary_unit` field | ✅ | ✅ | ✅ | from hints.summary_unit |
 | `search_knowledge`: `not_for` filter (§15.11) | ✅ | ✅ | ✅ | strict exclusion + soft demotion with `caution` field |
 | `search_knowledge`: temporal query `as_of` / `include_all_temporal` (§15.13) | ✅ | ✅ | ✅ | point-in-time filtering, conflict error on mutual exclusion |
-| `get_unit` tool | ✅ | ✅ | ✅ | fetch unit file content by id |
-| `list_manifests` tool | ✅ | ✅ | ✅ | lists declared sub-manifests (federation §3.6) |
+| Federated temporal filtering, all retrieval paths (§3.6 / C18) | ✅ | ✅ | ✅ | `manifests[].temporal` enforced in search **and** `get_unit` / resources; UTC effective date; supersession-aware; `as_of` validated; `include_all_temporal` marks `caution` (issue #98) |
+| `get_unit` tool | ✅ | ✅ | ✅ | fetch unit file content by id; refuses temporally-excluded units |
+| `list_manifests` tool | ✅ | ✅ | ✅ | lists declared sub-manifests (federation §3.6); optional `as_of`, supersession-aware `temporally_active` |
 | `get_command_syntax` tool | ✅ | ✅ | ✅ | requires `--commands-dir` |
 | `sdd-review` prompt | ✅ | ✅ | ✅ | |
 | `kcp-explore` prompt | ✅ | ✅ | ✅ | |
@@ -104,6 +105,7 @@ No known gaps — all three bridges are at full parity.
 | 0.20.0 | 2026-06-12 | §15.13 temporal query: `as_of` + `include_all_temporal` parameters, `temporal_query_conflict` error — all three bridges. Bridge versions now aligned with KCP spec version. |
 | 0.20.1 | 2026-06-13 | Python bridge: added `sdd-review` and `kcp-explore` MCP prompts — closes last Tier 1 parity gaps. |
 | 0.21.0 | 2026-06-13 | Spec v0.21: parsers expose `manifests[].temporal` (RFC-0021) and `discovery.verified_by`/`evidence`; temporal validation (`superseded_by` cycle detection, validity-window §7 warnings) implemented in all four parser/validator implementations. Bridge skip-before-fetch federation temporal filtering deferred. |
+| 0.21.1 | 2026-06-13 | C18 hardening (issue #98): federated temporal filtering now enforced on **every** retrieval path (`get_unit`, `read_resource`, `list_resources`), not just `search_knowledge`; effective date pinned to UTC; supersession-aware exclusion (`superseded_by` + active successor → drop); `as_of` ISO-8601 validation; `local_mirror` association canonicalised (symlink-safe) with a warning on no match; `include_all_temporal` results carry a `caution`; `list_manifests` gains optional `as_of`. All three bridges. |
 
 > **Note:** v0.7.0--v0.9.0 were internal development milestones that shipped combined as v0.10.0.
 > v0.11.0--v0.13.0 were bridge feature additions that culminated in v0.14.0.

@@ -266,7 +266,8 @@ class KcpServerToolsTest {
 
     @Test void listManifestsReturnsEmptyArrayWhenNoFederationBlock() throws Exception {
         // "full" fixture has no manifests block
-        McpSchema.CallToolResult result = KcpServer.handleListManifests(fullRs.primaryManifest());
+        McpSchema.CallToolResult result = KcpServer.handleListManifests(
+            new McpSchema.CallToolRequest("list_manifests", Map.of()), fullRs);
 
         assertFalse(result.isError());
         String text = ((McpSchema.TextContent) result.content().get(0)).text();
@@ -278,7 +279,8 @@ class KcpServerToolsTest {
     @Test void listManifestsReturnsManifestEntriesFromFederationBlock() throws Exception {
         KcpServer.ResourceSet fedRs = KcpServer.buildResources(fixture("federation"), false);
 
-        McpSchema.CallToolResult result = KcpServer.handleListManifests(fedRs.primaryManifest());
+        McpSchema.CallToolResult result = KcpServer.handleListManifests(
+            new McpSchema.CallToolRequest("list_manifests", Map.of()), fedRs);
 
         assertFalse(result.isError());
         String text = ((McpSchema.TextContent) result.content().get(0)).text();
@@ -470,11 +472,84 @@ class KcpServerToolsTest {
     }
 
     @Test void fedTemporalListManifestsExposesTemporalAndActivity() throws Exception {
-        McpSchema.CallToolResult result = KcpServer.handleListManifests(fedRs().primaryManifest());
+        KcpServer.ResourceSet rs = fedRs();
+        McpSchema.CallToolResult result = KcpServer.handleListManifests(
+            new McpSchema.CallToolRequest("list_manifests", Map.of()), rs);
         String text = ((McpSchema.TextContent) result.content().get(0)).text();
         assertTrue(text.contains("\"valid_until\":\"2023-09-01\""), text);
         // gdpr-2018 expired as of today; gdpr-2023 active. Both flags present.
         assertTrue(text.contains("\"temporally_active\":false"), text);
         assertTrue(text.contains("\"temporally_active\":true"), text);
+    }
+
+    // ── C18 hardening (issue #98) ─────────────────────────────────────────────
+    private static String toolText(McpSchema.CallToolResult r) {
+        return ((McpSchema.TextContent) r.content().get(0)).text();
+    }
+
+    @Test void hF1_getUnitRefusesExpiredSource() throws Exception {
+        McpSchema.CallToolResult r = KcpServer.handleGetUnit(
+            new McpSchema.CallToolRequest("get_unit", Map.of("unit_id", "gdpr-2018-consent")),
+            fedRs(), "fed-temporal-hub");
+        assertTrue(r.isError());
+        assertTrue(toolText(r).contains("temporally_unavailable"), toolText(r));
+    }
+
+    @Test void hF1_buildResourcesOmitsExpiredKeepsActive() throws Exception {
+        KcpServer.ResourceSet rs = fedRs();
+        java.util.Set<String> uris = new java.util.HashSet<>();
+        for (McpSchema.Resource res : rs.resources()) uris.add(res.uri());
+        assertTrue(uris.contains(KcpMapper.unitUri("fed-temporal-hub", "gdpr-2023-consent")), uris.toString());
+        assertFalse(uris.contains(KcpMapper.unitUri("fed-temporal-hub", "gdpr-2018-consent")), uris.toString());
+        // and no read handler exists for the excluded unit
+        assertFalse(rs.handlers().containsKey(KcpMapper.unitUri("fed-temporal-hub", "gdpr-2018-consent")));
+    }
+
+    @Test void hF2_bindsThroughSymlinkedSubManifest() throws Exception {
+        Path tmp = java.nio.file.Files.createTempDirectory("kcp-fed-");
+        try {
+            Path link = tmp.resolve("mirror-old-link");
+            java.nio.file.Files.createSymbolicLink(link,
+                fixture("fed-temporal").getParent().resolve("mirror-old"));
+            KcpServer.ResourceSet rs = KcpServer.buildResources(fixture("fed-temporal"), false,
+                List.of(link.resolve("knowledge.yaml"), subFixture("fed-temporal", "mirror-new")));
+            McpSchema.CallToolResult r = KcpServer.handleGetUnit(
+                new McpSchema.CallToolRequest("get_unit", Map.of("unit_id", "gdpr-2018-consent")),
+                rs, "fed-temporal-hub");
+            assertTrue(toolText(r).contains("temporally_unavailable"), toolText(r));
+        } finally {
+            try { java.nio.file.Files.walk(tmp).sorted(java.util.Comparator.reverseOrder())
+                .forEach(p -> p.toFile().delete()); } catch (Exception ignore) {}
+        }
+    }
+
+    @Test void hF3_invalidAsOfRejected() throws Exception {
+        McpSchema.CallToolResult r = KcpServer.handleSearchKnowledge(
+            new McpSchema.CallToolRequest("search_knowledge", Map.of("query", "consent gdpr", "as_of", "not-a-date")),
+            fedRs(), "fed-temporal-hub");
+        assertTrue(r.isError());
+        assertTrue(toolText(r).contains("invalid_as_of"), toolText(r));
+    }
+
+    @Test void hF4_supersessionDropsSupersededOnBoundary() throws Exception {
+        String text = fedSearch(fedRs(), Map.of("query", "consent gdpr", "as_of", "2023-09-01"));
+        assertTrue(text.contains("\"id\":\"gdpr-2023-consent\""), text);
+        assertFalse(text.contains("\"id\":\"gdpr-2018-consent\""), text);
+    }
+
+    @Test void hF5_includeAllTemporalMarksCaution() throws Exception {
+        String text = fedSearch(fedRs(), Map.of("query", "consent gdpr", "include_all_temporal", true));
+        assertTrue(text.contains("temporal filtering bypassed"), text);
+    }
+
+    @Test void hF9_listManifestsHonoursAsOf() throws Exception {
+        McpSchema.CallToolResult r = KcpServer.handleListManifests(
+            new McpSchema.CallToolRequest("list_manifests", Map.of("as_of", "2020-01-01")), fedRs());
+        String text = toolText(r);
+        // 2018 active in 2020, 2023 not yet valid: expect at least one true and one false,
+        // and specifically the 2018 entry present with its window.
+        assertTrue(text.contains("\"id\":\"gdpr-2018\""), text);
+        assertTrue(text.contains("\"temporally_active\":true"), text);
+        assertTrue(text.contains("\"temporally_active\":false"), text);
     }
 }
