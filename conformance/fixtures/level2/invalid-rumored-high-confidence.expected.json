@@ -1,0 +1,12 @@
+{
+  "valid": false,
+  "level": 2,
+  "errors": [
+    {
+      "unit": "maybe-api",
+      "field": "discovery.confidence",
+      "rule": "rumored-confidence-ceiling",
+      "message": "Unit with verification_status 'rumored' MUST have confidence < 0.5, got 0.75"
+    }
+  ]
+}

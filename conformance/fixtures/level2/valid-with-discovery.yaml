@@ -1,0 +1,90 @@
+# Level 2 — valid discovery blocks per RFC-0012
+# Tests root-level defaults, unit-level overrides, all verification_status values,
+# and normative confidence constraints.
+kcp_version: "0.12"
+project: test-discovery
+version: "1.0.0"
+
+# Root-level defaults — inherited by units without their own discovery block
+discovery:
+  source: web_traversal
+  verification_status: observed
+  observed_at: "2026-03-20T10:00:00Z"
+
+units:
+  # Inherits root defaults, adds confidence
+  - id: site-overview
+    path: CLAUDE.md
+    intent: "What is this site?"
+    scope: global
+    audience: [agent, developer]
+    discovery:
+      confidence: 0.85
+
+  # Fully verified — overrides root verification_status
+  - id: login-api
+    path: apis/login.md
+    intent: "How to authenticate"
+    scope: module
+    audience: [agent]
+    discovery:
+      verification_status: verified
+      source: openapi
+      confidence: 0.95
+      verified_at: "2026-03-20T10:05:00Z"
+
+  # Observed via LLM inference — overrides root source
+  - id: search-skill
+    path: skills/search.md
+    intent: "How to search"
+    scope: module
+    audience: [agent]
+    discovery:
+      source: llm_inference
+      confidence: 0.72
+
+  # Rumored — confidence MUST be < 0.5 per normative rule
+  - id: bulk-export
+    path: unknowns.md
+    intent: "Possible bulk export endpoint"
+    scope: module
+    audience: [developer]
+    discovery:
+      verification_status: rumored
+      source: llm_inference
+      confidence: 0.35
+
+  # Deprecated — retained for audit
+  - id: legacy-api
+    path: apis/legacy.md
+    intent: "Legacy v1 API (retired)"
+    scope: module
+    audience: [developer]
+    discovery:
+      verification_status: deprecated
+      source: manual
+      confidence: 1.0
+      verified_at: "2025-06-01T00:00:00Z"
+
+  # Contradicting units
+  - id: payments-v2
+    path: apis/payments-v2.md
+    intent: "Payments API v2"
+    scope: module
+    audience: [agent, developer]
+    discovery:
+      verification_status: observed
+      source: web_traversal
+      confidence: 0.71
+      contradicted_by: payments-v1
+
+  - id: payments-v1
+    path: apis/payments-v1.md
+    intent: "Payments API v1"
+    scope: module
+    audience: [agent, developer]
+    discovery:
+      verification_status: observed
+      source: openapi
+      confidence: 0.85
+      contradicted_by: payments-v2
