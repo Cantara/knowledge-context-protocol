@@ -3336,8 +3336,9 @@ lives in [`experiments/rfc-0018-render/`](./experiments/rfc-0018-render/) (cases
 cover the v0.18 content-integrity conformance, C11–C14). Validator-level conformance for the
 v0.18/v0.19 fields (`content_hash`, `temporal`) lives in
 [`conformance/fixtures/`](./conformance/); cross-language temporal validation is exercised by the
-parser test suites. Renderer cases for composition integrity (C15/C17) are tracked PENDING in the
-render corpus until composition resolution lands in `kcp render` (RFC-0022 §6).
+parser test suites. Composition integrity (C17) is implemented in `kcp render` and exercised by
+cases B21–B23 in the render corpus — a trusted composing manifest including an unverified, a
+verified (matching `manifest_hash`), and a substituted (mismatched pin) remote source.
 
 ---
 

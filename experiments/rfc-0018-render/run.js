@@ -13,7 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
 
@@ -638,6 +638,74 @@ for (const c of CASES) {
   });
 }
 
+// B21–B23 — RFC-0022 composition integrity (C17). A trusted, org-signed
+// composing manifest includes a REMOTE source (served over local HTTP, the
+// real substitution channel). The included `platform:*` unit is load-eligible
+// only if the include carries a verified integrity pin.
+const PLATFORM_INCLUDE = `project: platform
+version: 1.0.0
+units:
+  - id: submit-expense
+    path: expense.md
+    intent: "How do I submit an expense report?"
+    triggers: [expense]
+`;
+function compositionCase({ id, desc, integrity, expectIncludeLoadable, expectWarn }) {
+  const dir = path.join(WORK, id);
+  fs.mkdirSync(dir, { recursive: true });
+  const includeFile = path.join(dir, 'platform.yaml');
+  fs.writeFileSync(includeFile, PLATFORM_INCLUDE);
+  const problems = [];
+  withManifestServer(includeFile, (url) => {
+    let integrityBlock = '';
+    if (integrity === 'match') {
+      const h = crypto.createHash('sha256').update(fs.readFileSync(includeFile)).digest('hex');
+      integrityBlock = `\n      integrity:\n        manifest_hash:\n          algorithm: sha256\n          value: "${h}"`;
+    } else if (integrity === 'wrong') {
+      integrityBlock = `\n      integrity:\n        manifest_hash:\n          algorithm: sha256\n          value: "${'a'.repeat(64)}"`;
+    }
+    const manifest = path.join(dir, 'knowledge.yaml');
+    fs.writeFileSync(manifest, `kcp_version: "0.21"
+project: composing-app
+version: 1.0.0
+composition:
+  includes:
+    - source: ${url}
+      as: platform${integrityBlock}
+units:
+  - id: local-overview
+    path: docs/overview.md
+    intent: "Local project overview authored in this repository"
+    triggers: [overview]
+`);
+    signFile(manifest, keys.org);
+    const out = path.join(dir, 'rendered.yaml');
+    // spawnSync so warnings on stderr are captured even on a successful render
+    const r = spawnSync('node', [CLI, 'render', manifest, '--keys', allowlistPath,
+      '--origin', ORIGIN_PINNED, '--out', out], { encoding: 'utf8' });
+    const stderr = (r.stderr || '').toString();
+    if (!fs.existsSync(out)) { problems.push('no output emitted'); return; }
+    const doc = yaml.load(fs.readFileSync(out, 'utf8'));
+    if (doc.trust.tier !== 'trusted') problems.push(`tier ${doc.trust.tier}, expected trusted`);
+    const inc = (doc.units || []).find((u) => u.id === 'platform:submit-expense');
+    const loc = (doc.units || []).find((u) => u.id === 'local-overview');
+    if (!inc) problems.push('included unit platform:submit-expense missing from output');
+    else if (inc.load_eligible !== expectIncludeLoadable) {
+      problems.push(`platform:submit-expense load_eligible=${inc.load_eligible}, expected ${expectIncludeLoadable}`);
+    }
+    if (!loc || loc.load_eligible !== true) problems.push('local-overview should be load_eligible: true');
+    if (expectWarn && !stderr.includes(expectWarn)) problems.push(`expected warning containing "${expectWarn}"`);
+  });
+  results.push({ id, covers: 'T10/§3.11/C17: composition include integrity', desc,
+    status: problems.length ? 'FAIL' : 'PASS', problems });
+}
+compositionCase({ id: 'B21-composition-unverified', integrity: 'none', expectIncludeLoadable: false,
+  expectWarn: 'unverified', desc: 'Unverified remote include -> units pointer-only at trusted tier (C17)' });
+compositionCase({ id: 'B22-composition-verified', integrity: 'match', expectIncludeLoadable: true,
+  desc: 'Verified include (matching manifest_hash) -> units load-eligible' });
+compositionCase({ id: 'B23-composition-failed', integrity: 'wrong', expectIncludeLoadable: false,
+  expectWarn: 'failed integrity', desc: 'Failed pin (wrong manifest_hash) -> units not load-eligible + warning' });
+
 // ------------------------------------------------------------- report --
 const failed = results.filter((r) => r.status === 'FAIL');
 const lines = [];
@@ -689,6 +757,16 @@ lines.push('the claimed origin — byte-comparison verifies the map, not the ter
 lines.push('The render still yields zero load-eligible units: hashed units mismatch');
 lines.push('(C11) and hash-less units are excluded whenever trust rests on');
 lines.push('corroboration rather than assertion (C14).');
+lines.push('');
+lines.push('## RFC-0022 composition integrity (B21–B23, C17)');
+lines.push('');
+lines.push('A trusted, org-signed composing manifest includes a remote source served');
+lines.push('over a local HTTP server — the real substitution channel (T10). The included');
+lines.push('`platform:*` unit is load-eligible only when the include carries a verified');
+lines.push('integrity pin: B21 (no pin) and B23 (wrong `manifest_hash`) render it');
+lines.push('pointer-only with a §7 warning; B22 (matching `manifest_hash`) renders it');
+lines.push('load-eligible. The composed tier stays `trusted` throughout — only the');
+lines.push('included unit\'s load-eligibility is gated (C17). Local units are unaffected.');
 lines.push('');
 lines.push('## Spec changes these experiments drove (now in draft-03, Appendix B)');
 lines.push('');

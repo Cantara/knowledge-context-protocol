@@ -266,13 +266,13 @@ Extends RFC-0018 §10 / SPEC §16.5:
   composition include; records a §7 warning for every `failed` include with
   field, expected, and observed values.
 
-Test corpus (to be added under `experiments/rfc-0018-render/` once composition
-resolution is implemented in the renderer; the threat fixture and its expected
-outcome are committed now and tracked as PENDING):
+Test corpus (implemented under `experiments/rfc-0018-render/` — the includes are
+served over a local HTTP server, the real substitution channel — and as
+deterministic unit tests in `cli/src/render.test.ts`):
 
 - **B21** — T10 substitution: a `trusted` composing manifest with an unverified
-  remote include. Without this RFC: composed units `load_eligible: true`. With
-  it: those units `load_eligible: false` (pointer).
+  remote include → its units `load_eligible: false` (pointer), §7 warning. (Without
+  the rule they would be `load_eligible: true`.)
 - **B22** — verified include: same composition with a matching `manifest_hash`
   → composed units load-eligible.
 - **B23** — failed pin: `manifest_hash` present but not matching the fetched
@@ -287,10 +287,14 @@ silently return.
 
 ## 6. Deferred
 
-- **Composition resolution implementation.** This RFC fixes the *trust rule*;
-  the full resolver (includes/overrides/excludes, `as` namespacing, recursive
-  composition, remote fetch) remains to be implemented in `kcp render`. C17
-  constrains how it must behave when built.
+- **Composition resolution is implemented** in `kcp render` (includes/overrides/
+  excludes, `as` namespacing, local + remote fetch, integrity verification, C17
+  enforcement). **Recursive composition** (includes within an included manifest)
+  is resolved one level only; deeper nesting and its cycle detection remain
+  future work (Level 2).
+- **`verified_by` / `evidence` enforcement.** RFC-0020 §2.3 added these
+  attribution fields advisorily; tightening them (e.g. requiring `verified_by`
+  to be an allowlist `key_id`) is out of scope here.
 - **`verified_by` / `evidence` enforcement.** RFC-0020 §2.3 added these
   attribution fields advisorily; tightening them (e.g. requiring `verified_by`
   to be an allowlist `key_id`) is out of scope here.

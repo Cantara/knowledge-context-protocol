@@ -6,9 +6,10 @@
 # load_eligible: false — the composing signature covers this file's bytes (the
 # `source:` line), not the bytes the URL resolves to.
 #
-# This fixture is committed ahead of implementation: composition resolution is
-# not yet in `kcp render`, so the harness tracks B21/B22/B23 as PENDING. When
-# the resolver lands, the expected outcome below becomes an executable check.
+# Reference fixture. Composition resolution + C17 is now implemented in
+# `kcp render`; the live B21/B22/B23 cases in run.js serve the include over a
+# local HTTP server and assert the outcomes below. This file documents the
+# shape of the T10 vector.
 #
 # Expected (B21, unverified remote include, trusted tier):
 #   units originating from the include  -> load_eligible: false (pointer only)
