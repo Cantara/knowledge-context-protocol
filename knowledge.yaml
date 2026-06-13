@@ -573,7 +573,7 @@ units:
       ]
     content_hash:
       algorithm: sha256
-      value: 2060e2cc8fe6bd2f7887afe510ad4258db76cc682e17961b02bb7dfa2db3728a
+      value: a49236ee01ed76983c08e038a3e7aad8ceb9b4aed606ecb972263e2a28d1d83b
 
   - id: rfc-0022
     path: RFC-0022-Composition-Integrity.md
