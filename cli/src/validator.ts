@@ -4,7 +4,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { resolve, join } from "node:path";
-import type { KnowledgeManifest, ValidationResult } from "./model.js";
+import type { KnowledgeManifest, Temporal, ValidationResult } from "./model.js";
 
 // --- Per-unit content digest (RFC-0019 §3.2, draft) ---
 // Lives here (not in a render module) so the CLI and bridge validator
@@ -129,6 +129,34 @@ const VALID_UPDATE_FREQUENCIES = new Set([
   "never",
 ]);
 const ID_PATTERN = /^[a-z0-9.\-]+$/;
+
+// --- Temporal validation helpers (§4.22, §3.6 manifests[].temporal) ---
+
+/**
+ * Detect cycles in a single-successor (functional) graph — the shape of
+ * `superseded_by` chains. Returns the ids that participate in a cycle.
+ * Mirrors the depends_on cycle detection in the Python/Java validators.
+ */
+function supersededCycleIds(successor: Map<string, string>): string[] {
+  const cycle = new Set<string>();
+  const state = new Map<string, number>(); // 0/undefined = unvisited, 1 = in-path, 2 = done
+  for (const start of successor.keys()) {
+    if (state.get(start) === 2) continue;
+    const path: string[] = [];
+    let node: string | undefined = start;
+    while (node !== undefined && successor.has(node) && state.get(node) !== 2) {
+      if (state.get(node) === 1) {
+        for (const id of path.slice(path.indexOf(node))) cycle.add(id);
+        break;
+      }
+      state.set(node, 1);
+      path.push(node);
+      node = successor.get(node);
+    }
+    for (const id of path) if (state.get(id) === 1) state.set(id, 2);
+  }
+  return [...cycle].sort();
+}
 
 export function validate(
   manifest: KnowledgeManifest,
@@ -409,6 +437,94 @@ export function validate(
         );
       }
     }
+  }
+
+  // --- Temporal validation (§4.22 unit-level; §3.6 manifests[].temporal) ---
+  // Root-level temporal provides defaults; unit-level overrides field-by-field.
+  const today = new Date().toISOString().slice(0, 10);
+  const effectiveTemporal = (t?: Temporal): Temporal => {
+    const r = manifest.temporal ?? {};
+    const u = t ?? {};
+    return {
+      valid_from: u.valid_from ?? r.valid_from,
+      valid_until: u.valid_until ?? r.valid_until,
+      recorded_at: u.recorded_at ?? r.recorded_at,
+      superseded_by: u.superseded_by ?? r.superseded_by,
+    };
+  };
+
+  // Per-unit window + verification warnings; collect local superseded edges.
+  const unitSuccessor = new Map<string, string>();
+  for (const unit of manifest.units) {
+    const t = effectiveTemporal(unit.temporal);
+    if (t.valid_from && t.valid_until && t.valid_until < t.valid_from) {
+      warnings.push(
+        `Unit '${unit.id}': temporal.valid_until '${t.valid_until}' precedes valid_from '${t.valid_from}' (empty validity window — the unit can never be active)`
+      );
+    }
+    if (t.valid_until && t.valid_until < today && !t.superseded_by) {
+      warnings.push(
+        `Unit '${unit.id}': temporal.valid_until '${t.valid_until}' is in the past and no superseded_by is set (stale unit with no successor)`
+      );
+    }
+    // superseded_by may use namespace:id to target an unresolved include (§4.22);
+    // only local (non-namespaced) refs are checkable here.
+    if (t.superseded_by && !t.superseded_by.includes(":")) {
+      if (!unitIds.has(t.superseded_by)) {
+        warnings.push(
+          `Unit '${unit.id}': temporal.superseded_by references unknown unit '${t.superseded_by}'`
+        );
+      } else {
+        unitSuccessor.set(unit.id, t.superseded_by);
+      }
+    }
+    const disc = unit.discovery;
+    if (disc?.verification_status === "verified" && !disc.verified_by) {
+      warnings.push(
+        `Unit '${unit.id}': discovery.verification_status is 'verified' but discovery.verified_by is absent`
+      );
+    }
+  }
+  for (const id of supersededCycleIds(unitSuccessor)) {
+    errors.push(`temporal.superseded_by cycle detected involving unit '${id}'`);
+  }
+  if (
+    manifest.discovery?.verification_status === "verified" &&
+    !manifest.discovery.verified_by
+  ) {
+    warnings.push(
+      "manifest: discovery.verification_status is 'verified' but discovery.verified_by is absent"
+    );
+  }
+
+  // Federation: manifests[].temporal (§3.6, RFC-0021).
+  const refIds = new Set(manifest.manifests.map((m) => m.id));
+  const refSuccessor = new Map<string, string>();
+  for (const ref of manifest.manifests) {
+    const t = ref.temporal;
+    if (!t) continue;
+    if (t.valid_from && t.valid_until && t.valid_until < t.valid_from) {
+      warnings.push(
+        `manifests['${ref.id}']: temporal.valid_until '${t.valid_until}' precedes valid_from '${t.valid_from}' (empty validity window)`
+      );
+    }
+    if (t.valid_until && t.valid_until < today && !t.superseded_by) {
+      warnings.push(
+        `manifests['${ref.id}']: temporal.valid_until '${t.valid_until}' is in the past and no superseded_by is set (stale federation link)`
+      );
+    }
+    if (t.superseded_by) {
+      if (!refIds.has(t.superseded_by)) {
+        warnings.push(
+          `manifests['${ref.id}']: temporal.superseded_by references unknown manifests[].id '${t.superseded_by}'`
+        );
+      } else {
+        refSuccessor.set(ref.id, t.superseded_by);
+      }
+    }
+  }
+  for (const id of supersededCycleIds(refSuccessor)) {
+    errors.push(`manifests[].temporal.superseded_by cycle detected involving '${id}'`);
   }
 
   // Root-level delegation validation (§3.4)

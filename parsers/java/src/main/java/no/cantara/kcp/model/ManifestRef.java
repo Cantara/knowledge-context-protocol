@@ -13,5 +13,6 @@ public record ManifestRef(
         String updateFrequency,
         String localMirror,
         String versionPin,
-        String versionPolicy
+        String versionPolicy,
+        Temporal temporal
 ) {}

@@ -1526,6 +1526,7 @@ class KcpParserTest {
         discoveryData.put("source", "manual");
         discoveryData.put("observed_at", "2026-01-10T08:00:00Z");
         discoveryData.put("verified_at", "2026-02-01T09:00:00Z");
+        discoveryData.put("verified_by", "ed25519:MCowBQYDK2VwAyEA");  // §4.18: verified SHOULD carry a verifier
         discoveryData.put("confidence", 0.95);
 
         Map<String, Object> unitData = new HashMap<>();
@@ -1550,6 +1551,7 @@ class KcpParserTest {
         assertEquals("manual", unit.discovery().source());
         assertEquals("2026-01-10T08:00:00Z", unit.discovery().observedAt());
         assertEquals("2026-02-01T09:00:00Z", unit.discovery().verifiedAt());
+        assertEquals("ed25519:MCowBQYDK2VwAyEA", unit.discovery().verifiedBy());
         assertEquals(0.95, unit.discovery().confidence(), 0.001);
         assertNull(unit.discovery().contradictedBy());
 

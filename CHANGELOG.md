@@ -8,6 +8,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Implementation — temporal validation backlog (closes spec-vs-code gap)
+
+Promoted-but-unimplemented normative rules from v0.19/v0.21 are now enforced in
+all four reference implementations (TypeScript CLI + bridge, Python, Java):
+
+- **Parsing parity (Level 1):** the CLI parser now reads unit- and root-level
+  `temporal` (it silently dropped them before); all four parsers now expose
+  `manifests[].temporal` (RFC-0021) and `discovery.verified_by` / `discovery.evidence`
+  (RFC-0020 §2.3 / §4.18).
+- **Unit-level temporal validation (§4.22):** `superseded_by` cycle detection
+  (manifest **error**); §7 warnings for dangling `superseded_by`, stale `valid_until`
+  (past with no successor), empty window (`valid_until` before `valid_from`), and
+  `verification_status: verified` without `verified_by`. Root-level `temporal`
+  defaults apply field-by-field.
+- **Federation temporal validation (§3.6):** the same window/dangling warnings and
+  `superseded_by` cycle error for `manifests[].temporal` entries.
+- Cross-language test parity: matched temporal-validation suites added to CLI,
+  Python, and Java (15 cases each). An outdated Java parser test fixture (a
+  `verified` discovery with no `verified_by`) was made spec-compliant.
+
+Still deferred (genuinely larger features, not validation): composition resolution
++ C17 enforcement in the renderer, and bridge skip-before-fetch federation temporal
+filtering (Level 2).
+
 ---
 
 ## [0.21.0] — 2026-06-13 — Composition Integrity & Federation Temporal

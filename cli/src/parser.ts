@@ -12,6 +12,7 @@ import type {
   ContentStructure,
   Delegation,
   Discovery,
+  Temporal,
   ExternalDependency,
   ExternalRelationship,
   FreshnessPolicy,
@@ -146,6 +147,7 @@ function parseUnit(raw: RawMap): KnowledgeUnit {
       raw["not_for_strict"] !== undefined ? Boolean(raw["not_for_strict"]) : undefined,
     content_structure: parseContentStructure(raw["content_structure"]),
     content_hash: parseContentHash(raw["content_hash"]),
+    temporal: parseTemporal(raw["temporal"]),
   };
 }
 
@@ -327,8 +329,23 @@ function parseDiscovery(raw: unknown): Discovery | undefined {
     source: d["source"] !== undefined ? String(d["source"]) : undefined,
     observed_at: d["observed_at"] !== undefined ? String(d["observed_at"]) : undefined,
     verified_at: d["verified_at"] !== undefined ? String(d["verified_at"]) : undefined,
+    verified_by: d["verified_by"] !== undefined ? String(d["verified_by"]) : undefined,
+    evidence: d["evidence"] !== undefined ? String(d["evidence"]) : undefined,
     confidence: d["confidence"] !== undefined ? Number(d["confidence"]) : undefined,
     contradicted_by: d["contradicted_by"] !== undefined ? String(d["contradicted_by"]) : undefined,
+  };
+}
+
+// --- Temporal parsing (RFC-0010 §4.22 v0.19; RFC-0021 §3.6 v0.21) ---
+
+function parseTemporal(raw: unknown): Temporal | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const t = raw as RawMap;
+  return {
+    valid_from: t["valid_from"] !== undefined && t["valid_from"] !== null ? String(t["valid_from"]) : undefined,
+    valid_until: t["valid_until"] !== undefined && t["valid_until"] !== null ? String(t["valid_until"]) : undefined,
+    recorded_at: t["recorded_at"] !== undefined && t["recorded_at"] !== null ? String(t["recorded_at"]) : undefined,
+    superseded_by: t["superseded_by"] !== undefined && t["superseded_by"] !== null ? String(t["superseded_by"]) : undefined,
   };
 }
 
@@ -379,6 +396,7 @@ function parseManifestRef(raw: RawMap): ManifestRef {
     local_mirror: raw["local_mirror"] !== undefined ? String(raw["local_mirror"]) : undefined,
     version_pin: raw["version_pin"] !== undefined ? String(raw["version_pin"]) : undefined,
     version_policy: raw["version_policy"] !== undefined ? String(raw["version_policy"]) : undefined,
+    temporal: parseTemporal(raw["temporal"]),
   };
 }
 
@@ -438,6 +456,7 @@ export function parseDict(data: RawMap): KnowledgeManifest {
     authority: parseAuthority(data["authority"]),
     discovery: parseDiscovery(data["discovery"]),
     not_for: data["not_for"] !== undefined ? asStringArray(data["not_for"]) : undefined,
+    temporal: parseTemporal(data["temporal"]),
   };
 }
 

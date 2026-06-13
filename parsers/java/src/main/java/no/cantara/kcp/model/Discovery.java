@@ -9,6 +9,8 @@ package no.cantara.kcp.model;
  *                            {@code openapi} | {@code llm_inference}. Default: {@code manual}.
  * @param observedAt          ISO 8601 datetime when the unit was first observed. Optional.
  * @param verifiedAt          ISO 8601 datetime when the unit was last verified. Optional.
+ * @param verifiedBy          RFC-0020 §2.3 / §4.18 — verifier key id or identity. Optional.
+ * @param evidence            RFC-0020 §2.3 / §4.18 — URL/path to verification artifact. Optional.
  * @param confidence          Float 0.0–1.0. Default: {@code 1.0}.
  *                            Normative: rumored MUST have confidence &lt; 0.5;
  *                            verified SHOULD have confidence &ge; 0.8.
@@ -19,6 +21,8 @@ public record Discovery(
         String source,
         String observedAt,
         String verifiedAt,
+        String verifiedBy,
+        String evidence,
         Double confidence,
         String contradictedBy
 ) {}
