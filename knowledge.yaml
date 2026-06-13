@@ -8,9 +8,10 @@ entity:
   type: open-standard
   description: >
     A structured metadata standard that makes knowledge navigable by AI agents.
-    KCP is to knowledge what MCP is to tools. Defines how to publish knowledge.yaml
-    manifests with intents, dependency chains, audience targeting, freshness dating,
-    signing, and federation — so agents navigate efficiently without trial and error.
+    KCP is to knowledge what MCP is to tools. Defines how to publish
+    knowledge.yaml manifests with intents, dependency chains, audience
+    targeting, freshness dating, signing, and federation — so agents navigate
+    efficiently without trial and error.
 
 authority:
   owner: Cantara — Norwegian Software Development Foundation
@@ -50,294 +51,636 @@ units:
 
   - id: spec
     path: SPEC.md
-    intent: "What are the normative rules for a knowledge.yaml manifest — field definitions, validation, conformance levels?"
+    intent: "What are the normative rules for a knowledge.yaml manifest — field
+      definitions, validation, conformance levels?"
     scope: global
-    audience: [human, agent, developer, architect]
+    audience: [ human, agent, developer, architect ]
     validated: "2026-02-27"
-    triggers: [spec, specification, fields, validation, conformance, yaml, format]
+    triggers: [ spec, specification, fields, validation, conformance, yaml, format ]
+    content_hash:
+      algorithm: sha256
+      value: 28efab76a46b911221a4833189b3eedfc92053bebd755ad71d8aa672e7bea769
 
   - id: proposal
     path: PROPOSAL.md
-    intent: "Why does KCP exist and what problem does it solve? The business case for a knowledge architecture standard."
+    intent: "Why does KCP exist and what problem does it solve? The business case
+      for a knowledge architecture standard."
     scope: global
-    audience: [human, agent, architect]
+    audience: [ human, agent, architect ]
     validated: "2026-02-25"
-    depends_on: [spec]
-    triggers: [proposal, motivation, problem, llms.txt, knowledge gap, business case]
+    depends_on: [ spec ]
+    triggers: [ proposal, motivation, problem, llms.txt, knowledge gap, business case ]
 
   - id: rfc-0001
     path: RFC-0001-KCP-Extended.md
-    intent: "What extended capabilities are proposed beyond the core spec — payments, compliance, federation, context hints, and other proposals? Many have been promoted to core; the RFC tracks the full history."
+    intent: "What extended capabilities are proposed beyond the core spec —
+      payments, compliance, federation, context hints, and other proposals? Many
+      have been promoted to core; the RFC tracks the full history."
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-02-26"
-    depends_on: [spec]
-    triggers: [rfc, extensions, payments, compliance, federation, roadmap]
+    depends_on: [ spec ]
+    triggers: [ rfc, extensions, payments, compliance, federation, roadmap ]
+    content_hash:
+      algorithm: sha256
+      value: 89064976452350633fac25d9157d251e0abf60288a1fed1cc6aecc1b00527879
 
   - id: rfc-0002
     path: RFC-0002-Auth-and-Delegation.md
-    intent: "How should KCP manifest auth requirements and multi-agent delegation constraints? `access` promoted in v0.5; `auth_scope` and `auth` block promoted in v0.6; `delegation` block promoted in v0.7."
+    intent: "How should KCP manifest auth requirements and multi-agent delegation
+      constraints? `access` promoted in v0.5; `auth_scope` and `auth` block
+      promoted in v0.6; `delegation` block promoted in v0.7."
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-02-28"
-    depends_on: [spec, rfc-0001]
-    triggers: [auth, authentication, oauth2, delegation, access control, security, spiffe, did, multi-agent]
+    depends_on: [ spec, rfc-0001 ]
+    triggers:
+      [
+        auth,
+        authentication,
+        oauth2,
+        delegation,
+        access control,
+        security,
+        spiffe,
+        did,
+        multi-agent
+      ]
+    content_hash:
+      algorithm: sha256
+      value: 38e066ceb890679708690cf8016c180d973a14d445acb4a802b2864244db1038
 
   - id: rfc-0003
     path: RFC-0003-Federation.md
-    intent: "How should KCP support cross-manifest federation — linking knowledge across repositories and teams via a DAG manifests block with local authority?"
+    intent: "How should KCP support cross-manifest federation — linking knowledge
+      across repositories and teams via a DAG manifests block with local
+      authority?"
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-02-28"
-    depends_on: [spec, rfc-0002]
-    triggers: [federation, cross-manifest, multi-repo, hub, sub-manifest, external, enterprise, synthesis]
+    depends_on: [ spec, rfc-0002 ]
+    triggers:
+      [
+        federation,
+        cross-manifest,
+        multi-repo,
+        hub,
+        sub-manifest,
+        external,
+        enterprise,
+        synthesis
+      ]
+    content_hash:
+      algorithm: sha256
+      value: 009b9d251720318a8c366db5244d429bf9f661713675d4e5658dfcee58c6c690
 
   - id: rfc-0004
     path: RFC-0004-Trust-and-Compliance.md
-    intent: "How should KCP express trust, provenance, content integrity, audit requirements, and compliance constraints for regulated enterprise deployments? `trust.provenance` and `sensitivity` promoted in v0.5; `trust.audit` promoted in v0.6; `compliance` block promoted in v0.7; content integrity remains RFC."
+    intent: "How should KCP express trust, provenance, content integrity, audit
+      requirements, and compliance constraints for regulated enterprise
+      deployments? `trust.provenance` and `sensitivity` promoted in v0.5;
+      `trust.audit` promoted in v0.6; `compliance` block promoted in v0.7;
+      content integrity remains RFC."
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-02-28"
-    depends_on: [spec, rfc-0002]
-    triggers: [trust, compliance, GDPR, data residency, provenance, audit, regulations, sensitivity, NIS2, HIPAA]
+    depends_on: [ spec, rfc-0002 ]
+    triggers:
+      [
+        trust,
+        compliance,
+        GDPR,
+        data residency,
+        provenance,
+        audit,
+        regulations,
+        sensitivity,
+        NIS2,
+        HIPAA
+      ]
+    content_hash:
+      algorithm: sha256
+      value: 93d6b8cb43ecb1667bc940ceff2afcd531709538f7a6a04d9047751af860d080
 
   - id: rfc-0005
     path: RFC-0005-Payment-and-Rate-Limits.md
-    intent: "How should KCP declare payment methods and rate limits so agents can plan resource costs before attempting access? The `payment.default_tier` field was promoted to SPEC.md §4.14 in v0.5; `rate_limits` promoted to core in v0.8; the payment methods and x402 blocks remain RFC."
+    intent: "How should KCP declare payment methods and rate limits so agents can
+      plan resource costs before attempting access? The `payment.default_tier`
+      field was promoted to SPEC.md §4.14 in v0.5; `rate_limits` promoted to
+      core in v0.8; the payment methods and x402 blocks remain RFC."
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-02-28"
-    depends_on: [spec, rfc-0002]
-    triggers: [payment, x402, rate limits, micropayment, subscription, metered, quota, "429", economics]
+    depends_on: [ spec, rfc-0002 ]
+    triggers:
+      [
+        payment,
+        x402,
+        rate limits,
+        micropayment,
+        subscription,
+        metered,
+        quota,
+        "429",
+        economics
+      ]
+    content_hash:
+      algorithm: sha256
+      value: a7f5bd31cdfbad50b7071a92d5f277c96322907e29f65bd2bd16d7a92b52eea8
 
   - id: rfc-0006
     path: RFC-0006-Context-Window-Hints.md
-    intent: "RFC-0006 (accepted): context window hints — token estimates, load strategies, summary relationships, and chunking — fully promoted to SPEC.md §4.10 in v0.4."
+    intent: "RFC-0006 (accepted): context window hints — token estimates, load
+      strategies, summary relationships, and chunking — fully promoted to
+      SPEC.md §4.10 in v0.4."
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-03-01"
-    depends_on: [spec]
-    triggers: [context window, token estimate, hints, chunking, summary, load strategy, eager, lazy, context budget, rfc-0006]
+    depends_on: [ spec ]
+    triggers:
+      [
+        context window,
+        token estimate,
+        hints,
+        chunking,
+        summary,
+        load strategy,
+        eager,
+        lazy,
+        context budget,
+        rfc-0006
+      ]
+    content_hash:
+      algorithm: sha256
+      value: 03ec925daf69d6b684fe29fcf65e648c2420e2d8748d82a233ea1bfbf2c37a9c
 
   - id: rfc-0007
     path: RFC-0007-Query-Vocabulary.md
-    intent: "RFC-0007 (accepted): query vocabulary — how agents declare task, audience, token budget, capability requirements, and staleness filters to select units from a manifest. Promoted to SPEC.md §15 in v0.14."
+    intent: "RFC-0007 (accepted): query vocabulary — how agents declare task,
+      audience, token budget, capability requirements, and staleness filters to
+      select units from a manifest. Promoted to SPEC.md §15 in v0.14."
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-03-25"
-    depends_on: [spec]
-    triggers: [query, query vocabulary, terms, audience filter, token budget, has_capabilities, exclude_stale, federation_scope, scored results, rfc-0007]
+    depends_on: [ spec ]
+    triggers:
+      [
+        query,
+        query vocabulary,
+        terms,
+        audience filter,
+        token budget,
+        has_capabilities,
+        exclude_stale,
+        federation_scope,
+        scored results,
+        rfc-0007
+      ]
+    content_hash:
+      algorithm: sha256
+      value: 686b5e8ec6ddb1c64bd2692a09386a8a2c79859a7d8991ed1692037fae8c5bf9
 
   - id: rfc-0008
     path: RFC-0008-Agent-Readiness.md
-    intent: "RFC-0008 (accepted): agent readiness and budget-constrained selection — how manifest responses rank and filter units by score within a declared token budget, plus freshness_policy. Promoted to SPEC.md §15 in v0.14."
+    intent: "RFC-0008 (accepted): agent readiness and budget-constrained selection —
+      how manifest responses rank and filter units by score within a declared
+      token budget, plus freshness_policy. Promoted to SPEC.md §15 in v0.14."
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-03-25"
-    depends_on: [spec, rfc-0007]
-    triggers: [budget, token budget, max_token_budget, selection, scoring, ranked results, budget-aware, rfc-0008]
+    depends_on: [ spec, rfc-0007 ]
+    triggers:
+      [
+        budget,
+        token budget,
+        max_token_budget,
+        selection,
+        scoring,
+        ranked results,
+        budget-aware,
+        rfc-0008
+      ]
+    content_hash:
+      algorithm: sha256
+      value: eb76bc529a0400b44e45a639d4b998d02fc15c67e84ee21e071928016f044923
 
   - id: rfc-0014
     path: RFC-0014-Manifest-Composition.md
-    intent: "RFC-0014 (open RFC): manifest composition — how teams inherit base manifests without forking, using includes, overrides, and excludes primitives. Open for community input; not yet promoted to SPEC.md."
+    intent: "RFC-0014 (open RFC): manifest composition — how teams inherit base
+      manifests without forking, using includes, overrides, and excludes
+      primitives. Open for community input; not yet promoted to SPEC.md."
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-03-25"
-    depends_on: [spec, rfc-0003]
-    triggers: [composition, manifest composition, includes, overrides, excludes, fork, inherit, overlay, regional, base manifest, rfc-0014]
+    depends_on: [ spec, rfc-0003 ]
+    triggers:
+      [
+        composition,
+        manifest composition,
+        includes,
+        overrides,
+        excludes,
+        fork,
+        inherit,
+        overlay,
+        regional,
+        base manifest,
+        rfc-0014
+      ]
+    content_hash:
+      algorithm: sha256
+      value: 3653d2e8502ab84f3893f27f8073f308068639362482b118d62086d2bdbe8fad
 
   - id: rfc-0012
     path: RFC-0012-Capability-Discovery-Provenance.md
-    intent: "How should KCP manifests express the provenance, confidence, and verification status of discovered capabilities? The discovery block and its verification_status, source, confidence, and contradicted_by fields."
+    intent: "How should KCP manifests express the provenance, confidence, and
+      verification status of discovered capabilities? The discovery block and
+      its verification_status, source, confidence, and contradicted_by fields."
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-03-17"
-    depends_on: [spec, rfc-0004]
-    triggers: [discovery, provenance, confidence, verification, web traversal, openapi, llm inference, automated discovery, rumored, observed, verified, deprecated, contradiction]
+    depends_on: [ spec, rfc-0004 ]
+    triggers:
+      [
+        discovery,
+        provenance,
+        confidence,
+        verification,
+        web traversal,
+        openapi,
+        llm inference,
+        automated discovery,
+        rumored,
+        observed,
+        verified,
+        deprecated,
+        contradiction
+      ]
+    content_hash:
+      algorithm: sha256
+      value: 61079f304636d70e80df14af90eaa49fdbfc2ec024eb4c4bdf218479547ef502
 
   - id: rfc-0018
     path: RFC-0018-Trusted-Render-Pipeline.md
-    intent: "RFC-0018 (accepted): trusted render pipeline — kcp render emits a sanitized, trust-tiered artifact so execution-capable agents never ingest raw manifest prose. Threat model T1-T8, trust tiers, scope pinning, imperative-mood lint. Promoted to SPEC.md section 16 in v0.16."
+    intent: "RFC-0018 (accepted): trusted render pipeline — kcp render emits a
+      sanitized, trust-tiered artifact so execution-capable agents never ingest
+      raw manifest prose. Threat model T1-T8, trust tiers, scope pinning,
+      imperative-mood lint. Promoted to SPEC.md section 16 in v0.16."
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-06-11"
-    depends_on: [spec, rfc-0004, rfc-0012]
-    triggers: [render, trusted render, trust tier, prompt injection, sanitization, quarantine, signing, pinning, kcp render, rfc-0018]
+    depends_on: [ spec, rfc-0004, rfc-0012 ]
+    triggers:
+      [
+        render,
+        trusted render,
+        trust tier,
+        prompt injection,
+        sanitization,
+        quarantine,
+        signing,
+        pinning,
+        kcp render,
+        rfc-0018
+      ]
+    content_hash:
+      algorithm: sha256
+      value: 50fa6aa8b6060c2f3467ab4e40ecf62249396594d68fff49d2df251f4a3300dd
 
   - id: rfc-0017
     path: RFC-0017-Observability-Hooks.md
-    intent: "RFC-0017 (accepted): observability hooks — local-first usage event store at ~/.kcp/usage.db with render and quarantine event tables. Powers kcp stats. Promoted to SPEC.md section 17 in v0.16."
+    intent: "RFC-0017 (accepted): observability hooks — local-first usage event
+      store at ~/.kcp/usage.db with render and quarantine event tables. Powers
+      kcp stats. Promoted to SPEC.md section 17 in v0.16."
     scope: global
-    audience: [human, agent, developer, operator]
+    audience: [ human, agent, developer, operator ]
     validated: "2026-06-11"
-    depends_on: [spec]
-    triggers: [observability, usage, stats, events, sqlite, quarantine events, render events, rfc-0017]
+    depends_on: [ spec ]
+    triggers:
+      [
+        observability,
+        usage,
+        stats,
+        events,
+        sqlite,
+        quarantine events,
+        render events,
+        rfc-0017
+      ]
+    content_hash:
+      algorithm: sha256
+      value: b8008e278fd33f1bc5fc03567329e1eced6464bcab6413e7dd61e11fe777185d
 
   - id: rfc-0015
     path: RFC-0015-Negative-Space-Declarations.md
-    intent: "RFC-0015 (accepted): negative space declarations — not_for and not_for_strict declare what a unit does NOT address; the spec's first subtractive field, with soft demotion and strict exclusion query semantics. Promoted to SPEC.md section 4.20 in v0.17."
+    intent: "RFC-0015 (accepted): negative space declarations — not_for and
+      not_for_strict declare what a unit does NOT address; the spec's first
+      subtractive field, with soft demotion and strict exclusion query
+      semantics. Promoted to SPEC.md section 4.20 in v0.17."
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-06-11"
-    depends_on: [spec]
-    triggers: [negative space, not_for, not for, exclusion, demotion, caution, scope boundary, rfc-0015]
+    depends_on: [ spec ]
+    triggers:
+      [
+        negative space,
+        not_for,
+        not for,
+        exclusion,
+        demotion,
+        caution,
+        scope boundary,
+        rfc-0015
+      ]
+    content_hash:
+      algorithm: sha256
+      value: cca339e23cefece2537fe2f2b4ebb27a445e860f12a33fae7dee92d22e8949eb
 
   - id: rfc-0016
     path: RFC-0016-Content-Structure-Declaration.md
-    intent: "RFC-0016 (accepted): content structure declaration — the content_structure block (primary, contains, density) declares a unit's internal modality composition so RAG pipelines route before fetching. Promoted to SPEC.md section 4.19 in v0.17."
+    intent: "RFC-0016 (accepted): content structure declaration — the
+      content_structure block (primary, contains, density) declares a unit's
+      internal modality composition so RAG pipelines route before fetching.
+      Promoted to SPEC.md section 4.19 in v0.17."
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-06-11"
-    depends_on: [spec]
-    triggers: [content structure, modality, density, table, prose, code, diagram, rag routing, rfc-0016]
+    depends_on: [ spec ]
+    triggers:
+      [
+        content structure,
+        modality,
+        density,
+        table,
+        prose,
+        code,
+        diagram,
+        rag routing,
+        rfc-0016
+      ]
+    content_hash:
+      algorithm: sha256
+      value: c23a74bb6c870d00407fa420a4c57c35455ed371530e1f1c59f56d092bae2023
 
   - id: rfc-0009
     path: RFC-0009-Visibility-and-Authority.md
-    intent: "RFC-0009 (accepted): visibility and authority — conditional visibility rules and per-action authority (read, summarize, modify, share_externally, execute) with safe defaults. Promoted to SPEC.md in v0.12."
+    intent: "RFC-0009 (accepted): visibility and authority — conditional visibility
+      rules and per-action authority (read, summarize, modify, share_externally,
+      execute) with safe defaults. Promoted to SPEC.md in v0.12."
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-06-13"
-    depends_on: [spec]
-    triggers: [visibility, authority, permissions, access control, action gating, rfc-0009]
+    depends_on: [ spec ]
+    triggers:
+      [
+        visibility,
+        authority,
+        permissions,
+        access control,
+        action gating,
+        rfc-0009
+      ]
+    content_hash:
+      algorithm: sha256
+      value: 4c4c2c6158d2347c3b8fdbb8665954020622fa7d2c9d74cc86fadd19095672ee
 
   - id: rfc-0010
     path: RFC-0010-Bi-Temporal-Unit-Validity.md
-    intent: "RFC-0010 (accepted): bi-temporal unit validity — the temporal block declares valid-time (valid_from/valid_until) and transaction-time (recorded_at/superseded_by), plus as_of point-in-time queries. Schema promoted to SPEC.md section 4.22 in v0.19; query layer section 15.13 in v0.20."
+    intent: "RFC-0010 (accepted): bi-temporal unit validity — the temporal block
+      declares valid-time (valid_from/valid_until) and transaction-time
+      (recorded_at/superseded_by), plus as_of point-in-time queries. Schema
+      promoted to SPEC.md section 4.22 in v0.19; query layer section 15.13 in
+      v0.20."
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-06-13"
-    depends_on: [spec]
-    triggers: [temporal, bi-temporal, valid_from, valid_until, superseded_by, as_of, audit, point-in-time, rfc-0010]
+    depends_on: [ spec ]
+    triggers:
+      [
+        temporal,
+        bi-temporal,
+        valid_from,
+        valid_until,
+        superseded_by,
+        as_of,
+        audit,
+        point-in-time,
+        rfc-0010
+      ]
+    content_hash:
+      algorithm: sha256
+      value: de02d1ea215efc3f2cdea0b1fce1afe043c27e5ce38f586f4d648eb0e4a8a059
 
   - id: rfc-0011
     path: RFC-0011-Org-Federation.md
-    intent: "RFC-0011 (RFC): organisational federation patterns — hub-and-spoke and multi-org topologies layered over the section 3.6 federation core."
+    intent: "RFC-0011 (RFC): organisational federation patterns — hub-and-spoke and
+      multi-org topologies layered over the section 3.6 federation core."
     scope: global
-    audience: [human, agent, architect]
+    audience: [ human, agent, architect ]
     validated: "2026-06-13"
-    depends_on: [rfc-0003]
-    triggers: [org federation, hub and spoke, multi-org, federation topology, rfc-0011]
+    depends_on: [ rfc-0003 ]
+    triggers: [ org federation, hub and spoke, multi-org, federation topology, rfc-0011 ]
+    content_hash:
+      algorithm: sha256
+      value: 08f50e3249bc2796a51d71ac88ac754ade5e30b36d6e8eb664ce3697e544efdc
 
   - id: rfc-0013
     path: RFC-0013-Cartridge-Catalog-Distribution.md
-    intent: "RFC-0013 (RFC): cartridge catalog and distribution — packaging and distributing reusable knowledge cartridges. See CATALOG-SPEC.md."
+    intent: "RFC-0013 (RFC): cartridge catalog and distribution — packaging and
+      distributing reusable knowledge cartridges. See CATALOG-SPEC.md."
     scope: global
-    audience: [human, agent, architect]
+    audience: [ human, agent, architect ]
     validated: "2026-06-13"
-    depends_on: [spec]
-    triggers: [cartridge, catalog, distribution, packaging, reusable knowledge, rfc-0013]
+    depends_on: [ spec ]
+    triggers:
+      [
+        cartridge,
+        catalog,
+        distribution,
+        packaging,
+        reusable knowledge,
+        rfc-0013
+      ]
+    content_hash:
+      algorithm: sha256
+      value: 1f1d7d99d19d02cf850f4e4201a6d9851223f9e3a2040aa469ecda56abd6cb72
 
   - id: rfc-0019
     path: RFC-0019-Unit-Content-Integrity-and-Origin-Evidence.md
-    intent: "RFC-0019 (accepted): unit content integrity and origin evidence — per-unit content_hash binds referenced files to the signed manifest; origin evidence classes close the manifest-relocation attack (T9). Promoted to SPEC.md section 3.2 in v0.18; conformance C11-C14."
+    intent: "RFC-0019 (accepted): unit content integrity and origin evidence —
+      per-unit content_hash binds referenced files to the signed manifest;
+      origin evidence classes close the manifest-relocation attack (T9).
+      Promoted to SPEC.md section 3.2 in v0.18; conformance C11-C14."
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-06-13"
-    depends_on: [rfc-0018]
-    triggers: [content_hash, integrity, origin evidence, relocation, T9, content_verified, rfc-0019]
+    depends_on: [ rfc-0018 ]
+    triggers:
+      [
+        content_hash,
+        integrity,
+        origin evidence,
+        relocation,
+        T9,
+        content_verified,
+        rfc-0019
+      ]
+    content_hash:
+      algorithm: sha256
+      value: 8090f8e9d1c1b1d849550a6a187ea1327cd633afb1c04ad563ca299ef66fa4a4
 
   - id: rfc-0020
     path: RFC-0020-Temporal-Composition.md
-    intent: "RFC-0020 (accepted): temporal composition — promotes the bi-temporal schema and manifest composition (includes/overrides/excludes) together, with integrity-pinned includes and discovery.verified_by/evidence. Promoted to SPEC.md section 3.11/4.22 in v0.19; conformance C15."
+    intent: "RFC-0020 (accepted): temporal composition — promotes the bi-temporal
+      schema and manifest composition (includes/overrides/excludes) together,
+      with integrity-pinned includes and discovery.verified_by/evidence.
+      Promoted to SPEC.md section 3.11/4.22 in v0.19; conformance C15."
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-06-13"
-    depends_on: [rfc-0010, rfc-0014]
-    triggers: [composition, includes, overrides, excludes, temporal, verified_by, rfc-0020]
+    depends_on: [ rfc-0010, rfc-0014 ]
+    triggers:
+      [
+        composition,
+        includes,
+        overrides,
+        excludes,
+        temporal,
+        verified_by,
+        rfc-0020
+      ]
+    content_hash:
+      algorithm: sha256
+      value: f8ba75bae6a4064cc8a7151f023eb641d9fbc82c85dde47e4f92dd1935e16321
 
   - id: rfc-0021
     path: RFC-0021-Federation-Temporal.md
-    intent: "RFC-0021 (accepted): federation-level temporal validity — manifests[].temporal lets a hub declare when a federated source is relevant; bridges skip out-of-window sub-manifests before fetching. Promoted to SPEC.md section 3.6 in v0.21; conformance C18."
+    intent: "RFC-0021 (accepted): federation-level temporal validity —
+      manifests[].temporal lets a hub declare when a federated source is
+      relevant; bridges skip out-of-window sub-manifests before fetching.
+      Promoted to SPEC.md section 3.6 in v0.21; conformance C18."
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-06-13"
-    depends_on: [rfc-0010, rfc-0003]
-    triggers: [federation temporal, manifests temporal, source validity, skip before fetch, rfc-0021]
+    depends_on: [ rfc-0010, rfc-0003 ]
+    triggers:
+      [
+        federation temporal,
+        manifests temporal,
+        source validity,
+        skip before fetch,
+        rfc-0021
+      ]
+    content_hash:
+      algorithm: sha256
+      value: 2060e2cc8fe6bd2f7887afe510ad4258db76cc682e17961b02bb7dfa2db3728a
 
   - id: rfc-0022
     path: RFC-0022-Composition-Integrity.md
-    intent: "RFC-0022 (accepted): composition integrity — makes composition integrity enforcing at trusted tier so an unverified or substituted include can't reach standing context, closing the composition-substitution attack (T10). Promoted to SPEC.md section 3.11 in v0.21; conformance C17."
+    intent: "RFC-0022 (accepted): composition integrity — makes composition
+      integrity enforcing at trusted tier so an unverified or substituted
+      include can't reach standing context, closing the composition-substitution
+      attack (T10). Promoted to SPEC.md section 3.11 in v0.21; conformance C17."
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-06-13"
-    depends_on: [rfc-0020, rfc-0019]
-    triggers: [composition integrity, T10, enforcing, trusted tier, include substitution, rfc-0022]
+    depends_on: [ rfc-0020, rfc-0019 ]
+    triggers:
+      [
+        composition integrity,
+        T10,
+        enforcing,
+        trusted tier,
+        include substitution,
+        rfc-0022
+      ]
+    content_hash:
+      algorithm: sha256
+      value: 3f8467c760b5e434d9f076a8f10bc41608e5b0dcf1b811a8006d9a3ee2c1becf
 
   - id: readme
     path: README.md
-    intent: "What is KCP, how does it relate to MCP and llms.txt, and how do I get started?"
+    intent: "What is KCP, how does it relate to MCP and llms.txt, and how do I get
+      started?"
     scope: global
-    audience: [human, agent]
+    audience: [ human, agent ]
     validated: "2026-02-27"
-    triggers: [overview, introduction, getting started, mcp, llms.txt]
+    triggers: [ overview, introduction, getting started, mcp, llms.txt ]
 
   # -- Adoption guide -----------------------------------------------------------
 
   - id: adoption-guide
     path: guides/adopting-kcp-in-existing-projects.md
-    intent: "How do I retrofit KCP onto an existing project with documentation, skill files, and agent definitions?"
+    intent: "How do I retrofit KCP onto an existing project with documentation,
+      skill files, and agent definitions?"
     scope: global
-    audience: [human, developer]
+    audience: [ human, developer ]
     validated: "2026-02-28"
-    depends_on: [spec]
-    triggers: [adoption, retrofit, existing project, migration, getting started, kind]
+    depends_on: [ spec ]
+    triggers: [ adoption, retrofit, existing project, migration, getting started, kind ]
 
   # -- JSON Schema --------------------------------------------------------------
 
   - id: json-schema
     path: schema/knowledge-schema.json
-    intent: "How do I validate a knowledge.yaml file against a machine-readable schema?"
+    intent: "How do I validate a knowledge.yaml file against a machine-readable
+      schema?"
     scope: global
-    audience: [developer, agent]
+    audience: [ developer, agent ]
     validated: "2026-02-28"
-    depends_on: [spec]
-    triggers: [json schema, validation, schema, editor support, ide, autocompletion]
+    depends_on: [ spec ]
+    triggers: [ json schema, validation, schema, editor support, ide, autocompletion ]
 
   # -- Examples ------------------------------------------------------------------
 
   - id: examples-index
     path: examples/README.md
-    intent: "What example knowledge.yaml files are available and what adoption level does each demonstrate?"
+    intent: "What example knowledge.yaml files are available and what adoption level
+      does each demonstrate?"
     scope: global
-    audience: [human, agent, developer]
+    audience: [ human, agent, developer ]
     validated: "2026-02-27"
-    depends_on: [spec]
-    triggers: [examples, samples, adoption gradient, level 1, level 2, level 3]
+    depends_on: [ spec ]
+    triggers: [ examples, samples, adoption gradient, level 1, level 2, level 3 ]
 
   - id: example-minimal
     path: examples/minimal/knowledge.yaml
-    intent: "What does the smallest valid knowledge.yaml look like? (Level 1 conformance)"
+    intent: "What does the smallest valid knowledge.yaml look like? (Level 1
+      conformance)"
     scope: module
-    audience: [developer, agent]
+    audience: [ developer, agent ]
     validated: "2026-02-27"
-    depends_on: [examples-index]
-    triggers: [minimal, five minutes, level 1, quickstart]
+    depends_on: [ examples-index ]
+    triggers: [ minimal, five minutes, level 1, quickstart ]
 
   - id: example-personal-site
     path: examples/personal-site/knowledge.yaml
-    intent: "How do I structure a personal site or portfolio with audience differentiation and freshness dating?"
+    intent: "How do I structure a personal site or portfolio with audience
+      differentiation and freshness dating?"
     scope: module
-    audience: [developer, agent]
+    audience: [ developer, agent ]
     validated: "2026-02-27"
-    depends_on: [examples-index]
-    triggers: [personal site, portfolio, wiki, audience, freshness]
+    depends_on: [ examples-index ]
+    triggers: [ personal site, portfolio, wiki, audience, freshness ]
 
   - id: example-open-source-wiki
     path: examples/open-source-wiki/knowledge.yaml
-    intent: "How do I structure a large community wiki with topology, dependency chains, and role-based audience targeting?"
+    intent: "How do I structure a large community wiki with topology, dependency
+      chains, and role-based audience targeting?"
     scope: module
-    audience: [developer, agent]
+    audience: [ developer, agent ]
     validated: "2026-02-27"
-    depends_on: [examples-index]
-    triggers: [open source, wiki, community, topology, relationships, enterprise]
+    depends_on: [ examples-index ]
+    triggers: [ open source, wiki, community, topology, relationships, enterprise ]
 
   - id: example-a2a-agent-card
     path: examples/a2a-agent-card/README.md
-    intent: "How do A2A Agent Cards and KCP manifests work together in a multi-agent system?"
+    intent: "How do A2A Agent Cards and KCP manifests work together in a multi-agent
+      system?"
     scope: global
-    audience: [agent, developer, architect]
+    audience: [ agent, developer, architect ]
     validated: "2026-03-08"
-    depends_on: [examples-index]
+    depends_on: [ examples-index ]
     triggers:
       - "a2a"
       - "agent card"
@@ -350,165 +693,295 @@ units:
 
   - id: example-compliance-audit
     path: examples/compliance-audit/knowledge.yaml
-    intent: "How do I declare GDPR and NIS2 compliance constraints, data residency, and audit requirements in a knowledge manifest?"
+    intent: "How do I declare GDPR and NIS2 compliance constraints, data residency,
+      and audit requirements in a knowledge manifest?"
     scope: module
-    audience: [developer, agent, architect]
+    audience: [ developer, agent, architect ]
     validated: "2026-03-09"
-    depends_on: [examples-index]
-    triggers: [compliance, GDPR, NIS2, data residency, sensitivity, audit, patient data, healthcare]
+    depends_on: [ examples-index ]
+    triggers:
+      [
+        compliance,
+        GDPR,
+        NIS2,
+        data residency,
+        sensitivity,
+        audit,
+        patient data,
+        healthcare
+      ]
 
   - id: example-api-platform-rate-limits
     path: examples/api-platform-rate-limits/knowledge.yaml
-    intent: "How do I declare advisory rate limits at root and unit level for a tiered API platform?"
+    intent: "How do I declare advisory rate limits at root and unit level for a
+      tiered API platform?"
     scope: module
-    audience: [developer, agent]
+    audience: [ developer, agent ]
     validated: "2026-03-09"
-    depends_on: [examples-index]
-    triggers: [rate limits, requests per minute, throttle, self-throttle, API platform, tiered access, advisory]
+    depends_on: [ examples-index ]
+    triggers:
+      [
+        rate limits,
+        requests per minute,
+        throttle,
+        self-throttle,
+        API platform,
+        tiered access,
+        advisory
+      ]
 
   - id: example-dependency-graph
     path: examples/dependency-graph/knowledge.yaml
-    intent: "How do all six relationship types (depends_on, enables, supersedes, contradicts, context, governs) work in a realistic knowledge graph?"
+    intent: "How do all six relationship types (depends_on, enables, supersedes,
+      contradicts, context, governs) work in a realistic knowledge graph?"
     scope: module
-    audience: [developer, agent]
+    audience: [ developer, agent ]
     validated: "2026-03-09"
-    depends_on: [examples-index]
-    triggers: [depends_on, supersedes, contradicts, relationship types, dependency graph, migration, topology]
+    depends_on: [ examples-index ]
+    triggers:
+      [
+        depends_on,
+        supersedes,
+        contradicts,
+        relationship types,
+        dependency graph,
+        migration,
+        topology
+      ]
 
   - id: example-federation
     path: examples/federation/knowledge.yaml
-    intent: "How do I federate multiple knowledge manifests across repositories using the DAG manifests block?"
+    intent: "How do I federate multiple knowledge manifests across repositories
+      using the DAG manifests block?"
     scope: module
-    audience: [developer, agent, architect]
+    audience: [ developer, agent, architect ]
     validated: "2026-03-09"
-    depends_on: [examples-index, rfc-0003]
-    triggers: [federation, sub-manifest, DAG, cross-repo, manifests block, local authority]
+    depends_on: [ examples-index, rfc-0003 ]
+    triggers:
+      [
+        federation,
+        sub-manifest,
+        DAG,
+        cross-repo,
+        manifests block,
+        local authority
+      ]
 
   - id: example-hints-and-chunking
     path: examples/hints-and-chunking/knowledge.yaml
-    intent: "How do I declare token estimates, load strategies, and chunking relationships to help agents manage context windows?"
+    intent: "How do I declare token estimates, load strategies, and chunking
+      relationships to help agents manage context windows?"
     scope: module
-    audience: [developer, agent]
+    audience: [ developer, agent ]
     validated: "2026-03-09"
-    depends_on: [examples-index, rfc-0006]
-    triggers: [hints, chunking, token estimate, context window, load strategy, eager, lazy, summary unit]
+    depends_on: [ examples-index, rfc-0006 ]
+    triggers:
+      [
+        hints,
+        chunking,
+        token estimate,
+        context window,
+        load strategy,
+        eager,
+        lazy,
+        summary unit
+      ]
 
   - id: example-well-known-discovery
     path: examples/well-known-discovery/README.md
-    intent: "How does /.well-known/kcp.json discovery work? How do agents find a project's knowledge manifest automatically?"
+    intent: "How does /.well-known/kcp.json discovery work? How do agents find a
+      project's knowledge manifest automatically?"
     scope: module
-    audience: [developer, agent]
+    audience: [ developer, agent ]
     validated: "2026-03-09"
-    depends_on: [examples-index]
-    triggers: [well-known, discovery, kcp.json, auto-discovery, manifest location]
+    depends_on: [ examples-index ]
+    triggers: [ well-known, discovery, kcp.json, auto-discovery, manifest location ]
 
   # -- Simulators ----------------------------------------------------------------
 
   - id: scenario1-energy-metering
     path: examples/scenario1-energy-metering/README.md
-    intent: "How does a 2-agent energy metering system navigate access levels, HITL gates, and audit trails? (Happy path simulation)"
+    intent: "How does a 2-agent energy metering system navigate access levels, HITL
+      gates, and audit trails? (Happy path simulation)"
     scope: module
-    audience: [developer, agent, architect]
+    audience: [ developer, agent, architect ]
     validated: "2026-03-09"
-    depends_on: [example-a2a-agent-card]
-    triggers: [simulator, scenario, energy metering, HITL, human in the loop, audit trail, happy path, access levels]
+    depends_on: [ example-a2a-agent-card ]
+    triggers:
+      [
+        simulator,
+        scenario,
+        energy metering,
+        HITL,
+        human in the loop,
+        audit trail,
+        happy path,
+        access levels
+      ]
 
   - id: scenario2-legal-delegation
     path: examples/scenario2-legal-delegation/README.md
-    intent: "How does a 3-hop delegation chain work with max_depth:0 enforcement and capability attenuation? (Legal research simulation)"
+    intent: "How does a 3-hop delegation chain work with max_depth:0 enforcement and
+      capability attenuation? (Legal research simulation)"
     scope: module
-    audience: [developer, agent, architect]
+    audience: [ developer, agent, architect ]
     validated: "2026-03-09"
-    depends_on: [scenario1-energy-metering]
-    triggers: [simulator, scenario, delegation chain, max_depth, capability attenuation, legal, sealed records, court]
+    depends_on: [ scenario1-energy-metering ]
+    triggers:
+      [
+        simulator,
+        scenario,
+        delegation chain,
+        max_depth,
+        capability attenuation,
+        legal,
+        sealed records,
+        court
+      ]
 
   - id: scenario3-financial-aml
     path: examples/scenario3-financial-aml/README.md
-    intent: "How does an adversarial multi-agent system resist a rogue agent attacking GDPR residency, scope elevation, and delegation depth limits? (AML compliance simulation)"
+    intent: "How does an adversarial multi-agent system resist a rogue agent
+      attacking GDPR residency, scope elevation, and delegation depth limits?
+      (AML compliance simulation)"
     scope: module
-    audience: [developer, agent, architect]
+    audience: [ developer, agent, architect ]
     validated: "2026-03-09"
-    depends_on: [scenario2-legal-delegation]
-    triggers: [simulator, scenario, adversarial, rogue agent, AML, financial, GDPR, compliance, sanctions, SAR, wire transfer]
+    depends_on: [ scenario2-legal-delegation ]
+    triggers:
+      [
+        simulator,
+        scenario,
+        adversarial,
+        rogue agent,
+        AML,
+        financial,
+        GDPR,
+        compliance,
+        sanctions,
+        SAR,
+        wire transfer
+      ]
 
   - id: scenario4-rate-limit-aware
     path: examples/scenario4-rate-limit-aware/README.md
-    intent: "How does a rate-limit-aware agent self-throttle using advisory rate_limits? PoliteAgent vs GreedyAgent comparison."
+    intent: "How does a rate-limit-aware agent self-throttle using advisory
+      rate_limits? PoliteAgent vs GreedyAgent comparison."
     scope: module
-    audience: [developer, agent]
+    audience: [ developer, agent ]
     validated: "2026-03-09"
-    depends_on: [scenario1-energy-metering]
-    triggers: [simulator, scenario, rate limits, self-throttle, polite agent, greedy agent, advisory, requests per minute, burst]
+    depends_on: [ scenario1-energy-metering ]
+    triggers:
+      [
+        simulator,
+        scenario,
+        rate limits,
+        self-throttle,
+        polite agent,
+        greedy agent,
+        advisory,
+        requests per minute,
+        burst
+      ]
 
   - id: scenario5-dependency-ordering
     path: examples/scenario5-dependency-ordering/README.md
-    intent: "How does an agent use topological sort to load units in safe dependency order, detect cycles, and handle supersedes/contradicts relationships?"
+    intent: "How does an agent use topological sort to load units in safe dependency
+      order, detect cycles, and handle supersedes/contradicts relationships?"
     scope: module
-    audience: [developer, agent]
+    audience: [ developer, agent ]
     validated: "2026-03-09"
-    depends_on: [scenario1-energy-metering]
-    triggers: [simulator, scenario, topological sort, dependency ordering, cycle detection, Kahn algorithm, supersedes, contradicts, ingestion]
+    depends_on: [ scenario1-energy-metering ]
+    triggers:
+      [
+        simulator,
+        scenario,
+        topological sort,
+        dependency ordering,
+        cycle detection,
+        Kahn algorithm,
+        supersedes,
+        contradicts,
+        ingestion
+      ]
 
   # -- Parsers -------------------------------------------------------------------
 
   - id: parser-python
     path: parsers/python/README.md
-    intent: "How do I install, use, and extend the Python reference parser for knowledge.yaml?"
+    intent: "How do I install, use, and extend the Python reference parser for
+      knowledge.yaml?"
     scope: module
-    audience: [developer, agent]
+    audience: [ developer, agent ]
     validated: "2026-02-28"
-    depends_on: [spec]
-    triggers: [python, parser, pip, validator, cli, pyyaml]
+    depends_on: [ spec ]
+    triggers: [ python, parser, pip, validator, cli, pyyaml ]
 
   - id: parser-java
     path: parsers/java/README.md
-    intent: "How do I build, use, and extend the Java reference parser for knowledge.yaml?"
+    intent: "How do I build, use, and extend the Java reference parser for
+      knowledge.yaml?"
     scope: module
-    audience: [developer, agent]
+    audience: [ developer, agent ]
     validated: "2026-02-28"
-    depends_on: [spec]
-    triggers: [java, parser, maven, snakeyaml, validator, cli]
+    depends_on: [ spec ]
+    triggers: [ java, parser, maven, snakeyaml, validator, cli ]
 
   - id: bridge-typescript
     path: bridge/typescript/src/parser.ts
-    intent: "Where is the TypeScript KCP parser, validator, and MCP mapper? How do I parse, validate, and serve knowledge.yaml from TypeScript?"
+    intent: "Where is the TypeScript KCP parser, validator, and MCP mapper? How do I
+      parse, validate, and serve knowledge.yaml from TypeScript?"
     scope: module
-    audience: [developer, agent]
+    audience: [ developer, agent ]
     validated: "2026-03-08"
-    depends_on: [spec]
-    triggers: [typescript, ts, parser, validator, mapper, mcp, bridge, npm]
+    depends_on: [ spec ]
+    triggers: [ typescript, ts, parser, validator, mapper, mcp, bridge, npm ]
 
   # -- Ecosystem positioning ----------------------------------------------------
 
   - id: webmcp-comparison
     path: docs/ecosystem/webmcp-comparison.md
-    intent: "How does WebMCP (Google+Microsoft browser action protocol) compare to KCP? Are they competing or complementary?"
+    intent: "How does WebMCP (Google+Microsoft browser action protocol) compare to
+      KCP? Are they competing or complementary?"
     scope: global
-    audience: [human, agent, architect, developer]
+    audience: [ human, agent, architect, developer ]
     validated: "2026-03-09"
-    depends_on: [readme]
-    triggers: [webmcp, web mcp, browser actions, google, microsoft, navigator.modelContext, comparison, ecosystem, complement]
+    depends_on: [ readme ]
+    triggers:
+      [
+        webmcp,
+        web mcp,
+        browser actions,
+        google,
+        microsoft,
+        navigator.modelContext,
+        comparison,
+        ecosystem,
+        complement
+      ]
 
   # -- GitHub Pages site ---------------------------------------------------------
 
   - id: site
     path: docs/index.html
-    intent: "Where is the public-facing documentation site for KCP hosted on GitHub Pages?"
+    intent: "Where is the public-facing documentation site for KCP hosted on GitHub
+      Pages?"
     scope: global
-    audience: [human, agent]
+    audience: [ human, agent ]
     validated: "2026-02-28"
-    depends_on: [spec]
-    triggers: [website, github pages, documentation site, landing page]
+    depends_on: [ spec ]
+    triggers: [ website, github pages, documentation site, landing page ]
 
   # -- License -------------------------------------------------------------------
 
   - id: license
     path: LICENSE
-    intent: "Under what license is the KCP specification and reference implementation released?"
+    intent: "Under what license is the KCP specification and reference
+      implementation released?"
     scope: global
-    audience: [human, agent]
+    audience: [ human, agent ]
     validated: "2026-02-25"
-    triggers: [license, apache, open source, terms]
+    triggers: [ license, apache, open source, terms ]
 
 relationships:
   # The spec is the foundation everything builds on
