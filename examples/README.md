@@ -9,7 +9,7 @@ Reference implementations and runnable simulation scenarios — from the minimum
 The smallest valid `knowledge.yaml`. Start here if you are not sure whether you need KCP yet.
 
 ```yaml
-kcp_version: "0.10"
+kcp_version: "0.21"
 project: my-project
 version: 1.0.0
 units:
@@ -90,6 +90,18 @@ A NovaPlatform v1-to-v2 migration with 8 units exercising five of the six relati
 - `context` — legacy-security-policy provides context for zero-trust-policy
 
 ---
+
+## [temporal-validity/](./temporal-validity/)
+
+**Bi-temporal validity. Future-dated rollout, supersession, point-in-time queries.**
+
+A platform-security knowledge base that versions itself over time (RFC-0010, SPEC §4.22 / §15.13, v0.19–v0.20):
+- `temporal.valid_from` / `valid_until` — when knowledge is true in the world
+- `temporal.recorded_at` / `superseded_by` — when the manifest recorded it, and what replaces it
+- Future-dated policy rollout (`mfa-policy-2026` activates on its date), an expiring migration runbook, and a verified compliance unit with `discovery.verified_by` provenance
+- `as_of` point-in-time queries reconstruct what the manifest declared on any past date
+
+Validates clean: `kcp validate examples/temporal-validity/knowledge.yaml`.
 
 ---
 

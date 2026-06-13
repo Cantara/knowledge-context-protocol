@@ -1,0 +1,99 @@
+# Temporal validity example (RFC-0010, SPEC §4.22 + §15.13).
+#
+# Demonstrates the bi-temporal `temporal` block: valid-time (when knowledge is
+# true in the world) and transaction-time (when the manifest recorded it), plus
+# future-dated rollout, supersession chains, and expiring runbooks. Validates
+# clean under `kcp validate`; query it with `kcp query "..." --as-of <date>`
+# once your bridge implements §15.13 temporal filtering.
+kcp_version: "0.21"
+project: platform-security
+version: 2.0.0
+updated: "2026-03-15"
+language: en
+license: "Apache-2.0"
+
+# Root-level temporal provides defaults; unit-level overrides field-by-field.
+# Here it records when this manifest version was authored (transaction time).
+temporal:
+  recorded_at: "2026-03-15"
+
+units:
+  - id: overview
+    path: README.md
+    intent: "What is the platform security knowledge base and how is it versioned over time?"
+    scope: global
+    audience: [human, agent]
+    triggers: [overview, getting started]
+    # No temporal block: always valid (backward-compatible default).
+
+  # --- Future-dated policy rollout: declare the new policy before it takes
+  #     effect, without disrupting agents running today. ---
+  - id: mfa-policy-legacy
+    path: policies/mfa-2025.md
+    intent: "What MFA requirements apply to agent authentication (2025 policy)?"
+    scope: project
+    audience: [developer, operator, agent]
+    triggers: [mfa, authentication, policy]
+    temporal:
+      valid_from: "2025-01-01"
+      valid_until: "2026-03-31"          # retired at the end of Q1 2026
+      superseded_by: mfa-policy-2026      # successor — no "stale" warning
+
+  - id: mfa-policy-2026
+    path: policies/mfa-2026.md
+    intent: "What MFA requirements apply to agent authentication (current policy)?"
+    scope: project
+    audience: [developer, operator, agent]
+    triggers: [mfa, authentication, policy]
+    temporal:
+      valid_from: "2026-04-01"            # activates automatically — no manifest edit needed
+      valid_until: null                   # open-ended
+      recorded_at: "2026-01-28"           # pre-authored, future-dated
+
+  # --- Expiring runbook with a successor that activates post-migration. ---
+  - id: db-migration-runbook
+    path: ops/migration-runbook.md
+    intent: "How do I run the Q2 database migration?"
+    scope: project
+    audience: [operator, agent]
+    triggers: [migration, database, runbook]
+    temporal:
+      valid_from: "2026-04-01"
+      valid_until: "2026-06-30"           # only relevant during the migration window
+      recorded_at: "2026-03-28"
+      superseded_by: db-runbook-postmigration
+
+  - id: db-runbook-postmigration
+    path: ops/deploy-postmigration.md
+    intent: "How do I deploy to the database after the Q2 migration completes?"
+    scope: project
+    audience: [operator, agent]
+    triggers: [deploy, database, runbook]
+    temporal:
+      valid_from: "2026-07-01"            # not yet active
+
+  # --- Audit trail: a verified compliance unit with provenance, valid since
+  #     2024 and still current. `as_of: "2025-06-01"` reconstructs past state. ---
+  - id: gdpr-retention
+    path: compliance/gdpr-retention.md
+    intent: "What are the GDPR data retention rules for this platform?"
+    scope: project
+    audience: [operator, agent, security_auditor]
+    triggers: [gdpr, retention, compliance, data residency]
+    temporal:
+      valid_from: "2024-01-01"
+      valid_until: null
+      recorded_at: "2026-03-01"
+    discovery:
+      verification_status: verified
+      verified_at: "2026-03-01"
+      verified_by: "ed25519:platform-compliance-2026"   # §4.18: verified carries a verifier
+      confidence: 0.95
+
+relationships:
+  - from: mfa-policy-2026
+    to: mfa-policy-legacy
+    type: supersedes
+  - from: db-runbook-postmigration
+    to: db-migration-runbook
+    type: supersedes
