@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="321" viewBox="0 0 800 321" font-size="14.5" role="img" aria-label="Animated terminal cast of kcp render across six trusted-render-pipeline scenarios">
+<style>
+  .win{font-family:'JetBrains Mono','SFMono-Regular',Menlo,Consolas,monospace}
+  text{dominant-baseline:hanging}
+  .cmd{fill:#e6edf3;font-weight:600}
+  .out{fill:#adbac7}
+  .prompt{fill:#3fb950;font-weight:700}
+  .vtag{font-weight:700}
+  .vsub{fill:#768390}
+  .cursor{fill:#e6edf3;animation:blink 1s steps(2) infinite}
+  @keyframes blink{50%{opacity:0}}
+@keyframes cast0{0%,0.00%{opacity:0}1.20%{opacity:1}15.47%{opacity:1}16.67%,100%{opacity:0}}
+@keyframes seg0{0%,0.00%{opacity:.25}0.50%{opacity:1}16.67%,100%{opacity:.25}}
+@keyframes cast1{0%,16.67%{opacity:0}17.87%{opacity:1}32.13%{opacity:1}33.33%,100%{opacity:0}}
+@keyframes seg1{0%,16.67%{opacity:.25}17.17%{opacity:1}33.33%,100%{opacity:.25}}
+@keyframes cast2{0%,33.33%{opacity:0}34.53%{opacity:1}48.80%{opacity:1}50.00%,100%{opacity:0}}
+@keyframes seg2{0%,33.33%{opacity:.25}33.83%{opacity:1}50.00%,100%{opacity:.25}}
+@keyframes cast3{0%,50.00%{opacity:0}51.20%{opacity:1}65.47%{opacity:1}66.67%,100%{opacity:0}}
+@keyframes seg3{0%,50.00%{opacity:.25}50.50%{opacity:1}66.67%,100%{opacity:.25}}
+@keyframes cast4{0%,66.67%{opacity:0}67.87%{opacity:1}82.13%{opacity:1}83.33%,100%{opacity:0}}
+@keyframes seg4{0%,66.67%{opacity:.25}67.17%{opacity:1}83.33%,100%{opacity:.25}}
+@keyframes cast5{0%,83.33%{opacity:0}84.53%{opacity:1}98.80%{opacity:1}100.00%,100%{opacity:0}}
+@keyframes seg5{0%,83.33%{opacity:.25}83.83%{opacity:1}100.00%,100%{opacity:.25}}
+</style>
+<rect width="800" height="321" rx="10" fill="#0d1117"/>
+<rect width="800" height="38" rx="10" fill="#161b22"/>
+<rect y="28" width="800" height="10" fill="#161b22"/>
+<circle cx="20" cy="19" r="6" fill="#ff5f57"/>
+<circle cx="40" cy="19" r="6" fill="#febc2e"/>
+<circle cx="60" cy="19" r="6" fill="#28c840"/>
+<text x="400" y="12" text-anchor="middle" class="win" fill="#768390" font-size="13" font-weight="600">kcp render — trusted render pipeline</text>
+<g class="win"><g style="animation:cast0 18s infinite"><text x="22" y="60"><tspan class="prompt">$ </tspan><tspan class="cmd">kcp render knowledge.yaml --keys trusted-keys.yaml --origin github.com/Cantara/…</tspan><tspan class="cursor" dx="2">▋</tspan></text><text x="22" y="102" class="out" fill="#3fb950">  tier: trusted</text><text x="22" y="123" class="out" fill="#adbac7">  origin_evidence: asserted</text><text x="22" y="144" class="out" fill="#adbac7">  pinned: true</text><text x="22" y="165" class="out" fill="#3fb950">    load_eligible: true</text><text x="22" y="186" class="out" fill="#3fb950">    content_verified: true</text><text x="22" y="249" class="vtag" fill="#58a6ff">✓ tier: trusted</text><text x="22" y="270" class="vsub">signed + allowlisted + hashes match → load-eligible</text></g>
+<g style="animation:cast1 18s infinite"><text x="22" y="60"><tspan class="prompt">$ </tspan><tspan class="cmd">kcp render knowledge.yaml --keys trusted-keys.yaml --origin github.com/some-str…</tspan><tspan class="cursor" dx="2">▋</tspan></text><text x="22" y="102" class="out" fill="#d29922">  tier: unsigned</text><text x="22" y="123" class="out" fill="#adbac7">  pinned: false</text><text x="22" y="144" class="out" fill="#adbac7">    intent: What is this project?</text><text x="22" y="165" class="out" fill="#f85149">    load_eligible: false</text><text x="22" y="249" class="vtag" fill="#58a6ff">✓ tier: unsigned</text><text x="22" y="270" class="vsub">readable data, never auto-loaded</text></g>
+<g style="animation:cast2 18s infinite"><text x="22" y="60"><tspan class="prompt">$ </tspan><tspan class="cmd">kcp render knowledge.yaml --keys trusted-keys.yaml</tspan><tspan class="cursor" dx="2">▋</tspan></text><text x="22" y="102" class="out" fill="#d29922">  tier: known</text><text x="22" y="123" class="out" fill="#adbac7">  origin_evidence: derived</text><text x="22" y="144" class="out" fill="#adbac7">  reason: origin_evidence_derived</text><text x="22" y="165" class="out" fill="#f85149">    load_eligible: false</text><text x="22" y="186" class="out" fill="#f85149">    content_verified: mismatch</text><text x="22" y="207" class="out" fill="#f85149">      reason: content_hash_mismatch</text><text x="22" y="249" class="vtag" fill="#3fb950">✓ T9 relocation blocked</text><text x="22" y="270" class="vsub">derived-evidence cap + hash mismatch → not load-eligible</text></g>
+<g style="animation:cast3 18s infinite"><text x="22" y="60"><tspan class="prompt">$ </tspan><tspan class="cmd">kcp render knowledge.yaml --keys trusted-keys.yaml --origin github.com/Cantara/…</tspan><tspan class="cursor" dx="2">▋</tspan></text><text x="22" y="102" class="out" fill="#f85149">✗ render refused: tier=failed (unsigned manifest from pinned origin (§4.1))</text><text x="22" y="249" class="vtag" fill="#3fb950">✓ T7 stripping blocked</text><text x="22" y="270" class="vsub">pinned + unsigned → failed, nothing emitted</text></g>
+<g style="animation:cast4 18s infinite"><text x="22" y="60"><tspan class="prompt">$ </tspan><tspan class="cmd">kcp render knowledge.yaml --keys trusted-keys.yaml --origin github.com/some-str…</tspan><tspan class="cursor" dx="2">▋</tspan></text><text x="22" y="102" class="out" fill="#adbac7">    path: knowledge.yaml</text><text x="22" y="123" class="out" fill="#d29922">  tier: unsigned</text><text x="22" y="144" class="out" fill="#adbac7">    path: docs/setup.md</text><text x="22" y="165" class="out" fill="#f85149">  quarantined:</text><text x="22" y="186" class="out" fill="#adbac7">    - path: units[0].intent</text><text x="22" y="207" class="out" fill="#adbac7">      reason: imperative_mood</text><text x="22" y="249" class="vtag" fill="#3fb950">✓ T1 injection blocked</text><text x="22" y="270" class="vsub">imperative intent quarantined, payload dropped</text></g>
+<g style="animation:cast5 18s infinite"><text x="22" y="60"><tspan class="prompt">$ </tspan><tspan class="cmd">kcp render knowledge.yaml --keys trusted-keys.yaml --origin github.com/Cantara/…</tspan><tspan class="cursor" dx="2">▋</tspan></text><text x="22" y="102" class="out" fill="#3fb950">  tier: trusted</text><text x="22" y="123" class="out" fill="#adbac7">  - id: platform:submit-expense</text><text x="22" y="144" class="out" fill="#f85149">    load_eligible: false</text><text x="22" y="165" class="out" fill="#adbac7">  - id: local-overview</text><text x="22" y="186" class="out" fill="#3fb950">    load_eligible: true</text><text x="22" y="249" class="vtag" fill="#3fb950">✓ T10 substitution blocked</text><text x="22" y="270" class="vsub">unverified include not load-eligible (C17)</text></g>
+</g>
+<rect x="22.0" y="307" width="121.0" height="4" rx="2" fill="#58a6ff" style="animation:seg0 18s infinite"/><rect x="149.0" y="307" width="121.0" height="4" rx="2" fill="#58a6ff" style="animation:seg1 18s infinite"/><rect x="276.0" y="307" width="121.0" height="4" rx="2" fill="#58a6ff" style="animation:seg2 18s infinite"/><rect x="403.0" y="307" width="121.0" height="4" rx="2" fill="#58a6ff" style="animation:seg3 18s infinite"/><rect x="530.0" y="307" width="121.0" height="4" rx="2" fill="#58a6ff" style="animation:seg4 18s infinite"/><rect x="657.0" y="307" width="121.0" height="4" rx="2" fill="#58a6ff" style="animation:seg5 18s infinite"/>
+</svg>
