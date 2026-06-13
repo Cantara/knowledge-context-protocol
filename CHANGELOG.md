@@ -8,6 +8,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Dogfooding — content integrity on the repo's own manifest
+
+- The root `knowledge.yaml` now binds per-unit `content_hash` (RFC-0019, SPEC §3.2)
+  over its 23 spec + RFC documents, so the Ed25519 signature covers the *content*
+  of those files, not just the manifest bytes — the repo is now a real RFC-0019
+  producer. `kcp render knowledge.yaml` returns `tier: trusted` with
+  `content_verified: true` on the bound units.
+- The `sign-manifests` workflow runs `kcp sign --update-hashes` (refreshing the
+  digests before signing) and now also triggers on changes to `SPEC.md` / `RFC-*.md`
+  so a document edit re-hashes and re-signs. (Closes the format half of #78: the
+  workflow already emits the RFC-0018 §4.2 envelope `kcp render` verifies.)
+
 ### Added — Agent Skills (`skills/`)
 
 - Four portable [Agent Skills](./skills/README.md) (`SKILL.md`) so users can work

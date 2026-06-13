@@ -6,6 +6,10 @@ on:
     paths:
       - 'knowledge.yaml'
       - 'docs/knowledge.yaml'
+      # The root manifest binds per-unit content_hash (RFC-0019) over these
+      # documents; a change to any of them must re-hash and re-sign.
+      - 'SPEC.md'
+      - 'RFC-*.md'
   workflow_dispatch:
 
 jobs:
@@ -42,9 +46,14 @@ jobs:
           set -euo pipefail
           sign_manifest() {
             local f="$1"
+            # --update-hashes recomputes every declared content_hash (RFC-0019
+            # §3.1) against the current file bytes before signing, so the
+            # signature always covers the content, not just the manifest. It is
+            # a no-op for manifests with no content_hash declarations.
             node cli/dist/cli.js sign "$f" \
               --key /tmp/kcp-signing.pem \
               --key-id cantara-org-2026 \
+              --update-hashes \
               --out "${f}.sig"
             echo "  signed: $f → ${f}.sig"
           }
@@ -57,7 +66,9 @@ jobs:
         run: |
           git config user.name  "kcp-bot[bot]"
           git config user.email "actions@cantara.no"
-          git add knowledge.yaml.sig docs/knowledge.yaml.sig
+          # --update-hashes may have refreshed content_hash values in the
+          # manifests, so commit them alongside the signatures.
+          git add knowledge.yaml docs/knowledge.yaml knowledge.yaml.sig docs/knowledge.yaml.sig
           if git diff --staged --quiet; then
             echo "Nothing changed — skipping commit"
           else
