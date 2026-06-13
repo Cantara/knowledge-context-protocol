@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { join } from "node:path";
+import { mkdtempSync, symlinkSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { createKcpServer } from "../src/server.js";
 import { loadCommandManifests } from "../src/commands.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -529,6 +531,107 @@ describe("federation temporal (C18)", () => {
     expect(old.temporal?.valid_until).toBe("2023-09-01");
     expect(old.temporally_active).toBe(false); // expired as of today
     expect(cur.temporally_active).toBe(true);
+  });
+});
+
+// Issue #98 — C18 hardening: the temporal filter must hold on every retrieval path (not just
+// search_knowledge), bind robustly, validate input, enforce supersession, and be observable
+// when bypassed. Same fed-temporal hub: gdpr-2018 (valid_until 2023-09-01, superseded_by
+// gdpr-2023) and gdpr-2023 (valid_from 2023-09-01). "Today" in tests is well after 2023.
+describe("C18 hardening (issue #98)", () => {
+  const FED = join(import.meta.dirname, "fixtures/fed-temporal");
+  const HUB = join(FED, "knowledge.yaml");
+  const MIRRORS = [join(FED, "mirror-old/knowledge.yaml"), join(FED, "mirror-new/knowledge.yaml")];
+
+  async function connect(subManifests = MIRRORS) {
+    const { server } = createKcpServer(HUB, { warnOnValidation: false, subManifests });
+    const [ct, st] = InMemoryTransport.createLinkedPair();
+    await server.connect(st);
+    const client = new Client({ name: "t", version: "0.1.0" }, { capabilities: {} });
+    await client.connect(ct);
+    return client;
+  }
+  const txt = (r: unknown) => ((r as { content: Array<{ text: string }> }).content[0].text);
+
+  // ── F1: the filter holds on get_unit / read_resource / list_resources, not just search ──
+  it("F1: get_unit refuses a unit from an expired source (today)", async () => {
+    const c = await connect();
+    const r = await c.callTool({ name: "get_unit", arguments: { unit_id: "gdpr-2018-consent" } });
+    await c.close();
+    expect(r.isError).toBe(true);
+    expect(JSON.parse(txt(r)).error).toBe("temporally_unavailable");
+  });
+
+  it("F1: list_resources hides expired-source units, keeps active ones", async () => {
+    const c = await connect();
+    const { resources } = await c.listResources();
+    await c.close();
+    const names = resources.map((x) => x.name);
+    expect(names).toContain("gdpr-2023-consent");
+    expect(names).not.toContain("gdpr-2018-consent");
+  });
+
+  it("F1: read_resource throws for an expired-source unit", async () => {
+    const c = await connect();
+    await expect(
+      c.readResource({ uri: "knowledge://fed-temporal-hub/gdpr-2018-consent" })
+    ).rejects.toThrow(/temporal validity window/);
+    await c.close();
+  });
+
+  // ── F2: association binds through a symlinked sub-manifest path (no lexical fail-open) ──
+  it("F2: source temporal binds through a symlinked sub-manifest path", async () => {
+    const tmp = mkdtempSync(join(tmpdir(), "kcp-fed-"));
+    try {
+      symlinkSync(join(FED, "mirror-old"), join(tmp, "mirror-old-link"), "dir");
+      // Pass the expired mirror via a symlink whose lexical path differs from the hub's
+      // ./mirror-old — only realpath canonicalisation makes the window bind.
+      const c = await connect([join(tmp, "mirror-old-link/knowledge.yaml"), MIRRORS[1]]);
+      const r = await c.callTool({ name: "get_unit", arguments: { unit_id: "gdpr-2018-consent" } });
+      await c.close();
+      expect(JSON.parse(txt(r)).error).toBe("temporally_unavailable");
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  // ── F3: as_of is validated, not fed raw into string comparison ──
+  it("F3: an unparseable as_of is rejected", async () => {
+    const c = await connect();
+    const r = await c.callTool({ name: "search_knowledge", arguments: { query: "consent gdpr", as_of: "not-a-date" } });
+    await c.close();
+    expect(r.isError).toBe(true);
+    expect(JSON.parse(txt(r)).error).toBe("invalid_as_of");
+  });
+
+  // ── F4/F8: supersession hard-excludes on the boundary day once the successor is active ──
+  it("F4: on the supersession boundary, the superseded source is dropped", async () => {
+    const c = await connect();
+    const r = await c.callTool({ name: "search_knowledge", arguments: { query: "consent gdpr", as_of: "2023-09-01" } });
+    await c.close();
+    const ids = (JSON.parse(txt(r)) as Array<{ id: string }>).map((x) => x.id);
+    expect(ids).toContain("gdpr-2023-consent");
+    expect(ids).not.toContain("gdpr-2018-consent"); // superseded by an active successor
+  });
+
+  // ── F5: include_all_temporal bypass is marked on results ──
+  it("F5: include_all_temporal stamps a caution on results", async () => {
+    const c = await connect();
+    const r = await c.callTool({ name: "search_knowledge", arguments: { query: "consent gdpr", include_all_temporal: true } });
+    await c.close();
+    const rows = JSON.parse(txt(r)) as Array<{ caution: string | null }>;
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((x) => (x.caution ?? "").includes("temporal filtering bypassed"))).toBe(true);
+  });
+
+  // ── F9: list_manifests honours as_of so it can't contradict a historical search ──
+  it("F9: list_manifests temporally_active reflects as_of", async () => {
+    const c = await connect();
+    const r = await c.callTool({ name: "list_manifests", arguments: { as_of: "2020-01-01" } });
+    await c.close();
+    const entries = JSON.parse(txt(r)) as Array<{ id: string; temporally_active: boolean }>;
+    expect(entries.find((e) => e.id === "gdpr-2018")!.temporally_active).toBe(true);
+    expect(entries.find((e) => e.id === "gdpr-2023")!.temporally_active).toBe(false);
   });
 });
 

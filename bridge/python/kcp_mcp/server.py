@@ -3,7 +3,10 @@ KCP MCP server — low-level Server API matching the TypeScript bridge pattern.
 """
 import json
 import sys
+import re
 from datetime import date as _date
+from datetime import datetime as _datetime
+from datetime import timezone as _timezone
 from pathlib import Path
 
 from mcp.server import Server
@@ -21,7 +24,7 @@ from mcp.types import (
 from pydantic import AnyUrl
 
 from kcp import parse
-from kcp.model import KnowledgeManifest
+from kcp.model import KnowledgeManifest, Temporal
 
 from .commands import (
     CommandManifest,
@@ -93,11 +96,16 @@ def create_server(
     # Maps unit_id → the federation source's temporal window (manifests[].temporal, §3.6),
     # for units that came from a sub-manifest associated with a manifests[] entry. Primary
     # units and sub-manifests not declared as a local_mirror have no entry (always included).
-    source_temporal: dict[str, object] = {}
+    source_temporal: dict[str, Temporal] = {}
 
-    # Associate each federation entry's local_mirror (resolved against the primary dir) with
-    # its manifests[] declaration, so a sub-manifest loaded from disk inherits its source
-    # temporal window (§3.6 / C18). Keyed by the resolved absolute mirror path.
+    # manifests[].id → temporal, for supersession resolution (issue #98 F4).
+    ref_temporal_by_id: dict[str, Temporal] = {
+        ref.id: ref.temporal for ref in manifest.manifests
+    }
+
+    # Associate each federation entry's local_mirror with its manifests[] declaration so a
+    # sub-manifest loaded from disk inherits its source temporal window (§3.6 / C18). Path.resolve()
+    # canonicalises (follows symlinks), so the association can't fail open on a symlinked path.
     mirror_to_ref: dict[Path, object] = {}
     for ref in manifest.manifests:
         if ref.local_mirror:
@@ -109,6 +117,13 @@ def create_server(
         sub_path = Path(sub_path).resolve()
         sub_dir = sub_path.parent
         source_ref = mirror_to_ref.get(sub_path)
+        # A federation that declares mirrors but loads a sub-manifest matching none means that
+        # sub-manifest's units would bypass temporal filtering — surface it (issue #98 F2).
+        if source_ref is None and mirror_to_ref:
+            sys.stderr.write(
+                f"  [kcp-mcp] warning: sub-manifest {sub_path} matched no manifests[].local_mirror — "
+                f"its units are not subject to federation temporal filtering (§3.6 / C18)\n"
+            )
         try:
             sub_manifest: KnowledgeManifest = parse(sub_path)
         except Exception as e:
@@ -139,14 +154,8 @@ def create_server(
     if commands_dir is not None:
         command_manifests = load_command_manifests(commands_dir)
 
-    # Build static resource list
-    resource_list: list[Resource] = [
-        _build_resource(manifest_resource_dict(slug, manifest))
-    ]
-    for unit, _ in unit_context.values():
-        if agent_only and "agent" not in unit.audience:
-            continue
-        resource_list.append(_build_resource(unit_resource_dict(slug, unit)))
+    # The resource list is built per request in list_resources() so it can omit temporally
+    # excluded units against the current date (issue #98 F1) — not cached statically here.
 
     # Log startup info
     agent_note = " [agent-only]" if agent_only else ""
@@ -163,7 +172,17 @@ def create_server(
 
     @server.list_resources()
     async def list_resources() -> list[Resource]:
-        return resource_list
+        # F1: omit temporally-excluded units (source window closed/superseded, or unit window
+        # invalid) as of today — not just hidden from search.
+        today = _effective_today()
+        out: list[Resource] = [_build_resource(manifest_resource_dict(slug, manifest))]
+        for uid, (unit, _d) in unit_context.items():
+            if agent_only and "agent" not in unit.audience:
+                continue
+            if not _unit_servable(unit, source_temporal.get(uid), today, ref_temporal_by_id):
+                continue
+            out.append(_build_resource(unit_resource_dict(slug, unit)))
+        return out
 
     @server.read_resource()
     async def read_resource(uri: AnyUrl):
@@ -187,6 +206,12 @@ def create_server(
             raise ValueError(f"No unit with id '{unit_id}'")
 
         unit, unit_dir = ctx
+        # F1: refuse a temporally-excluded unit here too, not just in search.
+        today = _effective_today()
+        if not _unit_servable(unit, source_temporal.get(unit_id), today, ref_temporal_by_id):
+            raise ValueError(
+                f"Unit '{unit_id}' is outside its temporal validity window as of {today}"
+            )
         mime = resolve_mime(unit)
         try:
             content, is_binary = read_resource_content(unit_dir, unit.path, mime)
@@ -282,7 +307,12 @@ def create_server(
                 ),
                 inputSchema={
                     "type": "object",
-                    "properties": {},
+                    "properties": {
+                        "as_of": {
+                            "type": "string",
+                            "description": "ISO 8601 date (YYYY-MM-DD) to evaluate temporally_active against (§3.6). Default: today (UTC).",
+                        },
+                    },
                     "required": [],
                 },
             ),
@@ -292,13 +322,13 @@ def create_server(
     @server.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         if name == "search_knowledge":
-            return _handle_search_knowledge(unit_context, slug, arguments or {}, source_temporal)
+            return _handle_search_knowledge(unit_context, slug, arguments or {}, source_temporal, ref_temporal_by_id)
         if name == "get_unit":
-            return _handle_get_unit(unit_context, arguments or {})
+            return _handle_get_unit(unit_context, arguments or {}, source_temporal, ref_temporal_by_id)
         if name == "get_command_syntax":
             return _handle_get_command_syntax(command_manifests, arguments or {})
         if name == "list_manifests":
-            return _handle_list_manifests(manifest)
+            return _handle_list_manifests(manifest, arguments or {}, ref_temporal_by_id)
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
     # ── Prompts ──────────────────────────────────────────────────────────────
@@ -396,9 +426,10 @@ def _score_unit(unit, terms: list[str], slug: str) -> dict:
     }
 
 
-def _is_temporally_active(unit, as_of: str) -> bool:
-    """Return True if unit is active on as_of (§15.13). Units without temporal block are always active."""
-    t = getattr(unit, "temporal", None)
+def _is_temporally_included(t, as_of: str) -> bool:
+    """Unified bi-temporal inclusion check (§4.22 unit / §3.6 source, §15.13). True when the
+    `temporal` block is valid on as_of; a None block is always included. One predicate for both
+    unit and source temporal — callers pass unit.temporal or ref.temporal (issue #98 F7)."""
     if t is None:
         return True
     if t.valid_from is not None and t.valid_from > as_of:
@@ -408,18 +439,47 @@ def _is_temporally_active(unit, as_of: str) -> bool:
     return True
 
 
-def _is_source_temporally_included(temporal, effective_date: str) -> bool:
-    """§3.6 / C18 manifest-level (federation source) temporal check. Returns True when a
-    sub-manifest is relevant as a knowledge source on the effective date. A source with no
-    temporal block is always included. Applied *before* unit-level temporal: a source filtered
-    out here contributes no units at all — the bridge skips it entirely."""
-    if temporal is None:
-        return True
-    if temporal.valid_from is not None and temporal.valid_from > effective_date:
+def _effective_today() -> str:
+    """UTC effective date (YYYY-MM-DD). Pinned to UTC so all three bridges agree at a
+    timezone boundary (issue #98 F6)."""
+    return _datetime.now(_timezone.utc).date().isoformat()
+
+
+_AS_OF_RE = re.compile(r"^\d{4}-\d{2}-\d{2}([T ][0-9:.+\-Z]*)?$")
+
+
+def _is_valid_as_of(s: str) -> bool:
+    """Validate as_of as an ISO-8601 date or datetime; reject unparseable values rather than
+    feeding them to lexicographic comparison (issue #98 F3)."""
+    if not _AS_OF_RE.match(s):
         return False
-    if temporal.valid_until is not None and temporal.valid_until < effective_date:
+    try:
+        _datetime.fromisoformat(s.replace("Z", "+00:00") if len(s) > 10 else s)
+        return True
+    except ValueError:
+        return False
+
+
+def _is_source_servable(temporal, as_of: str, ref_temporal_by_id: dict) -> bool:
+    """§3.6 / C18 manifest-level inclusion with supersession (issue #98 F4). A source is included
+    iff its window is valid on as_of AND it is not superseded by another manifests[] entry whose
+    own window is active — once a successor is live, the superseded source is dropped, not co-served."""
+    if not _is_temporally_included(temporal, as_of):
+        return False
+    succ = getattr(temporal, "superseded_by", None) if temporal is not None else None
+    if succ is not None and succ in ref_temporal_by_id and _is_temporally_included(ref_temporal_by_id[succ], as_of):
         return False
     return True
+
+
+def _unit_servable(unit, source_t, as_of: str, ref_temporal_by_id: dict) -> bool:
+    """A unit is servable on a date iff its federation source is servable (window valid AND not
+    superseded by an active successor) AND its own unit-level window is valid. Every retrieval
+    path gates on this so get_unit / read_resource / list_resources can't leak temporally
+    excluded content that search_knowledge already hides (issue #98 F1)."""
+    return _is_source_servable(source_t, as_of, ref_temporal_by_id) and _is_temporally_included(
+        getattr(unit, "temporal", None), as_of
+    )
 
 
 def _match_not_for(unit, terms: list[str]) -> str | None:
@@ -438,6 +498,7 @@ def _handle_search_knowledge(
     slug: str,
     arguments: dict,
     source_temporal: dict | None = None,
+    ref_temporal_by_id: dict | None = None,
 ) -> list[TextContent]:
     """Search knowledge units by query (RFC-0007 query baseline)."""
     query = arguments.get("query", "").strip()
@@ -455,19 +516,25 @@ def _handle_search_knowledge(
             "error": "temporal_query_conflict",
             "message": "as_of and include_all_temporal are mutually exclusive.",
         }))]
-    temporal_date = as_of if as_of is not None else _date.today().isoformat()
+    # F3: reject an unparseable as_of rather than feeding it to lexicographic comparison.
+    if as_of is not None and not _is_valid_as_of(as_of):
+        return [TextContent(type="text", text=json.dumps({
+            "error": "invalid_as_of",
+            "message": f"as_of must be an ISO-8601 date (YYYY-MM-DD); got {as_of!r}",
+        }))]
+    temporal_date = as_of if as_of is not None else _effective_today()
 
     source_temporal = source_temporal or {}
+    ref_temporal_by_id = ref_temporal_by_id or {}
     terms = query.split()
     results = []
 
     for unit_id, (unit, _unit_dir) in unit_context.items():
         # §3.6 / C18: manifest-level (federation source) temporal filter, applied before
-        # scoring and before unit-level temporal. A source outside its validity window is
-        # skipped entirely — none of its units are scored or returned. Bypassed by
-        # include_all_temporal, consistent with the unit-level semantics below.
-        if not include_all_temporal and not _is_source_temporally_included(
-            source_temporal.get(unit_id), temporal_date
+        # scoring and before unit-level temporal. A source outside its window (or superseded
+        # by an active successor, F4) is skipped entirely. Bypassed by include_all_temporal.
+        if not include_all_temporal and not _is_source_servable(
+            source_temporal.get(unit_id), temporal_date, ref_temporal_by_id
         ):
             continue
         # Filter: audience
@@ -507,8 +574,18 @@ def _handle_search_knowledge(
     if not include_all_temporal:
         final_results = [
             r for r in final_results
-            if _is_temporally_active(unit_context.get(r["id"], (None, None))[0], temporal_date)
+            if _is_temporally_included(
+                getattr(unit_context.get(r["id"], (None, None))[0], "temporal", None), temporal_date
+            )
         ]
+    else:
+        # F5: mark every result so a bypassed (possibly out-of-window) result is observable.
+        marked = []
+        for r in final_results:
+            existing = r.get("caution")
+            note = f"{existing}; temporal filtering bypassed" if existing else "temporal filtering bypassed (include_all_temporal)"
+            marked.append({**r, "caution": note})
+        final_results = marked
 
     if not final_results:
         ids = ", ".join(unit_context.keys())
@@ -523,8 +600,12 @@ def _handle_search_knowledge(
 def _handle_get_unit(
     unit_context: dict,
     arguments: dict,
+    source_temporal: dict | None = None,
+    ref_temporal_by_id: dict | None = None,
 ) -> list[TextContent]:
     """Fetch the content of a specific knowledge unit by id."""
+    source_temporal = source_temporal or {}
+    ref_temporal_by_id = ref_temporal_by_id or {}
     unit_id = arguments.get("unit_id", "").strip()
     ctx = unit_context.get(unit_id)
     if ctx is None:
@@ -532,6 +613,14 @@ def _handle_get_unit(
         return [TextContent(type="text", text=f'Unit not found: "{unit_id}". Available units: {ids}')]
 
     unit, unit_dir = ctx
+    # F1: refuse a temporally-excluded unit by id, matching search / read_resource. Default
+    # effective date is today (UTC); historical access is via search_knowledge's as_of.
+    today = _effective_today()
+    if not _unit_servable(unit, source_temporal.get(unit_id), today, ref_temporal_by_id):
+        return [TextContent(type="text", text=json.dumps({
+            "error": "temporally_unavailable",
+            "message": f"Unit '{unit_id}' is outside its temporal validity window as of {today}",
+        }))]
     mime = resolve_mime(unit)
     try:
         content, is_binary = read_resource_content(unit_dir, unit.path, mime)
@@ -572,8 +661,23 @@ def _temporal_to_dict(temporal) -> dict | None:
     return out
 
 
-def _handle_list_manifests(manifest: KnowledgeManifest) -> list[TextContent]:
+def _handle_list_manifests(
+    manifest: KnowledgeManifest,
+    arguments: dict | None = None,
+    ref_temporal_by_id: dict | None = None,
+) -> list[TextContent]:
     """Return JSON array of declared sub-manifests."""
+    arguments = arguments or {}
+    ref_temporal_by_id = ref_temporal_by_id or {r.id: r.temporal for r in manifest.manifests}
+    # F9: temporally_active reflects as_of (else today, UTC), so it can't contradict a
+    # search_knowledge call made with the same historical as_of. F4: supersession-aware.
+    as_of = arguments.get("as_of")
+    if as_of is not None and not _is_valid_as_of(as_of):
+        return [TextContent(type="text", text=json.dumps({
+            "error": "invalid_as_of",
+            "message": f"as_of must be an ISO-8601 date (YYYY-MM-DD); got {as_of!r}",
+        }))]
+    lm_date = as_of if as_of is not None else _effective_today()
     entries = []
     for m in manifest.manifests:
         entry: dict = {
@@ -586,9 +690,7 @@ def _handle_list_manifests(manifest: KnowledgeManifest) -> list[TextContent]:
             "version_pin": m.version_pin,
             "version_policy": m.version_policy,
             "temporal": _temporal_to_dict(m.temporal),
-            "temporally_active": _is_source_temporally_included(
-                m.temporal, _date.today().isoformat()
-            ),
+            "temporally_active": _is_source_servable(m.temporal, lm_date, ref_temporal_by_id),
         }
         entries.append(entry)
     return [TextContent(type="text", text=json.dumps(entries, indent=2))]

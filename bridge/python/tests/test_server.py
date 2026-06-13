@@ -1103,3 +1103,88 @@ async def test_fed_temporal_list_manifests_exposes_temporal_and_activity():
     assert old["temporal"]["valid_until"] == "2023-09-01"
     assert old["temporally_active"] is False  # expired as of today
     assert cur["temporally_active"] is True
+
+
+# ── C18 hardening (issue #98) ─────────────────────────────────────────────────
+# The temporal filter must hold on every retrieval path, bind through symlinks, validate
+# as_of, enforce supersession, and be observable when bypassed. Same fed-temporal hub.
+import os as _os
+import tempfile as _tempfile
+
+
+def _fed_text(result):
+    return result.content[0].text
+
+
+@pytest.mark.asyncio
+async def test_h_f1_get_unit_refuses_expired_source():
+    server = _fed_server()
+    result = await call_tool(server, "get_unit", {"unit_id": "gdpr-2018-consent"})
+    assert json.loads(_fed_text(result))["error"] == "temporally_unavailable"
+
+
+@pytest.mark.asyncio
+async def test_h_f1_list_resources_hides_expired_keeps_active():
+    server = _fed_server()
+    resources = await call_list_resources(server)
+    names = [r.name for r in resources]
+    assert "gdpr-2023-consent" in names
+    assert "gdpr-2018-consent" not in names
+
+
+@pytest.mark.asyncio
+async def test_h_f1_read_resource_raises_for_expired():
+    server = _fed_server()
+    with pytest.raises(Exception, match="temporal validity window"):
+        await call_read_resource(server, "knowledge://fed-temporal-hub/gdpr-2018-consent")
+
+
+@pytest.mark.asyncio
+async def test_h_f2_binds_through_symlinked_sub_manifest():
+    tmp = _tempfile.mkdtemp(prefix="kcp-fed-")
+    try:
+        link = _os.path.join(tmp, "mirror-old-link")
+        _os.symlink(str(FED_TEMPORAL_DIR / "mirror-old"), link)
+        server = create_server(
+            FED_TEMPORAL_DIR / "knowledge.yaml",
+            warn_on_validation=False,
+            sub_manifests=[Path(link) / "knowledge.yaml", FED_TEMPORAL_DIR / "mirror-new" / "knowledge.yaml"],
+        )
+        result = await call_tool(server, "get_unit", {"unit_id": "gdpr-2018-consent"})
+        assert json.loads(_fed_text(result))["error"] == "temporally_unavailable"
+    finally:
+        import shutil
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+@pytest.mark.asyncio
+async def test_h_f3_invalid_as_of_rejected():
+    server = _fed_server()
+    result = await call_tool(server, "search_knowledge", {"query": "consent gdpr", "as_of": "not-a-date"})
+    assert json.loads(_fed_text(result))["error"] == "invalid_as_of"
+
+
+@pytest.mark.asyncio
+async def test_h_f4_supersession_drops_superseded_on_boundary():
+    server = _fed_server()
+    result = await call_tool(server, "search_knowledge", {"query": "consent gdpr", "as_of": "2023-09-01"})
+    ids = [r["id"] for r in json.loads(_fed_text(result))]
+    assert "gdpr-2023-consent" in ids
+    assert "gdpr-2018-consent" not in ids
+
+
+@pytest.mark.asyncio
+async def test_h_f5_include_all_temporal_marks_caution():
+    server = _fed_server()
+    result = await call_tool(server, "search_knowledge", {"query": "consent gdpr", "include_all_temporal": True})
+    rows = json.loads(_fed_text(result))
+    assert rows and all("temporal filtering bypassed" in (r.get("caution") or "") for r in rows)
+
+
+@pytest.mark.asyncio
+async def test_h_f9_list_manifests_honours_as_of():
+    server = _fed_server()
+    result = await call_tool(server, "list_manifests", {"as_of": "2020-01-01"})
+    entries = {e["id"]: e for e in json.loads(_fed_text(result))}
+    assert entries["gdpr-2018"]["temporally_active"] is True
+    assert entries["gdpr-2023"]["temporally_active"] is False

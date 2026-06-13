@@ -664,14 +664,25 @@ manifests:
 own root-level `temporal.recorded_at` already covers when the hub recorded its federation list.
 
 **Resolution behaviour (Level 2):**
-- The effective date is `as_of` if set, else today (§15.13).
+- The effective date is `as_of` if set, else today. "Today" MUST be computed in **UTC**, so
+  implementations agree at a timezone boundary (v0.21; was unspecified).
 - A sub-manifest is *temporally included* iff it has no `temporal` block, OR
   (`valid_from` is null or `valid_from <= effective_date`) AND
   (`valid_until` is null or `valid_until >= effective_date`).
+- **Supersession (v0.21):** a sub-manifest whose `temporal.superseded_by` references another
+  `manifests[]` entry that is *itself temporally included* on the effective date is **excluded**,
+  even if its own window is still open. Once a successor is live, the superseded source is
+  dropped rather than co-served — the two are not both active. (Before its successor's
+  `valid_from`, the superseded source is still included on its own window.)
+- The filter MUST be applied on **every retrieval path**, not only search: a unit whose source
+  is excluded (or whose own unit-level window is invalid) on the effective date MUST NOT be
+  served by point lookups or resource enumeration either. Bare retrieval paths have no `as_of`
+  and use today (UTC); point-in-time access is via the query path's `as_of`.
 - Sub-manifests that fail this filter MUST NOT be fetched: the bridge skips them entirely — no
   HTTP request, no unit loading, no unit-level temporal evaluation.
 - `include_all_temporal: true` (§15.13) bypasses manifest-level filtering and traverses all
-  sub-manifests, consistent with its unit-level semantics.
+  sub-manifests, consistent with its unit-level semantics; query results returned through the
+  bypass SHOULD carry a `caution` marker so the bypass is observable.
 - Manifest-level temporal applies *before* unit-level temporal. The full federated filter order
   is: manifest-level temporal filter → fetch sub-manifest → score → `not_for` → unit-level
   temporal → top-N cut. A skipped sub-manifest simply produces no results — invisible to the
@@ -3325,10 +3336,14 @@ A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18)
   values. A signature over the composing file does not authenticate the bytes its includes
   resolve to.
 - **C18** (v0.21): Bridges that implement federated temporal evaluation (§3.6
-  `manifests[].temporal`) MUST: (a) compute the effective date as `as_of` if set, else today;
-  (b) skip — never fetch — sub-manifests outside their validity window; (c) bypass
-  manifest-level filtering when `include_all_temporal: true`; (d) apply manifest-level temporal
-  before unit-level temporal. Parsers MUST detect `superseded_by` cycles among `manifests[]`
+  `manifests[].temporal`) MUST: (a) compute the effective date as `as_of` if set, else today
+  **in UTC**; (b) skip — never fetch — sub-manifests outside their validity window, *including*
+  a source superseded by a temporally-included successor; (c) bypass manifest-level filtering
+  when `include_all_temporal: true`; (d) apply manifest-level temporal before unit-level
+  temporal; (e) enforce the filter on **every retrieval path** — point lookups and resource
+  enumeration, not only search — so an excluded source's units are unreadable, not merely
+  unsearchable; (f) reject an `as_of` that is not a valid ISO-8601 date/datetime rather than
+  comparing it lexically. Parsers MUST detect `superseded_by` cycles among `manifests[]`
   entries as a manifest error.
 
 The reference implementation is `kcp render` in [`cli/`](./cli/); the render validation corpus
