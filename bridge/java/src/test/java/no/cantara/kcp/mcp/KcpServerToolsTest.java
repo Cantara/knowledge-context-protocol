@@ -411,4 +411,70 @@ class KcpServerToolsTest {
         assertTrue(text.contains("\"id\":\"future-feature\""),
             "future-feature should appear when include_all_temporal is true");
     }
+
+    // ── Federation temporal (RFC-0021 / C18) ──────────────────────────────────
+    // The hub federates two GDPR corpora via local_mirror with disjoint source windows —
+    // gdpr-2018 (valid_until 2023-09-01) and gdpr-2023 (valid_from 2023-09-01). Neither corpus
+    // declares unit-level temporal, so manifests[].temporal is the only thing that includes or
+    // excludes their units. Both consent units match "consent gdpr".
+
+    private static Path subFixture(String name, String sub) {
+        URL url = KcpServerToolsTest.class.getClassLoader()
+            .getResource("fixtures/" + name + "/" + sub + "/knowledge.yaml");
+        assertNotNull(url, "sub-fixture not found: " + name + "/" + sub);
+        return Paths.get(url.getPath());
+    }
+
+    private static KcpServer.ResourceSet fedRs() throws Exception {
+        return KcpServer.buildResources(
+            fixture("fed-temporal"), false,
+            List.of(subFixture("fed-temporal", "mirror-old"),
+                    subFixture("fed-temporal", "mirror-new")));
+    }
+
+    private static String fedSearch(KcpServer.ResourceSet rs, Map<String, Object> args) {
+        McpSchema.CallToolRequest request = new McpSchema.CallToolRequest("search_knowledge", args);
+        McpSchema.CallToolResult result = KcpServer.handleSearchKnowledge(
+            request, rs, KcpMapper.projectSlug(rs.primaryManifest().project()));
+        return ((McpSchema.TextContent) result.content().get(0)).text();
+    }
+
+    @Test void fedTemporalAsOfActiveWindowExcludesExpiredSource() throws Exception {
+        // 2026 is after gdpr-2018's valid_until and inside gdpr-2023's window.
+        String text = fedSearch(fedRs(), Map.of("query", "consent gdpr", "as_of", "2026-06-13"));
+        assertTrue(text.contains("\"id\":\"gdpr-2023-consent\""), text);
+        assertFalse(text.contains("\"id\":\"gdpr-2018-consent\""), text);
+    }
+
+    @Test void fedTemporalAsOfExpiredWindowIncludesIt() throws Exception {
+        // 2020 is inside gdpr-2018's window and before gdpr-2023's valid_from.
+        String text = fedSearch(fedRs(), Map.of("query", "consent gdpr", "as_of", "2020-01-01"));
+        assertTrue(text.contains("\"id\":\"gdpr-2018-consent\""), text);
+        assertFalse(text.contains("\"id\":\"gdpr-2023-consent\""), text);
+    }
+
+    @Test void fedTemporalIncludeAllReturnsBothSources() throws Exception {
+        String text = fedSearch(fedRs(), Map.of("query", "consent gdpr", "include_all_temporal", true));
+        assertTrue(text.contains("\"id\":\"gdpr-2018-consent\""), text);
+        assertTrue(text.contains("\"id\":\"gdpr-2023-consent\""), text);
+    }
+
+    @Test void fedTemporalAsOfAndIncludeAllConflict() throws Exception {
+        McpSchema.CallToolRequest request = new McpSchema.CallToolRequest("search_knowledge",
+            Map.of("query", "consent gdpr", "as_of", "2020-01-01", "include_all_temporal", true));
+        McpSchema.CallToolResult result = KcpServer.handleSearchKnowledge(
+            request, fedRs(), "fed-temporal-hub");
+        assertTrue(result.isError());
+        assertTrue(((McpSchema.TextContent) result.content().get(0)).text()
+            .contains("temporal_query_conflict"));
+    }
+
+    @Test void fedTemporalListManifestsExposesTemporalAndActivity() throws Exception {
+        McpSchema.CallToolResult result = KcpServer.handleListManifests(fedRs().primaryManifest());
+        String text = ((McpSchema.TextContent) result.content().get(0)).text();
+        assertTrue(text.contains("\"valid_until\":\"2023-09-01\""), text);
+        // gdpr-2018 expired as of today; gdpr-2023 active. Both flags present.
+        assertTrue(text.contains("\"temporally_active\":false"), text);
+        assertTrue(text.contains("\"temporally_active\":true"), text);
+    }
 }

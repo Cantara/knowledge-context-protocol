@@ -90,11 +90,25 @@ def create_server(
         u.id: (u, manifest_dir) for u in manifest.units
     }
 
+    # Maps unit_id → the federation source's temporal window (manifests[].temporal, §3.6),
+    # for units that came from a sub-manifest associated with a manifests[] entry. Primary
+    # units and sub-manifests not declared as a local_mirror have no entry (always included).
+    source_temporal: dict[str, object] = {}
+
+    # Associate each federation entry's local_mirror (resolved against the primary dir) with
+    # its manifests[] declaration, so a sub-manifest loaded from disk inherits its source
+    # temporal window (§3.6 / C18). Keyed by the resolved absolute mirror path.
+    mirror_to_ref: dict[Path, object] = {}
+    for ref in manifest.manifests:
+        if ref.local_mirror:
+            mirror_to_ref[(manifest_dir / ref.local_mirror).resolve()] = ref
+
     # Load sub-manifests and merge units
     added_total = 0
     for sub_path in sub_manifests:
         sub_path = Path(sub_path).resolve()
         sub_dir = sub_path.parent
+        source_ref = mirror_to_ref.get(sub_path)
         try:
             sub_manifest: KnowledgeManifest = parse(sub_path)
         except Exception as e:
@@ -110,6 +124,8 @@ def create_server(
                 )
                 continue
             unit_context[unit.id] = (unit, sub_dir)
+            if source_ref is not None and getattr(source_ref, "temporal", None) is not None:
+                source_temporal[unit.id] = source_ref.temporal
             added += 1
         added_total += added
         sys.stderr.write(
@@ -276,7 +292,7 @@ def create_server(
     @server.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         if name == "search_knowledge":
-            return _handle_search_knowledge(unit_context, slug, arguments or {})
+            return _handle_search_knowledge(unit_context, slug, arguments or {}, source_temporal)
         if name == "get_unit":
             return _handle_get_unit(unit_context, arguments or {})
         if name == "get_command_syntax":
@@ -392,6 +408,20 @@ def _is_temporally_active(unit, as_of: str) -> bool:
     return True
 
 
+def _is_source_temporally_included(temporal, effective_date: str) -> bool:
+    """§3.6 / C18 manifest-level (federation source) temporal check. Returns True when a
+    sub-manifest is relevant as a knowledge source on the effective date. A source with no
+    temporal block is always included. Applied *before* unit-level temporal: a source filtered
+    out here contributes no units at all — the bridge skips it entirely."""
+    if temporal is None:
+        return True
+    if temporal.valid_from is not None and temporal.valid_from > effective_date:
+        return False
+    if temporal.valid_until is not None and temporal.valid_until < effective_date:
+        return False
+    return True
+
+
 def _match_not_for(unit, terms: list[str]) -> str | None:
     """Return the first not_for phrase matched by any query term, or None (§15.11)."""
     not_for = getattr(unit, "not_for", None) or []
@@ -407,6 +437,7 @@ def _handle_search_knowledge(
     unit_context: dict,
     slug: str,
     arguments: dict,
+    source_temporal: dict | None = None,
 ) -> list[TextContent]:
     """Search knowledge units by query (RFC-0007 query baseline)."""
     query = arguments.get("query", "").strip()
@@ -426,10 +457,19 @@ def _handle_search_knowledge(
         }))]
     temporal_date = as_of if as_of is not None else _date.today().isoformat()
 
+    source_temporal = source_temporal or {}
     terms = query.split()
     results = []
 
     for unit_id, (unit, _unit_dir) in unit_context.items():
+        # §3.6 / C18: manifest-level (federation source) temporal filter, applied before
+        # scoring and before unit-level temporal. A source outside its validity window is
+        # skipped entirely — none of its units are scored or returned. Bypassed by
+        # include_all_temporal, consistent with the unit-level semantics below.
+        if not include_all_temporal and not _is_source_temporally_included(
+            source_temporal.get(unit_id), temporal_date
+        ):
+            continue
         # Filter: audience
         if audience_filter and audience_filter not in (unit.audience or []):
             continue
@@ -520,6 +560,18 @@ def _handle_get_command_syntax(
     return [TextContent(type="text", text=format_syntax_block(found))]
 
 
+def _temporal_to_dict(temporal) -> dict | None:
+    """Serialize a Temporal block to a plain dict for JSON output, or None when absent."""
+    if temporal is None:
+        return None
+    out: dict = {}
+    for field_name in ("valid_from", "valid_until", "recorded_at", "superseded_by"):
+        value = getattr(temporal, field_name, None)
+        if value is not None:
+            out[field_name] = value
+    return out
+
+
 def _handle_list_manifests(manifest: KnowledgeManifest) -> list[TextContent]:
     """Return JSON array of declared sub-manifests."""
     entries = []
@@ -533,6 +585,10 @@ def _handle_list_manifests(manifest: KnowledgeManifest) -> list[TextContent]:
             "update_frequency": m.update_frequency,
             "version_pin": m.version_pin,
             "version_policy": m.version_policy,
+            "temporal": _temporal_to_dict(m.temporal),
+            "temporally_active": _is_source_temporally_included(
+                m.temporal, _date.today().isoformat()
+            ),
         }
         entries.append(entry)
     return [TextContent(type="text", text=json.dumps(entries, indent=2))]

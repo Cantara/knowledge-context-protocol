@@ -266,6 +266,20 @@ parsers that do not implement temporal evaluation MUST treat all units as active
 | `superseded_by` cycle detection on `manifests[]` entries | Level 1 | Parsers MUST detect and report as manifest error. |
 | `include_all_temporal` bypasses manifest-level filtering | Level 2 | Consistent with existing `include_all_temporal` semantics (§15.13). |
 
+### Implementation status
+
+All four reference implementations now satisfy this RFC:
+
+- **Parsers (Level 1):** The TypeScript, Python, and Java parsers read and expose
+  `manifests[].temporal` and detect `superseded_by` cycles among `manifests[]` entries as a
+  manifest error.
+- **Bridges (Level 2):** The TypeScript, Python, and Java MCP bridges apply manifest-level
+  temporal filtering at query time. A sub-manifest loaded from a `local_mirror` inherits its
+  `manifests[]` entry's `temporal` window; on `search_knowledge` a source outside the effective
+  date window (`as_of`, else today) is skipped before scoring and before unit-level temporal,
+  and `include_all_temporal: true` bypasses the stage. `list_manifests` exposes each entry's
+  `temporal` block and a computed `temporally_active` flag.
+
 ---
 
 *Co-authored with Claude. The design and normative choices are mine; Claude helped draft

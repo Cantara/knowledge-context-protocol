@@ -1,0 +1,32 @@
+kcp_version: "0.21"
+project: fed-temporal-hub
+version: 1.0.0
+
+# A compliance hub federating two GDPR corpora. The 2018 corpus was superseded by
+# the 2023 corpus; its source window has closed. Manifest-level temporal (§3.6) is
+# the only thing distinguishing the two — neither corpus declares unit-level temporal.
+manifests:
+  - id: gdpr-2018
+    url: "https://legal.example.com/gdpr-2018/knowledge.yaml"
+    relationship: governs
+    local_mirror: "./mirror-old/knowledge.yaml"
+    temporal:
+      valid_from: "2018-05-25"
+      valid_until: "2023-09-01"
+      superseded_by: gdpr-2023
+  - id: gdpr-2023
+    url: "https://legal.example.com/gdpr-2023/knowledge.yaml"
+    relationship: governs
+    local_mirror: "./mirror-new/knowledge.yaml"
+    temporal:
+      valid_from: "2023-09-01"
+
+units:
+  - id: hub-overview
+    path: README.md
+    intent: "Compliance hub overview and federation entry point"
+    scope: global
+    audience: [developer, agent]
+    triggers: ["compliance", "hub"]
+
+relationships: []

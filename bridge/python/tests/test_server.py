@@ -23,6 +23,7 @@ MINIMAL_DIR = Path(__file__).parent / "fixtures" / "minimal"
 FULL_DIR = Path(__file__).parent / "fixtures" / "full"
 SUB_DIR = Path(__file__).parent / "fixtures" / "sub"
 RFC007_DIR = Path(__file__).parent / "fixtures" / "rfc007"
+FED_TEMPORAL_DIR = Path(__file__).parent / "fixtures" / "fed-temporal"
 
 
 def get_server(fixture_dir: Path, agent_only: bool = False) -> Server:
@@ -1032,3 +1033,73 @@ async def test_get_prompt_unknown_raises():
     server = get_server(MINIMAL_DIR)
     with pytest.raises(Exception):
         await call_get_prompt(server, "nonexistent-prompt")
+
+
+# ── Federation temporal (RFC-0021 / C18) ─────────────────────────────────────
+# The hub federates two GDPR corpora via local_mirror with disjoint source windows —
+# gdpr-2018 (valid_until 2023-09-01) and gdpr-2023 (valid_from 2023-09-01). Neither corpus
+# declares unit-level temporal, so the manifests[].temporal source window is the only thing
+# that can include or exclude their units. Both consent units match "consent gdpr".
+
+def _fed_server() -> Server:
+    return create_server(
+        FED_TEMPORAL_DIR / "knowledge.yaml",
+        warn_on_validation=False,
+        sub_manifests=[
+            FED_TEMPORAL_DIR / "mirror-old" / "knowledge.yaml",
+            FED_TEMPORAL_DIR / "mirror-new" / "knowledge.yaml",
+        ],
+    )
+
+
+async def _fed_search_ids(arguments: dict) -> list[str]:
+    server = _fed_server()
+    result = await call_tool(server, "search_knowledge", arguments)
+    parsed = json.loads(result.content[0].text)
+    return [r["id"] for r in parsed] if isinstance(parsed, list) else []
+
+
+@pytest.mark.asyncio
+async def test_fed_temporal_as_of_active_window_excludes_expired_source():
+    # 2026 is after gdpr-2018's valid_until and inside gdpr-2023's window.
+    ids = await _fed_search_ids({"query": "consent gdpr", "as_of": "2026-06-13"})
+    assert "gdpr-2023-consent" in ids
+    assert "gdpr-2018-consent" not in ids
+
+
+@pytest.mark.asyncio
+async def test_fed_temporal_as_of_expired_window_includes_it():
+    # 2020 is inside gdpr-2018's window and before gdpr-2023's valid_from.
+    ids = await _fed_search_ids({"query": "consent gdpr", "as_of": "2020-01-01"})
+    assert "gdpr-2018-consent" in ids
+    assert "gdpr-2023-consent" not in ids
+
+
+@pytest.mark.asyncio
+async def test_fed_temporal_include_all_returns_both_sources():
+    ids = await _fed_search_ids({"query": "consent gdpr", "include_all_temporal": True})
+    assert "gdpr-2018-consent" in ids
+    assert "gdpr-2023-consent" in ids
+
+
+@pytest.mark.asyncio
+async def test_fed_temporal_as_of_and_include_all_conflict():
+    server = _fed_server()
+    result = await call_tool(
+        server,
+        "search_knowledge",
+        {"query": "consent gdpr", "as_of": "2020-01-01", "include_all_temporal": True},
+    )
+    assert json.loads(result.content[0].text)["error"] == "temporal_query_conflict"
+
+
+@pytest.mark.asyncio
+async def test_fed_temporal_list_manifests_exposes_temporal_and_activity():
+    server = _fed_server()
+    result = await call_tool(server, "list_manifests")
+    entries = json.loads(result.content[0].text)
+    old = next(e for e in entries if e["id"] == "gdpr-2018")
+    cur = next(e for e in entries if e["id"] == "gdpr-2023")
+    assert old["temporal"]["valid_until"] == "2023-09-01"
+    assert old["temporally_active"] is False  # expired as of today
+    assert cur["temporally_active"] is True
