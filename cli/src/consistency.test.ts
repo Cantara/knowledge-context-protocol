@@ -133,6 +133,81 @@ describe("shared-core single-source-of-truth guard", () => {
   }
 });
 
+describe("render-schema.json guards", () => {
+  // render-schema.json is the single authoritative source for the renderer
+  // whitelist (RENDER_SCHEMA / RFC-0018 §6.1). These guards keep it coherent
+  // with knowledge-schema.json so the two files cannot silently diverge.
+  const rs = JSON.parse(readFileSync(r("schema/render-schema.json"), "utf8")) as {
+    $id: string;
+    top_scalars: string[];
+    unit: { fields: string[]; free_text: string[] };
+    content_structure: { fields: string[] };
+    relationship: { fields: string[] };
+    federation: { fields: string[] };
+    provenance: { fields: string[] };
+  };
+  const ks = JSON.parse(readFileSync(r("schema/knowledge-schema.json"), "utf8")) as {
+    properties: Record<string, unknown>;
+    definitions: Record<string, { properties?: Record<string, unknown> }>;
+  };
+
+  it("render-schema $id matches the RENDER_SCHEMA constant in render.ts", () => {
+    const renderTs = readFileSync(r("cli/src/render.ts"), "utf8");
+    const m = renderTs.match(/RENDER_SCHEMA\s*=\s*"([^"]+)"/);
+    expect(m, "RENDER_SCHEMA constant not found in render.ts").toBeTruthy();
+    expect(rs["$id"]).toBe(m![1]);
+  });
+
+  it("top_scalars are valid root-level properties in knowledge-schema.json", () => {
+    const knownRoot = Object.keys(ks.properties);
+    for (const f of rs.top_scalars) {
+      expect(knownRoot, `top_scalar '${f}' absent from knowledge-schema root properties`).toContain(f);
+    }
+  });
+
+  it("unit fields are a subset of knowledge-schema unit properties", () => {
+    const knownUnit = Object.keys(ks.definitions.unit.properties ?? {});
+    for (const f of rs.unit.fields) {
+      expect(knownUnit, `unit field '${f}' absent from knowledge-schema unit definition`).toContain(f);
+    }
+  });
+
+  it("unit free_text fields are a subset of unit fields", () => {
+    const unitFieldSet = new Set(rs.unit.fields);
+    for (const f of rs.unit.free_text) {
+      expect(unitFieldSet.has(f), `free_text field '${f}' not in unit fields`).toBe(true);
+    }
+  });
+
+  it("content_structure fields are a subset of knowledge-schema content_structure_object properties", () => {
+    const knownCs = Object.keys(ks.definitions.content_structure_object.properties ?? {});
+    for (const f of rs.content_structure.fields) {
+      expect(knownCs, `content_structure field '${f}' absent from knowledge-schema`).toContain(f);
+    }
+  });
+
+  it("relationship fields are a subset of knowledge-schema relationship properties", () => {
+    const knownRel = Object.keys(ks.definitions.relationship.properties ?? {});
+    for (const f of rs.relationship.fields) {
+      expect(knownRel, `relationship field '${f}' absent from knowledge-schema`).toContain(f);
+    }
+  });
+
+  it("federation fields are a subset of knowledge-schema manifest_ref properties", () => {
+    const knownFed = Object.keys(ks.definitions.manifest_ref.properties ?? {});
+    for (const f of rs.federation.fields) {
+      expect(knownFed, `federation field '${f}' absent from knowledge-schema manifest_ref`).toContain(f);
+    }
+  });
+
+  it("provenance fields are a subset of knowledge-schema trust_provenance properties", () => {
+    const knownProv = Object.keys(ks.definitions.trust_provenance.properties ?? {});
+    for (const f of rs.provenance.fields) {
+      expect(knownProv, `provenance field '${f}' absent from knowledge-schema trust_provenance`).toContain(f);
+    }
+  });
+});
+
 // Security/correctness invariants that were violated by the v0.19/v0.20
 // composition + temporal promotion and corrected in v0.21 (RFC-0022). These
 // guard the *spec text* so the insecure/incorrect phrasing cannot silently

@@ -12,7 +12,8 @@
     "kcp": "dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "schema"
   ],
   "scripts": {
     "build": "tsc",

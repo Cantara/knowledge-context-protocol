@@ -42,23 +42,32 @@ export const DEFAULT_KEYS_PATH = join(homedir(), ".kcp", "trusted-keys.yaml");
 const KNOWN_KINDS = ["knowledge", "schema", "policy", "service", "executable"];
 const NEVER_LOAD_KINDS = ["service", "executable"];
 
-// Render-schema whitelist (§6.1): identifiers, paths, enums, dates,
-// bounded-semantics fields only.
-const TOP_SCALAR_FIELDS = ["project", "version", "updated", "language", "license"];
-const UNIT_FIELDS = [
-  "id", "kind", "path", "intent", "format", "content_type", "language",
-  "scope", "audience", "license", "validated", "update_frequency",
-  "triggers", "not_for",
-];
+// Render-schema whitelist (§6.1) — loaded from the authoritative
+// schema/render-schema.json (the file RENDER_SCHEMA names). Update
+// that file to change what the renderer emits; do not edit here.
+interface RenderSchemaFile {
+  top_scalars: string[];
+  unit: { fields: string[]; free_text: string[] };
+  content_structure: { fields: string[] };
+  relationship: { fields: string[] };
+  federation: { fields: string[] };
+  provenance: { fields: string[] };
+}
+const _rs = JSON.parse(
+  readFileSync(new URL("../schema/render-schema.json", import.meta.url), "utf8")
+) as RenderSchemaFile;
+
+const TOP_SCALAR_FIELDS = _rs.top_scalars;
+const UNIT_FIELDS = _rs.unit.fields;
 // Free-text fields subject to the imperative lint (§6.2). `triggers` and
 // `not_for` are list-valued; lintFreeText handles arrays element-wise.
-const UNIT_FREE_TEXT_FIELDS = ["intent", "triggers", "not_for"];
+const UNIT_FREE_TEXT_FIELDS = _rs.unit.free_text;
 // §4.19 content_structure is a bounded block: only these sub-fields pass,
 // sub-whitelisted separately so unknown nested keys cannot smuggle (T5).
-const CONTENT_STRUCTURE_FIELDS = ["primary", "contains", "density"];
-const RELATIONSHIP_FIELDS = ["from", "to", "type"];
-const FEDERATION_FIELDS = ["id", "url", "relationship"];
-const PROVENANCE_FIELDS = ["publisher", "publisher_url", "contact"];
+const CONTENT_STRUCTURE_FIELDS = _rs.content_structure.fields;
+const RELATIONSHIP_FIELDS = _rs.relationship.fields;
+const FEDERATION_FIELDS = _rs.federation.fields;
+const PROVENANCE_FIELDS = _rs.provenance.fields;
 
 // §5.1: default tier→confidence mapping, monotone in tier.
 const TIER_CONFIDENCE: Record<string, number> = { trusted: 0.7, known: 0.6, unsigned: 0.5 };
