@@ -1,5 +1,9 @@
 # Trusted Render Pipeline — interactive demo
 
+<p align="center">
+  <img src="../../docs/render-cast.svg" alt="Animated terminal cast: kcp render across six trusted-render-pipeline scenarios" width="760">
+</p>
+
 A runnable, narrated walk-through of the use cases for `kcp render`
 ([SPEC §16](../../SPEC.md#16-trusted-render-pipeline-v016),
 [RFC-0018](../../RFC-0018-Trusted-Render-Pipeline.md) /
@@ -60,3 +64,17 @@ node demo.js --capture   # writes docs/js/render-captures.js
 Because the page only replays authentic `kcp render` output, it cannot drift from
 the implementation. Regenerate the captures whenever the renderer's output
 changes.
+
+## The animated cast (top of this README)
+
+[`docs/render-cast.svg`](../../docs/render-cast.svg) is a pure-CSS animated
+terminal that cycles through all six scenarios. It is generated from the same
+captures — no recording tools, no rasterization, regenerable in-repo:
+
+```bash
+node demo.js --capture   # refresh docs/js/render-captures.js
+node gen-cast.js         # rebuild docs/render-cast.svg from those captures
+```
+
+Like the simulator, it never reimplements the renderer — the frames are the real
+output, so the cast can't drift either.
