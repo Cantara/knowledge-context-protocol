@@ -12,6 +12,7 @@ import type {
   ContentStructure,
   Delegation,
   Discovery,
+  Temporal,
   ExternalDependency,
   ExternalRelationship,
   FreshnessPolicy,
@@ -20,7 +21,6 @@ import type {
   ManifestRef,
   RateLimits,
   Relationship,
-  Temporal,
   Trust,
   TrustAudit,
   TrustProvenance,
@@ -336,6 +336,20 @@ function parseDiscovery(raw: unknown): Discovery | undefined {
   };
 }
 
+// --- Temporal parsing (RFC-0010 §4.22 v0.19; RFC-0021 §3.6 v0.21) ---
+
+function parseTemporal(raw: unknown): Temporal | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== "object" || Array.isArray(raw)) return {};
+  const t = raw as RawMap;
+  return {
+    valid_from: t["valid_from"] !== undefined && t["valid_from"] !== null ? String(t["valid_from"]) : undefined,
+    valid_until: t["valid_until"] !== undefined && t["valid_until"] !== null ? String(t["valid_until"]) : undefined,
+    recorded_at: t["recorded_at"] !== undefined && t["recorded_at"] !== null ? String(t["recorded_at"]) : undefined,
+    superseded_by: t["superseded_by"] !== undefined && t["superseded_by"] !== null ? String(t["superseded_by"]) : undefined,
+  };
+}
+
 // --- Content structure parsing (RFC-0016, v0.17) ---
 
 function parseContentStructure(raw: unknown): ContentStructure | undefined {
@@ -359,20 +373,6 @@ function parseContentHash(raw: unknown): ContentHash | undefined {
   return {
     algorithm: c["algorithm"] !== undefined ? String(c["algorithm"]) : undefined,
     value: c["value"] !== undefined ? String(c["value"]) : undefined,
-  };
-}
-
-// --- Temporal parsing (RFC-0010 / §4.22, v0.19) ---
-
-function parseTemporal(raw: unknown): Temporal | undefined {
-  if (raw === undefined || raw === null) return undefined;
-  if (typeof raw !== "object" || Array.isArray(raw)) return {};
-  const c = raw as RawMap;
-  return {
-    valid_from: c["valid_from"] !== undefined ? String(c["valid_from"]) : undefined,
-    valid_until: c["valid_until"] !== undefined ? String(c["valid_until"]) : undefined,
-    recorded_at: c["recorded_at"] !== undefined ? String(c["recorded_at"]) : undefined,
-    superseded_by: c["superseded_by"] !== undefined ? String(c["superseded_by"]) : undefined,
   };
 }
 

@@ -5,15 +5,15 @@
 // cli/ package (cwd = cli) and read sibling files directly.
 
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 const REPO = resolve(process.cwd(), "..");
 const r = (p: string) => resolve(REPO, p);
 
 const VALIDATORS = {
-  cli: "cli/src/validator.ts",
-  bridge: "bridge/typescript/src/validator.ts",
+  cli: "shared/src/validator.ts",
+  bridge: "shared/src/validator.ts",
   python: "parsers/python/kcp/validator.py",
   java: "parsers/java/src/main/java/no/cantara/kcp/KcpValidator.java",
 };
@@ -117,12 +117,27 @@ describe("version-drift guard", () => {
 });
 
 describe("validator duplication guard", () => {
-  it("cli and bridge TypeScript validators are byte-identical", () => {
-    // They are copy-paste twins with no shared module; until that is fixed,
-    // assert they never diverge (a one-sided edit would fork validation).
-    const a = readFileSync(r(VALIDATORS.cli), "utf8");
-    const b = readFileSync(r(VALIDATORS.bridge), "utf8");
-    expect(a).toBe(b);
+  it("shared/src/validator.ts is the single source of truth", () => {
+    // The validator logic lives in shared/src/ — cli and bridge compile it
+    // via rootDirs; neither package has its own copy.
+    const shared = readFileSync(r("shared/src/validator.ts"), "utf8");
+    expect(shared.length, "shared/src/validator.ts is empty").toBeGreaterThan(100);
+    expect(existsSync(r("cli/src/validator.ts")), "cli/src/validator.ts should be removed").toBe(false);
+    expect(existsSync(r("bridge/typescript/src/validator.ts")), "bridge/typescript/src/validator.ts should be removed").toBe(false);
+  });
+
+  it("shared/src/model.ts is the single source of truth", () => {
+    const shared = readFileSync(r("shared/src/model.ts"), "utf8");
+    expect(shared.length).toBeGreaterThan(100);
+    expect(existsSync(r("cli/src/model.ts")), "cli/src/model.ts should be removed").toBe(false);
+    expect(existsSync(r("bridge/typescript/src/model.ts")), "bridge/typescript/src/model.ts should be removed").toBe(false);
+  });
+
+  it("shared/src/parser.ts is the single source of truth", () => {
+    const shared = readFileSync(r("shared/src/parser.ts"), "utf8");
+    expect(shared.length).toBeGreaterThan(100);
+    expect(existsSync(r("cli/src/parser.ts")), "cli/src/parser.ts should be removed").toBe(false);
+    expect(existsSync(r("bridge/typescript/src/parser.ts")), "bridge/typescript/src/parser.ts should be removed").toBe(false);
   });
 });
 

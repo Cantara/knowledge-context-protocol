@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { validate } from "../src/validator.js";
-import { parseDict } from "../src/parser.js";
+import { validate } from "../../shared/src/validator.ts";
+import { parseDict } from "../../shared/src/parser.ts";
 
 function makeManifest(overrides: Record<string, unknown> = {}) {
   return parseDict({

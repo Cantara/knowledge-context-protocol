@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { join } from "node:path";
-import { parseDict, parseFile, validateUnitPath } from "../src/parser.js";
+import { parseDict, parseFile, validateUnitPath } from "../../shared/src/parser.ts";
 
 const MINIMAL_DIR = join(import.meta.dirname, "fixtures/minimal");
 const FULL_DIR = join(import.meta.dirname, "fixtures/full");

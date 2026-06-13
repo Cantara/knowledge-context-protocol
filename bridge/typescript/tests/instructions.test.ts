@@ -6,7 +6,7 @@ import {
   generateAgentFile,
   formatAgentFile,
 } from "../src/instructions.js";
-import { parseFile } from "../src/parser.js";
+import { parseFile } from "../../shared/src/parser.ts";
 
 const FULL_DIR = join(import.meta.dirname, "fixtures/full");
 const MINIMAL_DIR = join(import.meta.dirname, "fixtures/minimal");
