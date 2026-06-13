@@ -8,6 +8,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Implemented — composition resolution + enforcing C17 in `kcp render`
+
+- `kcp render` now resolves a `composition` block (RFC-0020/0022 §3.11): fetches/reads
+  each `includes[]` source (local path or remote URL), verifies its `integrity` pin
+  (`manifest_hash` or `expected_signer`), applies `as` namespacing, `overrides`, and
+  `excludes`, then merges local units last. Network access is a pre-render step, so the
+  render core stays deterministic (C1) and LLM-free (C7) — the same contract as RFC-0019
+  corroboration.
+- **C17 is now enforcing, not just spec text:** at `trusted` tier, units from an
+  `unverified` or `failed` include render `load_eligible: false` (pointer only); a `failed`
+  pin is demoted at every tier with a §7 warning. The composed *tier* is still the composing
+  file's signature — only included-unit *load-eligibility* is gated. Closes the T10
+  composition-substitution attack in code.
+- Validated: 7 deterministic unit tests (`cli/src/render.test.ts`, mutation-verified) plus
+  live harness cases **B21–B23** that serve the include over a local HTTP server (the real
+  substitution channel). SPEC §16.5 and RFC-0022 updated from PENDING to implemented.
+
 ### Dogfooding — content integrity on the repo's own manifest
 
 - The root `knowledge.yaml` now binds per-unit `content_hash` (RFC-0019, SPEC §3.2)

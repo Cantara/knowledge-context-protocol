@@ -13,6 +13,7 @@ import {
   deriveOrigin,
   normalizeOrigin,
   renderManifest,
+  resolveComposition,
   resolveCorroborationUrl,
   runRender,
   RENDERER_VERSION,
@@ -762,6 +763,149 @@ units:
     expect(doc.trust.tier).toBe("trusted"); // the manifest IS genuine
     expect(doc.units[0].content_verified).toBe("mismatch");
     expect(doc.units[0].load_eligible).toBe(false); // C11 holds regardless
+  });
+});
+
+describe("RFC-0022: composition integrity (C17)", () => {
+  const BASE_INCLUDE = `project: platform
+version: 1.0.0
+units:
+  - id: submit-expense
+    path: expense.md
+    intent: "How do I submit an expense report?"
+    triggers: [expense, reimbursement]
+`;
+
+  /** Write a trusted composing manifest that includes ./base.yaml; return ctx. */
+  function setupComposition(integrity?: string, includeExtra = "") {
+    writeFileSync(join(dir, "base.yaml"), BASE_INCLUDE);
+    const manifestPath = writeManifest(`project: composing-app
+version: 1.0.0
+composition:
+  includes:
+    - source: ./base.yaml
+      as: platform${integrity ? "\n" + integrity : ""}${includeExtra}
+units:
+  - id: local-overview
+    path: docs/overview.md
+    intent: "Local project overview authored in this repository"
+    triggers: [overview]
+`);
+    const pub = signManifest(manifestPath, "org-key");
+    const keysPath = writeAllowlist([
+      { key_id: "org-key", method: "jws", algorithm: "EdDSA", public_key: pub,
+        scope: { domains: ["github.com/testorg"] } },
+    ]);
+    return { manifestPath, keysPath };
+  }
+
+  async function renderComposed(manifestPath: string, keysPath: string) {
+    const doc = yaml.load(readFileSync(manifestPath, "utf8")) as Record<string, any>;
+    const resolvedIncludes = await resolveComposition(doc, dir);
+    const result = renderManifest({
+      manifestPath, keysPath, origin: "github.com/testorg/app", resolvedIncludes,
+    });
+    if (!result.ok) throw new Error("render failed: " + result.reason);
+    return { result, doc: yaml.load(result.text) as Record<string, any> };
+  }
+
+  const unit = (d: Record<string, any>, id: string) => d.units.find((u: any) => u.id === id);
+
+  it("B21 — an unverified include is not load-eligible at trusted tier; local units are", async () => {
+    const { manifestPath, keysPath } = setupComposition();   // no integrity pin
+    const { result, doc } = await renderComposed(manifestPath, keysPath);
+    expect(doc.trust.tier).toBe("trusted");
+    expect(unit(doc, "platform:submit-expense").load_eligible).toBe(false);
+    expect(unit(doc, "local-overview").load_eligible).toBe(true);
+    expect(result.warnings.some((w) => w.includes("unverified") && w.includes("C17"))).toBe(true);
+  });
+
+  it("B22 — a verified include (matching manifest_hash) IS load-eligible", async () => {
+    const hash = createHash("sha256").update(BASE_INCLUDE).digest("hex");
+    const { manifestPath, keysPath } = setupComposition(
+      `      integrity:\n        manifest_hash:\n          algorithm: sha256\n          value: "${hash}"`
+    );
+    const { doc } = await renderComposed(manifestPath, keysPath);
+    expect(doc.trust.tier).toBe("trusted");
+    expect(unit(doc, "platform:submit-expense").load_eligible).toBe(true);
+  });
+
+  it("B23 — a failed pin (wrong manifest_hash) is not load-eligible and warns", async () => {
+    const { manifestPath, keysPath } = setupComposition(
+      `      integrity:\n        manifest_hash:\n          algorithm: sha256\n          value: "${"a".repeat(64)}"`
+    );
+    const { result, doc } = await renderComposed(manifestPath, keysPath);
+    expect(unit(doc, "platform:submit-expense").load_eligible).toBe(false);
+    expect(result.warnings.some((w) => w.includes("failed integrity") && w.includes("C17"))).toBe(true);
+  });
+
+  it("namespaces included unit ids with the `as` prefix", async () => {
+    const { manifestPath, keysPath } = setupComposition();
+    const { doc } = await renderComposed(manifestPath, keysPath);
+    expect(unit(doc, "platform:submit-expense")).toBeDefined();
+    expect(unit(doc, "submit-expense")).toBeUndefined();
+  });
+
+  it("applies overrides and excludes, warning on unknown ids", async () => {
+    writeFileSync(join(dir, "base.yaml"), BASE_INCLUDE + `  - id: legacy
+    path: legacy.md
+    intent: "Legacy thing"
+`);
+    const manifestPath = writeManifest(`project: composing-app
+version: 1.0.0
+composition:
+  includes:
+    - source: ./base.yaml
+      as: platform
+  overrides:
+    - id: platform:submit-expense
+      intent: "Submit an expense report (EU region)"
+  excludes:
+    - id: platform:legacy
+    - id: platform:ghost
+units: []
+`);
+    const pub = signManifest(manifestPath, "org-key");
+    const keysPath = writeAllowlist([
+      { key_id: "org-key", method: "jws", algorithm: "EdDSA", public_key: pub,
+        scope: { domains: ["github.com/testorg"] } },
+    ]);
+    const { result, doc } = await renderComposed(manifestPath, keysPath);
+    expect(unit(doc, "platform:submit-expense").intent).toContain("EU region");  // override applied
+    expect(unit(doc, "platform:legacy")).toBeUndefined();                         // exclude applied
+    expect(result.warnings.some((w) => w.includes("'platform:ghost'"))).toBe(true); // dangling exclude
+  });
+
+  it("a failed (unreachable) include resolves to failed and demotes its units", async () => {
+    const manifestPath = writeManifest(`project: composing-app
+version: 1.0.0
+composition:
+  includes:
+    - source: ./does-not-exist.yaml
+      as: missing
+units:
+  - id: local
+    path: docs/x.md
+    intent: "local"
+`);
+    const pub = signManifest(manifestPath, "org-key");
+    const keysPath = writeAllowlist([
+      { key_id: "org-key", method: "jws", algorithm: "EdDSA", public_key: pub,
+        scope: { domains: ["github.com/testorg"] } },
+    ]);
+    const resolved = await resolveComposition(
+      yaml.load(readFileSync(manifestPath, "utf8")) as Record<string, any>, dir
+    );
+    expect(resolved[0].verification).toBe("failed");
+    expect(resolved[0].reason).toContain("unreachable");
+  });
+
+  it("keeps the leaf-based stats identity with a composition block (§5.2)", async () => {
+    const { manifestPath, keysPath } = setupComposition();
+    const { doc } = await renderComposed(manifestPath, keysPath);
+    const s = doc.sanitization.stats;
+    expect(s.fields_in).toBe(s.fields_rendered + s.fields_dropped + s.fields_quarantined);
+    expect(doc.sanitization.dropped.some((d: any) => d.path === "composition" && d.reason === "consumed_by_renderer")).toBe(true);
   });
 });
 

@@ -85,11 +85,37 @@ export interface RenderOptions {
    * and deterministic; the outcome is part of the C1 input).
    */
   corroboration?: CorroborationOutcome;
+  /**
+   * RFC-0020/0022 §3.11: resolved `composition.includes`, fetched and
+   * integrity-checked by the caller *before* rendering. The renderer merges
+   * and tiers them deterministically; the network/fs access is the caller's
+   * (same offline-core contract as corroboration). When the manifest declares
+   * a `composition` block but this is absent, includes are treated as
+   * unverified (fail-safe).
+   */
+  resolvedIncludes?: ResolvedInclude[];
 }
 
 export interface CorroborationOutcome {
   url: string;
   result: "matched" | "mismatch" | "unreachable";
+}
+
+/**
+ * RFC-0022 §2: a `composition.includes[]` entry resolved to its source bytes
+ * and an integrity verdict. `verified` (a present pin matched), `unverified`
+ * (no integrity declared), or `failed` (a declared pin did not match, or the
+ * source was unreachable). C17 reads `verification` to gate load-eligibility.
+ */
+export interface ResolvedInclude {
+  source: string;
+  as?: string;
+  /** Raw bytes of the included manifest, or null if unreadable/unreachable. */
+  bytes: string | null;
+  verification: "verified" | "unverified" | "failed";
+  reason?: string;
+  expected?: string;
+  observed?: string;
 }
 
 /**
@@ -446,9 +472,81 @@ export function renderManifest(options: RenderOptions): RenderResult {
     delete project.project;
   }
 
+  // --- composition resolution (§3.11, RFC-0020/0022) -----------------------
+  // Tiering above already used the composing file's signature; here we merge
+  // included units. C17 then gates their load-eligibility by the include's
+  // integrity verdict — an unverified or substituted include cannot reach
+  // standing context even though the composed tier is `trusted`.
+  type IncludeVerdict = "verified" | "unverified" | "failed";
+  interface MergedUnit { unit: RawMap; include?: { verification: IncludeVerdict }; }
+  const mergedUnits: MergedUnit[] = [];
+  const composition = doc.composition as RawMap | undefined;
+  if (composition && typeof composition === "object" && !Array.isArray(composition)) {
+    const includeDefs = (composition.includes as RawMap[] | undefined) ?? [];
+    const resolved = options.resolvedIncludes ?? [];
+    includeDefs.forEach((inc, idx) => {
+      const as = inc.as !== undefined ? String(inc.as) : undefined;
+      const r = resolved[idx];
+      const verification: IncludeVerdict = r ? r.verification : "unverified";
+      if (verification === "failed") {
+        warnings.push(
+          `composition include '${String(inc.source ?? idx)}' failed integrity` +
+            (r?.reason ? ` (${r.reason})` : "") +
+            "; its units render as pointers at every tier (RFC-0022 C17)"
+        );
+      } else if (verification === "unverified" && tier === "trusted") {
+        warnings.push(
+          `composition include '${String(inc.source ?? idx)}' is unverified (no integrity pin); ` +
+            "its units are pointer-only at trusted tier — add integrity.manifest_hash or expected_signer (RFC-0022 C17)"
+        );
+      }
+      let includedUnits: RawMap[] = [];
+      if (r && r.bytes) {
+        try {
+          const idoc = (yaml.load(r.bytes) ?? {}) as RawMap;
+          includedUnits = (idoc.units as RawMap[] | undefined) ?? [];
+        } catch { /* unparseable include → contributes no units */ }
+      }
+      for (const u of includedUnits) {
+        const nu: RawMap = { ...u };
+        if (as !== undefined && nu.id !== undefined) nu.id = `${as}:${String(nu.id)}`;
+        mergedUnits.push({ unit: nu, include: { verification } });
+      }
+    });
+    // overrides → excludes (§3.11 resolution order), matched by (namespaced) id
+    for (const ov of ((composition.overrides as RawMap[] | undefined) ?? [])) {
+      const id = ov.id !== undefined ? String(ov.id) : undefined;
+      if (!id) continue;
+      const target = mergedUnits.find((m) => String(m.unit.id) === id);
+      if (target) {
+        for (const [k, v] of Object.entries(ov)) if (k !== "id") target.unit[k] = v;
+      } else {
+        warnings.push(`composition override references unknown unit id '${id}' (§3.11)`);
+      }
+    }
+    for (const ex of ((composition.excludes as RawMap[] | undefined) ?? [])) {
+      const id = ex.id !== undefined ? String(ex.id) : undefined;
+      if (!id) continue;
+      const before = mergedUnits.length;
+      for (let j = mergedUnits.length - 1; j >= 0; j--) {
+        if (String(mergedUnits[j].unit.id) === id) mergedUnits.splice(j, 1);
+      }
+      if (mergedUnits.length === before) {
+        warnings.push(`composition exclude references unknown unit id '${id}' (§3.11)`);
+      }
+    }
+    // the composition block is consumed by resolution; never re-emitted
+    const compLeaves = countLeaves(composition);
+    fieldsIn += compLeaves;
+    fieldsDropped += compLeaves;
+    dropped.push({ path: "composition", reason: "consumed_by_renderer" });
+  }
+  // local units are merged last and win on all collisions (§3.11)
+  for (const u of ((doc.units as RawMap[] | undefined) ?? [])) mergedUnits.push({ unit: u });
+
   // --- units ---------------------------------------------------------------
   const units: RawMap[] = [];
-  ((doc.units as RawMap[] | undefined) ?? []).forEach((unit, i) => {
+  mergedUnits.forEach(({ unit, include }, i) => {
     const out: RawMap = {};
     const base = `units[${i}].`;
     // kind is enum-checked before the generic whitelist pass
@@ -498,7 +596,15 @@ export function renderManifest(options: RenderOptions): RenderResult {
     // tier governs placement, the hash governs whether the bytes at the
     // path are the bytes the key-holder signed.
     let contentVerified: true | "mismatch" | "absent" = "absent";
-    if (contentHash !== undefined) {
+    if (contentHash !== undefined && include) {
+      // included unit: any content_hash is relative to the included source,
+      // not this checkout — not locally verifiable. The include's integrity
+      // verdict (C17) governs load-eligibility instead.
+      const leafCount = countLeaves(contentHash);
+      fieldsIn += leafCount;
+      fieldsDropped += leafCount;
+      dropped.push({ path: `${base}content_hash`, reason: "consumed_by_renderer" });
+    } else if (contentHash !== undefined) {
       const leafCount = countLeaves(contentHash);
       fieldsIn += leafCount;
       fieldsDropped += leafCount;
@@ -541,6 +647,11 @@ export function renderManifest(options: RenderOptions): RenderResult {
     if (unknownKind || NEVER_LOAD_KINDS.includes(kind)) {
       out.load_eligible = false;
       out.invocation = "explicit";
+    } else if (include && include.verification !== "verified") {
+      // C17 (RFC-0022): a unit from an `unverified` or `failed` composition
+      // include is never load-eligible. (Below `trusted` nothing is anyway, so
+      // a single `false` covers both the trusted-tier cap and failed-at-every-tier.)
+      out.load_eligible = false;
     } else {
       out.load_eligible =
         tier === "trusted" &&
@@ -600,6 +711,7 @@ export function renderManifest(options: RenderOptions): RenderResult {
   // --- remaining top-level blocks ----------------------------------------------
   const handled = new Set([
     ...TOP_SCALAR_FIELDS, "kcp_version", "units", "relationships", "manifests", "trust",
+    "composition", // consumed during resolution above (counted there)
   ]);
   for (const [k, v] of Object.entries(doc)) {
     if (handled.has(k)) continue;
@@ -694,6 +806,88 @@ export async function corroborateOrigin(
   }
 }
 
+// --- Composition resolution (§3.11, RFC-0020/0022) ---
+//
+// A pre-render step, like corroboration: fetch/read each `composition.includes`
+// source over the consumer's channel and verify its integrity pin. The
+// per-include verdict — never the network — feeds renderManifest, keeping the
+// render core deterministic and offline (C1, C7). C17 then gates the included
+// units' load-eligibility on that verdict.
+
+export async function resolveComposition(
+  doc: RawMap,
+  manifestDir: string,
+  allowlist?: Allowlist
+): Promise<ResolvedInclude[]> {
+  const composition = doc.composition as RawMap | undefined;
+  if (!composition || typeof composition !== "object") return [];
+  const includes = (composition.includes as RawMap[] | undefined) ?? [];
+  const out: ResolvedInclude[] = [];
+
+  for (const inc of includes) {
+    const source = String(inc.source ?? "");
+    const as = inc.as !== undefined ? String(inc.as) : undefined;
+    const integrity = inc.integrity as RawMap | undefined;
+    const isUrl = /^https?:\/\//i.test(source);
+
+    // Obtain the included source bytes over the consumer's own channel.
+    let bytes: string | null = null;
+    try {
+      if (isUrl) {
+        const res = await fetch(source, { signal: AbortSignal.timeout(10_000), redirect: "follow" });
+        if (res.ok) bytes = Buffer.from(await res.arrayBuffer()).toString("utf8");
+      } else if (source) {
+        bytes = readFileSync(resolve(manifestDir, source), "utf8");
+      }
+    } catch {
+      bytes = null;
+    }
+
+    if (bytes === null) {
+      out.push({ source, as, bytes: null, verification: "failed", reason: "source unreachable" });
+      continue;
+    }
+
+    // Verify the integrity pin, if any. manifest_hash (exact bytes) is the
+    // strong primitive; expected_signer pins a detached signature on the source.
+    let verification: ResolvedInclude["verification"] = "unverified";
+    let reason: string | undefined;
+    let expected: string | undefined;
+    let observed: string | undefined;
+    const mh = integrity?.manifest_hash as RawMap | undefined;
+    const signer = integrity?.expected_signer !== undefined ? String(integrity.expected_signer) : undefined;
+
+    if (mh && typeof mh === "object") {
+      const alg = HASH_ALGORITHMS.includes(String(mh.algorithm)) ? String(mh.algorithm) : "sha256";
+      expected = String(mh.value ?? "").toLowerCase();
+      observed = createHash(alg).update(Buffer.from(bytes, "utf8")).digest("hex");
+      verification = observed === expected ? "verified" : "failed";
+      if (verification === "failed") reason = "manifest_hash mismatch";
+    } else if (signer) {
+      // fetch the source's detached .sig and verify it is from the pinned key
+      let sigText: string | null = null;
+      try {
+        if (isUrl) {
+          const sres = await fetch(source + ".sig", { signal: AbortSignal.timeout(10_000), redirect: "follow" });
+          if (sres.ok) sigText = await sres.text();
+        } else {
+          sigText = readFileSync(resolve(manifestDir, source) + ".sig", "utf8");
+        }
+      } catch { sigText = null; }
+      const sig = sigText ? (JSON.parse(sigText) as DetachedSignature) : null;
+      const ok = !!sig && sig.key_id === signer &&
+        verifyDetachedSig(Buffer.from(bytes, "utf8"), sig) &&
+        // the pinned key must also be on the consumer allowlist with matching bytes
+        (allowlist?.keys ?? []).some((k) => k.key_id === signer && k.public_key === sig.public_key);
+      verification = ok ? "verified" : "failed";
+      if (!ok) reason = "expected_signer not satisfied";
+    }
+
+    out.push({ source, as, bytes, verification, reason, expected, observed });
+  }
+  return out;
+}
+
 // --- CLI entry point ---
 
 export interface RunRenderOptions {
@@ -730,6 +924,15 @@ export async function runRender(options: RunRenderOptions): Promise<void> {
         );
       }
     }
+    // Composition resolution also happens here, before the deterministic
+    // core: fetch/read and integrity-check each include (§3.11, RFC-0022 C17).
+    let resolvedIncludes: ResolvedInclude[] | undefined;
+    const parsed = (yaml.load(readFileSync(options.manifestPath, "utf8")) ?? {}) as RawMap;
+    if (parsed.composition) {
+      resolvedIncludes = await resolveComposition(
+        parsed, dirname(resolve(options.manifestPath)), loadAllowlist(keysPath)
+      );
+    }
     result = renderManifest({
       manifestPath: options.manifestPath,
       keysPath,
@@ -738,6 +941,7 @@ export async function runRender(options: RunRenderOptions): Promise<void> {
       allowDerivedOrigin: options.allowDerivedOrigin,
       requireUnitHashes: options.requireUnitHashes,
       corroboration,
+      resolvedIncludes,
     });
   } catch (err) {
     process.stderr.write(red(`Error: ${err instanceof Error ? err.message : String(err)}\n`));
