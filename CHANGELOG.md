@@ -68,9 +68,9 @@ all four reference implementations (TypeScript CLI + bridge, Python, Java):
   Python, and Java (15 cases each). An outdated Java parser test fixture (a
   `verified` discovery with no `verified_by`) was made spec-compliant.
 
-Still deferred (genuinely larger features, not validation): composition resolution
-+ C17 enforcement in the renderer, and bridge skip-before-fetch federation temporal
-filtering (Level 2).
+Still deferred (the one remaining serving-side feature): bridge skip-before-fetch
+federation temporal filtering (RFC-0021 Level 2). (Composition resolution + C17
+enforcement in the renderer has since landed — see the top of this Unreleased section.)
 
 ---
 
@@ -119,9 +119,9 @@ filtering (Level 2).
 
 ### Notes
 
-- `manifests[].temporal` parser exposure (Level 1) and the composition resolver (which C17
-  governs) are not yet implemented in the reference bridges/renderer; the spec promotion lands
-  ahead of implementation, as the composition-integrity correction (RFC-0022) did deliberately.
+- At v0.21.0, `manifests[].temporal` parser exposure (Level 1) and the composition resolver
+  (which C17 governs) were not yet implemented — the spec promotion deliberately led the
+  implementation. Both landed shortly after; see the [Unreleased] section above.
 
 ---
 
