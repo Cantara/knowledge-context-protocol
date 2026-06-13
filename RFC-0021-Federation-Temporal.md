@@ -176,6 +176,16 @@ The complete filter order for federated queries becomes:
 
 > **manifest-level temporal filter → fetch sub-manifest → score → `not_for` filter → unit-level temporal filter → top-N cut**
 
+#### Overlapping validity windows
+
+Multiple sub-manifests MAY be temporally active at the same effective date. This is
+expected and correct — a hub may federate a 2018 corpus (no `valid_until`) alongside a
+2023 corpus (valid from 2023-09-01), and both will be active after that date. Bridges
+query all temporally-included sub-manifests and merge results identically to the existing
+`federation_scope: declared` behaviour. The `source_manifest` field in each result
+identifies the origin. Prioritising results from one sub-manifest over another is a
+scoring decision, not a temporal one.
+
 #### Response fields
 
 The existing `source_manifest` field in search results (§15.7) already identifies which
