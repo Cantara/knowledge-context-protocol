@@ -1,6 +1,6 @@
 # RFC-0022: Composition Integrity
 
-**Status:** Draft
+**Status:** Accepted — promoted to SPEC.md §3.11, §16.5 C17, §4.22 correction (v0.21).
 **Author:** Thor Henning Hetland (eXOReaction AS)
 **Created:** 2026-06-13
 **Target version:** v0.21
