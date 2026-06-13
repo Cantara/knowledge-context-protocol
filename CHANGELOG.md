@@ -8,6 +8,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Security — RFC-0022 Composition Integrity (draft, targets v0.21)
+
+- **T10 (composition include substitution):** a `trusted`, signed manifest that
+  `composition.includes` a source it does not authenticate would have its included
+  units inherit the composing file's `trusted` tier and become load-eligible into
+  standing context — even though the composing signature covers the `source:`
+  directive, not the bytes the source resolves to. This is the RFC-0019 T9 pattern
+  in the composition path. Found by analysis before composition resolution shipped
+  in the renderer.
+- **Fix (SPEC §3.11, §16.5 C17):** include integrity is now **enforcing** at
+  `trusted` tier, not advisory. Units from an `unverified` or `failed` include
+  render `load_eligible: false`; a `failed` include (present-but-mismatched pin)
+  is demoted at every tier with a §7 warning — mirroring the RFC-0019 `content_hash`
+  demotion (C11). The composed *tier* is still the composing file's (no transitive
+  trust); only included-unit *load-eligibility* is gated.
+- **Hash encoding unified (SPEC §3.11):** `composition.includes[].integrity.manifest_hash`
+  changes from the `"sha256:<hex>"` string to the `{algorithm, value}` object used by
+  RFC-0004 `content_integrity.manifest_hash` and RFC-0019 `content_hash`.
+- **Temporal correction (SPEC §4.22):** removed the v0.19 §7 warning that fired when
+  `recorded_at` was later than `valid_from` — that is RFC-0010's foundational
+  retroactive-recording case, not an anomaly. Replaced with a warning for an empty
+  validity window (`valid_until` earlier than `valid_from`).
+- Regression guards added (`cli/src/consistency.test.ts`) asserting the enforcing
+  composition language and the corrected temporal warnings remain in the spec.
+
 ---
 
 ## [0.20.0] — 2026-06-12 — Temporal Query Release

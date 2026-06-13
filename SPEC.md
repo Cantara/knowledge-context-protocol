@@ -917,8 +917,10 @@ composition:
     - source: https://raw.githubusercontent.com/acme/kcps/main/platform/knowledge.yaml
       as: platform                      # namespace prefix for included unit ids
       integrity:
-        manifest_hash: "sha256:a1b2c3d4e5f6..."  # hash of raw file bytes at authoring time
-        expected_signer: "ed25519:MCowBQYDK2VwAyEA..."
+        manifest_hash:                  # {algorithm, value} — matches §3.2 / RFC-0019
+          algorithm: sha256
+          value: "a1b2c3d4e5f6..."      # hex digest of the source's raw bytes at authoring time
+        expected_signer: "acme-platform-2026"   # allowlist key_id (§9) expected to have signed the source
 
   overrides:
     - id: platform:submit-expense-report  # namespaced: overrides a unit from 'platform' include
@@ -945,8 +947,8 @@ on all collisions). Resolution MUST complete before trust tiering (§16).
 |-------|----------|------|-------------|
 | `source` | REQUIRED | string | Relative path or URL of the manifest to include. |
 | `as` | OPTIONAL | string | Namespace prefix for all unit ids from this source. Applied as `<prefix>:<id>`. |
-| `integrity.manifest_hash` | OPTIONAL | string | `sha256:<hex>` of the included source file's raw bytes at authoring time. Mismatch MUST produce a §7 warning. |
-| `integrity.expected_signer` | OPTIONAL | string | Public key id expected to have signed the included source. Mismatch MUST produce a §7 warning. |
+| `integrity.manifest_hash` | OPTIONAL | object | `{algorithm, value}` (`algorithm` ∈ sha256/sha384/sha512; `value` hex) of the included source's raw bytes at authoring time. Same shape as `trust.content_integrity.manifest_hash` (§3.2). Governs include load-eligibility at `trusted` tier (C17). |
+| `integrity.expected_signer` | OPTIONAL | string | Allowlist `key_id` (§9) expected to have signed the included source. Governs include load-eligibility at `trusted` tier (C17). |
 
 #### `composition.overrides[]` fields
 
@@ -966,12 +968,25 @@ on all collisions). Resolution MUST complete before trust tiering (§16).
 - Circular includes MUST be detected and reported as a manifest error (not a §7 warning).
 - `composition.overrides` MAY add a `temporal` block to a unit that did not originally have one.
 - `superseded_by` (§4.22) MAY reference a unit from an included manifest using the `namespace:id` form.
-- `includes[].integrity` fields are advisory warnings, not hard failures. A mismatch
-  produces a §7 warning but does not lower the composed result's trust tier — that is
-  determined by the composing file's own signature (§16).
-- `includes[].integrity.manifest_hash` is computed over the raw file bytes before
-  composition resolution of the included file, matching `trust.content_integrity.manifest_hash` semantics.
-- The trust tier of included sources does not propagate to the composed result.
+- `includes[].integrity.manifest_hash` is computed over the included source's raw file bytes
+  before that source's own composition resolution, matching `trust.content_integrity.manifest_hash`
+  (§3.2) byte semantics and shape.
+- An include is **integrity-verified** iff a present `manifest_hash` matches the fetched source
+  bytes, or a present `expected_signer` matches a valid signature on the fetched source. An
+  include with no `integrity` block is **unverified**; one whose declared pin is present but does
+  not match is **failed**.
+- **Include integrity is enforcing at `trusted` tier, not advisory (v0.21, RFC-0022, C17):**
+  when the composed manifest tiers `trusted`, units originating from an `unverified` or `failed`
+  include MUST render `load_eligible: false` (pointer only). A `failed` include MUST render its
+  units `load_eligible: false` at *every* tier and MUST emit a §7 warning recording the field,
+  expected value, and observed value. This mirrors the per-unit `content_hash` demotion (§3.2,
+  C11): a signature over the composing file authenticates the `source:` directive, not the bytes
+  the source resolves to.
+- The trust *tier* of the composed result is still derived from the composing file's signature
+  only; integrity gating changes the *load-eligibility of included units*, never the composed
+  tier. The trust tier of included sources does not propagate (no transitive trust).
+- Remote-include verification is a pre-render evidence-resolution step; its per-include outcome
+  is part of the render's determinism input (C1 preserved), as with §16 corroboration (RFC-0019 §4.3).
 
 **Conformance:** `includes`/`overrides`/`excludes` at Level 1; `as` prefix and `integrity`
 pinning at Level 2; recursive composition (includes within includes) at Level 2.
@@ -2228,11 +2243,17 @@ effect on how the unit is evaluated — absence means "always valid" (backward-c
 - Root-level `temporal` provides defaults. Unit-level overrides are field-by-field (not block-level).
 - `superseded_by` cycles MUST be detected and reported as a manifest error.
 
-**§7 advisory warnings (new in v0.19):**
+**§7 advisory warnings (new in v0.19; `recorded_at` rule corrected in v0.21, RFC-0022):**
 - `superseded_by` references a nonexistent unit id
 - `valid_until` is in the past and no `superseded_by` is set (stale unit with no successor)
-- `recorded_at` is later than `valid_from` (manifest authored after the fact it describes)
+- `valid_until` is earlier than `valid_from` (empty validity window — the unit can never be active)
 - `discovery.verification_status: verified` without `discovery.verified_by`
+
+> Note: v0.19 warned when `recorded_at` was later than `valid_from`. That rule was removed in
+> v0.21 — it fires on the foundational bi-temporal case (a fact recorded *after* it became
+> true, e.g. a policy effective Feb 15 but written into the manifest Mar 1), which RFC-0010
+> identifies as exactly why transaction time exists. Neither direction of `recorded_at` vs
+> `valid_from` is anomalous.
 
 **Conformance:** Level 1 — temporal field exposure (parsers MUST read and expose). Level 2 — temporal filtering (bridges that evaluate validity windows at query time).
 
@@ -3214,7 +3235,7 @@ minimum trigger `on_failure: warn` (§3.6). Pinning applies per-edge.
 
 ### 16.5 Renderer conformance
 
-A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18), C15 (RFC-0020, v0.19), and C16 (v0.20):
+A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18), C15 (RFC-0020, v0.19), C16 (v0.20), and C17 (RFC-0022, v0.21):
 
 - **C1–C10** (RFC-0018): determinism (C1), fail-closed emission (C2), schema-only output (C3),
   no `load_eligible: true` on executable/service/unknown kinds (C4), no auto-traversal below
@@ -3234,13 +3255,20 @@ A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18)
   before trust tiering; derives the trust tier from the composing file's signature only; emits
   §7 warnings for `integrity` mismatches, circular includes, and override/exclude references to
   nonexistent unit ids; never allows included sources with lower-tier signatures to elevate the
-  composed result's tier.
+  composed result's tier. (C17 governs the converse: a `trusted` composing tier never elevates
+  *unauthenticated* included content.)
 - **C16** (v0.20): Bridges that implement temporal query evaluation (§15.13) MUST: (a) apply
   default temporal filtering against today when neither `as_of` nor `include_all_temporal`
   is set; (b) honor `as_of` for point-in-time reconstruction using `valid_from`/`valid_until`
   bounds; (c) bypass temporal filtering when `include_all_temporal: true`; (d) return error
   code `temporal_query_conflict` when both a non-default `as_of` and `include_all_temporal:
   true` are present in the same request.
+- **C17** (v0.21): When a `composition` block resolves to a `trusted`-tier result, the renderer
+  MUST NOT emit `load_eligible: true` for any unit originating from an `unverified` or `failed`
+  include (§3.11); MUST render `failed`-include units `load_eligible: false` at every tier; and
+  MUST emit a §7 warning for every `failed` include recording field, expected, and observed
+  values. A signature over the composing file does not authenticate the bytes its includes
+  resolve to.
 
 The reference implementation is `kcp render` in [`cli/`](./cli/); the validation corpus lives
 in [`experiments/rfc-0018-render/`](./experiments/rfc-0018-render/) (cases A10–A12, B17–B20
