@@ -5,7 +5,7 @@
 **Date:** 2026-03-15
 **Discussion:** [#50 KCP Treasure Map Service](https://github.com/Cantara/knowledge-context-protocol/discussions/50)
 **Related:** [André Lindenberg — "The Memory Problem No One Talks About: Why AI Agents Need Two Clocks"](https://www.linkedin.com/pulse/memory-problem-one-talks-why-ai-agents-need-two-andr%C3%A9-lindenberg-spjvf/)
-**Spec:** [SPEC.md](./SPEC.md) (current: v0.10)
+**Spec:** [SPEC.md](./SPEC.md) (current: v0.21)
 
 ---
 
@@ -27,12 +27,16 @@ manifests. It enables agents and serving layers to answer:
 All additions are backward compatible. All new fields are optional. Existing manifests
 require no changes.
 
-**Release staging:**
+**Release staging (as shipped):**
 
-- **v0.12 (schema):** The `temporal` block as manifest and unit fields. Zero bridge query
-  changes required. Authors can immediately declare validity windows and recorded-at dates.
-- **v0.13 (query):** Query extensions — `as_of` (point-in-time) and `include_all_temporal`
-  (audit mode) filters. Ships after all three bridges implement the RFC-0008 query baseline.
+- **v0.19 (schema):** The `temporal` block as manifest and unit fields (SPEC §4.22), promoted
+  together with manifest composition via RFC-0020. Zero bridge query changes required —
+  authors can immediately declare validity windows and recorded-at dates.
+- **v0.20 (query):** Query extensions — `as_of` (point-in-time) and `include_all_temporal`
+  (audit mode) filters (SPEC §15.13). Shipped after the bridges implemented the query baseline.
+
+> Note: this RFC originally targeted v0.12/v0.13; the schema and query phases ultimately
+> landed in v0.19 and v0.20 respectively, as the spec re-synced with the CLI release train.
 
 ---
 
@@ -444,8 +448,8 @@ policy was in mid-2025.
 | `temporal.recorded_at` on unit | Level 2 | Informational; no evaluation required |
 | `temporal.superseded_by` chain | Level 2 | Agent follows chain to current unit |
 | Root-level `temporal` defaults | Level 2 | Field-level inheritance to units |
-| `as_of` query parameter | Level 3 (v0.13) | Deferred — requires bridge query baseline |
-| `include_all_temporal` query parameter | Level 3 (v0.13) | Deferred — audit mode |
+| `as_of` query parameter | Level 3 (v0.20) | Point-in-time reconstruction (SPEC §15.13) |
+| `include_all_temporal` query parameter | Level 3 (v0.20) | Audit mode (SPEC §15.13) |
 
 A unit that adds only `valid_from` and `valid_until` meets Level 2. Point-in-time and audit
 queries are Level 3 serving-layer capabilities.
@@ -524,7 +528,7 @@ treat all date-only values as UTC midnight unless a timezone offset is explicitl
 - **RFC-0004 (Trust and Compliance):** `compliance.sensitivity` declares the sensitivity of
   content *now*. `temporal` + `as_of` queries allow audit tooling to retrieve the
   sensitivity declaration that was in effect at any past date.
-- **RFC-0007 (Query Vocabulary):** The v0.13 query extensions (`as_of`,
+- **RFC-0007 (Query Vocabulary):** The v0.20 query extensions (`as_of`,
   `include_all_temporal`) are additive parameters on the RFC-0007 query shape.
 
 ---
