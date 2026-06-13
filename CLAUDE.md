@@ -25,6 +25,7 @@ KCP defines a `knowledge.yaml` manifest format with hierarchical units, each hav
 - `cli/` - `kcp` developer CLI (TypeScript)
 - `parsers/` - Standalone Java and Python parser/validator libraries
 - `examples/` - Example knowledge.yaml files
+- `skills/` - Portable Agent Skills (SKILL.md): kcp-adopt, kcp-author, kcp-navigate, kcp-render
 - `guides/` - Adoption and integration guides
 - `conformance/` - Test fixtures and conformance suite
 - `experiments/` - Executable validation harnesses for RFCs (e.g. rfc-0018-render)
