@@ -8,33 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### Security/correctness — C18 federation temporal hardening (bridges 0.21.1, issue #98)
-
-A downstream-consumer adversarial panel review of the v0.21 C18 filter (PR #95) found the
-temporal guard was enforced only in `search_knowledge`. Fixed across all three bridges, TDD:
-
-- **F1 (critical):** the filter now holds on **every** retrieval path — `get_unit`,
-  `read_resource`, and `list_resources` — not just search. A unit whose federation source is
-  out of window (or whose own window is invalid) is unreadable and unlisted, not merely
-  unsearchable. `get_unit` returns a `temporally_unavailable` error; resource paths omit it.
-- **F2:** `local_mirror` ↔ sub-manifest association is canonicalised (symlink-resolved), so it
-  can't silently fail open on a symlinked/non-canonical path; a loaded sub-manifest that matches
-  no declared `local_mirror` now emits a warning.
-- **F3:** `as_of` is validated as ISO-8601 and rejected (`invalid_as_of`) rather than fed into
-  lexicographic comparison.
-- **F4 (semantic, spec change):** supersession is now enforced — a source whose
-  `temporal.superseded_by` references a *temporally-active* successor is excluded, not co-served.
-  SPEC §3.6 and RFC-0021 updated; this changes the previous "overlap = both active" wording for
-  the supersession case specifically.
-- **F5:** results returned via `include_all_temporal` carry a `caution` so the bypass is observable.
-- **F6:** the effective "today" is pinned to **UTC** in all three bridges and in SPEC/RFC, so
-  they agree at a timezone boundary.
-- **F9:** `list_manifests` accepts an optional `as_of`; `temporally_active` reflects it.
-- **F7/F10:** the duplicate unit/source temporal predicates collapsed to one per bridge; Python
-  source/ref maps now typed `Temporal` rather than `object`.
-- Each fix is mutation-verified; new discriminating tests on the resource paths (TS 216, Python
-  161, Java 161). SPEC §16.5 C18 expanded to require every-path enforcement, UTC, supersession,
-  and `as_of` validation.
+_Nothing yet._
 
 ---
 
