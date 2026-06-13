@@ -329,6 +329,8 @@ function parseDiscovery(raw: unknown): Discovery | undefined {
     source: d["source"] !== undefined ? String(d["source"]) : undefined,
     observed_at: d["observed_at"] !== undefined ? String(d["observed_at"]) : undefined,
     verified_at: d["verified_at"] !== undefined ? String(d["verified_at"]) : undefined,
+    verified_by: d["verified_by"] !== undefined ? String(d["verified_by"]) : undefined,
+    evidence: d["evidence"] !== undefined ? String(d["evidence"]) : undefined,
     confidence: d["confidence"] !== undefined ? Number(d["confidence"]) : undefined,
     contradicted_by: d["contradicted_by"] !== undefined ? String(d["contradicted_by"]) : undefined,
   };
@@ -395,6 +397,7 @@ function parseManifestRef(raw: RawMap): ManifestRef {
     local_mirror: raw["local_mirror"] !== undefined ? String(raw["local_mirror"]) : undefined,
     version_pin: raw["version_pin"] !== undefined ? String(raw["version_pin"]) : undefined,
     version_policy: raw["version_policy"] !== undefined ? String(raw["version_policy"]) : undefined,
+    temporal: parseTemporal(raw["temporal"]),
   };
 }
 

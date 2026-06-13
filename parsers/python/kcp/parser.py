@@ -166,6 +166,8 @@ def _parse_discovery(data: Optional[dict]) -> Optional[Discovery]:
         source=data.get("source"),
         observed_at=data.get("observed_at"),
         verified_at=data.get("verified_at"),
+        verified_by=data.get("verified_by"),
+        evidence=data.get("evidence"),
         confidence=data.get("confidence"),
         contradicted_by=data.get("contradicted_by"),
     )
@@ -253,6 +255,7 @@ def _parse_manifest_ref(data: dict) -> ManifestRef:
         local_mirror=data.get("local_mirror"),
         version_pin=data.get("version_pin"),
         version_policy=data.get("version_policy"),
+        temporal=_parse_temporal(data.get("temporal")),
     )
 
 

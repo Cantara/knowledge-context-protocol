@@ -1,10 +1,37 @@
 import hashlib
 import os
 import re
+from datetime import date
 from pathlib import Path
 from typing import NamedTuple, Optional
 
 from .model import KnowledgeManifest
+
+
+def _superseded_cycle_ids(successor: dict[str, str]) -> list[str]:
+    """Detect cycles in a single-successor (functional) graph — the shape of
+    ``superseded_by`` chains. Returns the ids participating in a cycle, sorted.
+    Mirrors the depends_on cycle detection used elsewhere.
+    """
+    cycle: set[str] = set()
+    state: dict[str, int] = {}  # 0/absent = unvisited, 1 = in-path, 2 = done
+    for start in successor:
+        if state.get(start) == 2:
+            continue
+        path: list[str] = []
+        node: Optional[str] = start
+        while node is not None and node in successor and state.get(node) != 2:
+            if state.get(node) == 1:
+                for i in path[path.index(node):]:
+                    cycle.add(i)
+                break
+            state[node] = 1
+            path.append(node)
+            node = successor.get(node)
+        for i in path:
+            if state.get(i) == 1:
+                state[i] = 2
+    return sorted(cycle)
 
 # RFC-0019 (draft): allowed content_hash algorithms.
 HASH_ALGORITHMS = ("sha256", "sha384", "sha512")
@@ -473,6 +500,78 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
             warnings.append(
                 f"{ep}: 'to_manifest' references unknown manifest id '{ext_rel.to_manifest}'"
             )
+
+    # --- Temporal validation (§4.22 unit-level; §3.6 manifests[].temporal) ---
+    # Root-level temporal provides defaults; unit-level overrides field-by-field.
+    today = date.today().isoformat()
+
+    def _effective(t):
+        r = manifest.temporal
+        vf = (t.valid_from if t and t.valid_from is not None else (r.valid_from if r else None))
+        vu = (t.valid_until if t and t.valid_until is not None else (r.valid_until if r else None))
+        sb = (t.superseded_by if t and t.superseded_by is not None else (r.superseded_by if r else None))
+        return vf, vu, sb
+
+    unit_successor: dict[str, str] = {}
+    for unit in manifest.units:
+        vf, vu, sb = _effective(unit.temporal)
+        if vf and vu and vu < vf:
+            warnings.append(
+                f"unit '{unit.id}': temporal.valid_until '{vu}' precedes valid_from '{vf}' "
+                f"(empty validity window — the unit can never be active)"
+            )
+        if vu and vu < today and not sb:
+            warnings.append(
+                f"unit '{unit.id}': temporal.valid_until '{vu}' is in the past and no "
+                f"superseded_by is set (stale unit with no successor)"
+            )
+        # superseded_by may use namespace:id to target an unresolved include (§4.22);
+        # only local (non-namespaced) refs are checkable here.
+        if sb and ":" not in sb:
+            if sb not in unit_ids:
+                warnings.append(f"unit '{unit.id}': temporal.superseded_by references unknown unit '{sb}'")
+            else:
+                unit_successor[unit.id] = sb
+        disc = unit.discovery
+        if disc and disc.verification_status == "verified" and not disc.verified_by:
+            warnings.append(
+                f"unit '{unit.id}': discovery.verification_status is 'verified' but "
+                f"discovery.verified_by is absent"
+            )
+    for cid in _superseded_cycle_ids(unit_successor):
+        errors.append(f"temporal.superseded_by cycle detected involving unit '{cid}'")
+    if (manifest.discovery and manifest.discovery.verification_status == "verified"
+            and not manifest.discovery.verified_by):
+        warnings.append(
+            "manifest: discovery.verification_status is 'verified' but discovery.verified_by is absent"
+        )
+
+    # Federation: manifests[].temporal (§3.6, RFC-0021)
+    ref_successor: dict[str, str] = {}
+    for ref in manifest.manifests:
+        t = ref.temporal
+        if not t:
+            continue
+        if t.valid_from and t.valid_until and t.valid_until < t.valid_from:
+            warnings.append(
+                f"manifests['{ref.id}']: temporal.valid_until '{t.valid_until}' precedes "
+                f"valid_from '{t.valid_from}' (empty validity window)"
+            )
+        if t.valid_until and t.valid_until < today and not t.superseded_by:
+            warnings.append(
+                f"manifests['{ref.id}']: temporal.valid_until '{t.valid_until}' is in the past "
+                f"and no superseded_by is set (stale federation link)"
+            )
+        if t.superseded_by:
+            if t.superseded_by not in manifest_ids:
+                warnings.append(
+                    f"manifests['{ref.id}']: temporal.superseded_by references unknown "
+                    f"manifests[].id '{t.superseded_by}'"
+                )
+            else:
+                ref_successor[ref.id] = t.superseded_by
+    for cid in _superseded_cycle_ids(ref_successor):
+        errors.append(f"manifests[].temporal.superseded_by cycle detected involving '{cid}'")
 
     return ValidationResult(errors=errors, warnings=warnings)
 

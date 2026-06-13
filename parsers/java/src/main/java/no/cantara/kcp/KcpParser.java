@@ -282,7 +282,8 @@ public class KcpParser {
                 (String) m.get("update_frequency"),
                 (String) m.get("local_mirror"),
                 (String) m.get("version_pin"),
-                (String) m.get("version_policy")
+                (String) m.get("version_policy"),
+                parseTemporal((Map<String, Object>) m.get("temporal"))
         );
     }
 
@@ -348,6 +349,8 @@ public class KcpParser {
                 (String) d.get("source"),
                 (String) d.get("observed_at"),
                 (String) d.get("verified_at"),
+                (String) d.get("verified_by"),
+                (String) d.get("evidence"),
                 confidence,
                 (String) d.get("contradicted_by")
         );

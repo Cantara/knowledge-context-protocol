@@ -12,6 +12,7 @@ import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
 import no.cantara.kcp.model.ManifestRef;
 import no.cantara.kcp.model.Relationship;
+import no.cantara.kcp.model.Temporal;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -22,6 +23,7 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -379,6 +381,72 @@ public class KcpValidator {
             }
         }
 
+        // --- Temporal validation (§4.22 unit-level; §3.6 manifests[].temporal) ---
+        // Root-level temporal provides defaults; unit-level overrides field-by-field.
+        String today = LocalDate.now().toString();
+        Temporal root = manifest.temporal();
+        Map<String, String> unitSuccessor = new HashMap<>();
+        for (KnowledgeUnit unit : manifest.units()) {
+            Temporal ut = unit.temporal();
+            String vf = ut != null && ut.validFrom() != null ? ut.validFrom() : (root != null ? root.validFrom() : null);
+            String vu = ut != null && ut.validUntil() != null ? ut.validUntil() : (root != null ? root.validUntil() : null);
+            String sb = ut != null && ut.supersededBy() != null ? ut.supersededBy() : (root != null ? root.supersededBy() : null);
+            if (vf != null && vu != null && vu.compareTo(vf) < 0) {
+                warnings.add("unit '" + unit.id() + "': temporal.valid_until '" + vu + "' precedes valid_from '" + vf
+                        + "' (empty validity window — the unit can never be active)");
+            }
+            if (vu != null && vu.compareTo(today) < 0 && sb == null) {
+                warnings.add("unit '" + unit.id() + "': temporal.valid_until '" + vu
+                        + "' is in the past and no superseded_by is set (stale unit with no successor)");
+            }
+            // superseded_by may use namespace:id to target an unresolved include (§4.22).
+            if (sb != null && !sb.contains(":")) {
+                if (!unitIds.contains(sb)) {
+                    warnings.add("unit '" + unit.id() + "': temporal.superseded_by references unknown unit '" + sb + "'");
+                } else {
+                    unitSuccessor.put(unit.id(), sb);
+                }
+            }
+            Discovery disc = unit.discovery();
+            if (disc != null && "verified".equals(disc.verificationStatus()) && disc.verifiedBy() == null) {
+                warnings.add("unit '" + unit.id()
+                        + "': discovery.verification_status is 'verified' but discovery.verified_by is absent");
+            }
+        }
+        for (String cid : supersededCycleIds(unitSuccessor)) {
+            errors.add("temporal.superseded_by cycle detected involving unit '" + cid + "'");
+        }
+        if (manifest.discovery() != null && "verified".equals(manifest.discovery().verificationStatus())
+                && manifest.discovery().verifiedBy() == null) {
+            warnings.add("manifest: discovery.verification_status is 'verified' but discovery.verified_by is absent");
+        }
+
+        // Federation: manifests[].temporal (§3.6, RFC-0021).
+        Map<String, String> refSuccessor = new HashMap<>();
+        for (ManifestRef ref : manifest.manifests()) {
+            Temporal t = ref.temporal();
+            if (t == null) continue;
+            if (t.validFrom() != null && t.validUntil() != null && t.validUntil().compareTo(t.validFrom()) < 0) {
+                warnings.add("manifests['" + ref.id() + "']: temporal.valid_until '" + t.validUntil()
+                        + "' precedes valid_from '" + t.validFrom() + "' (empty validity window)");
+            }
+            if (t.validUntil() != null && t.validUntil().compareTo(today) < 0 && t.supersededBy() == null) {
+                warnings.add("manifests['" + ref.id() + "']: temporal.valid_until '" + t.validUntil()
+                        + "' is in the past and no superseded_by is set (stale federation link)");
+            }
+            if (t.supersededBy() != null) {
+                if (!manifestIds.contains(t.supersededBy())) {
+                    warnings.add("manifests['" + ref.id() + "']: temporal.superseded_by references unknown manifests[].id '"
+                            + t.supersededBy() + "'");
+                } else {
+                    refSuccessor.put(ref.id(), t.supersededBy());
+                }
+            }
+        }
+        for (String cid : supersededCycleIds(refSuccessor)) {
+            errors.add("manifests[].temporal.superseded_by cycle detected involving '" + cid + "'");
+        }
+
         return new ValidationResult(errors, warnings);
     }
 
@@ -388,6 +456,33 @@ public class KcpValidator {
      *
      * @return The set of edges (as "from-&gt;to" strings) that would close a cycle.
      */
+    /**
+     * Cycle detection for single-successor {@code superseded_by} chains
+     * (§4.22, §3.6). Returns the ids participating in a cycle, sorted.
+     */
+    private static List<String> supersededCycleIds(Map<String, String> successor) {
+        Set<String> cycle = new HashSet<>();
+        Map<String, Integer> state = new HashMap<>(); // absent/0 = unvisited, 1 = in-path, 2 = done
+        for (String start : successor.keySet()) {
+            if (state.getOrDefault(start, 0) == 2) continue;
+            List<String> path = new ArrayList<>();
+            String node = start;
+            while (node != null && successor.containsKey(node) && state.getOrDefault(node, 0) != 2) {
+                if (state.getOrDefault(node, 0) == 1) {
+                    for (String id : path.subList(path.indexOf(node), path.size())) cycle.add(id);
+                    break;
+                }
+                state.put(node, 1);
+                path.add(node);
+                node = successor.get(node);
+            }
+            for (String id : path) if (state.getOrDefault(id, 0) == 1) state.put(id, 2);
+        }
+        List<String> result = new ArrayList<>(cycle);
+        result.sort(null);
+        return result;
+    }
+
     static Set<String> detectCycles(List<KnowledgeUnit> units, Set<String> unitIds) {
         Map<String, List<String>> adj = new HashMap<>();
         for (KnowledgeUnit unit : units) {

@@ -38,6 +38,8 @@ export interface Discovery {
   source?: string;               // manual | web_traversal | openapi | llm_inference
   observed_at?: string;
   verified_at?: string;
+  verified_by?: string;          // RFC-0020 §2.3 / §4.18 — verifier key id or identity
+  evidence?: string;             // RFC-0020 §2.3 / §4.18 — URL/path to verification artifact
   confidence?: number;
   contradicted_by?: string;
 }
@@ -126,6 +128,7 @@ export interface ManifestRef {
   local_mirror?: string;
   version_pin?: string;
   version_policy?: string; // "exact" | "minimum" | "compatible" (default: "compatible")
+  temporal?: Temporal;     // RFC-0021 / §3.6 (v0.21) — source-level validity window
 }
 
 /** A cross-manifest dependency for a knowledge unit. See SPEC.md §3.6. */

@@ -16,6 +16,8 @@ class Discovery:
     source: Optional[str] = None  # manual | web_traversal | openapi | llm_inference
     observed_at: Optional[str] = None  # ISO 8601 datetime
     verified_at: Optional[str] = None  # ISO 8601 datetime
+    verified_by: Optional[str] = None  # RFC-0020 §2.3 / §4.18 — verifier key id or identity
+    evidence: Optional[str] = None  # RFC-0020 §2.3 / §4.18 — URL/path to verification artifact
     confidence: Optional[float] = None  # 0.0–1.0, default 1.0
     contradicted_by: Optional[str] = None  # unit id
 
@@ -196,6 +198,7 @@ class ManifestRef:
     local_mirror: Optional[str] = None
     version_pin: Optional[str] = None
     version_policy: Optional[str] = None  # "exact" | "minimum" | "compatible" (default)
+    temporal: Optional["Temporal"] = None  # RFC-0021 / §3.6 (v0.21) — source-level validity window
 
 
 @dataclass
