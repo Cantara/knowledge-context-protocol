@@ -8,6 +8,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+_Nothing yet._
+
+---
+
+## [0.21.0] — 2026-06-13 — Composition Integrity & Federation Temporal
+
+**Spec version:** `"0.21"` | **Prior:** `"0.20"` (v0.20.0, 2026-06-12)
+
 ### Implemented — federated temporal filtering (C18) in all three bridges
 
 - The TypeScript, Python, and Java MCP bridges now apply manifest-level (federation source)
@@ -85,15 +93,9 @@ all four reference implementations (TypeScript CLI + bridge, Python, Java):
   Python, and Java (15 cases each). An outdated Java parser test fixture (a
   `verified` discovery with no `verified_by`) was made spec-compliant.
 
-Still deferred (the one remaining serving-side feature): bridge skip-before-fetch
-federation temporal filtering (RFC-0021 Level 2). (Composition resolution + C17
-enforcement in the renderer has since landed — see the top of this Unreleased section.)
-
----
-
-## [0.21.0] — 2026-06-13 — Composition Integrity & Federation Temporal
-
-**Spec version:** `"0.21"` | **Prior:** `"0.20"` (v0.20.0, 2026-06-12)
+Both remaining serving-side features have since landed in this release: bridge
+skip-before-fetch federation temporal filtering (RFC-0021 Level 2 / C18) and composition
+resolution + C17 enforcement in the renderer — see the implementation subsections above.
 
 ### Federation temporal — RFC-0021 (promoted to SPEC §3.6, §16.5 C18)
 
@@ -136,9 +138,10 @@ enforcement in the renderer has since landed — see the top of this Unreleased 
 
 ### Notes
 
-- At v0.21.0, `manifests[].temporal` parser exposure (Level 1) and the composition resolver
-  (which C17 governs) were not yet implemented — the spec promotion deliberately led the
-  implementation. Both landed shortly after; see the [Unreleased] section above.
+- The RFC-0021 and RFC-0022 spec promotions deliberately led the implementation: the
+  `manifests[].temporal` parser exposure (Level 1), the bridge skip-before-fetch filter
+  (Level 2 / C18), and the composition resolver (which C17 governs) all ship together in
+  this release — see the implementation subsections above.
 
 ---
 
