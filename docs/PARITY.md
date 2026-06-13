@@ -42,8 +42,8 @@ When adding any MCP capability:
 | `get_unit` tool | ✅ | ✅ | ✅ | fetch unit file content by id |
 | `list_manifests` tool | ✅ | ✅ | ✅ | lists declared sub-manifests (federation §3.6) |
 | `get_command_syntax` tool | ✅ | ✅ | ✅ | requires `--commands-dir` |
-| `sdd-review` prompt | ✅ | ✅ | ❌ | **gap — Python needs this** |
-| `kcp-explore` prompt | ✅ | ✅ | ❌ | **gap — Python needs this** |
+| `sdd-review` prompt | ✅ | ✅ | ✅ | |
+| `kcp-explore` prompt | ✅ | ✅ | ✅ | |
 
 ---
 
@@ -81,19 +81,14 @@ When adding any MCP capability:
 |--------|------:|
 | TypeScript (vitest) | 163 |
 | Java (JUnit) | 147 |
-| Python (pytest) | 143 |
-| **Total** | **453** |
+| Python (pytest) | 148 |
+| **Total** | **458** |
 
 ---
 
 ## Known Python gaps (Tier 1)
 
-The following MCP prompts exist in TS + Java but not yet in Python:
-
-| Gap | Priority | Notes |
-|-----|----------|-------|
-| `sdd-review` prompt | Medium | Static prompt text + manifest context |
-| `kcp-explore` prompt | Medium | Requires `topic` argument |
+No known gaps — all three bridges are at full parity.
 
 ---
 
@@ -107,6 +102,7 @@ The following MCP prompts exist in TS + Java but not yet in Python:
 | 0.14.0 | 2026-03-15 | RFC-0007 query baseline: `sensitivity_max`, `exclude_deprecated`, `match_reason`, `token_estimate`, `summary_unit` — all three bridges. Python bridge added to parity tracking. |
 | 0.15.0 | 2026-06-12 | §15.11 `not_for` filtering: strict exclusion + soft score halving with `caution` annotation — all three bridges. |
 | 0.20.0 | 2026-06-12 | §15.13 temporal query: `as_of` + `include_all_temporal` parameters, `temporal_query_conflict` error — all three bridges. Bridge versions now aligned with KCP spec version. |
+| 0.20.1 | 2026-06-13 | Python bridge: added `sdd-review` and `kcp-explore` MCP prompts — closes last Tier 1 parity gaps. |
 
 > **Note:** v0.7.0--v0.9.0 were internal development milestones that shipped combined as v0.10.0.
 > v0.11.0--v0.13.0 were bridge feature additions that culminated in v0.14.0.

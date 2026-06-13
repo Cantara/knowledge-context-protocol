@@ -7,6 +7,9 @@ from mcp.server import Server
 from mcp.types import (
     CallToolRequest,
     CallToolRequestParams,
+    GetPromptRequest,
+    GetPromptRequestParams,
+    ListPromptsRequest,
     ListResourcesRequest,
     ListToolsRequest,
     ReadResourceRequest,
@@ -967,3 +970,65 @@ async def test_get_command_syntax_no_commands_dir_returns_hint():
     server = get_server(MINIMAL_DIR)
     result = await call_tool(server, "get_command_syntax", {"command": "git"})
     assert "--commands-dir" in result.content[0].text
+
+
+# ── Prompts ──────────────────────────────────────────────────────────────────
+
+
+async def call_list_prompts(server: Server) -> list:
+    handler = server.request_handlers[ListPromptsRequest]
+    result = await handler(ListPromptsRequest(method="prompts/list"))
+    return result.root.prompts
+
+
+async def call_get_prompt(server: Server, name: str, arguments: dict | None = None) -> object:
+    handler = server.request_handlers[GetPromptRequest]
+    result = await handler(
+        GetPromptRequest(
+            method="prompts/get",
+            params=GetPromptRequestParams(name=name, arguments=arguments or {}),
+        )
+    )
+    return result.root
+
+
+@pytest.mark.asyncio
+async def test_list_prompts_returns_sdd_review_and_kcp_explore():
+    server = get_server(MINIMAL_DIR)
+    prompts = await call_list_prompts(server)
+    names = [p.name for p in prompts]
+    assert "sdd-review" in names
+    assert "kcp-explore" in names
+
+
+@pytest.mark.asyncio
+async def test_sdd_review_default_focus_is_architecture():
+    server = get_server(MINIMAL_DIR)
+    result = await call_get_prompt(server, "sdd-review")
+    text = result.messages[0].content.text
+    assert "architecture" in text.lower()
+    assert "Intent Clarity" in text
+
+
+@pytest.mark.asyncio
+async def test_sdd_review_security_focus():
+    server = get_server(MINIMAL_DIR)
+    result = await call_get_prompt(server, "sdd-review", {"focus": "security"})
+    text = result.messages[0].content.text
+    assert "security" in text.lower()
+    assert "Input Validation" in text
+
+
+@pytest.mark.asyncio
+async def test_kcp_explore_includes_topic():
+    server = get_server(MINIMAL_DIR)
+    result = await call_get_prompt(server, "kcp-explore", {"topic": "authentication"})
+    text = result.messages[0].content.text
+    assert "authentication" in text
+
+
+@pytest.mark.asyncio
+async def test_get_prompt_unknown_raises():
+    server = get_server(MINIMAL_DIR)
+    with pytest.raises(Exception):
+        await call_get_prompt(server, "nonexistent-prompt")

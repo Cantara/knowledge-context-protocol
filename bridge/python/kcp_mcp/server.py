@@ -10,6 +10,10 @@ from mcp.server import Server
 from mcp.server.lowlevel.server import ReadResourceContents
 from mcp.types import (
     Annotations,
+    GetPromptResult,
+    Prompt,
+    PromptArgument,
+    PromptMessage,
     Resource,
     TextContent,
     Tool,
@@ -281,6 +285,44 @@ def create_server(
             return _handle_list_manifests(manifest)
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
+    # ── Prompts ──────────────────────────────────────────────────────────────
+
+    @server.list_prompts()
+    async def list_prompts() -> list[Prompt]:
+        return [
+            Prompt(
+                name="sdd-review",
+                description="Review code or architecture using SDD (Skill-Driven Development) methodology",
+                arguments=[
+                    PromptArgument(
+                        name="focus",
+                        description="Focus area: architecture | quality | security | performance",
+                        required=False,
+                    ),
+                ],
+            ),
+            Prompt(
+                name="kcp-explore",
+                description="Explore available knowledge units for a topic",
+                arguments=[
+                    PromptArgument(
+                        name="topic",
+                        description="Topic to explore e.g. 'authentication', 'deployment'",
+                        required=True,
+                    ),
+                ],
+            ),
+        ]
+
+    @server.get_prompt()
+    async def get_prompt(name: str, arguments: dict[str, str] | None = None) -> GetPromptResult:
+        args = arguments or {}
+        if name == "sdd-review":
+            return _handle_sdd_review(args)
+        if name == "kcp-explore":
+            return _handle_kcp_explore(args)
+        raise ValueError(f"Unknown prompt: {name!r}")
+
     return server
 
 
@@ -494,3 +536,90 @@ def _handle_list_manifests(manifest: KnowledgeManifest) -> list[TextContent]:
         }
         entries.append(entry)
     return [TextContent(type="text", text=json.dumps(entries, indent=2))]
+
+
+def _handle_sdd_review(args: dict) -> GetPromptResult:
+    focus = args.get("focus", "architecture")
+    focus_guidance: dict[str, str] = {
+        "architecture": "\n".join([
+            "1. **Intent Clarity**: Does each component have a single, clearly stated purpose?",
+            "2. **Component Boundaries**: Are module boundaries clean? Can you describe each module's responsibility in one sentence?",
+            "3. **Dependency Direction**: Do dependencies flow from concrete to abstract? Are there circular dependencies?",
+            "4. **Knowledge Documentation**: Is there a knowledge.yaml or equivalent that maps the architecture for AI assistants?",
+            "5. **Skill Decomposition**: Could an AI agent understand and modify each component independently?",
+        ]),
+        "quality": "\n".join([
+            "1. **Test Coverage**: Are critical paths covered? Do tests verify intent, not implementation details?",
+            "2. **Error Handling**: Are errors handled at the right level? Do error messages help diagnosis?",
+            "3. **Naming**: Do names reflect domain concepts? Would a new developer understand the code from names alone?",
+            "4. **Code Duplication**: Are there repeated patterns that should be extracted into shared utilities?",
+            "5. **Documentation Freshness**: Does the documentation match the current implementation?",
+        ]),
+        "security": "\n".join([
+            "1. **Input Validation**: Are all external inputs validated before use?",
+            "2. **Authentication & Authorization**: Are auth boundaries clearly defined and enforced?",
+            "3. **Secret Management**: Are secrets externalized? No hardcoded credentials?",
+            "4. **Dependency Security**: Are dependencies up to date? Any known CVEs?",
+            "5. **Path Traversal**: Are file paths validated against traversal attacks?",
+        ]),
+        "performance": "\n".join([
+            "1. **Hot Paths**: Are the most-called code paths optimized? Are there unnecessary allocations?",
+            "2. **Caching**: Are expensive computations cached appropriately? Is cache invalidation correct?",
+            "3. **I/O Patterns**: Are I/O operations batched where possible? Any N+1 query patterns?",
+            "4. **Concurrency**: Are concurrent operations safe? Are there potential deadlocks or race conditions?",
+            "5. **Resource Cleanup**: Are resources (connections, file handles, timers) properly cleaned up?",
+        ]),
+    }
+    criteria = focus_guidance.get(focus, focus_guidance["architecture"])
+    text = "\n".join([
+        f"## SDD Review: {focus}",
+        "",
+        "You are reviewing code using the Skill-Driven Development (SDD) methodology.",
+        "SDD emphasizes clear intent, modular components that AI agents can understand,",
+        "and structured knowledge documentation.",
+        "",
+        f"### Review Criteria ({focus}):",
+        "",
+        criteria,
+        "",
+        "### Instructions",
+        "",
+        "Review the code or architecture against these criteria. For each item:",
+        "- State whether it passes, needs improvement, or fails",
+        "- Provide specific examples from the code",
+        "- Suggest concrete improvements where needed",
+        "",
+        "Start by examining the project structure, then drill into the focus area.",
+        "Use `search_knowledge` to find relevant project knowledge units first.",
+    ])
+    return GetPromptResult(
+        description=f"SDD review with focus: {focus}",
+        messages=[PromptMessage(role="user", content=TextContent(type="text", text=text))],
+    )
+
+
+def _handle_kcp_explore(args: dict) -> GetPromptResult:
+    topic = args.get("topic", "")
+    text = "\n".join([
+        f"## Explore Knowledge: {topic}",
+        "",
+        f'Find and present all knowledge units related to "{topic}".',
+        "",
+        "### Steps",
+        "",
+        f'1. Call the `search_knowledge` tool with query: "{topic}"',
+        "2. For each result, summarize:",
+        "   - **Unit ID** and relevance score",
+        "   - **Intent**: what this unit teaches",
+        "   - **Path**: where to find it",
+        "   - **Audience**: who it is written for",
+        "3. Suggest a reading order based on dependencies (check depends_on fields)",
+        "4. Highlight which units are most relevant to the topic",
+        "",
+        "Present the results as a navigable knowledge map that helps the user",
+        "understand what information is available and where to start.",
+    ])
+    return GetPromptResult(
+        description=f"Explore knowledge units for: {topic}",
+        messages=[PromptMessage(role="user", content=TextContent(type="text", text=text))],
+    )
