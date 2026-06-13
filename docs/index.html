@@ -70,6 +70,7 @@
       <ul class="nav__links" id="nav-links">
         <li><a href="#compare">Compare</a></li>
         <li><a href="#spec">Spec</a></li>
+        <li><a href="#tutorial">Tutorial</a></li>
         <li><a href="#use-cases">Use Cases</a></li>
         <li><a href="#scenarios">Scenarios</a></li>
         <li><a href="simulator.html">Demo</a></li>
@@ -464,6 +465,98 @@ relationships:
           <h3>Navigate</h3>
           <p>AI agents load units by intent, traverse dependencies in order, check freshness, and skip irrelevant content. Knowledge becomes a graph, not a dump.</p>
         </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       TUTORIAL — KCP-enable a repo, end to end
+       ============================================================ -->
+  <section id="tutorial" class="section--alt">
+    <div class="container">
+      <div class="section-header reveal">
+        <span class="section-label">Hands-on Tutorial</span>
+        <h2>KCP-enable a GitHub repo in six steps</h2>
+        <p>From a plain repo to authenticated, content-verified, agent-navigable knowledge &mdash; signing both the manifest <em>and</em> the documents it points at. Each step is a command you run.</p>
+      </div>
+
+      <div class="roadmap">
+        <div class="roadmap-core reveal">
+          <div class="roadmap-core__info">
+            <span class="roadmap-core__badge">Step 1 — Scaffold</span>
+            <h3><code>kcp init</code></h3>
+            <p>Survey the repo and write a starter <code>knowledge.yaml</code> at the root. Five fields on one unit is already a valid Level&nbsp;1 manifest.</p>
+          </div>
+          <div class="roadmap-core__fields">
+            <span class="roadmap-field-pill">knowledge.yaml</span>
+            <span class="roadmap-field-pill">id / path / intent</span>
+          </div>
+        </div>
+
+        <div class="roadmap-core reveal">
+          <div class="roadmap-core__info">
+            <span class="roadmap-core__badge">Step 2 — Author</span>
+            <h3>Write units that route</h3>
+            <p>Make <code>intent</code> the question a user would ask and <code>triggers</code> the words it contains. Add <code>not_for</code> to stop misfires and <code>depends_on</code> for reading order.</p>
+          </div>
+          <div class="roadmap-core__fields">
+            <span class="roadmap-field-pill">intent</span>
+            <span class="roadmap-field-pill">triggers</span>
+            <span class="roadmap-field-pill">not_for</span>
+          </div>
+        </div>
+
+        <div class="roadmap-core reveal">
+          <div class="roadmap-core__info">
+            <span class="roadmap-core__badge">Step 3 — Validate</span>
+            <h3><code>kcp validate</code></h3>
+            <p>Fix every error before you ship. The validator checks the schema, references, cycles, and (once you add hashes) content against disk.</p>
+          </div>
+          <div class="roadmap-core__fields">
+            <span class="roadmap-field-pill">✓ Valid</span>
+          </div>
+        </div>
+
+        <div class="roadmap-core reveal">
+          <div class="roadmap-core__info">
+            <span class="roadmap-core__badge">Step 4 — Prove it</span>
+            <h3><code>kcp query "…"</code></h3>
+            <p>Simulate an agent query and confirm the obvious questions route to the units you intended. This loop is where the 53&ndash;80% tool-call savings come from.</p>
+          </div>
+          <div class="roadmap-core__fields">
+            <span class="roadmap-field-pill">scored routing</span>
+          </div>
+        </div>
+
+        <div class="roadmap-core reveal">
+          <div class="roadmap-core__info">
+            <span class="roadmap-core__badge">Step 5 — Sign &amp; bind</span>
+            <h3><code>kcp sign --update-hashes</code></h3>
+            <p>Ed25519-sign the manifest (RFC-0018 §4.2 envelope) and bind per-unit <code>content_hash</code> (RFC-0019) so the signature covers the <em>content</em>, not just the map. Closes the relocation attack (T9).</p>
+          </div>
+          <div class="roadmap-core__fields">
+            <span class="roadmap-field-pill">EdDSA signature</span>
+            <span class="roadmap-field-pill">content_hash</span>
+          </div>
+        </div>
+
+        <div class="roadmap-core reveal">
+          <div class="roadmap-core__info">
+            <span class="roadmap-core__badge">Step 6 — Trust</span>
+            <h3><code>kcp render</code> → <code>tier: trusted</code></h3>
+            <p>A consumer with your key on their allowlist renders to <code>tier: trusted</code> with <code>content_verified: true</code> on every bound unit. A GitHub Action re-signs on every change. <em>This is exactly how this repo dogfoods itself.</em></p>
+          </div>
+          <div class="roadmap-core__fields">
+            <span class="roadmap-field-pill">trusted</span>
+            <span class="roadmap-field-pill">content_verified</span>
+            <span class="roadmap-field-pill">GitHub Actions</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="reveal" style="text-align:center; margin-top: 2rem;">
+        <a class="btn btn--primary" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/guides/kcp-enable-a-github-repo.md" target="_blank" rel="noopener">Full step-by-step walkthrough →</a>
       </div>
     </div>
   </section>

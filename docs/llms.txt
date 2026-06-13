@@ -31,6 +31,7 @@ Example: "How do I validate a knowledge.yaml file?" → trigger `validation, sch
 - /PROPOSAL.md — Why KCP exists and what problem it solves
 - /README.md — Overview, comparison with llms.txt and MCP, getting started
 - /guides/adopting-kcp-in-existing-projects.md — How to add KCP to your project in under 30 minutes
+- /guides/kcp-enable-a-github-repo.md — Hands-on tutorial: init → author → validate → sign + content_hash → trusted render, with a GitHub Actions signing workflow
 - /examples/README.md — Example manifests at four adoption levels plus simulation scenarios (A2A+KCP, energy metering, legal delegation, financial AML)
 - /RFC-0001-KCP-Extended.md — Extensions: payments, compliance, federation, context hints
 - /RFC-0010-Bi-Temporal-Unit-Validity.md — Bi-temporal validity: `temporal` block (valid-time + transaction-time) and `as_of` point-in-time queries (promoted to SPEC.md §4.22 in v0.19, §15.13 in v0.20)

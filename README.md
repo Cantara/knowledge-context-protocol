@@ -34,6 +34,8 @@ units:
 
 **Five minutes to Level 1.** See [adopting KCP in existing projects](./guides/adopting-kcp-in-existing-projects.md).
 
+**Want the full path — init → author → validate → sign → trusted render?** Follow the hands-on tutorial: [KCP-enable a GitHub repo, end to end](./guides/kcp-enable-a-github-repo.md).
+
 ---
 
 ## The Problem with llms.txt
