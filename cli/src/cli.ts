@@ -11,18 +11,19 @@ function printUsage(): void {
 Usage: kcp <command> [options]
 
 Commands:
-  init [output]       Scaffold a knowledge.yaml for this project (default: knowledge.yaml)
-  validate [file]     Validate a knowledge.yaml manifest (default: knowledge.yaml)
-  render [file]       Render a manifest into a trust-tiered artifact (RFC-0018, default: knowledge.yaml)
-  sign [file]         Sign a manifest (Ed25519 detached, RFC-0018 §4.2; default: knowledge.yaml)
-  query <question>    Simulate agent search against a manifest
-  stats               Show KCP usage statistics (queries, units, tokens saved)
+  init [output]           Scaffold a knowledge.yaml for this project (default: knowledge.yaml)
+  import-okf <directory>  Import a Google OKF bundle and generate a knowledge.yaml
+  validate [file]         Validate a knowledge.yaml manifest (default: knowledge.yaml)
+  render [file]           Render a manifest into a trust-tiered artifact (RFC-0018, default: knowledge.yaml)
+  sign [file]             Sign a manifest (Ed25519 detached, RFC-0018 §4.2; default: knowledge.yaml)
+  query <question>        Simulate agent search against a manifest
+  stats                   Show KCP usage statistics (queries, units, tokens saved)
 
 Options:
   --file <path>       Manifest path (for query command, default: knowledge.yaml)
+  --out <path>        Output path (import-okf: default <directory>/knowledge.yaml; render: stdout)
   --keys <path>       Trusted-keys allowlist for render (default: ~/.kcp/trusted-keys.yaml)
   --origin <string>   Assert the origin for render (RFC-0018 §4.1; asserted evidence, RFC-0019 §4.1)
-  --out <path>        Write rendered artifact to a file (default: print to stdout)
   --timestamp         Include rendered_at in render output (excluded from determinism)
   --allow-derived-origin   Let a git-derived origin satisfy trusted tier (RFC-0019 §4.3; accepts T9 risk)
   --require-unit-hashes    Deny standing-context eligibility to units without content_hash (RFC-0019 §3.3)
@@ -39,6 +40,8 @@ Options:
 Examples:
   npx kcp init                              # scaffold ./knowledge.yaml
   npx kcp init docs/knowledge.yaml         # scaffold to custom path
+  npx kcp import-okf ./my-okf-bundle       # import OKF → knowledge.yaml in that directory
+  npx kcp import-okf ./okf --out kcp.yaml  # import OKF → custom output path
   npx kcp validate                          # validate ./knowledge.yaml
   npx kcp validate docs/knowledge.yaml     # validate a specific file
   npx kcp render                            # render ./knowledge.yaml to stdout
@@ -93,6 +96,17 @@ async function main(): Promise<void> {
     const { runInit } = await import("./init.js");
     const outputPath = positionals[1] ?? "knowledge.yaml";
     await runInit(outputPath, values.yes as boolean);
+    return;
+  }
+
+  if (command === "import-okf") {
+    const { runImportOkf } = await import("./import-okf.js");
+    const okfDir = positionals[1];
+    if (!okfDir) {
+      process.stderr.write("Error: import-okf requires a directory path, e.g.: kcp import-okf ./my-okf-bundle\n");
+      process.exit(1);
+    }
+    await runImportOkf(okfDir, values.out as string | undefined);
     return;
   }
 
