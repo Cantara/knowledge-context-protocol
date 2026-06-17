@@ -221,8 +221,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd bridge/typescript
-          npm install
+          cd shared && npm install
+          cd bridge/typescript && npm install
 
       - name: Build bridge
         run: |

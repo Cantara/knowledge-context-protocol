@@ -345,7 +345,7 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
                 warnings.append(f"{p}: chunk_index is present without chunk_of")
 
         # discovery validation (§RFC-0012)
-        _validate_discovery(unit.discovery, unit_ids, p, warnings)
+        _validate_discovery(unit.discovery, unit_ids, p, errors, warnings)
 
         # authority validation (§RFC-0009)
         _validate_authority(unit.authority, p, warnings)
@@ -409,7 +409,7 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
             )
 
     # Root-level discovery validation (§RFC-0012)
-    _validate_discovery(manifest.discovery, unit_ids, "manifest", warnings)
+    _validate_discovery(manifest.discovery, unit_ids, "manifest", errors, warnings)
 
     # Root-level authority validation (§RFC-0009)
     _validate_authority(manifest.authority, "manifest", warnings)
@@ -576,7 +576,7 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
     return ValidationResult(errors=errors, warnings=warnings)
 
 
-def _validate_discovery(discovery, unit_ids: set[str], prefix: str, warnings: list[str]) -> None:
+def _validate_discovery(discovery, unit_ids: set[str], prefix: str, errors: list[str], warnings: list[str]) -> None:
     """Validate a discovery block against the normative rules in §RFC-0012."""
     if discovery is None:
         return
@@ -597,11 +597,11 @@ def _validate_discovery(discovery, unit_ids: set[str], prefix: str, warnings: li
             f"{sorted(VALID_DISCOVERY_SOURCES)}, got '{discovery.source}'"
         )
 
-    # rumored MUST have confidence < 0.5 (normative)
+    # rumored MUST have confidence < 0.5 (normative — MUST = error)
     if status == "rumored" and confidence is not None and confidence >= 0.5:
-        warnings.append(
+        errors.append(
             f"{prefix}: discovery.verification_status=rumored but confidence={confidence} "
-            f"(MUST be < 0.5)"
+            f"(MUST be < 0.5, rule: rumored-confidence-ceiling)"
         )
 
     # declared SHOULD have confidence in [0.5, 0.8) (normative, RFC-0018 §5.1)

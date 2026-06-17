@@ -314,8 +314,8 @@ export function validate(
         disc.confidence !== undefined &&
         disc.confidence >= 0.5
       ) {
-        warnings.push(
-          `${ctx}: discovery.verification_status is 'rumored' but confidence is ${disc.confidence} (>=0.5); consider upgrading status to 'observed'`
+        errors.push(
+          `${ctx}: discovery.verification_status is 'rumored' but confidence is ${disc.confidence} (MUST be < 0.5, rule: rumored-confidence-ceiling)`
         );
       }
       if (
