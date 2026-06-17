@@ -148,7 +148,7 @@ describe("validate — discovery block", () => {
     expect(result.isValid).toBe(true);
   });
 
-  it("warns when verification_status is rumored and confidence >= 0.5", () => {
+  it("errors when verification_status is rumored and confidence >= 0.5", () => {
     const manifest = makeManifest({
       units: [
         {
@@ -166,11 +166,11 @@ describe("validate — discovery block", () => {
     });
     const result = validate(manifest);
     expect(
-      result.warnings.some(
-        (w) => w.includes("rumored") && w.includes("confidence")
+      result.errors.some(
+        (e) => e.includes("rumored") && e.includes("confidence")
       )
     ).toBe(true);
-    expect(result.isValid).toBe(true);
+    expect(result.isValid).toBe(false);
   });
 
   it("no warning when rumored with low confidence (< 0.5)", () => {
