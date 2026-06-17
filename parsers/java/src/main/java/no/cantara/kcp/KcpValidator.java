@@ -251,7 +251,7 @@ public class KcpValidator {
             }
 
             // discovery validation (§RFC-0012)
-            validateDiscovery(unit.discovery(), unitIds, p, warnings);
+            validateDiscovery(unit.discovery(), unitIds, p, errors, warnings);
 
             // authority validation (§RFC-0009)
             validateAuthority(unit.authority(), p, warnings);
@@ -281,7 +281,7 @@ public class KcpValidator {
         validateCompliance(manifest.compliance(), "manifest", errors, warnings);
 
         // Root-level discovery validation (§RFC-0012)
-        validateDiscovery(manifest.discovery(), unitIds, "manifest", warnings);
+        validateDiscovery(manifest.discovery(), unitIds, "manifest", errors, warnings);
 
         // Root-level authority validation (§RFC-0009)
         validateAuthority(manifest.authority(), "manifest", warnings);
@@ -550,7 +550,7 @@ public class KcpValidator {
     }
 
     private static void validateDiscovery(Discovery discovery, Set<String> unitIds,
-                                          String prefix, List<String> warnings) {
+                                          String prefix, List<String> errors, List<String> warnings) {
         if (discovery == null) return;
         String status = discovery.verificationStatus();
         Double confidence = discovery.confidence();
@@ -567,10 +567,10 @@ public class KcpValidator {
                     sorted(VALID_DISCOVERY_SOURCES) + ", got '" + discovery.source() + "'");
         }
 
-        // rumored MUST have confidence < 0.5 (normative)
+        // rumored MUST have confidence < 0.5 (normative — MUST = error)
         if ("rumored".equals(status) && confidence != null && confidence >= 0.5) {
-            warnings.add(prefix + ": discovery.verification_status=rumored but confidence=" +
-                    confidence + " (MUST be < 0.5)");
+            errors.add(prefix + ": discovery.verification_status=rumored but confidence=" +
+                    confidence + " (MUST be < 0.5, rule: rumored-confidence-ceiling)");
         }
 
         // declared SHOULD have confidence in [0.5, 0.8) (normative, RFC-0018 §5.1)
