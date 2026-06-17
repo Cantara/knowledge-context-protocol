@@ -1596,7 +1596,7 @@ class KcpParserTest {
     }
 
     @Test
-    void discoveryRumoredWithHighConfidenceProducesWarning() {
+    void discoveryRumoredWithHighConfidenceProducesError() {
         Map<String, Object> discoveryData = new HashMap<>();
         discoveryData.put("verification_status", "rumored");
         discoveryData.put("confidence", 0.8); // violates: rumored MUST have confidence < 0.5
@@ -1618,9 +1618,9 @@ class KcpParserTest {
         KnowledgeManifest m = KcpParser.fromMap(data);
         KcpValidator.ValidationResult result = KcpValidator.validate(m);
 
-        assertTrue(result.isValid(), "Expected valid (warnings only): " + result.errors());
-        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("rumored") && w.contains("0.8")),
-                "Expected warning about rumored+high confidence, got: " + result.warnings());
+        assertFalse(result.isValid(), "Expected invalid (MUST rule violation): " + result.errors());
+        assertTrue(result.errors().stream().anyMatch(e -> e.contains("rumored") && e.contains("0.8")),
+                "Expected error about rumored+high confidence, got: " + result.errors());
     }
 
     @Test
