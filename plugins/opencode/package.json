@@ -24,7 +24,7 @@
     "@opencode-ai/plugin": ">=0.0.1"
   },
   "dependencies": {
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^5.0.0"
   },
   "devDependencies": {
     "@opencode-ai/plugin": "latest",
