@@ -12,6 +12,49 @@ _Nothing yet._
 
 ---
 
+## [0.24.0] — 2026-07-04 — Org-Federation
+
+**Spec version:** `"0.24"` | **Prior:** `"0.23"` (v0.23.0, 2026-07-04)
+
+Answers the enterprise-bootstrap question — how an agent that knows only a company domain finds
+its first manifest, gets through the door, and progressively learns what else exists — by promoting
+the two concrete fields from RFC-0011 to the §3.6 federation core. Declaration-level and advisory:
+KCP surfaces them and never acts on them; **no new conformance rules**.
+
+### Promoted (RFC-0011)
+
+- **`manifests[].context` (§3.6)** — a list of environment labels (`dev`/`test`/`staging`/`prod`,
+  non-normative) for which a sub-manifest reference is valid. One hub publishes a federation list
+  that spans environments; an agent selects only the entries matching its runtime. Absent = valid
+  everywhere.
+- **`manifests[].agent_identity` (§3.6)** — a pre-fetch credential-planning hint (`required`,
+  `credential_hint`, `issuer_hint`, `docs_url`). Tells a traversing agent what credential to
+  acquire *before* it fetches a sub-manifest, so it plans instead of failing a fetch and
+  backtracking. A declaration layer, not an auth protocol — the sub-manifest's own `auth` block
+  (§3.3) remains the enforcement point.
+
+The **Org Hub** (`network.role: hub` + a public front-door unit + a `manifests[]` block) and
+**progressive disclosure** (`public` → `internal` → `confidential` sensitivity tiers) patterns ship
+as usage conventions layered on existing fields — no new spec surface.
+
+### Implementations
+
+- **Parsers (all four):** TypeScript shared core, Python, Java, and the `kcp render` pipeline parse
+  and expose both fields. The renderer surfaces `context` and `agent_identity` as data and never
+  dereferences `docs_url` or `issuer_hint` (deterministic, network-free — consistent with C19).
+- **Validators:** warn on empty `context`, `agent_identity.required` without a `credential_hint`,
+  and `issuer_hint` used with a `credential_hint` other than `oauth2`.
+- **Example + tutorial:** [`examples/org-federation/`](./examples/org-federation/) (a runnable hub)
+  and [`guides/enterprise-discovery-with-org-federation.md`](./guides/enterprise-discovery-with-org-federation.md).
+
+### Open questions resolved conservatively
+
+RFC-0011's open questions (normative vs free-string vocabularies; Org-Hub-as-Level-4) landed on the
+cautious side: both the `context` and `credential_hint` vocabularies ship **non-normative** and
+extensible, and **no new conformance level** is introduced — parse-and-expose is Level 1.
+
+---
+
 ## [0.23.0] — 2026-07-04 — Trust & Auth Completion
 
 **Spec version:** `"0.23"` | **Prior:** `"0.22"` (v0.22.0, 2026-07-04)

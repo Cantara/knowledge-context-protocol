@@ -125,6 +125,26 @@ Validates clean: `kcp validate examples/attestation/knowledge.yaml`.
 
 ---
 
+## [org-federation/](./org-federation/)
+
+**Enterprise discovery. Hub manifest, environment-aware refs, pre-fetch credential hints (v0.24).**
+
+The front door an agent reaches knowing only a company domain — how it discovers what exists, learns
+how to authenticate, and selects the right sub-manifest for its environment (RFC-0011, SPEC §3.6):
+- `manifests[].context` — environment labels (`dev`/`test`/`staging`/`prod`) so one hub spans
+  environments and an agent takes only its slice
+- `manifests[].agent_identity` — pre-fetch credential hint (`credential_hint`, `issuer_hint`,
+  `docs_url`) so the agent acquires what it needs before fetching, not after a failed attempt
+- Org Hub (`network.role: hub` + public front door) and progressive disclosure (`public` →
+  `internal` → `confidential` sensitivity tiers) as usage conventions — no new spec fields
+- **The hub declares; the agent acts** — the renderer surfaces `context`/`agent_identity` and never
+  dereferences `docs_url`; the sub-manifest's own `auth` block enforces
+
+Walkthrough: [guides/enterprise-discovery-with-org-federation.md](../guides/enterprise-discovery-with-org-federation.md).
+Validates clean: `kcp validate examples/org-federation/knowledge.yaml`.
+
+---
+
 ## [trusted-render-demo/](./trusted-render-demo/)
 
 **Interactive walk-through of the trusted render pipeline (RFC-0018/0019/0022, SPEC §16).**

@@ -1,0 +1,129 @@
+kcp_version: "0.24"
+project: companyx-knowledge-hub
+version: 1.0.0
+updated: "2026-07-04"
+language: en
+
+# Org-Federation (RFC-0011, v0.24). This manifest is an enterprise "front door": a hub that an
+# unauthenticated agent can load cold, discover what exists, learn how to authenticate, and then
+# traverse to the right sub-manifest for its environment. Two new manifests[] fields carry the
+# weight:
+#   - context:        which runtime environment each sub-manifest reference is valid for
+#   - agent_identity: what credential the agent needs BEFORE it tries to fetch that sub-manifest
+# Both are advisory declarations. KCP surfaces them; the agent (or its runtime) acts on them.
+
+# The Org Hub pattern is a topology declaration — this manifest is the network's landing page.
+network:
+  role: hub
+  entry_point: "https://kcp.companyx.example/knowledge.yaml"
+  registry_label: "CompanyX Knowledge Network"
+
+trust:
+  provenance:
+    publisher: "CompanyX Platform Team"
+    publisher_url: "https://companyx.example"
+    publisher_did: "did:web:companyx.example"
+
+# The hub itself is loadable unauthenticated (the public tier), but its internal and
+# confidential units require a developer credential. OAuth 2.1 is the enforcement point;
+# the public tier is served under the `none` fallback.
+auth:
+  methods:
+    - type: oauth2
+      issuer: "https://auth.companyx.example"
+      scopes: ["read:catalogue", "read:data-contracts"]
+    - type: none
+
+# ---------------------------------------------------------------------------
+# Progressive disclosure (usage convention): three sensitivity tiers.
+#   public       — served to anyone, load-eager, the cold-start surface.
+#   internal     — authenticated developers only.
+#   confidential — role-specific approval.
+# No new spec fields — this layers on compliance.sensitivity (§3.5).
+# ---------------------------------------------------------------------------
+units:
+  # T0 — public front door. An unauthenticated agent loads this first.
+  - id: front-door
+    path: overview.md
+    intent: "What is CompanyX, what services exist, and how does an agent get started?"
+    scope: global
+    audience: [agent, human, developer]
+    triggers: [overview, getting started, what services exist]
+    hints:
+      load_strategy: eager
+      token_estimate: 800
+    compliance:
+      sensitivity: public
+
+  # T0 — public auth guide. Tells a developer how to obtain the credentials the
+  # sub-manifests below declare via agent_identity.
+  - id: auth-guide
+    path: guides/agent-authentication.md
+    intent: "How does an agent authenticate on behalf of a developer? GitHub PAT and OAuth 2.1 flows."
+    scope: global
+    audience: [agent, developer]
+    triggers: [authentication, credentials, github pat, oauth]
+    compliance:
+      sensitivity: public
+
+  # T1 — internal service catalogue. Visible to authenticated developers.
+  - id: service-catalogue
+    path: catalogue/services.md
+    intent: "The internal catalogue of CompanyX services and their knowledge manifests."
+    scope: global
+    audience: [agent, developer]
+    triggers: [catalogue, services, api surface]
+    access: authenticated
+    compliance:
+      sensitivity: internal
+
+  # T2 — confidential. Role-specific approval; served only after full authorisation.
+  - id: data-contracts
+    path: catalogue/data-contracts.md
+    intent: "Production data-residency and sensitivity contracts for regulated services."
+    scope: global
+    audience: [agent]
+    triggers: [data contract, residency, compliance mapping]
+    access: restricted
+    auth_scope: "read:data-contracts"
+    compliance:
+      sensitivity: confidential
+
+# ---------------------------------------------------------------------------
+# Federation: the sub-manifests this hub points to. Each entry declares the
+# environment(s) it is valid for (context) and the credential an agent should
+# acquire before fetching it (agent_identity).
+# ---------------------------------------------------------------------------
+manifests:
+  # Production platform hub — needs a GitHub PAT. An agent in prod selects this.
+  - id: platform-engineering
+    url: "https://git.companyx.example/platform/knowledge.yaml"
+    label: "Platform Engineering Hub"
+    relationship: foundation
+    context: ["prod"]
+    agent_identity:
+      required: true
+      credential_hint: github_pat
+      docs_url: "https://kcp.companyx.example/guides/agent-authentication.md"
+
+  # Data warehouse — OAuth 2.1 with a named issuer. Valid in prod and staging.
+  - id: data-warehouse
+    url: "https://git.companyx.example/data/knowledge.yaml"
+    label: "Data Warehouse"
+    relationship: peer
+    context: ["prod", "staging"]
+    agent_identity:
+      required: true
+      credential_hint: oauth2
+      issuer_hint: "https://auth.companyx.example"
+      docs_url: "https://kcp.companyx.example/guides/agent-authentication.md"
+
+  # Dev mirror of platform engineering — no credential required. An agent in dev
+  # selects this instead of the prod entry above and can fetch it directly.
+  - id: platform-engineering-dev
+    url: "https://git.companyx.example/platform/knowledge-dev.yaml"
+    label: "Platform Engineering — Dev"
+    relationship: peer
+    context: ["dev", "test"]
+    agent_identity:
+      required: false
