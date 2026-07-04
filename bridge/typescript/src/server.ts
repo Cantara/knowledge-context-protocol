@@ -75,6 +75,7 @@ interface SearchResult {
   token_estimate: number | null;
   summary_unit: string | null;
   caution: string | null;
+  requires_attestation?: boolean;
 }
 
 /**
@@ -332,6 +333,23 @@ export function createKcpServer(
     isSourceServable(ctx.sourceTemporal, asOf, refTemporalById) &&
     isTemporallyIncluded(ctx.unit.temporal, asOf);
 
+  // §3.2 / C20 (v0.22): attestation gating. The primary manifest may require agents to attest
+  // before restricted units are served. The bridge checks that a credential was *presented*
+  // (the `attestation` argument); it never calls attestation_url — verification is the agent's.
+  const agentReq = manifest.trust?.agent_requirements;
+  const requireAttestation = agentReq?.require_attestation === true;
+  const unitNeedsAttestation = (unit: KnowledgeUnit): boolean =>
+    requireAttestation && unit.access === "restricted";
+  const attestationPresented = (args: Record<string, unknown> | undefined): boolean => {
+    const a = args?.["attestation"];
+    return a !== undefined && a !== null && a !== "";
+  };
+  const attestationRequirementData = () => ({
+    require_attestation: true,
+    ...(agentReq?.trusted_providers?.length ? { trusted_providers: agentReq.trusted_providers } : {}),
+    ...(agentReq?.attestation_url ? { attestation_url: agentReq.attestation_url } : {}),
+  });
+
   // Build the resource list for a given effective date, omitting non-servable units (F1).
   const buildResourceList = (asOf: string): McpResourceMeta[] => {
     const list: McpResourceMeta[] = [buildManifestResource(manifest, projectSlug)];
@@ -399,6 +417,11 @@ export function createKcpServer(
     if (!isUnitServable(ctx, today)) {
       throw new Error(`Unit '${unitId}' is outside its temporal validity window as of ${today}`);
     }
+    // C20: a resource read carries no attestation channel — a restricted unit under a manifest
+    // requiring attestation is not served here; agents use get_unit with an attestation argument.
+    if (unitNeedsAttestation(ctx.unit)) {
+      throw new Error(`Unit '${unitId}' requires agent attestation (§3.2); fetch it via the get_unit tool with an 'attestation' argument`);
+    }
 
     const content = readUnitContent(ctx.manifestDir, ctx.unit, uri);
 
@@ -457,6 +480,10 @@ export function createKcpServer(
             type: "boolean",
             description: "When true, bypass temporal filtering and return all units regardless of validity window (§15.13). Mutually exclusive with as_of.",
           },
+          attestation: {
+            type: "string",
+            description: "Agent attestation credential (§3.2). When presented, restricted units are not marked requires_attestation. The bridge checks presence only; it does not verify.",
+          },
         },
         required: ["query"],
       },
@@ -471,6 +498,10 @@ export function createKcpServer(
           unit_id: {
             type: "string",
             description: "The unit id from search_knowledge results",
+          },
+          attestation: {
+            type: "string",
+            description: "Agent attestation credential (§3.2). Required to fetch access: restricted units when the manifest sets trust.agent_requirements.require_attestation. The bridge checks it is presented; it does not verify it.",
           },
         },
         required: ["unit_id"],
@@ -630,9 +661,20 @@ export function createKcpServer(
           };
         }
 
+        // C20: mark restricted units that need attestation, so an agent knows to attest before
+        // fetching their content via get_unit. The marker is dropped if attestation was presented.
+        const attested = attestationPresented(args as Record<string, unknown> | undefined);
+        const marked = cautioned.map((r) => {
+          const uctx = unitContextMap.get(r.id);
+          if (!attested && uctx && unitNeedsAttestation(uctx.unit)) {
+            return { ...r, requires_attestation: true };
+          }
+          return r;
+        });
+
         // Sort by score descending, take top 5
-        cautioned.sort((a, b) => b.score - a.score);
-        const top5 = cautioned.slice(0, 5);
+        marked.sort((a, b) => b.score - a.score);
+        const top5 = marked.slice(0, 5);
 
         return {
           content: [
@@ -672,6 +714,23 @@ export function createKcpServer(
                 text: JSON.stringify({
                   error: "temporally_unavailable",
                   message: `Unit '${unitId}' is outside its temporal validity window as of ${todayGu}`,
+                }),
+              },
+            ],
+            isError: true,
+          };
+        }
+        // C20: refuse restricted-unit content unless the client presented an attestation
+        // (the declared credential). The bridge does not verify it — never calls attestation_url.
+        if (unitNeedsAttestation(ctx.unit) && !attestationPresented(args)) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify({
+                  error: "attestation_required",
+                  message: `Unit '${unitId}' is access: restricted and this manifest requires attestation (§3.2). Re-call get_unit with an 'attestation' argument.`,
+                  agent_requirements: attestationRequirementData(),
                 }),
               },
             ],

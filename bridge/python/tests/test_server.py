@@ -1188,3 +1188,47 @@ async def test_h_f9_list_manifests_honours_as_of():
     entries = {e["id"]: e for e in json.loads(_fed_text(result))}
     assert entries["gdpr-2018"]["temporally_active"] is True
     assert entries["gdpr-2023"]["temporally_active"] is False
+
+
+# ── Attestation gating (C20, v0.22) ───────────────────────────────────────────
+ATTEST_DIR = Path(__file__).parent / "fixtures" / "attestation"
+
+
+def _attest_server():
+    return create_server(ATTEST_DIR / "knowledge.yaml", warn_on_validation=False)
+
+
+@pytest.mark.asyncio
+async def test_c20_get_unit_refuses_restricted_without_attestation():
+    result = await call_tool(_attest_server(), "get_unit", {"unit_id": "secret"})
+    e = json.loads(result.content[0].text)
+    assert e["error"] == "attestation_required"
+    assert e["agent_requirements"]["attestation_url"] == "https://acme.com/v1/attest"
+
+
+@pytest.mark.asyncio
+async def test_c20_get_unit_serves_restricted_with_attestation():
+    result = await call_tool(_attest_server(), "get_unit", {"unit_id": "secret", "attestation": "spiffe://acme.internal/agent"})
+    assert "Restricted design notes" in result.content[0].text
+
+
+@pytest.mark.asyncio
+async def test_c20_get_unit_serves_public_without_attestation():
+    result = await call_tool(_attest_server(), "get_unit", {"unit_id": "public-doc"})
+    assert "Anyone may read this" in result.content[0].text
+
+
+@pytest.mark.asyncio
+async def test_c20_read_resource_refuses_restricted():
+    with pytest.raises(Exception, match="requires agent attestation"):
+        await call_read_resource(_attest_server(), "knowledge://attest-hub/secret")
+
+
+@pytest.mark.asyncio
+async def test_c20_search_marks_restricted_dropped_when_attested():
+    unmarked = await call_tool(_attest_server(), "search_knowledge", {"query": "secret design"})
+    attested = await call_tool(_attest_server(), "search_knowledge", {"query": "secret design", "attestation": "spiffe://acme.internal/agent"})
+    row_a = next(r for r in json.loads(unmarked.content[0].text) if r["id"] == "secret")
+    row_b = next(r for r in json.loads(attested.content[0].text) if r["id"] == "secret")
+    assert row_a.get("requires_attestation") is True
+    assert "requires_attestation" not in row_b

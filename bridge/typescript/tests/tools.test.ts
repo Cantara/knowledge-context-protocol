@@ -721,3 +721,63 @@ describe("prompts/get", () => {
     await client.close();
   });
 });
+
+// C20 (v0.22): attestation gating. The attest-hub manifest sets require_attestation and has a
+// restricted unit ("secret") and a public unit ("public-doc"). The bridge refuses restricted
+// content unless an attestation credential is presented — it never verifies the credential.
+describe("attestation gating (C20)", () => {
+  const ATTEST = join(import.meta.dirname, "fixtures/attestation/knowledge.yaml");
+  async function connectA() {
+    const { server } = createKcpServer(ATTEST, { warnOnValidation: false });
+    const [ct, st] = InMemoryTransport.createLinkedPair();
+    await server.connect(st);
+    const client = new Client({ name: "t", version: "0.1.0" }, { capabilities: {} });
+    await client.connect(ct);
+    return client;
+  }
+  const txt = (r: unknown) => ((r as { content: Array<{ text: string }> }).content[0].text);
+
+  it("get_unit refuses a restricted unit with no attestation", async () => {
+    const c = await connectA();
+    const r = await c.callTool({ name: "get_unit", arguments: { unit_id: "secret" } });
+    await c.close();
+    expect(r.isError).toBe(true);
+    const e = JSON.parse(txt(r));
+    expect(e.error).toBe("attestation_required");
+    expect(e.agent_requirements.attestation_url).toBe("https://acme.com/v1/attest");
+  });
+
+  it("get_unit serves the restricted unit once attestation is presented", async () => {
+    const c = await connectA();
+    const r = await c.callTool({ name: "get_unit", arguments: { unit_id: "secret", attestation: "spiffe://acme.internal/agent" } });
+    await c.close();
+    expect(r.isError).toBeFalsy();
+    expect(txt(r)).toContain("Restricted design notes");
+  });
+
+  it("get_unit serves a public unit with no attestation", async () => {
+    const c = await connectA();
+    const r = await c.callTool({ name: "get_unit", arguments: { unit_id: "public-doc" } });
+    await c.close();
+    expect(txt(r)).toContain("Anyone may read this");
+  });
+
+  it("read_resource refuses restricted content (no attestation channel)", async () => {
+    const c = await connectA();
+    await expect(
+      c.readResource({ uri: "knowledge://attest-hub/secret" })
+    ).rejects.toThrow(/requires agent attestation/);
+    await c.close();
+  });
+
+  it("search marks a restricted unit requires_attestation, dropped when attested", async () => {
+    const c = await connectA();
+    const unmarked = await c.callTool({ name: "search_knowledge", arguments: { query: "secret design" } });
+    const withAttest = await c.callTool({ name: "search_knowledge", arguments: { query: "secret design", attestation: "spiffe://acme.internal/agent" } });
+    await c.close();
+    const rowA = (JSON.parse(txt(unmarked)) as Array<{ id: string; requires_attestation?: boolean }>).find((x) => x.id === "secret")!;
+    const rowB = (JSON.parse(txt(withAttest)) as Array<{ id: string; requires_attestation?: boolean }>).find((x) => x.id === "secret")!;
+    expect(rowA.requires_attestation).toBe(true);
+    expect(rowB.requires_attestation).toBeUndefined();
+  });
+});

@@ -158,6 +158,11 @@ public final class KcpServer {
         // filtered here (effective date = today, UTC): they are neither listed nor readable —
         // not just hidden from search (issue #98 F1). Historical access remains via
         // search_knowledge's as_of, which reads rs.units() directly.
+        // §3.2 / C20 (v0.22): does the primary manifest require agent attestation?
+        boolean requireAttestation = manifest.trust() != null
+                && manifest.trust().agentRequirements() != null
+                && Boolean.TRUE.equals(manifest.trust().agentRequirements().requireAttestation());
+
         String resourceToday = effectiveToday();
         for (Map.Entry<String, KnowledgeUnit> entry : unitMap.entrySet()) {
             KnowledgeUnit unit    = entry.getValue();
@@ -172,8 +177,16 @@ public final class KcpServer {
             final String mime     = KcpMapper.resolveMime(unit);
             final String unitPath = unit.path();
             final Path finalUnitDir = unitDir;
+            // C20: a resource read carries no attestation channel — restricted units under a
+            // manifest requiring attestation are fetched via get_unit with an attestation argument.
+            final boolean needsAttestation = requireAttestation && "restricted".equals(unit.access());
+            final String uid = unit.id();
 
             handlers.put(unitUri, uri -> {
+                if (needsAttestation) {
+                    throw new IllegalStateException("Unit '" + uid + "' requires agent attestation (§3.2); "
+                            + "fetch it via the get_unit tool with an 'attestation' argument");
+                }
                 try {
                     KcpContent.ContentResult content = KcpContent.read(finalUnitDir, unitPath, mime);
                     if (content.binary()) {
@@ -292,6 +305,20 @@ public final class KcpServer {
      *  timezone boundary (issue #98 F6). */
     static String effectiveToday() {
         return LocalDate.now(ZoneOffset.UTC).toString();
+    }
+
+    /** §3.2 / C20: a restricted unit under a manifest requiring attestation must not be served
+     *  unless a credential is presented. The bridge checks presence only — never verifies. */
+    static boolean unitNeedsAttestation(KnowledgeManifest manifest, KnowledgeUnit unit) {
+        var t = manifest.trust();
+        return t != null && t.agentRequirements() != null
+                && Boolean.TRUE.equals(t.agentRequirements().requireAttestation())
+                && "restricted".equals(unit.access());
+    }
+
+    static boolean attestationPresented(Map<String, Object> args) {
+        Object a = args != null ? args.get("attestation") : null;
+        return a != null && !"".equals(a);
     }
 
     private static final java.util.regex.Pattern AS_OF_RE =
@@ -453,6 +480,8 @@ public final class KcpServer {
             "ISO 8601 date for point-in-time temporal query (§15.13). Default: today."));
         searchProps.put("include_all_temporal", Map.of("type", "boolean", "description",
             "If true, skip temporal filtering and return all units regardless of valid_from/valid_until (§15.13). Mutually exclusive with as_of."));
+        searchProps.put("attestation", Map.of("type", "string", "description",
+            "Agent attestation credential (§3.2). When presented, restricted units are not marked requires_attestation. Presence is checked; the credential is not verified."));
         McpSchema.JsonSchema searchSchema = new McpSchema.JsonSchema(
             "object", searchProps, List.of("query"), null, null, null
         );
@@ -469,7 +498,9 @@ public final class KcpServer {
             "object",
             Map.of(
                 "unit_id", Map.of("type", "string", "description",
-                    "The unit id from search_knowledge results")
+                    "The unit id from search_knowledge results"),
+                "attestation", Map.of("type", "string", "description",
+                    "Agent attestation credential (§3.2). Required to fetch access: restricted units when the manifest sets require_attestation. Presence is checked; the credential is not verified.")
             ),
             List.of("unit_id"), null, null, null
         );
@@ -643,6 +674,9 @@ public final class KcpServer {
         finalResults.sort((a, b) -> Integer.compare(b.score(), a.score()));
         List<SearchResult> top5 = finalResults.subList(0, Math.min(5, finalResults.size()));
 
+        // C20: mark restricted units needing attestation (dropped if a credential was presented).
+        boolean attested = attestationPresented(args);
+
         // Build JSON array manually (no Jackson in production)
         StringBuilder sb = new StringBuilder("[\n");
         for (int i = 0; i < top5.size(); i++) {
@@ -680,6 +714,11 @@ public final class KcpServer {
             } else {
                 sb.append("\"caution\":null");
             }
+            // C20: requires_attestation marker
+            KnowledgeUnit ru = rs.units().get(r.id());
+            if (!attested && ru != null && unitNeedsAttestation(rs.primaryManifest(), ru)) {
+                sb.append(",\"requires_attestation\":true");
+            }
             sb.append("}");
         }
         sb.append("\n]");
@@ -716,6 +755,29 @@ public final class KcpServer {
                 List.of(new McpSchema.TextContent(
                     "{\"error\":\"temporally_unavailable\",\"message\":\"Unit '" + escapeJson(unitId)
                         + "' is outside its temporal validity window as of " + guToday + "\"}")),
+                true, null, null);
+        }
+        // C20: refuse restricted-unit content unless an attestation credential is presented.
+        if (unitNeedsAttestation(rs.primaryManifest(), unit) && !attestationPresented(request.arguments())) {
+            var arReq = rs.primaryManifest().trust().agentRequirements();
+            StringBuilder ar = new StringBuilder("{\"require_attestation\":true");
+            if (arReq.trustedProviders() != null && !arReq.trustedProviders().isEmpty()) {
+                ar.append(",\"trusted_providers\":[");
+                for (int i = 0; i < arReq.trustedProviders().size(); i++) {
+                    if (i > 0) ar.append(",");
+                    ar.append("\"").append(escapeJson(arReq.trustedProviders().get(i))).append("\"");
+                }
+                ar.append("]");
+            }
+            if (arReq.attestationUrl() != null) {
+                ar.append(",\"attestation_url\":\"").append(escapeJson(arReq.attestationUrl())).append("\"");
+            }
+            ar.append("}");
+            return new McpSchema.CallToolResult(
+                List.of(new McpSchema.TextContent(
+                    "{\"error\":\"attestation_required\",\"message\":\"Unit '" + escapeJson(unitId)
+                        + "' is access: restricted and this manifest requires attestation (§3.2). "
+                        + "Re-call get_unit with an 'attestation' argument.\",\"agent_requirements\":" + ar + "}")),
                 true, null, null);
         }
 
