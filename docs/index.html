@@ -2407,7 +2407,7 @@ relationships:
 
       <div class="roadmap-core reveal">
         <div class="roadmap-core__info">
-          <span class="roadmap-core__badge">v0.21 — Current</span>
+          <span class="roadmap-core__badge">v0.21 — Shipped</span>
           <h3>Federation Temporal &amp; Composition Integrity</h3>
           <p><code>manifests[].temporal</code> (SPEC §3.6) lets a hub declare when a federated source is relevant, so bridges skip out-of-window sub-manifests before fetching. Composition <code>integrity</code> becomes enforcing at <code>trusted</code> tier (SPEC §3.11 / C17): an unverified or substituted include can't reach an agent's standing context — closing the composition-substitution attack (T10). Promoted from RFC-0021 and RFC-0022.</p>
         </div>
@@ -2416,6 +2416,20 @@ relationships:
           <span class="roadmap-field-pill">integrity</span>
           <span class="roadmap-field-pill">RFC-0021</span>
           <span class="roadmap-field-pill">RFC-0022</span>
+        </div>
+      </div>
+
+      <div class="roadmap-core reveal">
+        <div class="roadmap-core__info">
+          <span class="roadmap-core__badge">v0.22 — Current</span>
+          <h3>Trust &amp; Attestation</h3>
+          <p><code>trust.agent_requirements</code> (SPEC §3.2) declares what an agent must prove about <em>itself</em> before <code>access: restricted</code> units are served — the consumer-identity counterpart to producer integrity. Extended <code>auth.methods</code> add SPIFFE, DID, and HTTP Message Signatures (RFC 9421). The renderer surfaces the requirement (C19) and the bridge refuses restricted content on every retrieval path unless a credential is presented (C20) — but <strong>KCP declares; agents attest</strong>: nothing ever calls <code>attestation_url</code>. Promoted from RFC-0004 and RFC-0002.</p>
+        </div>
+        <div class="roadmap-core__fields">
+          <span class="roadmap-field-pill">agent_requirements</span>
+          <span class="roadmap-field-pill">auth.methods</span>
+          <span class="roadmap-field-pill">RFC-0004</span>
+          <span class="roadmap-field-pill">RFC-0002</span>
         </div>
       </div>
 

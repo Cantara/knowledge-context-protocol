@@ -105,6 +105,24 @@ Validates clean: `kcp validate examples/temporal-validity/knowledge.yaml`.
 
 ---
 
+## [attestation/](./attestation/)
+
+**Trust & Attestation. Restricted units gated behind agent attestation (v0.22).**
+
+An internal-knowledge manifest that requires agents to prove who they are before it serves its
+restricted units (RFC-0004/0002, SPEC §3.2/§3.3, v0.22):
+- `trust.agent_requirements` — `require_attestation`, `trusted_providers` (identity), `attestation_url` (credential)
+- A public `onboarding` unit (served to anyone) and a restricted `incident-runbook` (gated)
+- Extended `auth.methods`: `spiffe` (workload SVID) and `http_signature` (RFC 9421)
+- **KCP declares; agents attest** — the renderer flags `requires_attestation` and never
+  dereferences `attestation_url`; the bridge refuses restricted content until an `attestation`
+  argument is presented (C19/C20)
+
+Walkthrough: [guides/gating-restricted-knowledge-with-attestation.md](../guides/gating-restricted-knowledge-with-attestation.md).
+Validates clean: `kcp validate examples/attestation/knowledge.yaml`.
+
+---
+
 ## [trusted-render-demo/](./trusted-render-demo/)
 
 **Interactive walk-through of the trusted render pipeline (RFC-0018/0019/0022, SPEC §16).**

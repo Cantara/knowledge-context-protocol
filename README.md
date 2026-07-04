@@ -72,6 +72,7 @@ project or documentation site. It adds the metadata layer that llms.txt cannot e
 - **Trust & integrity** (v0.16+): signed manifests, per-unit content hashes, and a trusted render pipeline so execution-capable agents never ingest unauthenticated prose
 - **Temporal validity** (v0.19+): validity windows (`valid_from`/`valid_until`), supersession chains, and point-in-time (`as_of`) queries for audit and future-dated policy
 - **Composition** (v0.19+): compose manifests from other manifests — include, override, exclude — without forking
+- **Trust & attestation** (v0.22+): `trust.agent_requirements` declares what an agent must prove about *itself* before restricted units are served — extended `auth.methods` (SPIFFE, DID, HTTP Message Signatures) and attestation gating enforced by the bridge. KCP *declares* the requirement; the agent *attests*
 
 ---
 
@@ -423,9 +424,9 @@ The format is intentionally minimal and builds incrementally through promoted RF
 - **[SPEC.md](./SPEC.md)** — Normative specification (field definitions, validation rules, conformance levels)
 - **[PROPOSAL.md](./PROPOSAL.md)** — The case for a knowledge architecture standard
 - **[RFC-0001](./RFC-0001-KCP-Extended.md)** — Extended capabilities (overview of all proposals; F/H/I/J/K/L/N promoted to v0.3–v0.4 core)
-- **[RFC-0002](./RFC-0002-Auth-and-Delegation.md)** — Auth and delegation metadata (`access`, `auth_scope`, `auth` promoted to core in v0.5–v0.6; `delegation` promoted to core in v0.7)
+- **[RFC-0002](./RFC-0002-Auth-and-Delegation.md)** — Auth and delegation metadata (`access`, `auth_scope`, `auth` promoted to core in v0.5–v0.6; `delegation` promoted to core in v0.7; extended `auth.methods` types `bearer_token`/`spiffe`/`did`/`http_signature` promoted in v0.22)
 - **[RFC-0003](./RFC-0003-Federation.md)** — Cross-manifest federation proposal (`manifests`, `external_depends_on`, `external_relationships` — promoted to core in v0.9 as DAG with local authority)
-- **[RFC-0004](./RFC-0004-Trust-and-Compliance.md)** — Trust, provenance, and compliance metadata (`trust.provenance`, `sensitivity` promoted in v0.5; `trust.audit` promoted in v0.6; `compliance` promoted to core in v0.7)
+- **[RFC-0004](./RFC-0004-Trust-and-Compliance.md)** — Trust, provenance, and compliance metadata (`trust.provenance`, `sensitivity` promoted in v0.5; `trust.audit` promoted in v0.6; `compliance` promoted to core in v0.7; `content_integrity` in v0.16; `trust.agent_requirements` attestation promoted in v0.22 — conformance C19–C21)
 - **[RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md)** — Payment and rate-limit metadata proposal (`payment.default_tier` promoted to core in v0.5; `rate_limits` promoted to core in v0.8; payment methods and x402 remain RFC)
 - **[RFC-0006](./RFC-0006-Context-Window-Hints.md)** — Context window hints (accepted; promoted to SPEC.md §4.10 in v0.4)
 - **[RFC-0007](./RFC-0007-Query-Vocabulary.md)** — Query vocabulary (accepted; promoted to SPEC.md §15 in v0.14): `terms`, `audience`, `max_token_budget`, `has_capabilities`, `exclude_stale`, `federation_scope`
