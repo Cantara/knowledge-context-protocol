@@ -12,6 +12,50 @@ _Nothing yet._
 
 ---
 
+## [0.25.0] — 2026-07-04 — Economic Metadata
+
+**Spec version:** `"0.25"` | **Prior:** `"0.24"` (v0.24.0, 2026-07-04)
+
+Promotes the economic layer RFC-0005 defined but the core spec only stubbed (`payment.default_tier`
+and `rate_limits.default`). Lets an agent decide *what access costs* and *how much it can consume*
+before issuing a request. Advisory throughout — **KCP declares the economics and settles nothing**;
+the renderer surfaces the blocks as data and dereferences no wallet or pricing URL.
+
+### Promoted (RFC-0005)
+
+- **`payment.methods[]` (§4.14)** — ordered by publisher preference: `free`, `x402` (per-request
+  micropayment: `currency`, decimal-string `price_per_request`, `networks`, `wallet`), `meter`
+  (`provider`, `plans_url`), `subscription` (`plans_url`, `free_tier`, `free_requests_per_day`,
+  `upgrade_url`). Plus **`payment.billing_contact`**.
+- **`rate_limits` per-tier (§4.15)** — `authenticated` and `premium` tiers, `requests_per_hour`,
+  the `unlimited` sentinel, a `tokens` sub-block for LLM pipelines, response-header mapping
+  (`headers`), and a recommended `backoff` strategy.
+- Unit-level `payment`/`rate_limits` overrides **replace** the root block (no merge), so mixed-
+  economics manifests are unambiguous.
+
+### Implementations
+
+- **Parsers (all four):** TypeScript shared core, Python, Java, and the `kcp render` pipeline parse
+  and expose the structured blocks (previously `payment` was an opaque passthrough). The renderer
+  surfaces `payment` and `rate_limits` at manifest and unit level as data — never dereferenced.
+- **Validators:** warn on an `x402` method missing `currency`/`price_per_request`, a non-decimal
+  `price_per_request`, an unknown method `type`, a `metered`/`subscription` `default_tier` whose
+  only method is `free`, and an off-vocabulary `backoff`.
+- **Example + tutorial + demo:** [`examples/paid-knowledge-api/`](./examples/paid-knowledge-api/)
+  (free + x402 + subscription tiers), [`guides/monetizing-knowledge-with-payment.md`](./guides/monetizing-knowledge-with-payment.md),
+  and a runnable `demo.js` (+ a monetize stop in the grand tour and an economic-metadata reel on
+  the showcase page).
+
+### Open questions resolved conservatively
+
+RFC-0005's open questions landed on the cautious side: methods stay **publisher-ordered** (agent
+picks the first it supports); price stays a flat `price_per_request` + `currency` decimal string (no
+structured amount object); agent-budget declaration and `on_limit_exhausted` are **out of scope**;
+quota windows remain **advisory** (most-restrictive binds). RFC-0005 is now **fully promoted** —
+nothing remains RFC-only.
+
+---
+
 ## [0.24.0] — 2026-07-04 — Org-Federation
 
 **Spec version:** `"0.24"` | **Prior:** `"0.23"` (v0.23.0, 2026-07-04)

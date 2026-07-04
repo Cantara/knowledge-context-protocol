@@ -1,6 +1,6 @@
 # RFC-0005: Payment and Rate-Limit Metadata
 
-**Status:** Request for Comments
+**Status:** Accepted — fully promoted. `rate_limits.default` in v0.8; the structured `payment` block (`methods[]` with `x402`/`meter`/`subscription`, `billing_contact`) and the `rate_limits` per-tier (`authenticated`/`premium`), `tokens`, `headers`, and `backoff` extensions promoted to [SPEC.md](./SPEC.md) §4.14/§4.15 in v0.25. All fields advisory — KCP declares the economics and settles nothing.
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-02-28
 **Supersedes:** Proposals C and D in [RFC-0001](./RFC-0001-KCP-Extended.md)
@@ -18,12 +18,14 @@ The following proposals from this RFC have been promoted to the core specificati
 |-------|------------|-------------------|-------|
 | `rate_limits.default.requests_per_minute` | v0.8 | Level 3 | Minimal rate limit disclosure. See §4.15. |
 | `rate_limits.default.requests_per_day` | v0.8 | Level 3 | Minimal rate limit disclosure. See §4.15. |
+| `payment.default_tier` | v0.5 | Level 2 | Lightweight free/metered/subscription signal. See §4.14. |
+| Unit-level `payment` / `rate_limits` override | v0.8–v0.12 | Level 3 | Mixed-economics manifests. See §4.14/§4.15. |
+| `payment.methods[]` (`free`/`x402`/`meter`/`subscription`), `payment.billing_contact` | v0.25 | Level 2–3 | Structured payment mechanisms incl. x402 micropayment detail. See §4.14. |
+| `rate_limits.authenticated` / `premium`, `.requests_per_hour`, `.tokens`, `.headers`, `.backoff` | v0.25 | Level 3 | Per-tier, token-based, and header-mapped rate limits. See §4.15. |
 
-**Still RFC-only (not yet promoted):**
-
-- `payment` block (root-level and unit-level) — awaiting real-world validation of the x402 and subscription models.
-- `rate_limits` per-tier overrides (`authenticated`, `premium`) — core spec promotes `default` only.
-- Unit-level `rate_limits` override — follows root default for now; per-unit override deferred to v0.9+.
+**Fully promoted.** Every proposal in this RFC has landed in the core spec; nothing remains
+RFC-only. The open design questions below were resolved conservatively at promotion (see the
+[CHANGELOG](./CHANGELOG.md) entry for v0.25).
 
 ---
 

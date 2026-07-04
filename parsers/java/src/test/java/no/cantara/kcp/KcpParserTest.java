@@ -1028,7 +1028,7 @@ class KcpParserTest {
         data.put("payment", paymentMap);
         KnowledgeManifest m = KcpParser.fromMap(data);
         assertNotNull(m.payment());
-        assertInstanceOf(Map.class, m.payment());
+        assertEquals("free", m.payment().defaultTier());
     }
 
     @Test

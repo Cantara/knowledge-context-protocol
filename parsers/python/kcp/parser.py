@@ -7,7 +7,8 @@ import yaml
 from .model import (
     AgentIdentity, Auth, AuthMethod, Authority, Compliance, ContentHash, ContentStructure,
     Delegation, Discovery, ExternalDependency, ExternalRelationship, FreshnessPolicy,
-    KnowledgeManifest, KnowledgeUnit, ManifestRef, RateLimit, RateLimits, Relationship,
+    KnowledgeManifest, KnowledgeUnit, ManifestRef, Payment, PaymentMethod,
+    RateLimit, RateLimits, RateLimitHeaders, RateLimitTokens, RateLimitTokensTier, Relationship,
     Trust, TrustAudit, TrustAgentRequirements, TrustProvenance, Visibility,
 )
 
@@ -126,18 +127,82 @@ def _parse_compliance(data: Optional[dict]) -> Optional[Compliance]:
     )
 
 
+def _parse_rate_limit_tier(data: Optional[dict]) -> Optional[RateLimit]:
+    if not isinstance(data, dict):
+        return None
+    return RateLimit(
+        requests_per_minute=data.get("requests_per_minute"),
+        requests_per_hour=data.get("requests_per_hour"),
+        requests_per_day=data.get("requests_per_day"),
+    )
+
+
+def _parse_rate_limit_tokens_tier(data: Optional[dict]) -> Optional[RateLimitTokensTier]:
+    if not isinstance(data, dict):
+        return None
+    return RateLimitTokensTier(
+        tokens_per_minute=data.get("tokens_per_minute"),
+        tokens_per_day=data.get("tokens_per_day"),
+    )
+
+
 def _parse_rate_limits(data: Optional[dict]) -> Optional[RateLimits]:
     """Parse a rate_limits block (root-level or per-unit). See SPEC.md §4.15."""
     if data is None:
         return None
-    default_data = data.get("default")
-    if default_data is None:
-        return RateLimits()
-    return RateLimits(
-        default=RateLimit(
-            requests_per_minute=default_data.get("requests_per_minute"),
-            requests_per_day=default_data.get("requests_per_day"),
+    tokens = None
+    tk = data.get("tokens")
+    if isinstance(tk, dict):
+        tokens = RateLimitTokens(
+            default=_parse_rate_limit_tokens_tier(tk.get("default")),
+            authenticated=_parse_rate_limit_tokens_tier(tk.get("authenticated")),
+            premium=_parse_rate_limit_tokens_tier(tk.get("premium")),
         )
+    headers = None
+    hd = data.get("headers")
+    if isinstance(hd, dict):
+        headers = RateLimitHeaders(
+            remaining=hd.get("remaining"),
+            reset=hd.get("reset"),
+            retry_after=hd.get("retry_after"),
+        )
+    return RateLimits(
+        default=_parse_rate_limit_tier(data.get("default")),
+        authenticated=_parse_rate_limit_tier(data.get("authenticated")),
+        premium=_parse_rate_limit_tier(data.get("premium")),
+        tokens=tokens,
+        headers=headers,
+        backoff=data.get("backoff"),
+    )
+
+
+def _parse_payment_method(data: dict) -> PaymentMethod:
+    if not isinstance(data, dict):
+        data = {}
+    networks = data.get("networks")
+    return PaymentMethod(
+        type=data.get("type", ""),
+        currency=data.get("currency"),
+        price_per_request=data.get("price_per_request"),
+        networks=[str(n) for n in networks] if isinstance(networks, list) else None,
+        wallet=data.get("wallet"),
+        provider=data.get("provider"),
+        plans_url=data.get("plans_url"),
+        free_tier=data.get("free_tier"),
+        free_requests_per_day=data.get("free_requests_per_day"),
+        upgrade_url=data.get("upgrade_url"),
+    )
+
+
+def _parse_payment(data: Optional[dict]) -> Optional[Payment]:
+    """Parse a payment block (root-level or per-unit). See SPEC.md §4.14."""
+    if not isinstance(data, dict):
+        return None
+    methods = data.get("methods")
+    return Payment(
+        default_tier=data.get("default_tier"),
+        methods=[_parse_payment_method(m) for m in methods] if isinstance(methods, list) else None,
+        billing_contact=data.get("billing_contact"),
     )
 
 
@@ -327,7 +392,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
             auth_scope=u.get("auth_scope"),
             sensitivity=u.get("sensitivity"),
             deprecated=u.get("deprecated"),
-            payment=u.get("payment"),
+            payment=_parse_payment(u.get("payment")),
             rate_limits=_parse_rate_limits(u.get("rate_limits")),
             delegation=_parse_delegation(u.get("delegation")),
             compliance=_parse_compliance(u.get("compliance")),
@@ -374,7 +439,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
         auth=_parse_auth(data.get("auth")),
         delegation=_parse_delegation(data.get("delegation")),
         compliance=_parse_compliance(data.get("compliance")),
-        payment=data.get("payment"),
+        payment=_parse_payment(data.get("payment")),
         rate_limits=_parse_rate_limits(data.get("rate_limits")),
         units=units,
         relationships=relationships,

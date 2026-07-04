@@ -3,7 +3,7 @@
 All three bridges (TypeScript, Java, Python) are required to stay at feature parity on **MCP tools and prompts**.
 Static generation CLI flags (Tier 2) are currently TS + Java only — Python support is planned.
 
-**Current version:** 0.24.0 (all three bridges — aligned with KCP spec version)
+**Current version:** 0.25.0 (all three bridges — aligned with KCP spec version)
 
 > Scope note: the `kcp` developer CLI (`cli/` — init, validate, query, stats, and as of
 > spec v0.16 `render`) versions independently of the bridges and is outside this parity
@@ -110,6 +110,7 @@ No known gaps — all three bridges are at full parity.
 | 0.22.0 | 2026-07-04 | Trust & Attestation (RFC-0004/0002): `trust.agent_requirements` + extended `auth.methods` types (`bearer_token`, `spiffe`, `did`, `http_signature`) parsed/exposed; C20 attestation gating — restricted-unit content refused unless an `attestation` argument is presented, on every retrieval path; `search` marks `requires_attestation`; new `attestation` argument on `get_unit` + `search_knowledge`. Bridge never calls `attestation_url`. All three bridges. |
 | 0.23.0 | 2026-07-04 | Trust & Auth Completion (RFC-0002/0004): parsers expose per-unit `auth` override, `trust.provenance.publisher_did`, `trust.audit.provides_access_receipts`/`receipt_format`, and `require_delegation_proof` (closed a spec-vs-parser drift). Validators warn on non-DID `publisher_did` and receipts-without-format. Declaration-level — no new MCP tool behaviour. All four implementations. |
 | 0.24.0 | 2026-07-04 | Org-Federation (RFC-0011): parsers expose `manifests[].context` (environment-aware references) and `manifests[].agent_identity` (pre-fetch credential hint) — surfaced by the `kcp render` pipeline. Validators warn on empty `context`, `agent_identity.required` without `credential_hint`, and `issuer_hint` used off `oauth2`. Declaration-level and advisory — no new MCP tool behaviour. All four implementations. |
+| 0.25.0 | 2026-07-04 | Economic Metadata (RFC-0005): parsers expose the structured `payment` block (`methods[]` with `x402`/`meter`/`subscription`, `billing_contact`) and `rate_limits` per-tier/`tokens`/`headers`/`backoff` — previously `payment` was an opaque passthrough. The `kcp render` pipeline surfaces both as data (never dereferenced). Validators warn on malformed x402, unknown method type, paid-tier-with-only-free-method, and bad backoff. Advisory — no new MCP tool behaviour. All four implementations. |
 
 > **Note:** v0.7.0--v0.9.0 were internal development milestones that shipped combined as v0.10.0.
 > v0.11.0--v0.13.0 were bridge feature additions that culminated in v0.14.0.

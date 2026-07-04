@@ -1,0 +1,104 @@
+kcp_version: "0.25"
+project: knowledge-api.example.org
+version: 1.0.0
+updated: "2026-07-04"
+language: en
+indexing: open
+
+# Economic Metadata (RFC-0005, v0.25). This manifest lets an agent decide WHAT access costs and
+# HOW MUCH it can consume BEFORE it issues a request: a free public tier, an x402-metered real-time
+# feed, and a subscription research corpus, each with its own rate limits. Every field is advisory
+# — KCP declares the economics; it settles no payment and dereferences no wallet or pricing URL.
+
+auth:
+  methods:
+    - type: api_key
+      header: "X-API-Key"
+      registration_url: "https://example.org/register"
+    - type: none
+
+# Root defaults: free to read, with a subscription option that has a generous free tier.
+payment:
+  default_tier: free
+  methods:
+    - type: free
+    - type: subscription
+      plans_url: "https://example.org/pricing"
+      free_tier: true
+      free_requests_per_day: 500
+      upgrade_url: "https://example.org/upgrade"
+  billing_contact: "billing@example.org"
+
+# Proactive rate-limit disclosure across three tiers, plus the live-state headers and backoff.
+rate_limits:
+  default:
+    requests_per_minute: 10
+    requests_per_day: 500
+  authenticated:
+    requests_per_minute: 100
+    requests_per_day: 5000
+  premium:
+    requests_per_minute: 1000
+    requests_per_day: unlimited
+  tokens:
+    default:
+      tokens_per_minute: 40000
+    authenticated:
+      tokens_per_minute: 200000
+  headers:
+    remaining: "X-RateLimit-Remaining"
+    reset: "X-RateLimit-Reset"
+    retry_after: "Retry-After"
+  backoff: exponential
+
+units:
+  # Free public index — inherits the root free tier and 10 rpm default.
+  - id: docs
+    path: docs/index.md
+    intent: "What APIs and knowledge units are available, and how is access priced?"
+    scope: global
+    audience: [human, agent, developer]
+    triggers: [overview, catalogue, pricing, getting started]
+
+  # Real-time prices — per-request x402 micropayment. Overrides the root economics entirely.
+  - id: realtime-prices
+    path: data/prices.md
+    intent: "What are the current asset prices?"
+    scope: module
+    audience: [agent, developer]
+    update_frequency: hourly
+    payment:
+      default_tier: metered
+      methods:
+        - type: x402
+          currency: USDC
+          price_per_request: "0.002"
+          networks: [base, ethereum]
+          wallet: "0xDEF0000000000000000000000000000000000000"
+        - type: subscription
+          plans_url: "https://example.org/pricing"
+    rate_limits:
+      default:
+        requests_per_minute: 1
+      authenticated:
+        requests_per_minute: 60
+      premium:
+        requests_per_minute: 600
+
+  # Premium research corpus — subscription only, metered fallback.
+  - id: premium-research
+    path: corpus/research.md
+    intent: "What do the latest market-analysis reports show?"
+    scope: module
+    audience: [agent]
+    access: restricted
+    auth_scope: "read:research"
+    payment:
+      default_tier: subscription
+      methods:
+        - type: subscription
+          plans_url: "https://example.org/pricing"
+          upgrade_url: "https://example.org/upgrade"
+        - type: meter
+          provider: stripe
+          plans_url: "https://example.org/pricing"

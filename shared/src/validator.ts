@@ -4,7 +4,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { resolve, join } from "node:path";
-import type { KnowledgeManifest, Temporal, ValidationResult } from "./model.js";
+import type { KnowledgeManifest, Payment, RateLimits, Temporal, ValidationResult } from "./model.js";
 
 // --- Per-unit content digest (RFC-0019 §3.2, draft) ---
 // Lives here (not in a render module) so the CLI and bridge validator
@@ -102,6 +102,7 @@ const KNOWN_KCP_VERSIONS = new Set([
   "0.22",
   "0.23",
   "0.24",
+  "0.25",
 ]);
 // content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
 const VALID_CONTENT_MODALITIES = new Set([
@@ -572,6 +573,12 @@ export function validate(
     }
   }
 
+  // Payment + rate_limits validation (§4.14/§4.15, RFC-0005, v0.25) — root and per-unit.
+  validateEconomics("manifest", manifest.payment, manifest.rate_limits, warnings);
+  for (const unit of manifest.units) {
+    validateEconomics(`unit '${unit.id}'`, unit.payment, unit.rate_limits, warnings);
+  }
+
   // Warn if any unit requires auth but no root-level auth block is present (§7)
   const hasProtected = manifest.units.some(
     (u) => u.access === "authenticated" || u.access === "restricted"
@@ -704,4 +711,44 @@ export function validate(
   }
 
   return { errors, warnings, isValid: errors.length === 0 };
+}
+
+// Payment + rate_limits advisory validation (§4.14/§4.15, RFC-0005, v0.25).
+const VALID_PAYMENT_METHOD_TYPES = new Set(["free", "x402", "meter", "subscription"]);
+const VALID_BACKOFF = new Set(["linear", "exponential", "none"]);
+const DECIMAL_STRING = /^\d+(\.\d+)?$/;
+
+function validateEconomics(
+  where: string,
+  payment: Payment | undefined,
+  rateLimits: RateLimits | undefined,
+  warnings: string[]
+): void {
+  if (payment) {
+    const methods = payment.methods ?? [];
+    for (const m of methods) {
+      if (m.type && !VALID_PAYMENT_METHOD_TYPES.has(m.type)) {
+        warnings.push(`${where}: payment.methods[] has unknown type '${m.type}' (expected free, x402, meter, or subscription)`);
+      }
+      if (m.type === "x402") {
+        if (!m.currency) warnings.push(`${where}: payment x402 method is missing required 'currency'`);
+        if (!m.price_per_request) {
+          warnings.push(`${where}: payment x402 method is missing required 'price_per_request'`);
+        } else if (!DECIMAL_STRING.test(m.price_per_request)) {
+          warnings.push(`${where}: payment x402 price_per_request '${m.price_per_request}' SHOULD be a decimal string (e.g. "0.001")`);
+        }
+      }
+    }
+    // A metered/subscription default with no matching method is likely a mistake.
+    if (
+      (payment.default_tier === "metered" || payment.default_tier === "subscription") &&
+      methods.length > 0 &&
+      !methods.some((m) => m.type && m.type !== "free")
+    ) {
+      warnings.push(`${where}: payment.default_tier is '${payment.default_tier}' but no paid method (x402/meter/subscription) is declared`);
+    }
+  }
+  if (rateLimits?.backoff && !VALID_BACKOFF.has(rateLimits.backoff)) {
+    warnings.push(`${where}: rate_limits.backoff must be one of [linear, exponential, none], got '${rateLimits.backoff}'`);
+  }
 }

@@ -28,7 +28,7 @@ public record KnowledgeUnit(
         String authScope,
         String sensitivity,
         Boolean deprecated,
-        Object payment,
+        Payment payment,
         RateLimits rateLimits,
         Delegation delegation,
         Compliance compliance,

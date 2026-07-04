@@ -2,6 +2,21 @@
 
 Reference implementations and runnable simulation scenarios — from the minimum viable configuration to adversarial multi-agent stress tests.
 
+## [grand-tour/](./grand-tour/) — start here to see everything
+
+**KCP end to end, driven by the shipping `kcp` CLI.** One narrated walk across the whole stack —
+adoption → navigation → time-travel → trusted render → attestation → org-federation — each stop a
+real command against a real example. The fastest way to see what KCP does.
+
+```bash
+(cd cli && npm install && npm run build)   # one-time
+node examples/grand-tour/demo.js           # the full tour
+```
+
+Browser replay (no terminal needed): [`docs/showcase.html`](../docs/showcase.html).
+
+---
+
 ## [minimal/](./minimal/)
 
 **Five minutes.**
@@ -141,7 +156,29 @@ how to authenticate, and selects the right sub-manifest for its environment (RFC
   dereferences `docs_url`; the sub-manifest's own `auth` block enforces
 
 Walkthrough: [guides/enterprise-discovery-with-org-federation.md](../guides/enterprise-discovery-with-org-federation.md).
+Runnable demo: `node examples/org-federation/demo.js` (5 scenarios, narrated).
 Validates clean: `kcp validate examples/org-federation/knowledge.yaml`.
+
+---
+
+## [paid-knowledge-api/](./paid-knowledge-api/)
+
+**Economic metadata. Free + paid tiers, x402 micropayments, per-tier rate limits (v0.25).**
+
+A knowledge API that declares what access costs and how much an agent can consume, so it plans
+before issuing a request (RFC-0005, SPEC §4.14/§4.15):
+- `payment.methods[]` — ordered `free` / `x402` (currency, `price_per_request`, networks, wallet) /
+  `meter` / `subscription` (free tier, upgrade URL); the agent picks the first it supports
+- `rate_limits` per tier (`default`/`authenticated`/`premium`), `tokens` sub-block, live-state
+  `headers`, `backoff`, and the `unlimited` sentinel
+- Unit-level overrides: a free `docs` index, an x402-metered `realtime-prices` feed, and a
+  subscription `premium-research` corpus in one manifest
+- **KCP declares; it settles nothing** — the renderer surfaces `payment`/`rate_limits` as data and
+  never dereferences a `wallet`, `plans_url`, or `upgrade_url`
+
+Walkthrough: [guides/monetizing-knowledge-with-payment.md](../guides/monetizing-knowledge-with-payment.md).
+Runnable demo: `node examples/paid-knowledge-api/demo.js` (4 scenarios, narrated).
+Validates clean: `kcp validate examples/paid-knowledge-api/knowledge.yaml`.
 
 ---
 

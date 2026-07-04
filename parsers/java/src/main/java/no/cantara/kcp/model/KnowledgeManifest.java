@@ -19,7 +19,7 @@ public record KnowledgeManifest(
         Auth auth,
         Delegation delegation,
         Compliance compliance,
-        Object payment,
+        Payment payment,
         RateLimits rateLimits,
         List<KnowledgeUnit> units,
         List<Relationship> relationships,
