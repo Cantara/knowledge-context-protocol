@@ -59,7 +59,7 @@ units:
     triggers: [ spec, specification, fields, validation, conformance, yaml, format ]
     content_hash:
       algorithm: sha256
-      value: 8f9d008ffa5041bb626e74fc51bc4f203a3b49118d82d8bec46b400061cd769c
+      value: cc78add960a2f6f3eb165cc2467aa30f0a982a194c8396f1d8bf6db51b12db12
 
   - id: proposal
     path: PROPOSAL.md
@@ -108,7 +108,7 @@ units:
       ]
     content_hash:
       algorithm: sha256
-      value: 725a5deb23939cc819be2a914ab9a0fbb98bfff2ca563db6a2d83432c7d00578
+      value: af126af61ad36a0d2ae83e608fa3edd06d344c09c9cbe0a62370d7ac319b2ff8
 
   - id: rfc-0003
     path: RFC-0003-Federation.md
@@ -160,7 +160,7 @@ units:
       ]
     content_hash:
       algorithm: sha256
-      value: 61c50f8f3a9d14abb22b98337dd9924d9024cb0ed8f17a5c37f11dcf395febf2
+      value: 8c7405dabcbfdbd0461d1539d392fd0eb629dbfeebd4237868500e4cf9040cd8
 
   - id: rfc-0005
     path: RFC-0005-Payment-and-Rate-Limits.md
