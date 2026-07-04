@@ -453,6 +453,18 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
                     "manifest declares no 'governs' relationship — nothing to propagate to"
                 )
 
+    # Trust provenance / audit validation (§3.2, v0.23)
+    prov = manifest.trust.provenance if manifest.trust else None
+    if prov is not None and prov.publisher_did and not prov.publisher_did.startswith("did:"):
+        warnings.append(
+            f"manifest: trust.provenance.publisher_did SHOULD be a DID (start with 'did:'), got '{prov.publisher_did}'"
+        )
+    audit = manifest.trust.audit if manifest.trust else None
+    if audit is not None and audit.provides_access_receipts and not audit.receipt_format:
+        warnings.append(
+            "manifest: trust.audit.provides_access_receipts is true but no receipt_format is declared"
+        )
+
     for rel in manifest.relationships:
         p = f"relationship '{rel.from_id}' -> '{rel.to_id}'"
         if rel.from_id not in unit_ids:

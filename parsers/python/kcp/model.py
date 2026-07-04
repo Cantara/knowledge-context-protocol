@@ -54,6 +54,7 @@ class Delegation:
     """Delegation constraints block — root-level and per-unit override. See SPEC.md §3.4."""
     max_depth: Optional[int] = None
     require_capability_attenuation: Optional[bool] = None
+    require_delegation_proof: Optional[bool] = None  # v0.23 (SPEC §3.4)
     audit_chain: Optional[bool] = None
     human_in_the_loop: Optional[Any] = None  # dict per spec §3.4
 
@@ -153,6 +154,7 @@ class KnowledgeUnit:
     rate_limits: Optional["RateLimits"] = None
     delegation: Optional[Delegation] = None
     compliance: Optional[Compliance] = None
+    auth: Optional["Auth"] = None  # v0.23 — per-unit auth override (SPEC §3.3)
     external_depends_on: list[ExternalDependency] = field(default_factory=list)
     requires_capabilities: list[str] = field(default_factory=list)
     freshness_policy: Optional["FreshnessPolicy"] = None
@@ -238,6 +240,7 @@ class TrustProvenance:
     publisher: Optional[str] = None
     publisher_url: Optional[str] = None
     contact: Optional[str] = None
+    publisher_did: Optional[str] = None  # v0.23 — W3C DID publisher identity
 
 
 @dataclass
@@ -245,6 +248,8 @@ class TrustAudit:
     """Audit requirements within the trust block. See SPEC.md section 3.2."""
     agent_must_log: Optional[bool] = None
     require_trace_context: Optional[bool] = None
+    provides_access_receipts: Optional[bool] = None  # v0.23
+    receipt_format: Optional[str] = None             # v0.23
 
 
 @dataclass

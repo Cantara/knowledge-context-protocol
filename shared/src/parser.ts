@@ -133,6 +133,7 @@ function parseUnit(raw: RawMap): KnowledgeUnit {
     rate_limits: parseRateLimits(raw["rate_limits"]),
     delegation: parseDelegation(raw["delegation"]),
     compliance: parseCompliance(raw["compliance"]),
+    auth: parseAuth(raw["auth"]),
     external_depends_on: ((raw["external_depends_on"] as RawMap[]) ?? []).map(
       parseExternalDependency
     ),
@@ -175,6 +176,7 @@ function parseTrust(raw: unknown): Trust | undefined {
       publisher: provData["publisher"] !== undefined ? String(provData["publisher"]) : undefined,
       publisher_url: provData["publisher_url"] !== undefined ? String(provData["publisher_url"]) : undefined,
       contact: provData["contact"] !== undefined ? String(provData["contact"]) : undefined,
+      publisher_did: provData["publisher_did"] !== undefined ? String(provData["publisher_did"]) : undefined,
     };
   }
 
@@ -184,6 +186,8 @@ function parseTrust(raw: unknown): Trust | undefined {
     audit = {
       agent_must_log: auditData["agent_must_log"] !== undefined ? Boolean(auditData["agent_must_log"]) : undefined,
       require_trace_context: auditData["require_trace_context"] !== undefined ? Boolean(auditData["require_trace_context"]) : undefined,
+      provides_access_receipts: auditData["provides_access_receipts"] !== undefined ? Boolean(auditData["provides_access_receipts"]) : undefined,
+      receipt_format: auditData["receipt_format"] !== undefined ? String(auditData["receipt_format"]) : undefined,
     };
   }
 
@@ -228,6 +232,10 @@ function parseDelegation(raw: unknown): Delegation | undefined {
     require_capability_attenuation:
       data["require_capability_attenuation"] !== undefined
         ? Boolean(data["require_capability_attenuation"])
+        : undefined,
+    require_delegation_proof:
+      data["require_delegation_proof"] !== undefined
+        ? Boolean(data["require_delegation_proof"])
         : undefined,
     audit_chain:
       data["audit_chain"] !== undefined ? Boolean(data["audit_chain"]) : undefined,

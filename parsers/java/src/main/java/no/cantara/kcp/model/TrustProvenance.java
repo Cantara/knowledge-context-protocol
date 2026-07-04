@@ -6,6 +6,7 @@ package no.cantara.kcp.model;
 public record TrustProvenance(
         String publisher,
         String publisherUrl,
-        String contact
+        String contact,
+        String publisherDid   // v0.23 — W3C DID publisher identity
 ) {
 }

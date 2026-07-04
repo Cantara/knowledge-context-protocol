@@ -592,6 +592,20 @@ export function validate(
     }
   }
 
+  // Trust provenance / audit validation (§3.2, v0.23)
+  const prov = manifest.trust?.provenance;
+  if (prov?.publisher_did && !prov.publisher_did.startsWith("did:")) {
+    warnings.push(
+      `manifest: trust.provenance.publisher_did SHOULD be a DID (start with 'did:'), got '${prov.publisher_did}'`
+    );
+  }
+  const auditBlock = manifest.trust?.audit;
+  if (auditBlock?.provides_access_receipts && !auditBlock.receipt_format) {
+    warnings.push(
+      "manifest: trust.audit.provides_access_receipts is true but no receipt_format is declared"
+    );
+  }
+
   // Federation validation (§3.6)
   const manifestIds = new Set<string>();
   for (const ref of manifest.manifests) {

@@ -753,3 +753,53 @@ units:
     expect(r.warnings.some((w) => w.includes("propagate_to_governed"))).toBe(true);
   });
 });
+
+// v0.23 Trust & Auth Completion: publisher_did, access receipts, require_delegation_proof,
+// per-unit auth override (RFC-0004/0002).
+describe("v0.23 trust/auth completion fields", () => {
+  const M = (require("js-yaml") as typeof import("js-yaml")).load(`
+kcp_version: "0.22"
+project: v23
+version: 1.0.0
+trust:
+  provenance: {publisher: Acme, publisher_did: "did:web:acme.com"}
+  audit: {provides_access_receipts: true, receipt_format: jws}
+delegation: {max_depth: 2, require_delegation_proof: true}
+units:
+  - id: partner
+    path: p.md
+    intent: "partner data"
+    scope: project
+    audience: [agent]
+    access: restricted
+    auth:
+      methods:
+        - {type: oauth2, issuer: "https://partner.example.com", scopes: [read:shared]}
+`) as Record<string, unknown>;
+
+  it("parses publisher_did, access receipts, require_delegation_proof, per-unit auth", () => {
+    const m = parseDict(M);
+    expect(m.trust!.provenance!.publisher_did).toBe("did:web:acme.com");
+    expect(m.trust!.audit!.provides_access_receipts).toBe(true);
+    expect(m.trust!.audit!.receipt_format).toBe("jws");
+    expect(m.delegation!.require_delegation_proof).toBe(true);
+    expect(m.units[0].auth!.methods[0].type).toBe("oauth2");
+    expect(m.units[0].auth!.methods[0].issuer).toBe("https://partner.example.com");
+  });
+
+  it("warns on a non-DID publisher_did and on receipts without a format", () => {
+    const bad = parseDict((require("js-yaml") as typeof import("js-yaml")).load(`
+kcp_version: "0.22"
+project: bad
+version: 1.0.0
+trust:
+  provenance: {publisher_did: "acme.com"}
+  audit: {provides_access_receipts: true}
+units:
+  - {id: u, path: u.md, intent: x, scope: project, audience: [agent]}
+`) as Record<string, unknown>);
+    const w = validate(bad, ".").warnings;
+    expect(w.some((x) => x.includes("publisher_did SHOULD be a DID"))).toBe(true);
+    expect(w.some((x) => x.includes("provides_access_receipts is true but no receipt_format"))).toBe(true);
+  });
+});

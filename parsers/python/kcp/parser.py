@@ -56,6 +56,7 @@ def _parse_trust(data: Optional[dict]) -> Optional[Trust]:
             publisher=prov_data.get("publisher"),
             publisher_url=prov_data.get("publisher_url"),
             contact=prov_data.get("contact"),
+            publisher_did=prov_data.get("publisher_did"),
         )
     audit = None
     audit_data = data.get("audit")
@@ -63,6 +64,8 @@ def _parse_trust(data: Optional[dict]) -> Optional[Trust]:
         audit = TrustAudit(
             agent_must_log=audit_data.get("agent_must_log"),
             require_trace_context=audit_data.get("require_trace_context"),
+            provides_access_receipts=audit_data.get("provides_access_receipts"),
+            receipt_format=audit_data.get("receipt_format"),
         )
     agent_requirements = None
     ar_data = data.get("agent_requirements")
@@ -105,6 +108,7 @@ def _parse_delegation(data: Optional[dict]) -> Optional[Delegation]:
     return Delegation(
         max_depth=data.get("max_depth"),
         require_capability_attenuation=data.get("require_capability_attenuation"),
+        require_delegation_proof=data.get("require_delegation_proof"),
         audit_chain=data.get("audit_chain"),
         human_in_the_loop=data.get("human_in_the_loop"),
     )
@@ -313,6 +317,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
             rate_limits=_parse_rate_limits(u.get("rate_limits")),
             delegation=_parse_delegation(u.get("delegation")),
             compliance=_parse_compliance(u.get("compliance")),
+            auth=_parse_auth(u.get("auth")),
             external_depends_on=[
                 _parse_external_dependency(ed)
                 for ed in u.get("external_depends_on", [])
