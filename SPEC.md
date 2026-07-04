@@ -1824,6 +1824,16 @@ no enforcement layer exists at the transport or storage level. See §14.1.
 
 Unknown `access` values MUST be silently ignored by parsers.
 
+**`access` declares the authentication gate only.** It answers *who may fetch this unit* —
+never *what fetching costs*. Publishers MUST NOT use `access: authenticated` or
+`access: restricted` to express a payment requirement. A unit that is anonymous-but-paid
+(e.g. x402 pay-per-request with no account) declares `access: public` — or omits `access` —
+together with a `payment` block (§4.14); the RFC-0005 auth × payment matrix explicitly
+supports this `none | x402` combination as *anonymous micropayment*. A validator SHOULD warn
+when units with `access: authenticated` or `restricted` exist in a manifest whose `auth`
+block (§3.3) declares only method `none`, since no credential could ever satisfy the gate —
+the pattern a payment-as-access confusion produces.
+
 `auth_scope` is OPTIONAL. Parsers MUST NOT reject a manifest because `auth_scope` is absent
 on a unit with `access: restricted`. A validator SHOULD warn when `auth_scope` is present on
 a unit whose `access` is not `restricted`, as the scope has no effect without the access gate.
@@ -1978,6 +1988,11 @@ type-specific.
 separate: `auth` describes *who* the agent proves it is; `payment` describes *what* access costs.
 When both are present, the agent MUST satisfy auth *before* attempting payment. Access-by-proof
 lives in `trust`; access-by-transaction lives in `payment`.
+
+The unit-level `access` field (§4.11) belongs to the auth axis only — payment requirements are
+never expressed through `access`. An anonymous pay-per-request unit is `access: public` (or
+omits `access`) with a metered `payment` block, not `access: restricted`. A fail-closed agent
+that cannot satisfy an `access` gate will skip the unit even when it could settle the payment.
 
 `payment` is OPTIONAL at both root and unit level. When omitted entirely, all units are assumed
 `free`. Unit-level `payment` **replaces** the root-level `payment` for that unit (it does not
@@ -2597,6 +2612,14 @@ effect on how the unit is evaluated — absence means "always valid" (backward-c
 - Bridges that implement temporal evaluation MUST filter at query time:
   `valid_from <= today AND (valid_until IS NULL OR valid_until >= today)`.
   Temporal filtering is applied after `not_for` filtering and before the top-N cut (§15.4).
+- `valid_from` and `valid_until` are **inclusive** boundaries — a unit is active for any
+  evaluation date `d` where `valid_from <= d <= valid_until` (this is exactly what the
+  query-time filter above encodes). A date-granularity value covers the whole named day.
+- Validity windows MAY overlap during transitions (old unit valid until Sunday, successor
+  valid from Saturday); `superseded_by` disambiguates the overlap. A unit whose declared
+  `superseded_by` successor is itself selectable (active as of the evaluation date and
+  audience/access-eligible) SHOULD NOT be selected — supersession takes precedence over
+  temporal overlap.
 - Root-level `temporal` provides defaults. Unit-level overrides are field-by-field (not block-level).
 - `superseded_by` cycles MUST be detected and reported as a manifest error.
 

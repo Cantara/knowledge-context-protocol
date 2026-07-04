@@ -427,6 +427,23 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
             "but no 'auth' block is declared"
         )
 
+    # §4.11: 'access' declares the authentication gate only. An auth block whose
+    # only method is 'none' can never satisfy a protected unit — the incoherent
+    # pattern a payment-as-access confusion produces.
+    if (
+        has_protected
+        and manifest.auth is not None
+        and manifest.auth.methods
+        and all(m.type == "none" for m in manifest.auth.methods)
+    ):
+        warnings.append(
+            "manifest: units with access 'authenticated' or 'restricted' exist "
+            "but the 'auth' block declares only method 'none' — no credential can "
+            "satisfy the gate. If these units are pay-per-request rather than "
+            "credential-gated, use access 'public' with a 'payment' block "
+            "(§4.11/§4.14)"
+        )
+
     # Agent attestation requirements validation (§3.2, v0.22)
     ar = manifest.trust.agent_requirements if manifest.trust else None
     if ar is not None:
