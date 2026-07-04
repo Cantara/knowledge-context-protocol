@@ -14,6 +14,7 @@ import no.cantara.kcp.model.ExternalRelationship;
 import no.cantara.kcp.model.HumanInTheLoop;
 import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
+import no.cantara.kcp.model.AgentIdentity;
 import no.cantara.kcp.model.ManifestRef;
 import no.cantara.kcp.model.RateLimit;
 import no.cantara.kcp.model.RateLimits;
@@ -305,7 +306,19 @@ public class KcpParser {
                 (String) m.get("local_mirror"),
                 (String) m.get("version_pin"),
                 (String) m.get("version_policy"),
-                parseTemporal((Map<String, Object>) m.get("temporal"))
+                parseTemporal((Map<String, Object>) m.get("temporal")),
+                asStringList(m.get("context")),
+                parseAgentIdentity((Map<String, Object>) m.get("agent_identity"))
+        );
+    }
+
+    private static AgentIdentity parseAgentIdentity(Map<String, Object> a) {
+        if (a == null) return null;
+        return new AgentIdentity(
+                (Boolean) a.get("required"),
+                (String) a.get("credential_hint"),
+                (String) a.get("issuer_hint"),
+                (String) a.get("docs_url")
         );
     }
 

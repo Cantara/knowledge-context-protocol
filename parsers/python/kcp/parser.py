@@ -5,8 +5,8 @@ from typing import Optional, Union
 import yaml
 
 from .model import (
-    Auth, AuthMethod, Authority, Compliance, ContentHash, ContentStructure, Delegation,
-    Discovery, ExternalDependency, ExternalRelationship, FreshnessPolicy,
+    AgentIdentity, Auth, AuthMethod, Authority, Compliance, ContentHash, ContentStructure,
+    Delegation, Discovery, ExternalDependency, ExternalRelationship, FreshnessPolicy,
     KnowledgeManifest, KnowledgeUnit, ManifestRef, RateLimit, RateLimits, Relationship,
     Trust, TrustAudit, TrustAgentRequirements, TrustProvenance, Visibility,
 )
@@ -274,6 +274,20 @@ def _parse_manifest_ref(data: dict) -> ManifestRef:
         version_pin=data.get("version_pin"),
         version_policy=data.get("version_policy"),
         temporal=_parse_temporal(data.get("temporal")),
+        context=[str(c) for c in data["context"]] if isinstance(data.get("context"), list) else None,
+        agent_identity=_parse_agent_identity(data.get("agent_identity")),
+    )
+
+
+def _parse_agent_identity(data: Optional[dict]) -> Optional[AgentIdentity]:
+    """Parse a manifests[].agent_identity block (v0.24)."""
+    if not isinstance(data, dict):
+        return None
+    return AgentIdentity(
+        required=data.get("required"),
+        credential_hint=data.get("credential_hint"),
+        issuer_hint=data.get("issuer_hint"),
+        docs_url=data.get("docs_url"),
     )
 
 

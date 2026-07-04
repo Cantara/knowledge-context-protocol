@@ -1,6 +1,6 @@
 # RFC-0011: Org Federation — Enterprise Discovery and Progressive Access
 
-**Status:** Request for Comments
+**Status:** Accepted — `manifests[].context` and `manifests[].agent_identity` promoted to [SPEC.md](./SPEC.md) §3.6 (v0.24). The Org Hub and Progressive Disclosure patterns ship as usage conventions with a reference example ([examples/org-federation/](./examples/org-federation/)) and walkthrough ([guides/enterprise-discovery-with-org-federation.md](./guides/enterprise-discovery-with-org-federation.md)); they add no new spec fields.
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-03-15
 **Discussion:** [#50 KCP Treasure Map Service](https://github.com/Cantara/knowledge-context-protocol/discussions/50)
@@ -244,8 +244,19 @@ This RFC was directly shaped by Discussion #50 ("KCP Treasure Map Service"). If 
 
 ## Status
 
-**Request for Comments.** This RFC will be promoted to the core spec (target: v0.12) after:
+**Accepted — promoted to core in v0.24.** The two concrete schema additions — `manifests[].context`
+(environment-aware references) and `manifests[].agent_identity` (pre-fetch credential-planning
+hint) — are promoted to [SPEC.md](./SPEC.md) §3.6 and parsed/surfaced by all four reference
+implementations (TypeScript shared core, Python, Java, and the `kcp render` pipeline). Both are
+declaration-level and advisory: KCP surfaces them and never acts on them.
 
-1. At least one external implementer validates the `context` and `agent_identity` field designs against a real enterprise deployment.
-2. The progressive disclosure pattern is demonstrated in a reference `examples/org-federation/` example.
-3. RFC-0009 `visibility.conditions[]` is validated in at least one bridge — confirming the two RFCs compose correctly.
+The **Org Hub** and **Progressive Disclosure** patterns are promoted as *usage conventions* — they
+introduce no new spec fields, layering instead on existing `network`, `compliance.sensitivity`,
+RFC-0009 `visibility.conditions[]`, and RFC-0007 `search_knowledge` filters. They ship with a
+reference example ([examples/org-federation/](./examples/org-federation/)) and an end-to-end
+walkthrough ([guides/enterprise-discovery-with-org-federation.md](./guides/enterprise-discovery-with-org-federation.md)).
+
+The open questions below (normative `context`/`credential_hint` vocabularies; Org-Hub-as-Level-4
+conformance) were resolved conservatively: both vocabularies ship **non-normative** and extensible,
+and no new conformance level is introduced — parse-and-expose is Level 1, consistent with the
+advisory posture of the fields.

@@ -453,6 +453,35 @@ trust:
     // content_integrity-style trust internals are never re-emitted
     expect(doc.trust.tier).toBe("unsigned");
   });
+
+  it("surfaces manifests[].context and agent_identity, never dereferencing them (§7, v0.24)", () => {
+    const manifestPath = writeManifest(`project: hub
+version: 1.0.0
+units:
+  - id: front-door
+    path: README.md
+    intent: "front door"
+    scope: global
+    audience: [agent]
+manifests:
+  - id: platform
+    url: https://git.example.com/platform/knowledge.yaml
+    relationship: foundation
+    context: ["prod"]
+    agent_identity:
+      required: true
+      credential_hint: github_pat
+      docs_url: https://kcp.example.com/auth.md
+`);
+    const { doc } = renderOk(manifestPath);
+    const edge = doc.federation[0];
+    expect(edge.context).toEqual(["prod"]);
+    expect(edge.agent_identity.required).toBe(true);
+    expect(edge.agent_identity.credential_hint).toBe("github_pat");
+    expect(edge.agent_identity.docs_url).toBe("https://kcp.example.com/auth.md");
+    // still just data: trust is never inherited across the edge (C5)
+    expect(edge.target_tier).toBe("unrendered");
+  });
 });
 
 describe("origin derivation (§4.1)", () => {

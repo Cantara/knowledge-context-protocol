@@ -73,6 +73,7 @@ project or documentation site. It adds the metadata layer that llms.txt cannot e
 - **Temporal validity** (v0.19+): validity windows (`valid_from`/`valid_until`), supersession chains, and point-in-time (`as_of`) queries for audit and future-dated policy
 - **Composition** (v0.19+): compose manifests from other manifests — include, override, exclude — without forking
 - **Trust & attestation** (v0.22+): `trust.agent_requirements` declares what an agent must prove about *itself* before restricted units are served — extended `auth.methods` (SPIFFE, DID, HTTP Message Signatures) and attestation gating enforced by the bridge. KCP *declares* the requirement; the agent *attests*. v0.23 completes the trust/auth surface: per-unit `auth` overrides, `publisher_did`, access receipts, and `require_delegation_proof`
+- **Org-federation** (v0.24+): enterprise discovery over the §3.6 federation graph — `manifests[].context` tags each sub-manifest reference with the environment(s) it is valid for (`dev`/`test`/`staging`/`prod`), and `manifests[].agent_identity` is a pre-fetch credential hint so an agent acquires the right token *before* it fetches. Advisory declarations — the hub declares; the agent acts
 
 ---
 
@@ -433,7 +434,7 @@ The format is intentionally minimal and builds incrementally through promoted RF
 - **[RFC-0008](./RFC-0008-Agent-Readiness.md)** — Agent readiness and budget-constrained selection (accepted; promoted to SPEC.md §15 in v0.14): scored results, token-budget-aware ranking, `freshness_policy`
 - **[RFC-0009](./RFC-0009-Visibility-and-Authority.md)** — Visibility and authority (accepted; promoted to SPEC.md in v0.12): `visibility` conditions and `authority` action permissions (read/summarize/modify/share/execute)
 - **[RFC-0010](./RFC-0010-Bi-Temporal-Unit-Validity.md)** — Bi-temporal unit validity (accepted; schema promoted §4.22 in v0.19, query layer §15.13 in v0.20): `temporal` block with valid-time (`valid_from`/`valid_until`) and transaction-time (`recorded_at`/`superseded_by`), plus `as_of` / `include_all_temporal` queries
-- **[RFC-0011](./RFC-0011-Org-Federation.md)** — Organisational federation patterns (RFC): hub-and-spoke and multi-org topologies over the §3.6 federation core
+- **[RFC-0011](./RFC-0011-Org-Federation.md)** — Organisational federation and enterprise discovery over the §3.6 federation core (accepted; `manifests[].context` and `manifests[].agent_identity` promoted in v0.24; Org Hub and progressive-disclosure patterns ship as usage conventions)
 - **[RFC-0012](./RFC-0012-Capability-Discovery-Provenance.md)** — Capability discovery provenance (accepted; promoted to SPEC.md v0.12): `discovery` block with `verification_status`, `confidence`, `source`, `contradicted_by`; `verified_by`/`evidence` added in v0.19
 - **[RFC-0013](./RFC-0013-Cartridge-Catalog-Distribution.md)** — Cartridge catalog and distribution (RFC; see [CATALOG-SPEC.md](./CATALOG-SPEC.md)): packaging and distributing reusable knowledge cartridges
 - **[RFC-0014](./RFC-0014-Manifest-Composition.md)** — Manifest composition (accepted; core promoted to SPEC.md §3.11 in v0.19 via RFC-0020): `includes`, `overrides`, `excludes` — inherit base manifests without forking

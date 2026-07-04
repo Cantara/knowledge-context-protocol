@@ -101,6 +101,7 @@ const KNOWN_KCP_VERSIONS = new Set([
   "0.21",
   "0.22",
   "0.23",
+  "0.24",
 ]);
 // content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
 const VALID_CONTENT_MODALITIES = new Set([
@@ -527,6 +528,28 @@ export function validate(
   }
   for (const id of supersededCycleIds(refSuccessor)) {
     errors.push(`manifests[].temporal.superseded_by cycle detected involving '${id}'`);
+  }
+
+  // Federation: manifests[].context and manifests[].agent_identity (§3.6, RFC-0011, v0.24).
+  for (const ref of manifest.manifests) {
+    if (ref.context !== undefined && ref.context.length === 0) {
+      warnings.push(
+        `manifests['${ref.id}']: context is present but empty; an entry valid in no environment is likely a mistake (omit context to mean 'all environments')`
+      );
+    }
+    const ai = ref.agent_identity;
+    if (ai) {
+      if (ai.required === true && !ai.credential_hint) {
+        warnings.push(
+          `manifests['${ref.id}']: agent_identity.required is true but no credential_hint is declared (agents are told a credential is needed but not which kind)`
+        );
+      }
+      if (ai.issuer_hint && ai.credential_hint !== undefined && ai.credential_hint !== "oauth2") {
+        warnings.push(
+          `manifests['${ref.id}']: agent_identity.issuer_hint is only meaningful for credential_hint 'oauth2', got '${ai.credential_hint}'`
+        );
+      }
+    }
   }
 
   // Root-level delegation validation (§3.4)

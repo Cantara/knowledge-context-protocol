@@ -41,6 +41,17 @@ something is documented or answer a question about the project.
    `relationships` to expand to neighbours *if* the task needs them — do not
    pull the whole manifest's worth of files.
 
+5. **Traverse federation deliberately.** If the manifest has a `manifests`
+   block (a hub), do not fetch every sub-manifest:
+   - `context` — select only the entries whose environment list matches where
+     you are running (`dev`/`test`/`staging`/`prod`); an entry with no `context`
+     is valid everywhere.
+   - `agent_identity` — read this *before* fetching. It declares the credential
+     the sub-manifest expects (`credential_hint`, `issuer_hint`, `docs_url`).
+     If `required: true`, acquire the credential (or surface `docs_url` to the
+     user) first, rather than fetching blind and failing. It is a planning
+     hint, not enforcement — the sub-manifest's own `auth` block is the gate.
+
 ## Trust note
 
 If the `knowledge.yaml` comes from a repository you do not control or an

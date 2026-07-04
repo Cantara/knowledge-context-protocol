@@ -10,6 +10,7 @@ import no.cantara.kcp.model.ExternalRelationship;
 import no.cantara.kcp.model.HumanInTheLoop;
 import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
+import no.cantara.kcp.model.AgentIdentity;
 import no.cantara.kcp.model.ManifestRef;
 import no.cantara.kcp.model.Relationship;
 import no.cantara.kcp.model.Temporal;
@@ -54,7 +55,7 @@ public class KcpValidator {
     private static final Set<String> VALID_ACCESS_VALUES = Set.of("public", "authenticated", "restricted");
     private static final Set<String> VALID_SENSITIVITY_VALUES = Set.of("public", "internal", "confidential", "restricted");
     private static final Set<String> VALID_HITL_MECHANISMS = Set.of("oauth_consent", "uma", "custom");
-    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23");
+    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24");
     // content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
     private static final Set<String> VALID_CONTENT_MODALITIES = Set.of("prose", "table", "code", "list", "diagram", "reference", "mixed");
     private static final Set<String> VALID_DENSITY = Set.of("sparse", "normal", "dense");
@@ -376,6 +377,23 @@ public class KcpValidator {
             }
             if (ref.versionPin() != null && ref.versionPolicy() == null) {
                 warnings.add(p + ": 'version_pin' is set but 'version_policy' is not declared; defaulting to 'compatible'");
+            }
+            // Federation: context and agent_identity (§3.6, RFC-0011, v0.24)
+            if (ref.context() != null && ref.context().isEmpty()) {
+                warnings.add(p + ": context is present but empty; an entry valid in no environment is likely a mistake "
+                        + "(omit context to mean 'all environments')");
+            }
+            if (ref.agentIdentity() != null) {
+                AgentIdentity ai = ref.agentIdentity();
+                if (Boolean.TRUE.equals(ai.required()) && (ai.credentialHint() == null || ai.credentialHint().isBlank())) {
+                    warnings.add(p + ": agent_identity.required is true but no credential_hint is declared "
+                            + "(agents are told a credential is needed but not which kind)");
+                }
+                if (ai.issuerHint() != null && !ai.issuerHint().isBlank()
+                        && ai.credentialHint() != null && !"oauth2".equals(ai.credentialHint())) {
+                    warnings.add(p + ": agent_identity.issuer_hint is only meaningful for credential_hint 'oauth2', "
+                            + "got '" + ai.credentialHint() + "'");
+                }
             }
         }
 

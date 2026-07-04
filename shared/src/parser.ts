@@ -19,6 +19,7 @@ import type {
   KnowledgeManifest,
   KnowledgeUnit,
   ManifestRef,
+  AgentIdentity,
   RateLimits,
   Relationship,
   Trust,
@@ -423,6 +424,19 @@ function parseManifestRef(raw: RawMap): ManifestRef {
     version_pin: raw["version_pin"] !== undefined ? String(raw["version_pin"]) : undefined,
     version_policy: raw["version_policy"] !== undefined ? String(raw["version_policy"]) : undefined,
     temporal: parseTemporal(raw["temporal"]),
+    context: Array.isArray(raw["context"]) ? (raw["context"] as unknown[]).map(String) : undefined,
+    agent_identity: parseAgentIdentity(raw["agent_identity"]),
+  };
+}
+
+function parseAgentIdentity(raw: unknown): AgentIdentity | undefined {
+  if (raw === null || typeof raw !== "object") return undefined;
+  const r = raw as RawMap;
+  return {
+    required: r["required"] !== undefined ? Boolean(r["required"]) : undefined,
+    credential_hint: r["credential_hint"] !== undefined ? String(r["credential_hint"]) : undefined,
+    issuer_hint: r["issuer_hint"] !== undefined ? String(r["issuer_hint"]) : undefined,
+    docs_url: r["docs_url"] !== undefined ? String(r["docs_url"]) : undefined,
   };
 }
 

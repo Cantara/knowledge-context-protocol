@@ -2170,7 +2170,7 @@ relationships:
       <div class="section-header reveal">
         <span class="section-label">Roadmap</span>
         <h2>Where KCP is headed</h2>
-        <p>v0.21 is the current release. Fields are promoted from RFC proposals to core as they accumulate real-world validation. Remaining RFCs are open for community feedback through 2026.</p>
+        <p>v0.24 is the current release. Fields are promoted from RFC proposals to core as they accumulate real-world validation. Remaining RFCs are open for community feedback through 2026.</p>
       </div>
 
       <div class="roadmap-core reveal">
@@ -2435,7 +2435,7 @@ relationships:
 
       <div class="roadmap-core reveal">
         <div class="roadmap-core__info">
-          <span class="roadmap-core__badge">v0.23 — Current</span>
+          <span class="roadmap-core__badge">v0.23 — Shipped</span>
           <h3>Trust &amp; Auth Completion</h3>
           <p>Finishes the trust/auth surface: a per-unit <code>auth</code> override (multi-tenant sources), <code>trust.provenance.publisher_did</code> (a resolvable W3C DID for the publisher), <code>trust.audit.provides_access_receipts</code> / <code>receipt_format</code>, and <code>require_delegation_proof</code>. Declaration-level — no new gating. The pass also reconciled the RFCs with the spec, correcting stale &ldquo;not yet promoted&rdquo; notes for per-unit <code>delegation</code> and <code>compliance</code>. Promoted from RFC-0002 and RFC-0004.</p>
         </div>
@@ -2444,6 +2444,20 @@ relationships:
           <span class="roadmap-field-pill">per-unit auth</span>
           <span class="roadmap-field-pill">access receipts</span>
           <span class="roadmap-field-pill">RFC-0002</span>
+        </div>
+      </div>
+
+      <div class="roadmap-core reveal">
+        <div class="roadmap-core__info">
+          <span class="roadmap-core__badge">v0.24 — Current</span>
+          <h3>Org-Federation</h3>
+          <p>Answers the enterprise bootstrap — how an agent that knows only a company domain finds its first manifest, gets through the door, and learns what else exists. Two fields join the §3.6 federation graph: <code>manifests[].context</code> tags each sub-manifest reference with the environment(s) it is valid for (<code>dev</code>/<code>test</code>/<code>staging</code>/<code>prod</code>), and <code>manifests[].agent_identity</code> is a pre-fetch credential hint so an agent acquires the right token <em>before</em> it fetches. Advisory declarations — the hub declares; the agent acts. The Org Hub and progressive-disclosure patterns ship as usage conventions. Promoted from RFC-0011.</p>
+        </div>
+        <div class="roadmap-core__fields">
+          <span class="roadmap-field-pill">context</span>
+          <span class="roadmap-field-pill">agent_identity</span>
+          <span class="roadmap-field-pill">org hub</span>
+          <span class="roadmap-field-pill">RFC-0011</span>
         </div>
       </div>
 

@@ -17,7 +17,7 @@
     "fields": ["from", "to", "type"]
   },
   "federation": {
-    "fields": ["id", "url", "relationship"]
+    "fields": ["id", "url", "relationship", "context", "agent_identity"]
   },
   "provenance": {
     "fields": ["publisher", "publisher_url", "contact", "publisher_did"]
