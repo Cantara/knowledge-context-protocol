@@ -10,6 +10,10 @@ trust:
   provenance:
     publisher: "Acme Corp"
     contact: "knowledge-team@acme.com"
+    publisher_did: "did:web:acme.com"        # v0.23 — resolvable publisher identity
+  audit:
+    provides_access_receipts: true           # v0.23 — issues verifiable access receipts
+    receipt_format: jws
   agent_requirements:
     require_attestation: true
     # Satisfied by EITHER an allowlisted provider identity OR a credential the endpoint accepts.
