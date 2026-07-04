@@ -8,6 +8,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+_Nothing yet._
+
+---
+
+## [0.25.1] — 2026-07-04 — Interop Clarifications
+
+**Spec version:** `"0.25"` (unchanged — clarifications only, no new fields) | **Prior:** v0.25.0 (2026-07-04)
+
+Two normative clarifications surfaced by cross-testing the spec against the
+[kcp-agent](https://github.com/Cantara/kcp-agent) reference agent, plus one advisory
+validator warning. No behavioural change for conformant manifests.
+
 ### Clarified (kcp-agent interop, #114/#115)
 
 - **§4.11 `access` declares the authentication gate only** — payment requirements are never
