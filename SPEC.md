@@ -1,6 +1,6 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.22
+**Version:** 0.23
 **Status:** Draft
 **Date:** 2026-06-12
 **Repository:** github.com/cantara/knowledge-context-protocol

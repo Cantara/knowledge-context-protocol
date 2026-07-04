@@ -20,7 +20,7 @@
     "fields": ["id", "url", "relationship"]
   },
   "provenance": {
-    "fields": ["publisher", "publisher_url", "contact"]
+    "fields": ["publisher", "publisher_url", "contact", "publisher_did"]
   },
   "agent_requirements": {
     "fields": ["require_attestation", "trusted_providers", "attestation_url", "attestation_jwks", "propagate_to_governed"]

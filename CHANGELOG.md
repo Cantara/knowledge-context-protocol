@@ -8,22 +8,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### Spec — v0.23 "Trust & Auth Completion" foundation (RFC-0002 + RFC-0004)
+_Nothing yet._
 
-Finishes the trust/auth story and reconciles the RFCs with what actually shipped. Declaration-
-level fields only — no new gating, no new conformance rules (implementation lands in later phases):
+---
 
-- **Per-unit `auth` override (SPEC §3.3)** — a unit's `auth` block overrides the root
-  `auth.methods` for that unit alone (multi-tenant sources).
-- **`trust.audit.provides_access_receipts` / `receipt_format` (SPEC §3.2)** — declares the source
-  issues verifiable access receipts and their format (`jws`, `vc`, or a spec URL).
-- **`trust.provenance.publisher_did` (SPEC §3.2)** — a W3C DID for the publisher, complementing
+## [0.23.0] — 2026-07-04 — Trust & Auth Completion
+
+**Spec version:** `"0.23"` | **Prior:** `"0.22"` (v0.22.0, 2026-07-04)
+
+Finishes the trust/auth story opened across v0.16–v0.22 and reconciles the RFCs with what
+actually shipped. Declaration-level fields — no new gating and **no new conformance rules**; the
+security *enforcement* was v0.16–v0.22's job.
+
+### Promoted (RFC-0002 + RFC-0004)
+
+- **Per-unit `auth` override (§3.3)** — a unit's `auth` block overrides the root `auth.methods`
+  for that unit alone (multi-tenant sources).
+- **`trust.audit.provides_access_receipts` / `receipt_format` (§3.2)** — declares the source
+  issues verifiable access receipts and their format (`jws`, `vc`, or a spec URL). A capability of
+  the source, not a requirement on the agent.
+- **`trust.provenance.publisher_did` (§3.2)** — a W3C DID for the publisher, complementing
   `publisher`/`publisher_url` with a cryptographically resolvable identity.
-- **`require_delegation_proof` (SPEC §3.4)** — added to the delegation field reference (it was in
-  the block's example but missing from the table) and to the implementations.
-- **RFC drift audit:** RFC-0002/0004 "Still RFC-only" lists corrected — per-unit `delegation`
-  (§3.4) and per-unit `compliance` (§3.5) were already in the spec but still marked pending; the
-  four fields above are marked Accepted → v0.23.
+- **`require_delegation_proof` (§3.4)** — was in the delegation block's example but missing from
+  the field-reference table *and* every parser; now documented and implemented.
+
+### RFC drift audit
+
+The v0.23 pass reconciled the RFC headers with the spec: RFC-0002/0004 "Still RFC-only" lists
+were stale — per-unit `delegation` (§3.4) and per-unit `compliance` (§3.5) were **already
+promoted** but still marked pending. Corrected; the four fields above marked Accepted → v0.23.
+
+### Implementations
+
+- All four parsers (shared-TS, Python, Java) parse and expose the new fields; validators warn on
+  a non-DID `publisher_did` and on `provides_access_receipts` without a `receipt_format`.
+- The renderer surfaces `publisher_did` through the provenance passthrough (`render-schema.json`).
+- `knowledge-schema.json` updated; cross-language tests added. Packages bumped to 0.23.0.
 
 ---
 
