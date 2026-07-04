@@ -59,7 +59,7 @@ units:
     triggers: [ spec, specification, fields, validation, conformance, yaml, format ]
     content_hash:
       algorithm: sha256
-      value: 1ff29e752a02ff100feec500fac5c2800d6a1da07bbe486d7e60f6a2ca0909bb
+      value: e3868a95585f856c2eb6184957f8c42298e2bf96407afb91f1fa2184e68c54dd
 
   - id: proposal
     path: PROPOSAL.md
@@ -186,7 +186,7 @@ units:
       ]
     content_hash:
       algorithm: sha256
-      value: a7f5bd31cdfbad50b7071a92d5f277c96322907e29f65bd2bd16d7a92b52eea8
+      value: b46d0657e95b64a9ff3bf995e840e193cc96f90e939aef7a9136afd667ed0de2
 
   - id: rfc-0006
     path: RFC-0006-Context-Window-Hints.md
