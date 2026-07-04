@@ -2,6 +2,21 @@
 
 Reference implementations and runnable simulation scenarios — from the minimum viable configuration to adversarial multi-agent stress tests.
 
+## [grand-tour/](./grand-tour/) — start here to see everything
+
+**KCP end to end, driven by the shipping `kcp` CLI.** One narrated walk across the whole stack —
+adoption → navigation → time-travel → trusted render → attestation → org-federation — each stop a
+real command against a real example. The fastest way to see what KCP does.
+
+```bash
+(cd cli && npm install && npm run build)   # one-time
+node examples/grand-tour/demo.js           # the full tour
+```
+
+Browser replay (no terminal needed): [`docs/showcase.html`](../docs/showcase.html).
+
+---
+
 ## [minimal/](./minimal/)
 
 **Five minutes.**
@@ -141,6 +156,7 @@ how to authenticate, and selects the right sub-manifest for its environment (RFC
   dereferences `docs_url`; the sub-manifest's own `auth` block enforces
 
 Walkthrough: [guides/enterprise-discovery-with-org-federation.md](../guides/enterprise-discovery-with-org-federation.md).
+Runnable demo: `node examples/org-federation/demo.js` (5 scenarios, narrated).
 Validates clean: `kcp validate examples/org-federation/knowledge.yaml`.
 
 ---

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KCP Showcase — the whole stack, live · KCP</title>
+  <meta name="description" content="One narrated tour of KCP end to end — adoption, navigation, time-travel, the trusted render pipeline, agent attestation, and org-federation — replaying authentic output from the shipping kcp CLI.">
+  <meta name="theme-color" content="#2563eb">
+
+  <meta property="og:title" content="KCP Showcase — the whole stack, live · KCP">
+  <meta property="og:description" content="Adoption → navigation → time-travel → trusted render → attestation → org-federation, each a real kcp command replayed in the browser.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://cantara.github.io/knowledge-context-protocol/showcase.html">
+  <meta property="og:image" content="https://cantara.github.io/knowledge-context-protocol/og-image.svg">
+
+  <link rel="knowledge" href="https://raw.githubusercontent.com/Cantara/knowledge-context-protocol/main/knowledge.yaml">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+
+  <script data-goatcounter="https://kcp.goatcounter.com/count"
+          async src="//gc.zgo.at/count.js"></script>
+
+  <style>
+    /* ── Showcase-scoped styles (reuse rsim-* look) ─────────────────────────── */
+    .rsim-wrap { max-width: 1080px; margin: 0 auto; padding: 0 var(--space-4); }
+    .rsim-head { text-align: center; padding: var(--space-8) 0 var(--space-5); }
+    .rsim-head h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); margin: 0 0 var(--space-3); }
+    .rsim-head p { color: var(--text-secondary); max-width: 660px; margin: 0 auto; }
+    .rsim-reel { padding: var(--space-6) 0 var(--space-4); border-top: 1px solid var(--border); margin-top: var(--space-6); }
+    .rsim-reel:first-of-type { border-top: none; margin-top: 0; }
+    .rsim-reel__label { text-align: center; margin: 0 0 var(--space-2); font-size: 1.3rem; }
+    .rsim-reel__sub { text-align: center; color: var(--text-secondary); max-width: 620px; margin: 0 auto var(--space-3); font-size: .95rem; }
+    .rsim-tabs { display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: center; margin: var(--space-4) 0; }
+    .rsim-tab {
+      display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+      border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-secondary);
+      padding: 10px 14px; cursor: pointer; font: inherit; text-align: left;
+      transition: border-color .15s, transform .15s; min-width: 150px;
+    }
+    .rsim-tab:hover { transform: translateY(-2px); }
+    .rsim-tab.is-active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .rsim-tab__title { font-weight: 600; font-size: .9rem; }
+    .rsim-badge { font-family: 'JetBrains Mono', monospace; font-size: .68rem; font-weight: 600;
+      padding: 2px 7px; border-radius: 999px; white-space: nowrap; background: #e6f4ea; color: #1a7f37; }
+    [data-theme="dark"] .rsim-badge { background: rgba(26,127,55,.25); color: #5fd98a; }
+
+    .rsim-stage { display: grid; grid-template-columns: 1fr; gap: var(--space-4); margin-bottom: var(--space-6); }
+    @media (min-width: 880px) { .rsim-stage { grid-template-columns: 1fr 1fr; align-items: start; } }
+    .rsim-usecase { background: var(--bg-secondary); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: var(--space-4); }
+    .rsim-usecase h2 { font-size: 1.1rem; margin: 0 0 var(--space-2); }
+    .rsim-usecase p { color: var(--text-secondary); margin: 0 0 var(--space-3); font-size: .95rem; }
+    .rsim-verdict { border-radius: var(--radius); padding: var(--space-3); font-size: .9rem; line-height: 1.5;
+      background: #e6f4ea; border: 1px solid #a6e0bb; color: #14532d; }
+    [data-theme="dark"] .rsim-verdict { background: rgba(26,127,55,.18); border-color: rgba(95,217,138,.4); color: #b7ecc7; }
+    .rsim-verdict strong { display: block; margin-bottom: 4px; }
+
+    .rsim-term__body { min-height: 220px; }
+    .rsim-term__body pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
+    .rsim-prompt { color: #6ee7b7; }
+    .rsim-cursor { display: inline-block; width: 8px; background: currentColor; animation: rsim-blink 1s steps(2) infinite; }
+    @keyframes rsim-blink { 50% { opacity: 0; } }
+
+    .rsim-run { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: var(--space-4); margin-bottom: var(--space-4); }
+    .rsim-run h3 { margin: 0 0 var(--space-2); font-size: 1rem; }
+    .rsim-run__cmd { display: flex; align-items: center; gap: var(--space-2); }
+    .rsim-run__cmd code { flex: 1; font-family: 'JetBrains Mono', monospace; font-size: .85rem;
+      background: var(--bg-tertiary, var(--bg-primary)); padding: 10px 12px; border-radius: 6px; overflow-x: auto; white-space: pre; }
+    .rsim-note { color: var(--text-secondary); font-size: .85rem; margin-top: var(--space-3); }
+    .rsim-controls { display: flex; gap: var(--space-2); justify-content: center; margin-bottom: var(--space-4); }
+  </style>
+</head>
+<body>
+
+  <nav class="nav" role="navigation" aria-label="Main navigation">
+    <div class="nav__inner">
+      <a href="index.html" class="nav__brand" aria-label="KCP Home">
+        <svg class="nav__logo" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="8" cy="8" r="4" fill="currentColor"/><circle cx="24" cy="8" r="4" fill="currentColor"/>
+          <circle cx="16" cy="24" r="5" fill="currentColor"/>
+          <line x1="11" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="10" y1="11" x2="14" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="22" y1="11" x2="18" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="8" cy="8" r="1.5" fill="var(--bg-primary)"/><circle cx="24" cy="8" r="1.5" fill="var(--bg-primary)"/>
+          <circle cx="16" cy="24" r="2" fill="var(--bg-primary)"/>
+        </svg>
+        KCP
+      </a>
+      <ul class="nav__links" id="nav-links">
+        <li><a href="index.html#spec">Spec</a></li>
+        <li><a href="index.html#use-cases">Use Cases</a></li>
+        <li><a href="showcase.html" aria-current="page" style="font-weight: var(--fw-medium);">Showcase</a></li>
+        <li><a href="render-simulator.html">Render Demo</a></li>
+        <li><a href="index.html#get-started">Get Started</a></li>
+        <li><a href="index.html#faq">FAQ</a></li>
+      </ul>
+      <div class="nav__actions">
+        <a href="https://github.com/Cantara/knowledge-context-protocol/tree/main/examples/grand-tour" class="btn btn--ghost" target="_blank" rel="noopener" aria-label="View demo source on GitHub">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        </a>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="nav__mobile-toggle" id="mobile-toggle" aria-label="Toggle navigation menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="rsim-wrap">
+    <header class="rsim-head">
+      <h1>KCP in all its glory</h1>
+      <p>One walk through the whole stack — from a five-line manifest to enterprise federation —
+        each stop a real <code>kcp</code> command, replayed here from authentic CLI output. Nothing
+        is mocked: this page replays captures from the shipping binary, so it cannot drift.</p>
+    </header>
+
+    <!-- Reel template is instantiated twice by the script below -->
+    <section class="rsim-reel" data-reel="grand">
+      <h2 class="rsim-reel__label">The grand tour</h2>
+      <p class="rsim-reel__sub">Adoption → navigation → time-travel → trusted render → attestation → org-federation, in the order a project grows into them.</p>
+      <div class="rsim-tabs" role="tablist" aria-label="Grand tour stops"></div>
+      <div class="rsim-controls"><button class="btn btn--primary rsim-play">▶ Replay</button></div>
+      <div class="rsim-stage">
+        <section class="rsim-usecase">
+          <h2 class="rsim-title"></h2>
+          <p class="rsim-usecase-text"></p>
+          <div class="rsim-verdict" role="status"></div>
+        </section>
+        <div class="code-block" aria-live="polite">
+          <div class="code-block__header">
+            <div class="code-block__dots"><span class="code-block__dot"></span><span class="code-block__dot"></span><span class="code-block__dot"></span></div>
+            <span class="code-block__filename">kcp</span>
+          </div>
+          <div class="code-block__body rsim-term__body"><pre class="rsim-term"></pre></div>
+        </div>
+      </div>
+      <div class="rsim-run">
+        <h3>Run this stop yourself</h3>
+        <div class="rsim-run__cmd"><code class="rsim-run-cmd"></code><button class="btn btn--ghost rsim-copy" aria-label="Copy command">Copy</button></div>
+      </div>
+    </section>
+
+    <section class="rsim-reel" data-reel="org">
+      <h2 class="rsim-reel__label">Go deeper: org-federation</h2>
+      <p class="rsim-reel__sub">The v0.24 layer up close — an agent arriving cold, selecting sub-manifests by environment, planning credentials, and climbing the disclosure ladder.</p>
+      <div class="rsim-tabs" role="tablist" aria-label="Org-federation scenarios"></div>
+      <div class="rsim-controls"><button class="btn btn--primary rsim-play">▶ Replay</button></div>
+      <div class="rsim-stage">
+        <section class="rsim-usecase">
+          <h2 class="rsim-title"></h2>
+          <p class="rsim-usecase-text"></p>
+          <div class="rsim-verdict" role="status"></div>
+        </section>
+        <div class="code-block" aria-live="polite">
+          <div class="code-block__header">
+            <div class="code-block__dots"><span class="code-block__dot"></span><span class="code-block__dot"></span><span class="code-block__dot"></span></div>
+            <span class="code-block__filename">kcp</span>
+          </div>
+          <div class="code-block__body rsim-term__body"><pre class="rsim-term"></pre></div>
+        </div>
+      </div>
+      <div class="rsim-run">
+        <h3>Run this scenario yourself</h3>
+        <div class="rsim-run__cmd"><code class="rsim-run-cmd"></code><button class="btn btn--ghost rsim-copy" aria-label="Copy command">Copy</button></div>
+      </div>
+      <p class="rsim-note">
+        Prerequisite once: <code>cd cli &amp;&amp; npm install &amp;&amp; npm run build</code>. Every command
+        above runs through the production <code>kcp</code> CLI — this page replays captures produced by
+        <a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/examples/grand-tour/demo.js" target="_blank" rel="noopener"><code>examples/grand-tour/demo.js</code></a>
+        and <a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/examples/org-federation/demo.js" target="_blank" rel="noopener"><code>examples/org-federation/demo.js</code></a>,
+        so it cannot drift from reality.
+      </p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__meta" style="border:none;">
+        <p>Apache License 2.0 &middot; Proposed by <a href="https://www.exoreaction.com" target="_blank" rel="noopener">eXOReaction AS</a>, Oslo, Norway &middot; Hosted under <a href="https://github.com/Cantara" target="_blank" rel="noopener">Cantara</a></p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script src="js/grand-tour-captures.js"></script>
+  <script src="js/org-federation-captures.js"></script>
+  <script>
+    (function () {
+      function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+      function wireReel(reelEl, caps, badgeKey) {
+        var tabsEl = reelEl.querySelector('.rsim-tabs');
+        var termEl = reelEl.querySelector('.rsim-term');
+        var titleEl = reelEl.querySelector('.rsim-title');
+        var useEl = reelEl.querySelector('.rsim-usecase-text');
+        var verdictEl = reelEl.querySelector('.rsim-verdict');
+        var runEl = reelEl.querySelector('.rsim-run-cmd');
+        var playBtn = reelEl.querySelector('.rsim-play');
+        var copyBtn = reelEl.querySelector('.rsim-copy');
+        var active = 0, timer = null;
+
+        if (!caps || !caps.length) {
+          termEl.textContent = 'No captures found. Generate them with:\n  node ' +
+            (badgeKey === 'badge' ? 'examples/grand-tour/demo.js' : 'examples/org-federation/demo.js') + ' --capture';
+          return;
+        }
+
+        caps.forEach(function (cap, i) {
+          var b = document.createElement('button');
+          b.className = 'rsim-tab';
+          b.setAttribute('role', 'tab');
+          var label = cap[badgeKey] || ('Step ' + (i + 1));
+          b.innerHTML = '<span class="rsim-badge">' + esc(label) + '</span><span class="rsim-tab__title">' + esc(cap.title) + '</span>';
+          b.addEventListener('click', function () { select(i, true); });
+          tabsEl.appendChild(b);
+        });
+
+        function lines(cap) { return ('$ ' + cap.command + '\n\n' + cap.output).split('\n'); }
+
+        function paint(ls, upto) {
+          var html = '';
+          for (var i = 0; i < upto && i < ls.length; i++) {
+            var line = esc(ls[i]);
+            if (line.indexOf('$ ') === 0) line = '<span class="rsim-prompt">$</span>' + line.slice(1);
+            html += line + '\n';
+          }
+          if (upto < ls.length) html += '<span class="rsim-cursor">&nbsp;</span>';
+          termEl.innerHTML = html;
+        }
+
+        function play(ls) {
+          clearInterval(timer);
+          var n = 0; paint(ls, 0);
+          timer = setInterval(function () { n++; paint(ls, n); if (n >= ls.length) clearInterval(timer); }, 70);
+        }
+
+        function select(i, animate) {
+          active = i;
+          var cap = caps[i];
+          Array.prototype.forEach.call(tabsEl.children, function (el, j) {
+            el.classList.toggle('is-active', j === i);
+            el.setAttribute('aria-selected', j === i ? 'true' : 'false');
+          });
+          titleEl.textContent = cap.title;
+          useEl.textContent = cap.blurb || cap.useCase;
+          verdictEl.innerHTML = '<strong>✓ What this shows</strong>' + esc(cap.verdict);
+          runEl.textContent = cap.runCommand;
+          var ls = lines(cap);
+          if (animate) play(ls); else paint(ls, ls.length);
+        }
+
+        playBtn.addEventListener('click', function () { select(active, true); });
+        copyBtn.addEventListener('click', function () {
+          navigator.clipboard && navigator.clipboard.writeText(caps[active].runCommand);
+          copyBtn.textContent = 'Copied';
+          setTimeout(function () { copyBtn.textContent = 'Copy'; }, 1200);
+        });
+
+        select(0, true);
+      }
+
+      wireReel(document.querySelector('[data-reel="grand"]'), window.GRAND_TOUR_CAPTURES, 'badge');
+      wireReel(document.querySelector('[data-reel="org"]'), window.ORG_FEDERATION_CAPTURES, 'id');
+    })();
+  </script>
+</body>
+</html>

@@ -451,7 +451,7 @@ The format is intentionally minimal and builds incrementally through promoted RF
 - **cli/** — Developer CLI: `init`, `validate`, `query`, `stats`, `render` (§16 trusted render pipeline), `sign` (Ed25519 + `--update-hashes`). Installed automatically by [kcp-commands](https://github.com/Cantara/kcp-commands) — run `kcp stats` to see queries served, tokens saved, and top units from your local usage log.
 - **[skills/](./skills/)** — Portable [Agent Skills](./skills/README.md) (`SKILL.md`) for adopting, authoring, navigating, and safely rendering KCP — drop into Claude Code or any Skills-capable agent; no MCP server required.
 - **plugins/opencode/** — OpenCode plugin (`opencode-kcp-plugin` on npm)
-- **examples/** — Reference manifests at four adoption levels plus 4 simulation scenarios (150 adversarial tests: A2A+KCP clinical research, energy metering HITL, legal delegation chains, financial AML)
+- **examples/** — Reference manifests at four adoption levels plus simulation scenarios (150 adversarial tests: A2A+KCP clinical research, energy metering HITL, legal delegation chains, financial AML). Start with **[examples/grand-tour/](./examples/grand-tour/)** — one narrated `node demo.js` walk across the whole stack (adoption → navigation → time-travel → trusted render → attestation → org-federation), driven by the real CLI. Browser replay: **[docs/showcase.html](https://cantara.github.io/knowledge-context-protocol/showcase.html)**.
 - **[kcp-memory](https://github.com/Cantara/kcp-memory)** — Episodic memory daemon for Claude Code (separate repo)
 - **[kcp-dashboard](https://github.com/Cantara/kcp-dashboard)** — Live terminal dashboard for KCP usage stats (Go + Bubble Tea, single binary)
 

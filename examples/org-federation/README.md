@@ -27,6 +27,20 @@ kcp validate examples/org-federation/knowledge.yaml   # ✓ Valid
 kcp render   examples/org-federation/knowledge.yaml   # surfaces context + agent_identity per edge
 ```
 
+## Runnable demo
+
+```bash
+(cd cli && npm install && npm run build)        # one-time
+node examples/org-federation/demo.js            # all scenarios, narrated
+node examples/org-federation/demo.js env-prod   # one scenario by id
+node examples/org-federation/demo.js --list     # list scenario ids
+```
+
+Five scenarios drive the real `kcp` CLI against this hub and narrate the agent's traversal —
+computed from authentic `kcp render` output, not scripted: **cold** arrival, **env-prod** /
+**env-dev** context selection, **credentials** planning via `agent_identity`, and **disclosure**
+up the sensitivity ladder. Browser replay: [`docs/showcase.html`](../../docs/showcase.html).
+
 ## Files
 
 - [`knowledge.yaml`](./knowledge.yaml) — the hub manifest (4 units, 3 federated sub-manifests).
