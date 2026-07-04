@@ -149,6 +149,7 @@ public class KcpParser {
                 parseRateLimits((Map<String, Object>) u.get("rate_limits")),
                 parseDelegation((Map<String, Object>) u.get("delegation")),
                 parseCompliance((Map<String, Object>) u.get("compliance")),
+                parseAuth((Map<String, Object>) u.get("auth")),
                 externalDependsOn,
                 (List<String>) u.getOrDefault("requires_capabilities", List.of()),
                 parseFreshnessPolicy((Map<String, Object>) u.get("freshness_policy")),
@@ -182,7 +183,8 @@ public class KcpParser {
             provenance = new TrustProvenance(
                     (String) provMap.get("publisher"),
                     (String) provMap.get("publisher_url"),
-                    (String) provMap.get("contact")
+                    (String) provMap.get("contact"),
+                    (String) provMap.get("publisher_did")
             );
         }
 
@@ -190,7 +192,9 @@ public class KcpParser {
         if (auditMap != null) {
             audit = new TrustAudit(
                     (Boolean) auditMap.get("agent_must_log"),
-                    (Boolean) auditMap.get("require_trace_context")
+                    (Boolean) auditMap.get("require_trace_context"),
+                    (Boolean) auditMap.get("provides_access_receipts"),
+                    (String) auditMap.get("receipt_format")
             );
         }
 
@@ -249,6 +253,7 @@ public class KcpParser {
         return new Delegation(
                 (Integer) d.get("max_depth"),
                 (Boolean) d.get("require_capability_attenuation"),
+                (Boolean) d.get("require_delegation_proof"),
                 (Boolean) d.get("audit_chain"),
                 hitl
         );

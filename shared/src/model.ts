@@ -98,6 +98,7 @@ export interface KnowledgeUnit {
   rate_limits?: RateLimits;
   delegation?: Delegation;
   compliance?: Compliance;
+  auth?: Auth;             // v0.23 — per-unit auth override (SPEC §3.3)
   external_depends_on: ExternalDependency[];  // defaults to []
   requires_capabilities?: string[];
   freshness_policy?: FreshnessPolicy;
@@ -171,12 +172,15 @@ export interface TrustProvenance {
   publisher?: string;
   publisher_url?: string;
   contact?: string;
+  publisher_did?: string;   // v0.23 — W3C DID publisher identity
 }
 
 /** Audit requirements within the trust block. See SPEC.md §3.2. */
 export interface TrustAudit {
   agent_must_log?: boolean;
   require_trace_context?: boolean;
+  provides_access_receipts?: boolean;   // v0.23
+  receipt_format?: string;              // v0.23
 }
 
 /** Agent attestation requirements within the trust block. See SPEC.md §3.2 (v0.22). */
@@ -206,6 +210,7 @@ export interface HumanInTheLoop {
 export interface Delegation {
   max_depth?: number;
   require_capability_attenuation?: boolean;
+  require_delegation_proof?: boolean;   // v0.23 (SPEC §3.4)
   audit_chain?: boolean;
   human_in_the_loop?: HumanInTheLoop;
 }

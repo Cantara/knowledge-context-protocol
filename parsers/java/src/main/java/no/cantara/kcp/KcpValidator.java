@@ -320,6 +320,19 @@ public class KcpValidator {
             }
         }
 
+        // Trust provenance / audit validation (§3.2, v0.23)
+        if (manifest.trust() != null) {
+            var prov = manifest.trust().provenance();
+            if (prov != null && prov.publisherDid() != null && !prov.publisherDid().startsWith("did:")) {
+                warnings.add("manifest: trust.provenance.publisher_did SHOULD be a DID (start with 'did:'), got '"
+                        + prov.publisherDid() + "'");
+            }
+            var au = manifest.trust().audit();
+            if (au != null && Boolean.TRUE.equals(au.providesAccessReceipts()) && au.receiptFormat() == null) {
+                warnings.add("manifest: trust.audit.provides_access_receipts is true but no receipt_format is declared");
+            }
+        }
+
         for (Relationship rel : manifest.relationships()) {
             String p = "relationship '" + rel.fromId() + "' -> '" + rel.toId() + "'";
             if (!unitIds.contains(rel.fromId())) {

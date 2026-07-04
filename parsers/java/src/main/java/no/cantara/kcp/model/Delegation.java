@@ -7,6 +7,7 @@ package no.cantara.kcp.model;
 public record Delegation(
         Integer maxDepth,
         Boolean requireCapabilityAttenuation,
+        Boolean requireDelegationProof,   // v0.23 (SPEC §3.4)
         Boolean auditChain,
         HumanInTheLoop humanInTheLoop
 ) {

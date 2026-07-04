@@ -32,6 +32,7 @@ public record KnowledgeUnit(
         RateLimits rateLimits,
         Delegation delegation,
         Compliance compliance,
+        Auth auth,   // v0.23 — per-unit auth override (SPEC §3.3)
         List<ExternalDependency> externalDependsOn,
         List<String> requiresCapabilities,
         FreshnessPolicy freshnessPolicy,
