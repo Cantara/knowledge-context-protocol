@@ -9,6 +9,8 @@ package no.cantara.kcp.model;
  */
 public record TrustAudit(
         Boolean agentMustLog,
-        Boolean requireTraceContext
+        Boolean requireTraceContext,
+        Boolean providesAccessReceipts,   // v0.23
+        String receiptFormat              // v0.23
 ) {
 }

@@ -54,7 +54,7 @@ public class KcpValidator {
     private static final Set<String> VALID_ACCESS_VALUES = Set.of("public", "authenticated", "restricted");
     private static final Set<String> VALID_SENSITIVITY_VALUES = Set.of("public", "internal", "confidential", "restricted");
     private static final Set<String> VALID_HITL_MECHANISMS = Set.of("oauth_consent", "uma", "custom");
-    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22");
+    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23");
     // content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
     private static final Set<String> VALID_CONTENT_MODALITIES = Set.of("prose", "table", "code", "list", "diagram", "reference", "mixed");
     private static final Set<String> VALID_DENSITY = Set.of("sparse", "normal", "dense");
@@ -317,6 +317,19 @@ public class KcpValidator {
                     warnings.add("manifest: trust.agent_requirements.propagate_to_governed is true but the "
                             + "manifest declares no 'governs' relationship — nothing to propagate to");
                 }
+            }
+        }
+
+        // Trust provenance / audit validation (§3.2, v0.23)
+        if (manifest.trust() != null) {
+            var prov = manifest.trust().provenance();
+            if (prov != null && prov.publisherDid() != null && !prov.publisherDid().startsWith("did:")) {
+                warnings.add("manifest: trust.provenance.publisher_did SHOULD be a DID (start with 'did:'), got '"
+                        + prov.publisherDid() + "'");
+            }
+            var au = manifest.trust().audit();
+            if (au != null && Boolean.TRUE.equals(au.providesAccessReceipts()) && au.receiptFormat() == null) {
+                warnings.add("manifest: trust.audit.provides_access_receipts is true but no receipt_format is declared");
             }
         }
 

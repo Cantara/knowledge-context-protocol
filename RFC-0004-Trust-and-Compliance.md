@@ -29,10 +29,10 @@ The following proposals from this RFC have been promoted to the core specificati
 
 **Still RFC-only (not yet promoted):**
 - ~~`trust.content_integrity`~~ — **promoted to SPEC.md §3.2 in v0.16**, activated by the trusted render pipeline (RFC-0018), with `EdDSA` (Ed25519, RFC 8037) profiled as the mandatory-to-implement JWS algorithm.
-- `trust.audit.provides_access_receipts` / `receipt_format` — awaiting implementation feedback on receipt formats.
+- ~~`trust.audit.provides_access_receipts` / `receipt_format`~~ — **promoted to SPEC.md §3.2 in v0.23**. Declares that the source issues verifiable access receipts and their format (`jws`, `vc`, or a format-spec URL). Advisory — a capability of the source, not a requirement on the agent.
 - ~~`trust.agent_requirements`~~ — **promoted to SPEC.md §3.2 in v0.22** (`require_attestation`, `trusted_providers`, `attestation_url`, `attestation_jwks`, plus `propagate_to_governed` for `governs`-edge policy propagation, resolving [#47](https://github.com/Cantara/knowledge-context-protocol/issues/47)). Conformance C19 (renderer surfaces, never attests), C20 (bridge gates restricted-unit content on presented credential), C21 (`governs` propagation). KCP declares; agents attest.
-- `trust.provenance.publisher_did` — W3C DID resolution not yet common enough for core.
-- `compliance` at unit level (per-unit compliance override) — promoted at root level in v0.7; per-unit override awaiting real-world validation.
+- ~~`trust.provenance.publisher_did`~~ — **promoted to SPEC.md §3.2 in v0.23**. A W3C DID for the publisher, complementing `publisher`/`publisher_url` with a cryptographically resolvable identity. Advisory — KCP declares it; DID resolution is the agent's.
+- ~~`compliance` at unit level (per-unit compliance override)~~ — **promoted to SPEC.md §3.5** (per-unit values override root `compliance` for that unit only). Parser support completed in v0.23.
 
 ---
 

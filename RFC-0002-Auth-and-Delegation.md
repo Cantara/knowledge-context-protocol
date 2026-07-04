@@ -23,9 +23,9 @@ The following proposals from this RFC have been promoted to the core specificati
 
 **Still RFC-only (not yet promoted):**
 - ~~`auth.methods` types beyond the core three: `bearer_token`, `spiffe`, `did`, `http_signature`~~ — **promoted to SPEC.md §3.3 in v0.22**. Parsers MUST parse and expose them; `type` values beyond the now-seven defined types are still silently ignored for forward compatibility.
-- `auth` at unit level (per-unit auth override) — awaiting real-world use cases.
-- `delegation` at unit level (per-unit delegation override) — promoted at root level in v0.7; per-unit override awaiting real-world use cases.
-- `require_delegation_proof` — awaiting XAA / OIDC-A stabilization.
+- ~~`auth` at unit level (per-unit auth override)~~ — **promoted to SPEC.md §3.3 in v0.23**. A unit's `auth` block overrides the root `auth.methods` for that unit only (multi-tenant sources).
+- ~~`delegation` at unit level (per-unit delegation override)~~ — **promoted to SPEC.md §3.4** (per-unit tightening; MUST NOT relax root constraints). Parser support completed in v0.23.
+- ~~`require_delegation_proof`~~ — **promoted to SPEC.md §3.4 in v0.23** (documented since the delegation block landed; parser support and the field-reference row completed in v0.23). Parsers expose it; proof verification is the agent runtime's responsibility.
 
 ---
 

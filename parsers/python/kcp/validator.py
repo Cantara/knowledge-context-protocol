@@ -94,7 +94,7 @@ VALID_INDEXING_SHORTHANDS = {"open", "read-only", "no-train", "none"}
 VALID_ACCESS_VALUES = {"public", "authenticated", "restricted"}
 VALID_SENSITIVITY_VALUES = {"public", "internal", "confidential", "restricted"}
 # human_in_the_loop is an object per spec §3.4 — no HITL enum, validation done inline
-KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22"}
+KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23"}
 # content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
 VALID_CONTENT_MODALITIES = {"prose", "table", "code", "list", "diagram", "reference", "mixed"}
 VALID_DENSITY = {"sparse", "normal", "dense"}
@@ -452,6 +452,18 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
                     "manifest: trust.agent_requirements.propagate_to_governed is true but the "
                     "manifest declares no 'governs' relationship — nothing to propagate to"
                 )
+
+    # Trust provenance / audit validation (§3.2, v0.23)
+    prov = manifest.trust.provenance if manifest.trust else None
+    if prov is not None and prov.publisher_did and not prov.publisher_did.startswith("did:"):
+        warnings.append(
+            f"manifest: trust.provenance.publisher_did SHOULD be a DID (start with 'did:'), got '{prov.publisher_did}'"
+        )
+    audit = manifest.trust.audit if manifest.trust else None
+    if audit is not None and audit.provides_access_receipts and not audit.receipt_format:
+        warnings.append(
+            "manifest: trust.audit.provides_access_receipts is true but no receipt_format is declared"
+        )
 
     for rel in manifest.relationships:
         p = f"relationship '{rel.from_id}' -> '{rel.to_id}'"
