@@ -8,7 +8,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-_Nothing yet._
+### Clarified (kcp-agent interop, #114/#115)
+
+- **§4.11 `access` declares the authentication gate only** — payment requirements are never
+  expressed through `access`. An anonymous pay-per-request unit is `access: public` with a
+  `payment` block (the RFC-0005 `none | x402` anonymous-micropayment cell), not
+  `access: restricted`. Mirrored in the §4.14 auth-relationship paragraph. (#115)
+- **§4.22 temporal boundaries are inclusive** — a unit is active for `valid_from <= d <=
+  valid_until`, codifying what the query-time filter already encoded. Overlapping validity
+  windows during transitions are resolved by supersession: a unit whose `superseded_by`
+  successor is itself selectable SHOULD NOT be selected. (#114)
+
+### Validators (all four)
+
+- New §7 warning: units with `access: authenticated`/`restricted` in a manifest whose `auth`
+  block declares only method `none` — no credential can satisfy the gate; the pattern a
+  payment-as-access confusion produces. TypeScript (shared core, CLI + bridge), Python, Java.
 
 ---
 

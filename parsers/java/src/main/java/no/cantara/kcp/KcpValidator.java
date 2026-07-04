@@ -300,6 +300,14 @@ public class KcpValidator {
             warnings.add("manifest: units with access 'authenticated' or 'restricted' exist but no 'auth' block is declared");
         }
 
+        // §4.11: 'access' declares the authentication gate only. An auth block whose only
+        // method is 'none' can never satisfy a protected unit — the incoherent pattern a
+        // payment-as-access confusion produces.
+        if (hasProtectedUnits && manifest.auth() != null && !manifest.auth().methods().isEmpty()
+                && manifest.auth().methods().stream().allMatch(m -> "none".equals(m.type()))) {
+            warnings.add("manifest: units with access 'authenticated' or 'restricted' exist but the 'auth' block declares only method 'none' — no credential can satisfy the gate. If these units are pay-per-request rather than credential-gated, use access 'public' with a 'payment' block (§4.11/§4.14)");
+        }
+
         // Agent attestation requirements validation (§3.2, v0.22)
         var ar = manifest.trust() != null ? manifest.trust().agentRequirements() : null;
         if (ar != null) {

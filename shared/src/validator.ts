@@ -589,6 +589,21 @@ export function validate(
     );
   }
 
+  // §4.11: 'access' declares the authentication gate only. An auth block whose only
+  // method is 'none' can never satisfy a protected unit — the incoherent pattern a
+  // payment-as-access confusion produces (anonymous-paid units belong at access 'public'
+  // with a 'payment' block, per the RFC-0005 auth × payment matrix).
+  if (
+    hasProtected &&
+    manifest.auth &&
+    manifest.auth.methods.length > 0 &&
+    manifest.auth.methods.every((m) => m.type === "none")
+  ) {
+    warnings.push(
+      "manifest: units with access 'authenticated' or 'restricted' exist but the 'auth' block declares only method 'none' — no credential can satisfy the gate. If these units are pay-per-request rather than credential-gated, use access 'public' with a 'payment' block (§4.11/§4.14)"
+    );
+  }
+
   // Agent attestation requirements validation (§3.2, v0.22)
   const ar = manifest.trust?.agent_requirements;
   if (ar) {
