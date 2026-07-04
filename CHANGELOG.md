@@ -8,7 +8,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-_Nothing yet._
+### Spec — v0.23 "Trust & Auth Completion" foundation (RFC-0002 + RFC-0004)
+
+Finishes the trust/auth story and reconciles the RFCs with what actually shipped. Declaration-
+level fields only — no new gating, no new conformance rules (implementation lands in later phases):
+
+- **Per-unit `auth` override (SPEC §3.3)** — a unit's `auth` block overrides the root
+  `auth.methods` for that unit alone (multi-tenant sources).
+- **`trust.audit.provides_access_receipts` / `receipt_format` (SPEC §3.2)** — declares the source
+  issues verifiable access receipts and their format (`jws`, `vc`, or a spec URL).
+- **`trust.provenance.publisher_did` (SPEC §3.2)** — a W3C DID for the publisher, complementing
+  `publisher`/`publisher_url` with a cryptographically resolvable identity.
+- **`require_delegation_proof` (SPEC §3.4)** — added to the delegation field reference (it was in
+  the block's example but missing from the table) and to the implementations.
+- **RFC drift audit:** RFC-0002/0004 "Still RFC-only" lists corrected — per-unit `delegation`
+  (§3.4) and per-unit `compliance` (§3.5) were already in the spec but still marked pending; the
+  four fields above are marked Accepted → v0.23.
 
 ---
 

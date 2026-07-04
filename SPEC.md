@@ -226,6 +226,7 @@ trust:
 | `publisher` | OPTIONAL | string | Human-readable name of the publishing organisation or individual. |
 | `publisher_url` | OPTIONAL | string | URL of the publisher's web presence. MUST use HTTPS if present. |
 | `contact` | OPTIONAL | string | Email address or URL for questions about this manifest's content. |
+| `publisher_did` | OPTIONAL | string | A [W3C Decentralized Identifier](https://www.w3.org/TR/did-core/) for the publisher (e.g. `did:web:acme.com`). Complements `publisher`/`publisher_url` with a cryptographically resolvable identity. Advisory — KCP declares it; agents that resolve DIDs verify it (v0.23). |
 
 #### `trust.audit` sub-fields
 
@@ -233,6 +234,8 @@ trust:
 |-------|----------|------|-------------|
 | `agent_must_log` | OPTIONAL | boolean | Advisory: agents SHOULD record access to this manifest's units in their own audit trail. Default: `false`. |
 | `require_trace_context` | OPTIONAL | boolean | If `true`: agents MUST include [W3C Trace Context](https://www.w3.org/TR/trace-context/) headers (`traceparent`, `tracestate`) when fetching content via HTTP, so the full access chain can be reconstructed. Compatible with [OpenTelemetry](https://opentelemetry.io/). Default: `false`. |
+| `provides_access_receipts` | OPTIONAL | boolean | If `true`: the knowledge source issues a verifiable receipt for each access, so an auditor can later confirm which agent accessed which unit and when. Declares a capability of the source, not a requirement on the agent (v0.23). Default: `false`. |
+| `receipt_format` | OPTIONAL | string | Identifies the receipt format when `provides_access_receipts` is `true` — e.g. `jws`, `vc` (W3C Verifiable Credential), or a URL to a format spec. Advisory (v0.23). |
 
 **`require_trace_context` and local file access:** KCP manifests are frequently consumed from
 local file systems or git repositories where no HTTP request occurs. When content is accessed
@@ -490,6 +493,7 @@ delegation:
 |-------|----------|------|-------------|
 | `max_depth` | OPTIONAL | integer | Maximum delegation chain depth. **The resource owner operates at depth 0.** The first agent to which access is delegated operates at depth 1. `max_depth: 0` means no delegation is permitted — only the resource owner may access the unit directly. Omit for no constraint. |
 | `require_capability_attenuation` | OPTIONAL | boolean | If `true`, each hop in the delegation chain MUST present narrower permissions than the delegating agent held. Agents SHOULD reject delegation tokens that grant equal or greater scope than the parent token. |
+| `require_delegation_proof` | OPTIONAL | boolean | If `true`, an accessing agent MUST present a verifiable delegation chain (a proof back to the resource owner) rather than merely asserting a depth. Parsers expose the field; verification of the proof is the agent runtime's responsibility. Default: `false`. |
 | `audit_chain` | OPTIONAL | boolean | If `true`, agents MUST include W3C Trace Context `traceparent`/`tracestate` headers on all access requests, enabling full delegation chain reconstruction from access logs. Compatible with OpenTelemetry. |
 | `human_in_the_loop` | OPTIONAL | object | Root-level human approval requirement. May be overridden at unit level. |
 
@@ -500,6 +504,26 @@ delegation:
 | `required` | OPTIONAL | If `true`, a human MUST approve agent access before the unit may be loaded. Default: `false`. |
 | `approval_mechanism` | OPTIONAL | How human approval is obtained: `oauth_consent` (OAuth 2.1 authorization code flow with user present), `uma` (UMA 2.0 asynchronous resource owner policy), or `custom` (described at `docs_url`). |
 | `docs_url` | OPTIONAL | URL describing the approval flow. REQUIRED when `approval_mechanism` is `custom`. |
+
+#### Per-unit `auth` overrides (v0.23)
+
+Individual units MAY declare an `auth` block (§3.3, same shape) that overrides the root-level
+`auth.methods` for that unit alone. This supports multi-tenant knowledge sources where different
+units authenticate against different providers. When a unit declares `auth`, agents use the
+unit's methods for that unit and the root methods elsewhere; a unit with no `auth` block inherits
+the root block. Per-unit `auth` is a declaration — KCP does not perform authentication.
+
+```yaml
+units:
+  - id: partner-data
+    path: data/partner.md
+    access: restricted
+    auth:                       # overrides root auth.methods for this unit only
+      methods:
+        - type: oauth2
+          issuer: "https://partner.example.com"
+          scopes: ["read:shared"]
+```
 
 #### Per-unit `delegation` overrides
 
