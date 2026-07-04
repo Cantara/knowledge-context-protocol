@@ -2421,7 +2421,7 @@ relationships:
 
       <div class="roadmap-core reveal">
         <div class="roadmap-core__info">
-          <span class="roadmap-core__badge">v0.22 — Current</span>
+          <span class="roadmap-core__badge">v0.22 — Shipped</span>
           <h3>Trust &amp; Attestation</h3>
           <p><code>trust.agent_requirements</code> (SPEC §3.2) declares what an agent must prove about <em>itself</em> before <code>access: restricted</code> units are served — the consumer-identity counterpart to producer integrity. Extended <code>auth.methods</code> add SPIFFE, DID, and HTTP Message Signatures (RFC 9421). The renderer surfaces the requirement (C19) and the bridge refuses restricted content on every retrieval path unless a credential is presented (C20) — but <strong>KCP declares; agents attest</strong>: nothing ever calls <code>attestation_url</code>. Promoted from RFC-0004 and RFC-0002.</p>
         </div>
@@ -2429,6 +2429,20 @@ relationships:
           <span class="roadmap-field-pill">agent_requirements</span>
           <span class="roadmap-field-pill">auth.methods</span>
           <span class="roadmap-field-pill">RFC-0004</span>
+          <span class="roadmap-field-pill">RFC-0002</span>
+        </div>
+      </div>
+
+      <div class="roadmap-core reveal">
+        <div class="roadmap-core__info">
+          <span class="roadmap-core__badge">v0.23 — Current</span>
+          <h3>Trust &amp; Auth Completion</h3>
+          <p>Finishes the trust/auth surface: a per-unit <code>auth</code> override (multi-tenant sources), <code>trust.provenance.publisher_did</code> (a resolvable W3C DID for the publisher), <code>trust.audit.provides_access_receipts</code> / <code>receipt_format</code>, and <code>require_delegation_proof</code>. Declaration-level — no new gating. The pass also reconciled the RFCs with the spec, correcting stale &ldquo;not yet promoted&rdquo; notes for per-unit <code>delegation</code> and <code>compliance</code>. Promoted from RFC-0002 and RFC-0004.</p>
+        </div>
+        <div class="roadmap-core__fields">
+          <span class="roadmap-field-pill">publisher_did</span>
+          <span class="roadmap-field-pill">per-unit auth</span>
+          <span class="roadmap-field-pill">access receipts</span>
           <span class="roadmap-field-pill">RFC-0002</span>
         </div>
       </div>

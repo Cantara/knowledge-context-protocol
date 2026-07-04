@@ -163,6 +163,25 @@ units:
     expect(unit.load_eligible).toBe(true); // attestation is the agent's gate (C20), not the renderer's
   });
 
+  it("surfaces trust.provenance.publisher_did in the render (v0.23)", () => {
+    const manifestPath = writeManifest(`project: didtest
+version: 1.0.0
+trust:
+  provenance:
+    publisher: "Acme Corp"
+    publisher_did: "did:web:acme.com"
+units:
+  - id: overview
+    path: README.md
+    intent: "overview"
+    scope: project
+    audience: [agent]
+`);
+    const { doc } = renderOk(manifestPath);
+    expect(doc.trust.provenance.publisher).toBe("Acme Corp");
+    expect(doc.trust.provenance.publisher_did).toBe("did:web:acme.com");
+  });
+
   it("quarantines imperative intent (T1) and keeps the rest", () => {
     const manifestPath = writeManifest(`project: hostile
 version: 1.0.0

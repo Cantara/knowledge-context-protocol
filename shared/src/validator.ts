@@ -100,6 +100,7 @@ const KNOWN_KCP_VERSIONS = new Set([
   "0.20",
   "0.21",
   "0.22",
+  "0.23",
 ]);
 // content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
 const VALID_CONTENT_MODALITIES = new Set([
@@ -590,6 +591,20 @@ export function validate(
         );
       }
     }
+  }
+
+  // Trust provenance / audit validation (§3.2, v0.23)
+  const prov = manifest.trust?.provenance;
+  if (prov?.publisher_did && !prov.publisher_did.startsWith("did:")) {
+    warnings.push(
+      `manifest: trust.provenance.publisher_did SHOULD be a DID (start with 'did:'), got '${prov.publisher_did}'`
+    );
+  }
+  const auditBlock = manifest.trust?.audit;
+  if (auditBlock?.provides_access_receipts && !auditBlock.receipt_format) {
+    warnings.push(
+      "manifest: trust.audit.provides_access_receipts is true but no receipt_format is declared"
+    );
   }
 
   // Federation validation (§3.6)
