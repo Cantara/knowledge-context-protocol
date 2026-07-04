@@ -19,6 +19,7 @@ import no.cantara.kcp.model.RateLimit;
 import no.cantara.kcp.model.RateLimits;
 import no.cantara.kcp.model.Relationship;
 import no.cantara.kcp.model.Trust;
+import no.cantara.kcp.model.TrustAgentRequirements;
 import no.cantara.kcp.model.TrustAudit;
 import no.cantara.kcp.model.TrustProvenance;
 import no.cantara.kcp.model.Temporal;
@@ -193,7 +194,19 @@ public class KcpParser {
             );
         }
 
-        return new Trust(provenance, audit);
+        TrustAgentRequirements agentRequirements = null;
+        Map<String, Object> arMap = (Map<String, Object>) t.get("agent_requirements");
+        if (arMap != null) {
+            agentRequirements = new TrustAgentRequirements(
+                    (Boolean) arMap.get("require_attestation"),
+                    (List<String>) arMap.getOrDefault("trusted_providers", List.of()),
+                    (String) arMap.get("attestation_url"),
+                    (String) arMap.get("attestation_jwks"),
+                    (Boolean) arMap.get("propagate_to_governed")
+            );
+        }
+
+        return new Trust(provenance, audit, agentRequirements);
     }
 
     @SuppressWarnings("unchecked")
@@ -211,7 +224,11 @@ public class KcpParser {
                 (String) m.get("issuer"),
                 (List<String>) m.getOrDefault("scopes", List.of()),
                 (String) m.get("header"),
-                (String) m.get("registration_url")
+                (String) m.get("registration_url"),
+                (String) m.get("trust_domain"),
+                (List<String>) m.getOrDefault("supported_methods", List.of()),
+                (String) m.get("key_id"),
+                (String) m.get("algorithm")
         );
     }
 

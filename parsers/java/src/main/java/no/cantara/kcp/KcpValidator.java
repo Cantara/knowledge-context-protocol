@@ -54,7 +54,7 @@ public class KcpValidator {
     private static final Set<String> VALID_ACCESS_VALUES = Set.of("public", "authenticated", "restricted");
     private static final Set<String> VALID_SENSITIVITY_VALUES = Set.of("public", "internal", "confidential", "restricted");
     private static final Set<String> VALID_HITL_MECHANISMS = Set.of("oauth_consent", "uma", "custom");
-    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21");
+    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22");
     // content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
     private static final Set<String> VALID_CONTENT_MODALITIES = Set.of("prose", "table", "code", "list", "diagram", "reference", "mixed");
     private static final Set<String> VALID_DENSITY = Set.of("sparse", "normal", "dense");
@@ -294,6 +294,30 @@ public class KcpValidator {
                 .anyMatch(u -> "authenticated".equals(u.access()) || "restricted".equals(u.access()));
         if (hasProtectedUnits && (manifest.auth() == null || manifest.auth().methods().isEmpty())) {
             warnings.add("manifest: units with access 'authenticated' or 'restricted' exist but no 'auth' block is declared");
+        }
+
+        // Agent attestation requirements validation (§3.2, v0.22)
+        var ar = manifest.trust() != null ? manifest.trust().agentRequirements() : null;
+        if (ar != null) {
+            if (ar.attestationUrl() != null && !ar.attestationUrl().startsWith("https://")) {
+                warnings.add("manifest: trust.agent_requirements.attestation_url SHOULD use HTTPS, got '" + ar.attestationUrl() + "'");
+            }
+            if (ar.attestationJwks() != null && !ar.attestationJwks().startsWith("https://")) {
+                warnings.add("manifest: trust.agent_requirements.attestation_jwks SHOULD use HTTPS, got '" + ar.attestationJwks() + "'");
+            }
+            if (Boolean.TRUE.equals(ar.requireAttestation())
+                    && ar.trustedProviders().isEmpty() && ar.attestationUrl() == null) {
+                warnings.add("manifest: trust.agent_requirements.require_attestation is true but neither "
+                        + "trusted_providers nor attestation_url is declared — the requirement cannot be satisfied");
+            }
+            if (Boolean.TRUE.equals(ar.propagateToGoverned())) {
+                boolean hasGoverns = manifest.relationships().stream().anyMatch(r -> "governs".equals(r.type()))
+                        || manifest.manifests().stream().anyMatch(m -> "governs".equals(m.relationship()));
+                if (!hasGoverns) {
+                    warnings.add("manifest: trust.agent_requirements.propagate_to_governed is true but the "
+                            + "manifest declares no 'governs' relationship — nothing to propagate to");
+                }
+            }
         }
 
         for (Relationship rel : manifest.relationships()) {

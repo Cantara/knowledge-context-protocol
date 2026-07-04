@@ -145,6 +145,7 @@ describe("render-schema.json guards", () => {
     relationship: { fields: string[] };
     federation: { fields: string[] };
     provenance: { fields: string[] };
+    agent_requirements: { fields: string[] };
   };
   const ks = JSON.parse(readFileSync(r("schema/knowledge-schema.json"), "utf8")) as {
     properties: Record<string, unknown>;
@@ -204,6 +205,13 @@ describe("render-schema.json guards", () => {
     const knownProv = Object.keys(ks.definitions.trust_provenance.properties ?? {});
     for (const f of rs.provenance.fields) {
       expect(knownProv, `provenance field '${f}' absent from knowledge-schema trust_provenance`).toContain(f);
+    }
+  });
+
+  it("agent_requirements fields are a subset of knowledge-schema trust_agent_requirements properties", () => {
+    const knownAr = Object.keys(ks.definitions.trust_agent_requirements.properties ?? {});
+    for (const f of rs.agent_requirements.fields) {
+      expect(knownAr, `agent_requirements field '${f}' absent from knowledge-schema trust_agent_requirements`).toContain(f);
     }
   });
 });

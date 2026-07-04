@@ -99,6 +99,70 @@ describe("kcp render", () => {
     expect(doc.sanitization.quarantined).toEqual([]);
   });
 
+  it("surfaces trust.agent_requirements and marks restricted units (C19, v0.22)", () => {
+    const manifestPath = writeManifest(`project: attest
+version: 1.0.0
+trust:
+  agent_requirements:
+    require_attestation: true
+    trusted_providers: [internal-agents.acme.com]
+    attestation_url: https://acme.com/v1/attest
+    propagate_to_governed: false
+units:
+  - id: secret
+    path: secret.md
+    intent: "Restricted design notes"
+    scope: project
+    audience: [agent]
+    access: restricted
+  - id: public-doc
+    path: public.md
+    intent: "Public overview"
+    scope: project
+    audience: [agent]
+    access: public
+`);
+    const { doc } = renderOk(manifestPath);
+
+    // agent_requirements surfaced as data (never dereferenced — C19)
+    expect(doc.trust.agent_requirements.require_attestation).toBe(true);
+    expect(doc.trust.agent_requirements.attestation_url).toBe("https://acme.com/v1/attest");
+    expect(doc.trust.agent_requirements.trusted_providers).toEqual(["internal-agents.acme.com"]);
+
+    // restricted unit flagged; public unit not
+    const secret = doc.units.find((u: { id: string }) => u.id === "secret");
+    const pub = doc.units.find((u: { id: string }) => u.id === "public-doc");
+    expect(secret.requires_attestation).toBe(true);
+    expect(pub.requires_attestation).toBeUndefined();
+  });
+
+  it("does not gate load_eligible on attestation at trusted tier (C19: flag, not gate)", () => {
+    const manifestPath = writeManifest(`project: lib-pcb
+version: 1.0.0
+trust:
+  agent_requirements:
+    require_attestation: true
+    attestation_url: https://acme.com/v1/attest
+units:
+  - id: secret
+    path: secret.md
+    intent: "Restricted but load-eligible once attested"
+    scope: project
+    audience: [agent]
+    access: restricted
+`);
+    const pub = signManifest(manifestPath, "cantara-org-2026");
+    const keysPath = writeAllowlist([
+      { key_id: "cantara-org-2026", method: "jws", algorithm: "EdDSA", public_key: pub,
+        scope: { domains: ["github.com/testorg"] } },
+    ]);
+    const { doc } = renderOk(manifestPath, { keysPath, origin: "github.com/testorg/lib-pcb" });
+    const unit = doc.units.find((u: { id: string }) => u.id === "secret");
+    expect(doc.trust.tier).toBe("trusted");
+    expect(unit.requires_attestation).toBe(true);
+    expect(unit.load_eligible).toBe(true); // attestation is the agent's gate (C20), not the renderer's
+  });
+
   it("quarantines imperative intent (T1) and keeps the rest", () => {
     const manifestPath = writeManifest(`project: hostile
 version: 1.0.0

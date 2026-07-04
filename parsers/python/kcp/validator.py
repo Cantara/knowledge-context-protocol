@@ -94,7 +94,7 @@ VALID_INDEXING_SHORTHANDS = {"open", "read-only", "no-train", "none"}
 VALID_ACCESS_VALUES = {"public", "authenticated", "restricted"}
 VALID_SENSITIVITY_VALUES = {"public", "internal", "confidential", "restricted"}
 # human_in_the_loop is an object per spec §3.4 — no HITL enum, validation done inline
-KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21"}
+KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22"}
 # content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
 VALID_CONTENT_MODALITIES = {"prose", "table", "code", "list", "diagram", "reference", "mixed"}
 VALID_DENSITY = {"sparse", "normal", "dense"}
@@ -426,6 +426,32 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
             "manifest: units with access 'authenticated' or 'restricted' exist "
             "but no 'auth' block is declared"
         )
+
+    # Agent attestation requirements validation (§3.2, v0.22)
+    ar = manifest.trust.agent_requirements if manifest.trust else None
+    if ar is not None:
+        if ar.attestation_url and not ar.attestation_url.startswith("https://"):
+            warnings.append(
+                f"manifest: trust.agent_requirements.attestation_url SHOULD use HTTPS, got '{ar.attestation_url}'"
+            )
+        if ar.attestation_jwks and not ar.attestation_jwks.startswith("https://"):
+            warnings.append(
+                f"manifest: trust.agent_requirements.attestation_jwks SHOULD use HTTPS, got '{ar.attestation_jwks}'"
+            )
+        if ar.require_attestation and not ar.trusted_providers and not ar.attestation_url:
+            warnings.append(
+                "manifest: trust.agent_requirements.require_attestation is true but neither "
+                "trusted_providers nor attestation_url is declared — the requirement cannot be satisfied"
+            )
+        if ar.propagate_to_governed:
+            has_governs = any(r.type == "governs" for r in manifest.relationships) or any(
+                m.relationship == "governs" for m in manifest.manifests
+            )
+            if not has_governs:
+                warnings.append(
+                    "manifest: trust.agent_requirements.propagate_to_governed is true but the "
+                    "manifest declares no 'governs' relationship — nothing to propagate to"
+                )
 
     for rel in manifest.relationships:
         p = f"relationship '{rel.from_id}' -> '{rel.to_id}'"

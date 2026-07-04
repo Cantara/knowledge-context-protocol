@@ -35,7 +35,7 @@ const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 
-export const RENDERER_VERSION = "kcp-cli 0.21.0";
+export const RENDERER_VERSION = "kcp-cli 0.22.0";
 export const RENDER_SCHEMA = "kcp-render-schema-0.2";
 export const DEFAULT_KEYS_PATH = join(homedir(), ".kcp", "trusted-keys.yaml");
 
@@ -52,6 +52,7 @@ interface RenderSchemaFile {
   relationship: { fields: string[] };
   federation: { fields: string[] };
   provenance: { fields: string[] };
+  agent_requirements: { fields: string[] };
 }
 const _rs = JSON.parse(
   readFileSync(new URL("../schema/render-schema.json", import.meta.url), "utf8")
@@ -68,6 +69,9 @@ const CONTENT_STRUCTURE_FIELDS = _rs.content_structure.fields;
 const RELATIONSHIP_FIELDS = _rs.relationship.fields;
 const FEDERATION_FIELDS = _rs.federation.fields;
 const PROVENANCE_FIELDS = _rs.provenance.fields;
+// §3.2 trust.agent_requirements passthrough (v0.22). Surfaced as data only — the
+// renderer never dereferences attestation_url/jwks (C19; deterministic + network-free).
+const AGENT_REQ_FIELDS = _rs.agent_requirements.fields;
 
 // §5.1: default tier→confidence mapping, monotone in tier.
 const TIER_CONFIDENCE: Record<string, number> = { trusted: 0.7, known: 0.6, unsigned: 0.5 };
@@ -669,6 +673,13 @@ export function renderManifest(options: RenderOptions): RenderResult {
           (options.requireUnitHashes || escalationByCorroboration));
     }
     out.content_verified = contentVerified;
+    // C19 (v0.22): mark a restricted unit when the manifest declares require_attestation.
+    // The renderer *declares* the requirement as data; it never performs attestation and does
+    // not, on this basis alone, set load_eligible: false — that gate is the bridge's (C20).
+    const arBlock = (doc.trust as RawMap | undefined)?.["agent_requirements"] as RawMap | undefined;
+    if (arBlock?.["require_attestation"] === true && String(unit.access ?? "") === "restricted") {
+      out.requires_attestation = true;
+    }
     units.push(out);
   });
 
@@ -691,6 +702,7 @@ export function renderManifest(options: RenderOptions): RenderResult {
 
   // --- trust passthrough -------------------------------------------------------
   let provenance: RawMap | undefined;
+  let agentRequirements: RawMap | undefined;
   if (doc.trust && typeof doc.trust === "object" && !Array.isArray(doc.trust)) {
     for (const [k, v] of Object.entries(doc.trust as RawMap)) {
       const leafCount = countLeaves(v);
@@ -704,6 +716,19 @@ export function renderManifest(options: RenderOptions): RenderResult {
           } else {
             dropped.push({ path: `trust.provenance.${pk}`, reason: "not_in_schema" });
             fieldsDropped += countLeaves(pv);
+          }
+        }
+      } else if (k === "agent_requirements" && v && typeof v === "object" && !Array.isArray(v)) {
+        // C19: surface agent_requirements as data; whitelist its fields. The renderer never
+        // dereferences attestation_url/jwks — it only copies the declared strings through.
+        agentRequirements = {};
+        for (const [ak, av] of Object.entries(v as RawMap)) {
+          if (AGENT_REQ_FIELDS.includes(ak)) {
+            agentRequirements[ak] = av;
+            fieldsRendered += countLeaves(av);
+          } else {
+            dropped.push({ path: `trust.agent_requirements.${ak}`, reason: "not_in_schema" });
+            fieldsDropped += countLeaves(av);
           }
         }
       } else if (k === "content_integrity") {
@@ -757,6 +782,7 @@ export function renderManifest(options: RenderOptions): RenderResult {
         status: trust.status,
       },
       ...(provenance && Object.keys(provenance).length ? { provenance } : {}),
+      ...(agentRequirements && Object.keys(agentRequirements).length ? { agent_requirements: agentRequirements } : {}),
     },
     discovery: {
       verification_status: "declared", // §5.1

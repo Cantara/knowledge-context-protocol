@@ -1,0 +1,27 @@
+kcp_version: "0.21"
+project: attest-hub
+version: 1.0.0
+trust:
+  agent_requirements:
+    require_attestation: true
+    trusted_providers: [internal-agents.acme.com]
+    attestation_url: https://acme.com/v1/attest
+auth:
+  methods:
+    - type: spiffe
+      trust_domain: acme.internal
+units:
+  - id: public-doc
+    path: public.md
+    intent: "Public project overview"
+    scope: project
+    audience: [agent]
+    triggers: [overview, public]
+    access: public
+  - id: secret
+    path: secret.md
+    intent: "Restricted design secrets"
+    scope: project
+    audience: [agent]
+    triggers: [secret, design]
+    access: restricted

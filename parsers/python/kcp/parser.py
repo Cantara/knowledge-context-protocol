@@ -8,7 +8,7 @@ from .model import (
     Auth, AuthMethod, Authority, Compliance, ContentHash, ContentStructure, Delegation,
     Discovery, ExternalDependency, ExternalRelationship, FreshnessPolicy,
     KnowledgeManifest, KnowledgeUnit, ManifestRef, RateLimit, RateLimits, Relationship,
-    Trust, TrustAudit, TrustProvenance, Visibility,
+    Trust, TrustAudit, TrustAgentRequirements, TrustProvenance, Visibility,
 )
 
 
@@ -64,7 +64,17 @@ def _parse_trust(data: Optional[dict]) -> Optional[Trust]:
             agent_must_log=audit_data.get("agent_must_log"),
             require_trace_context=audit_data.get("require_trace_context"),
         )
-    return Trust(provenance=provenance, audit=audit)
+    agent_requirements = None
+    ar_data = data.get("agent_requirements")
+    if ar_data is not None:
+        agent_requirements = TrustAgentRequirements(
+            require_attestation=ar_data.get("require_attestation"),
+            trusted_providers=ar_data.get("trusted_providers", []),
+            attestation_url=ar_data.get("attestation_url"),
+            attestation_jwks=ar_data.get("attestation_jwks"),
+            propagate_to_governed=ar_data.get("propagate_to_governed"),
+        )
+    return Trust(provenance=provenance, audit=audit, agent_requirements=agent_requirements)
 
 
 def _parse_auth(data: Optional[dict]) -> Optional[Auth]:
@@ -78,6 +88,10 @@ def _parse_auth(data: Optional[dict]) -> Optional[Auth]:
             scopes=m.get("scopes", []),
             header=m.get("header"),
             registration_url=m.get("registration_url"),
+            trust_domain=m.get("trust_domain"),
+            supported_methods=m.get("supported_methods", []),
+            key_id=m.get("key_id"),
+            algorithm=m.get("algorithm"),
         )
         for m in data.get("methods", [])
     ]

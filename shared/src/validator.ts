@@ -99,6 +99,7 @@ const KNOWN_KCP_VERSIONS = new Set([
   "0.19",
   "0.20",
   "0.21",
+  "0.22",
 ]);
 // content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
 const VALID_CONTENT_MODALITIES = new Set([
@@ -555,6 +556,40 @@ export function validate(
     warnings.push(
       "manifest: units with access 'authenticated' or 'restricted' exist but no 'auth' block is declared"
     );
+  }
+
+  // Agent attestation requirements validation (§3.2, v0.22)
+  const ar = manifest.trust?.agent_requirements;
+  if (ar) {
+    if (ar.attestation_url && !ar.attestation_url.startsWith("https://")) {
+      warnings.push(
+        `manifest: trust.agent_requirements.attestation_url SHOULD use HTTPS, got '${ar.attestation_url}'`
+      );
+    }
+    if (ar.attestation_jwks && !ar.attestation_jwks.startsWith("https://")) {
+      warnings.push(
+        `manifest: trust.agent_requirements.attestation_jwks SHOULD use HTTPS, got '${ar.attestation_jwks}'`
+      );
+    }
+    if (
+      ar.require_attestation &&
+      !(ar.trusted_providers && ar.trusted_providers.length) &&
+      !ar.attestation_url
+    ) {
+      warnings.push(
+        "manifest: trust.agent_requirements.require_attestation is true but neither trusted_providers nor attestation_url is declared — the requirement cannot be satisfied"
+      );
+    }
+    if (ar.propagate_to_governed) {
+      const hasGoverns =
+        manifest.relationships.some((r) => r.type === "governs") ||
+        manifest.manifests.some((m) => m.relationship === "governs");
+      if (!hasGoverns) {
+        warnings.push(
+          "manifest: trust.agent_requirements.propagate_to_governed is true but the manifest declares no 'governs' relationship — nothing to propagate to"
+        );
+      }
+    }
   }
 
   // Federation validation (§3.6)

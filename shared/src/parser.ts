@@ -23,6 +23,7 @@ import type {
   Relationship,
   Trust,
   TrustAudit,
+  TrustAgentRequirements,
   TrustProvenance,
   Visibility,
   VisibilityCondition,
@@ -186,7 +187,19 @@ function parseTrust(raw: unknown): Trust | undefined {
     };
   }
 
-  return { provenance, audit };
+  let agent_requirements: TrustAgentRequirements | undefined;
+  const arData = data["agent_requirements"] as RawMap | undefined;
+  if (arData && typeof arData === "object") {
+    agent_requirements = {
+      require_attestation: arData["require_attestation"] !== undefined ? Boolean(arData["require_attestation"]) : undefined,
+      trusted_providers: asStringArray(arData["trusted_providers"]),
+      attestation_url: arData["attestation_url"] !== undefined ? String(arData["attestation_url"]) : undefined,
+      attestation_jwks: arData["attestation_jwks"] !== undefined ? String(arData["attestation_jwks"]) : undefined,
+      propagate_to_governed: arData["propagate_to_governed"] !== undefined ? Boolean(arData["propagate_to_governed"]) : undefined,
+    };
+  }
+
+  return { provenance, audit, agent_requirements };
 }
 
 function parseAuth(raw: unknown): Auth | undefined {
@@ -199,6 +212,10 @@ function parseAuth(raw: unknown): Auth | undefined {
     scopes: asStringArray(m["scopes"]),
     header: m["header"] !== undefined ? String(m["header"]) : undefined,
     registration_url: m["registration_url"] !== undefined ? String(m["registration_url"]) : undefined,
+    trust_domain: m["trust_domain"] !== undefined ? String(m["trust_domain"]) : undefined,
+    supported_methods: asStringArray(m["supported_methods"]),
+    key_id: m["key_id"] !== undefined ? String(m["key_id"]) : undefined,
+    algorithm: m["algorithm"] !== undefined ? String(m["algorithm"]) : undefined,
   }));
   return { methods };
 }

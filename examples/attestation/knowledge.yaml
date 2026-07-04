@@ -1,0 +1,50 @@
+kcp_version: "0.22"
+project: acme-internal-knowledge
+version: 1.0.0
+
+# Trust & Attestation (v0.22). This manifest requires agents to attest before it will serve
+# its restricted units. KCP DECLARES the requirement; the agent runtime performs the attestation.
+# The bridge refuses restricted content until an attestation credential is presented; the renderer
+# surfaces the requirement as data and never dereferences attestation_url.
+trust:
+  provenance:
+    publisher: "Acme Corp"
+    contact: "knowledge-team@acme.com"
+  agent_requirements:
+    require_attestation: true
+    # Satisfied by EITHER an allowlisted provider identity OR a credential the endpoint accepts.
+    trusted_providers: ["internal-agents.acme.com"]
+    attestation_url: "https://acme.com/v1/attest"
+    attestation_jwks: "https://acme.com/.well-known/jwks.json"
+
+auth:
+  methods:
+    # Workload identity for non-human agents (SPIFFE SVID).
+    - type: spiffe
+      trust_domain: acme.internal
+    # RFC 9421 HTTP Message Signatures — the agent-payments authentication standard.
+    - type: http_signature
+      key_id: acme-agent-2026
+      algorithm: ed25519
+    # Public fallback for the public units.
+    - type: none
+
+units:
+  - id: onboarding
+    path: onboarding.md
+    intent: "How do I get started as a new engineer here?"
+    scope: project
+    audience: [developer, agent]
+    triggers: [onboarding, getting started]
+    access: public
+
+  - id: incident-runbook
+    path: incident-runbook.md
+    intent: "Production incident response runbook with escalation contacts"
+    scope: project
+    audience: [operator, agent]
+    triggers: [incident, runbook, escalation, oncall]
+    access: restricted
+    auth_scope: "read:incident-runbook"
+
+relationships: []

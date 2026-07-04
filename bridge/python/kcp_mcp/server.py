@@ -98,6 +98,11 @@ def create_server(
     # units and sub-manifests not declared as a local_mirror have no entry (always included).
     source_temporal: dict[str, Temporal] = {}
 
+    # §3.2 / C20 (v0.22): attestation policy from the primary manifest. The bridge checks a
+    # credential was presented before serving restricted units; it never calls attestation_url.
+    agent_req = manifest.trust.agent_requirements if manifest.trust else None
+    require_attestation = bool(agent_req and agent_req.require_attestation)
+
     # manifests[].id → temporal, for supersession resolution (issue #98 F4).
     ref_temporal_by_id: dict[str, Temporal] = {
         ref.id: ref.temporal for ref in manifest.manifests
@@ -212,6 +217,12 @@ def create_server(
             raise ValueError(
                 f"Unit '{unit_id}' is outside its temporal validity window as of {today}"
             )
+        # C20: a resource read carries no attestation channel — a restricted unit under a
+        # manifest requiring attestation is fetched via get_unit with an attestation argument.
+        if _unit_needs_attestation(unit, require_attestation):
+            raise ValueError(
+                f"Unit '{unit_id}' requires agent attestation (§3.2); fetch it via the get_unit tool with an 'attestation' argument"
+            )
         mime = resolve_mime(unit)
         try:
             content, is_binary = read_resource_content(unit_dir, unit.path, mime)
@@ -268,6 +279,10 @@ def create_server(
                             "type": "boolean",
                             "description": "If true, skip temporal filtering and return all units regardless of valid_from/valid_until (§15.13). Mutually exclusive with as_of.",
                         },
+                        "attestation": {
+                            "type": "string",
+                            "description": "Agent attestation credential (§3.2). When presented, restricted units are not marked requires_attestation. Presence is checked; the credential is not verified.",
+                        },
                     },
                     "required": ["query"],
                 },
@@ -281,6 +296,10 @@ def create_server(
                         "unit_id": {
                             "type": "string",
                             "description": "The unit id from search_knowledge results",
+                        },
+                        "attestation": {
+                            "type": "string",
+                            "description": "Agent attestation credential (§3.2). Required to fetch access: restricted units when the manifest sets require_attestation. Presence is checked; the credential is not verified.",
                         },
                     },
                     "required": ["unit_id"],
@@ -322,9 +341,9 @@ def create_server(
     @server.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         if name == "search_knowledge":
-            return _handle_search_knowledge(unit_context, slug, arguments or {}, source_temporal, ref_temporal_by_id)
+            return _handle_search_knowledge(unit_context, slug, arguments or {}, source_temporal, ref_temporal_by_id, require_attestation)
         if name == "get_unit":
-            return _handle_get_unit(unit_context, arguments or {}, source_temporal, ref_temporal_by_id)
+            return _handle_get_unit(unit_context, arguments or {}, source_temporal, ref_temporal_by_id, require_attestation, agent_req)
         if name == "get_command_syntax":
             return _handle_get_command_syntax(command_manifests, arguments or {})
         if name == "list_manifests":
@@ -482,6 +501,28 @@ def _unit_servable(unit, source_t, as_of: str, ref_temporal_by_id: dict) -> bool
     )
 
 
+def _unit_needs_attestation(unit, require_attestation: bool) -> bool:
+    """§3.2 / C20: a restricted unit under a manifest requiring attestation must not be served
+    unless the client presents a credential. The bridge checks presence only — it never calls
+    attestation_url (verification is the agent's job)."""
+    return require_attestation and getattr(unit, "access", None) == "restricted"
+
+
+def _attestation_presented(arguments: dict) -> bool:
+    a = arguments.get("attestation")
+    return a is not None and a != ""
+
+
+def _attestation_requirement_data(agent_req) -> dict:
+    out = {"require_attestation": True}
+    if agent_req is not None:
+        if getattr(agent_req, "trusted_providers", None):
+            out["trusted_providers"] = agent_req.trusted_providers
+        if getattr(agent_req, "attestation_url", None):
+            out["attestation_url"] = agent_req.attestation_url
+    return out
+
+
 def _match_not_for(unit, terms: list[str]) -> str | None:
     """Return the first not_for phrase matched by any query term, or None (§15.11)."""
     not_for = getattr(unit, "not_for", None) or []
@@ -499,6 +540,7 @@ def _handle_search_knowledge(
     arguments: dict,
     source_temporal: dict | None = None,
     ref_temporal_by_id: dict | None = None,
+    require_attestation: bool = False,
 ) -> list[TextContent]:
     """Search knowledge units by query (RFC-0007 query baseline)."""
     query = arguments.get("query", "").strip()
@@ -591,6 +633,14 @@ def _handle_search_knowledge(
         ids = ", ".join(unit_context.keys())
         return [TextContent(type="text", text=f'No units matched query "{query}". Available units: {ids}')]
 
+    # C20: mark restricted units needing attestation (dropped if a credential was presented).
+    attested = _attestation_presented(arguments)
+    if require_attestation and not attested:
+        for r in final_results:
+            u = unit_context.get(r["id"], (None, None))[0]
+            if u is not None and getattr(u, "access", None) == "restricted":
+                r["requires_attestation"] = True
+
     final_results.sort(key=lambda r: r["score"], reverse=True)
     top5 = final_results[:5]
 
@@ -602,6 +652,8 @@ def _handle_get_unit(
     arguments: dict,
     source_temporal: dict | None = None,
     ref_temporal_by_id: dict | None = None,
+    require_attestation: bool = False,
+    agent_req=None,
 ) -> list[TextContent]:
     """Fetch the content of a specific knowledge unit by id."""
     source_temporal = source_temporal or {}
@@ -620,6 +672,13 @@ def _handle_get_unit(
         return [TextContent(type="text", text=json.dumps({
             "error": "temporally_unavailable",
             "message": f"Unit '{unit_id}' is outside its temporal validity window as of {today}",
+        }))]
+    # C20: refuse restricted-unit content unless an attestation credential is presented.
+    if _unit_needs_attestation(unit, require_attestation) and not _attestation_presented(arguments):
+        return [TextContent(type="text", text=json.dumps({
+            "error": "attestation_required",
+            "message": f"Unit '{unit_id}' is access: restricted and this manifest requires attestation (§3.2). Re-call get_unit with an 'attestation' argument.",
+            "agent_requirements": _attestation_requirement_data(agent_req),
         }))]
     mime = resolve_mime(unit)
     try:
