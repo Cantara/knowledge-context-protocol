@@ -16,8 +16,13 @@ import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
 import no.cantara.kcp.model.AgentIdentity;
 import no.cantara.kcp.model.ManifestRef;
+import no.cantara.kcp.model.Payment;
+import no.cantara.kcp.model.PaymentMethod;
 import no.cantara.kcp.model.RateLimit;
+import no.cantara.kcp.model.RateLimitHeaders;
 import no.cantara.kcp.model.RateLimits;
+import no.cantara.kcp.model.RateLimitTokens;
+import no.cantara.kcp.model.RateLimitTokensTier;
 import no.cantara.kcp.model.Relationship;
 import no.cantara.kcp.model.Trust;
 import no.cantara.kcp.model.TrustAgentRequirements;
@@ -73,7 +78,7 @@ public class KcpParser {
         Auth auth = parseAuth((Map<String, Object>) data.get("auth"));
         Delegation delegation = parseDelegation((Map<String, Object>) data.get("delegation"));
         Compliance compliance = parseCompliance((Map<String, Object>) data.get("compliance"));
-        Object payment = data.get("payment");
+        Payment payment = parsePayment(data.get("payment"));
         RateLimits rateLimits = parseRateLimits((Map<String, Object>) data.get("rate_limits"));
 
         List<Map<String, Object>> unitMaps = (List<Map<String, Object>>) data.getOrDefault("units", List.of());
@@ -146,7 +151,7 @@ public class KcpParser {
                 (String) u.get("auth_scope"),
                 (String) u.get("sensitivity"),
                 (Boolean) u.get("deprecated"),
-                u.get("payment"),
+                parsePayment(u.get("payment")),
                 parseRateLimits((Map<String, Object>) u.get("rate_limits")),
                 parseDelegation((Map<String, Object>) u.get("delegation")),
                 parseCompliance((Map<String, Object>) u.get("compliance")),
@@ -283,15 +288,95 @@ public class KcpParser {
     }
 
     @SuppressWarnings("unchecked")
+    // A rate-limit count is an Integer, or the String sentinel "unlimited" (v0.25).
+    private static Object parseCount(Object v) {
+        if (v instanceof Number n) return n.intValue();
+        if ("unlimited".equals(v)) return "unlimited";
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static RateLimit parseRateLimitTier(Object raw) {
+        if (!(raw instanceof Map)) return null;
+        Map<String, Object> d = (Map<String, Object>) raw;
+        return new RateLimit(
+                parseCount(d.get("requests_per_minute")),
+                parseCount(d.get("requests_per_hour")),
+                parseCount(d.get("requests_per_day"))
+        );
+    }
+
+    @SuppressWarnings("unchecked")
+    private static RateLimitTokensTier parseTokensTier(Object raw) {
+        if (!(raw instanceof Map)) return null;
+        Map<String, Object> d = (Map<String, Object>) raw;
+        return new RateLimitTokensTier(
+                parseCount(d.get("tokens_per_minute")),
+                parseCount(d.get("tokens_per_day"))
+        );
+    }
+
+    @SuppressWarnings("unchecked")
     private static RateLimits parseRateLimits(Map<String, Object> r) {
         if (r == null) return null;
-        Map<String, Object> def = (Map<String, Object>) r.get("default");
-        if (def == null) return new RateLimits(null);
-        RateLimit defaultLimit = new RateLimit(
-                def.get("requests_per_minute") instanceof Number n ? n.intValue() : null,
-                def.get("requests_per_day") instanceof Number n ? n.intValue() : null
+        RateLimitTokens tokens = null;
+        if (r.get("tokens") instanceof Map<?, ?> tk) {
+            Map<String, Object> t = (Map<String, Object>) tk;
+            tokens = new RateLimitTokens(
+                    parseTokensTier(t.get("default")),
+                    parseTokensTier(t.get("authenticated")),
+                    parseTokensTier(t.get("premium"))
+            );
+        }
+        RateLimitHeaders headers = null;
+        if (r.get("headers") instanceof Map<?, ?> hd) {
+            Map<String, Object> h = (Map<String, Object>) hd;
+            headers = new RateLimitHeaders(
+                    (String) h.get("remaining"),
+                    (String) h.get("reset"),
+                    (String) h.get("retry_after")
+            );
+        }
+        return new RateLimits(
+                parseRateLimitTier(r.get("default")),
+                parseRateLimitTier(r.get("authenticated")),
+                parseRateLimitTier(r.get("premium")),
+                tokens,
+                headers,
+                (String) r.get("backoff")
         );
-        return new RateLimits(defaultLimit);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static PaymentMethod parsePaymentMethod(Object raw) {
+        Map<String, Object> d = raw instanceof Map ? (Map<String, Object>) raw : Map.of();
+        return new PaymentMethod(
+                (String) d.get("type"),
+                (String) d.get("currency"),
+                d.get("price_per_request") == null ? null : String.valueOf(d.get("price_per_request")),
+                asStringList(d.get("networks")),
+                (String) d.get("wallet"),
+                (String) d.get("provider"),
+                (String) d.get("plans_url"),
+                (Boolean) d.get("free_tier"),
+                d.get("free_requests_per_day") instanceof Number n ? n.intValue() : null,
+                (String) d.get("upgrade_url")
+        );
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Payment parsePayment(Object raw) {
+        if (!(raw instanceof Map)) return null;
+        Map<String, Object> d = (Map<String, Object>) raw;
+        List<PaymentMethod> methods = null;
+        if (d.get("methods") instanceof List<?> ms) {
+            methods = ms.stream().map(KcpParser::parsePaymentMethod).toList();
+        }
+        return new Payment(
+                (String) d.get("default_tier"),
+                methods,
+                (String) d.get("billing_contact")
+        );
     }
 
     @SuppressWarnings("unchecked")

@@ -1,6 +1,6 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.24
+**Version:** 0.25
 **Status:** Draft
 **Date:** 2026-06-12
 **Repository:** github.com/cantara/knowledge-context-protocol
@@ -188,7 +188,7 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 | `auth` | OPTIONAL | object | Authentication methods for this knowledge source. See §3.3. |
 | `delegation` | OPTIONAL | object | Delegation chain constraints for multi-agent access. See §3.4. |
 | `compliance` | OPTIONAL | object | Compliance classification, data residency, and processing restrictions. See §3.5. |
-| `payment` | OPTIONAL | object | Default monetisation tier for all units. See §4.14. |
+| `payment` | OPTIONAL | object | Monetisation model for all units: `default_tier`, accepted `methods[]`, `billing_contact`. See §4.14. |
 | `manifests` | OPTIONAL | list | Federation declarations — sub-manifests this manifest has a relationship with. See §3.6. |
 | `external_relationships` | OPTIONAL | list | Cross-manifest relationship declarations. See §3.6. |
 | `freshness_policy` | OPTIONAL | object | Default staleness policy for all units. Unit-level declarations override. See §3.7. |
@@ -1888,14 +1888,34 @@ When `deprecated: true`:
 
 ### 4.14 `payment`
 
-The `payment` field declares the monetisation model for this unit. It is an advisory signal
-that allows agents to assess whether access will incur a cost before attempting to load content.
+The `payment` block declares the monetisation model for this manifest or unit. It is an advisory
+signal that lets an agent assess **what access will cost** and **which payment mechanisms the
+publisher accepts** *before* attempting to load content — so it can select a method it supports,
+check its budget, and decide whether to proceed. KCP declares the economics; it never settles a
+payment. (Promoted from [RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md) in v0.25; `default_tier`
+was promoted in v0.5.)
 
-In this version, only the `default_tier` sub-field is defined. Additional sub-fields (payment
-methods, x402 micropayment details, rate limits) are specified in RFC-0005 and may be promoted
-in a future version.
+**Root-level default (overridable per unit):**
 
-**Unit-level form:**
+```yaml
+payment:
+  default_tier: free           # free | metered | subscription — default for all units
+  methods:                     # ordered by publisher preference; agent picks the first it supports
+    - type: free
+    - type: x402
+      currency: USDC
+      price_per_request: "0.001"   # decimal string — avoids IEEE-754 rounding
+      networks: [base, ethereum]
+      wallet: "0xABC..."
+    - type: subscription
+      plans_url: "https://example.com/pricing"
+      free_tier: true
+      free_requests_per_day: 100
+      upgrade_url: "https://example.com/upgrade"
+  billing_contact: "billing@example.com"
+```
+
+**Unit-level override** (replaces the root `payment` entirely for that unit — no merge):
 
 ```yaml
 units:
@@ -1906,20 +1926,23 @@ units:
     audience: [agent]
     payment:
       default_tier: metered
-```
-
-**Root-level default (overridable per unit):**
-
-```yaml
-payment:
-  default_tier: free   # applies to all units unless overridden
+      methods:
+        - type: x402
+          currency: USDC
+          price_per_request: "0.05"
+          networks: [base]
+          wallet: "0xABC..."
+        - type: subscription
+          plans_url: "https://example.com/pricing"
 ```
 
 #### `payment` sub-fields
 
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
-| `default_tier` | OPTIONAL | string | Monetisation tier. One of: `free`, `metered`, `subscription`. Default: `free`. |
+| `default_tier` | OPTIONAL | string | Monetisation tier. One of `free`, `metered`, `subscription`. Default: `free`. |
+| `methods` | OPTIONAL | array | Ordered list of accepted payment methods (v0.25). Ordered by publisher preference; an agent SHOULD attempt them in order and select the first it supports. |
+| `billing_contact` | OPTIONAL | string | Contact (email or URL) for billing questions (v0.25). |
 
 | Tier | Meaning |
 |------|---------|
@@ -1927,12 +1950,44 @@ payment:
 | `metered` | Per-request or per-token billing. Agent should check its budget before loading. |
 | `subscription` | Access requires an active subscription plan. |
 
+#### `payment.methods[]` (v0.25)
+
+Each entry declares one accepted payment mechanism. `type` is REQUIRED; the remaining fields are
+type-specific.
+
+| `type` | Meaning |
+|--------|---------|
+| `free` | No cost. No credentials required beyond what the `auth` block specifies. |
+| `x402` | HTTP 402 micropayment — the agent pays per request (typically stablecoin) before receiving content. |
+| `meter` | Traditional metered API billing — an API key tied to a billing account; charges accrue per call. |
+| `subscription` | Access under a plan — the agent presents a bearer token proving subscription status. |
+
+| Field | Applies to | Required | Type | Description |
+|-------|-----------|----------|------|-------------|
+| `currency` | `x402` | REQUIRED | string | ISO 4217 code (`USD`, `EUR`) or crypto ticker (`USDC`, `ETH`). |
+| `price_per_request` | `x402` | REQUIRED | string | Amount as a decimal string, e.g. `"0.001"`. String to avoid floating-point rounding. |
+| `networks` | `x402` | RECOMMENDED | array | Settlement networks accepted (`ethereum`, `base`, `solana`, `polygon`). |
+| `wallet` | `x402` | RECOMMENDED | string | Receiving wallet address or payment-processor endpoint URL. |
+| `provider` | `meter` | OPTIONAL | string | Billing provider, e.g. `stripe`, `google-ap2`, `generic`. |
+| `plans_url` | `meter`, `subscription` | OPTIONAL | string | URL describing plans / pricing. |
+| `free_tier` | `subscription` | OPTIONAL | boolean | Whether a free tier exists under the plan. |
+| `free_requests_per_day` | `subscription` | OPTIONAL | integer | Free-tier request budget per day. |
+| `upgrade_url` | `subscription` | OPTIONAL | string | URL to upgrade from the free tier. |
+
+**Relationship to `auth` (§3.3) and `trust` (§3.2).** Payment and auth are complementary but
+separate: `auth` describes *who* the agent proves it is; `payment` describes *what* access costs.
+When both are present, the agent MUST satisfy auth *before* attempting payment. Access-by-proof
+lives in `trust`; access-by-transaction lives in `payment`.
+
 `payment` is OPTIONAL at both root and unit level. When omitted entirely, all units are assumed
-to be `free`.
+`free`. Unit-level `payment` **replaces** the root-level `payment` for that unit (it does not
+merge), so a unit that changes economic model is described unambiguously. Unknown `payment` and
+`methods[]` sub-fields MUST be silently ignored. KCP performs no settlement and dereferences no
+`wallet`, `plans_url`, or `upgrade_url` — these are declarations an agent acts on, not endpoints
+KCP calls.
 
-Unit-level `payment` overrides the root-level `payment` default for that unit.
-
-Unknown `payment` sub-fields MUST be silently ignored.
+**Conformance:** `payment.default_tier` and `payment.methods` — Level 2. `methods[].networks` and
+the full x402 detail set — Level 3.
 
 ---
 
@@ -1963,25 +2018,67 @@ units:
         requests_per_day: 100
 ```
 
+**Per-tier, token, and header disclosure (v0.25).** Beyond `default`, a manifest MAY declare
+tier-specific limits, token-based limits, the response headers that carry live limit state, and a
+recommended backoff strategy — promoted from [RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md):
+
+```yaml
+rate_limits:
+  default:                     # unauthenticated / anonymous access
+    requests_per_minute: 10
+    requests_per_hour: 100
+    requests_per_day: 500
+  authenticated:               # authenticated but not premium
+    requests_per_minute: 100
+    requests_per_day: 20000
+  premium:                     # paid / subscription tier
+    requests_per_minute: 1000
+    requests_per_day: unlimited    # sentinel: no limit at this tier
+  tokens:                      # optional: token-based limits (LLM knowledge APIs)
+    default:
+      tokens_per_minute: 40000
+      tokens_per_day: 1000000
+    authenticated:
+      tokens_per_minute: 200000
+  headers:                     # response header names carrying live limit state
+    remaining: "X-RateLimit-Remaining"
+    reset: "X-RateLimit-Reset"
+    retry_after: "Retry-After"
+  backoff: exponential         # linear | exponential | none
+```
+
 #### `rate_limits` field reference
 
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
 | `rate_limits` | OPTIONAL | object | Rate limit declarations. Root-level applies as default; unit-level overrides root. |
-| `rate_limits.default` | OPTIONAL | object | Default rate limit applied when no tier-specific limit is declared. |
-| `rate_limits.default.requests_per_minute` | OPTIONAL | integer | Maximum requests per 60-second rolling window. Omit for no limit. |
-| `rate_limits.default.requests_per_day` | OPTIONAL | integer | Maximum requests per calendar day (UTC). Omit for no limit. |
+| `rate_limits.default` | OPTIONAL | object | Limits for anonymous access, applied when no tier-specific limit matches. |
+| `rate_limits.authenticated` | OPTIONAL | object | Limits for an authenticated (non-premium) agent (v0.25). |
+| `rate_limits.premium` | OPTIONAL | object | Limits for a paid/subscription-tier agent (v0.25). |
+| `rate_limits.<tier>.requests_per_minute` | OPTIONAL | integer or `unlimited` | Max requests per 60-second rolling window. Omit for no limit. |
+| `rate_limits.<tier>.requests_per_hour` | OPTIONAL | integer or `unlimited` | Max requests per 60-minute window (v0.25). |
+| `rate_limits.<tier>.requests_per_day` | OPTIONAL | integer or `unlimited` | Max requests per calendar day (UTC). |
+| `rate_limits.tokens` | OPTIONAL | object | Token-based limits, mirroring the tier structure (`default`/`authenticated`/`premium`), each with `tokens_per_minute`/`tokens_per_day` (v0.25). |
+| `rate_limits.headers` | OPTIONAL | object | Names of the response headers carrying live limit state: `remaining`, `reset`, `retry_after` (v0.25). |
+| `rate_limits.backoff` | OPTIONAL | string | Recommended backoff strategy: `linear`, `exponential`, or `none` (v0.25). |
 
-Both `requests_per_minute` and `requests_per_day` are OPTIONAL. Declaring one without the
-other is valid. When both are declared, agents MUST respect the more restrictive limit in any
-given window.
+**Tier resolution.** The applicable tier is determined by the agent's authentication state at
+request time: a valid subscription token → `premium`; valid credentials (API key, OAuth token) →
+`authenticated`; otherwise → `default`. `unlimited` is a valid sentinel meaning no limit at that
+tier. Token-based limits parallel request-based limits and both MAY coexist — the binding
+constraint is whichever is hit first.
 
-`rate_limits` is OPTIONAL at both root and unit level. Omitting it entirely means no rate
-limit is declared — agents SHOULD NOT infer a specific limit.
+`requests_per_minute`, `requests_per_hour`, and `requests_per_day` are each OPTIONAL; declaring one
+without the others is valid. When several coexist, agents MUST respect the more restrictive limit
+in any given window.
 
-Unknown sub-fields within `rate_limits` MUST be silently ignored. Additional rate limit
-sub-fields (per-tier, token-based, header mapping) are specified in RFC-0005 and may be
-promoted in a future version.
+`rate_limits` is OPTIONAL at both root and unit level. Omitting it entirely means no rate limit is
+declared — agents SHOULD NOT infer a specific limit. All `rate_limits` values are **advisory**:
+agents self-throttle, KCP does not enforce. Unknown sub-fields within `rate_limits` MUST be
+silently ignored.
+
+**Conformance:** `rate_limits.default` — Level 2. Per-tier (`authenticated`/`premium`), `tokens`,
+and `headers` — Level 3.
 
 ---
 

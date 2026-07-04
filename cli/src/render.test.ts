@@ -482,6 +482,45 @@ manifests:
     // still just data: trust is never inherited across the edge (C5)
     expect(edge.target_tier).toBe("unrendered");
   });
+
+  it("surfaces payment + rate_limits as data, never dereferencing them (§4.14/§4.15, v0.25)", () => {
+    const manifestPath = writeManifest(`project: paid
+version: 1.0.0
+payment:
+  default_tier: metered
+  methods:
+    - type: x402
+      currency: USDC
+      price_per_request: "0.002"
+      wallet: "0xDEF"
+  billing_contact: "billing@ex.com"
+rate_limits:
+  default: {requests_per_minute: 10}
+  premium: {requests_per_day: unlimited}
+  backoff: exponential
+units:
+  - id: realtime
+    path: data/prices.md
+    intent: "current prices"
+    scope: module
+    audience: [agent]
+    payment:
+      default_tier: metered
+      methods:
+        - type: x402
+          currency: USDC
+          price_per_request: "0.05"
+`);
+    const { doc } = renderOk(manifestPath);
+    expect(doc.payment.default_tier).toBe("metered");
+    expect(doc.payment.methods[0].currency).toBe("USDC");
+    expect(doc.payment.methods[0].wallet).toBe("0xDEF"); // surfaced as data
+    expect(doc.rate_limits.premium.requests_per_day).toBe("unlimited");
+    expect(doc.rate_limits.backoff).toBe("exponential");
+    // per-unit override surfaces too
+    const unit = doc.units.find((u: { id: string }) => u.id === "realtime");
+    expect(unit.payment.methods[0].price_per_request).toBe("0.05");
+  });
 });
 
 describe("origin derivation (§4.1)", () => {

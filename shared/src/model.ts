@@ -94,7 +94,7 @@ export interface KnowledgeUnit {
   auth_scope?: string;     // opaque scope token, meaningful when access is "restricted"
   sensitivity?: string;    // "public" | "internal" | "confidential" | "restricted"
   deprecated?: boolean;
-  payment?: Record<string, unknown>;
+  payment?: Payment;
   rate_limits?: RateLimits;
   delegation?: Delegation;
   compliance?: Compliance;
@@ -233,15 +233,65 @@ export interface Compliance {
   restrictions?: string[];
 }
 
-/** Rate limits default tier — root-level and per-unit override. See SPEC.md §4.15. */
+/** A request/token count limit: a positive integer or the sentinel "unlimited" (v0.25). */
+export type RateLimitCount = number | "unlimited";
+
+/** Rate limits for one authentication tier — root-level and per-unit override. See SPEC.md §4.15. */
 export interface RateLimitsDefault {
-  requests_per_minute?: number;
-  requests_per_day?: number;
+  requests_per_minute?: RateLimitCount;
+  requests_per_hour?: RateLimitCount;   // v0.25
+  requests_per_day?: RateLimitCount;
+}
+
+/** Token-based limits for one authentication tier. See SPEC.md §4.15 (v0.25). */
+export interface RateLimitTokensTier {
+  tokens_per_minute?: RateLimitCount;
+  tokens_per_day?: RateLimitCount;
+}
+
+/** Token-based limits, mirroring the tier structure. See SPEC.md §4.15 (v0.25). */
+export interface RateLimitTokens {
+  default?: RateLimitTokensTier;
+  authenticated?: RateLimitTokensTier;
+  premium?: RateLimitTokensTier;
+}
+
+/** Response-header names carrying live limit state. See SPEC.md §4.15 (v0.25). */
+export interface RateLimitHeaders {
+  remaining?: string;
+  reset?: string;
+  retry_after?: string;
 }
 
 /** Rate limits block — root-level and per-unit override. See SPEC.md §4.15. */
 export interface RateLimits {
   default?: RateLimitsDefault;
+  authenticated?: RateLimitsDefault;   // v0.25
+  premium?: RateLimitsDefault;         // v0.25
+  tokens?: RateLimitTokens;            // v0.25
+  headers?: RateLimitHeaders;          // v0.25
+  backoff?: string;                    // v0.25 — "linear" | "exponential" | "none"
+}
+
+/** A single accepted payment method. See SPEC.md §4.14 (v0.25). */
+export interface PaymentMethod {
+  type: string;              // free | x402 | meter | subscription
+  currency?: string;         // x402
+  price_per_request?: string; // x402 — decimal string
+  networks?: string[];       // x402
+  wallet?: string;           // x402
+  provider?: string;         // meter
+  plans_url?: string;        // meter | subscription
+  free_tier?: boolean;       // subscription
+  free_requests_per_day?: number; // subscription
+  upgrade_url?: string;      // subscription
+}
+
+/** Monetisation block — root-level and per-unit override. See SPEC.md §4.14. */
+export interface Payment {
+  default_tier?: string;     // free | metered | subscription
+  methods?: PaymentMethod[]; // v0.25
+  billing_contact?: string;  // v0.25
 }
 
 export interface KnowledgeManifest {
@@ -258,7 +308,7 @@ export interface KnowledgeManifest {
   auth?: Auth;
   delegation?: Delegation;
   compliance?: Compliance;
-  payment?: Record<string, unknown>;
+  payment?: Payment;
   rate_limits?: RateLimits;
   relationships: Relationship[];  // defaults to []
   manifests: ManifestRef[];       // defaults to []

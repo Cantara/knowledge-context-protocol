@@ -21,6 +21,11 @@ import type {
   ManifestRef,
   AgentIdentity,
   RateLimits,
+  RateLimitCount,
+  RateLimitsDefault,
+  RateLimitTokensTier,
+  Payment,
+  PaymentMethod,
   Relationship,
   Trust,
   TrustAudit,
@@ -127,10 +132,7 @@ function parseUnit(raw: RawMap): KnowledgeUnit {
       raw["sensitivity"] !== undefined ? String(raw["sensitivity"]) : undefined,
     deprecated:
       raw["deprecated"] !== undefined ? Boolean(raw["deprecated"]) : undefined,
-    payment:
-      raw["payment"] !== undefined && typeof raw["payment"] === "object" && !Array.isArray(raw["payment"])
-        ? (raw["payment"] as Record<string, unknown>)
-        : undefined,
+    payment: parsePayment(raw["payment"]),
     rate_limits: parseRateLimits(raw["rate_limits"]),
     delegation: parseDelegation(raw["delegation"]),
     compliance: parseCompliance(raw["compliance"]),
@@ -277,17 +279,87 @@ function parseCompliance(raw: unknown): Compliance | undefined {
   };
 }
 
+// A rate-limit count is a positive integer or the sentinel "unlimited" (v0.25).
+function parseRateLimitCount(v: unknown): RateLimitCount | undefined {
+  if (v === undefined || v === null) return undefined;
+  if (typeof v === "string" && v === "unlimited") return "unlimited";
+  return Number(v);
+}
+
+function parseRateLimitTier(raw: unknown): RateLimitsDefault | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const d = raw as RawMap;
+  return {
+    requests_per_minute: parseRateLimitCount(d["requests_per_minute"]),
+    requests_per_hour: parseRateLimitCount(d["requests_per_hour"]),
+    requests_per_day: parseRateLimitCount(d["requests_per_day"]),
+  };
+}
+
+function parseRateLimitTokensTier(raw: unknown): RateLimitTokensTier | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const d = raw as RawMap;
+  return {
+    tokens_per_minute: parseRateLimitCount(d["tokens_per_minute"]),
+    tokens_per_day: parseRateLimitCount(d["tokens_per_day"]),
+  };
+}
+
 function parseRateLimits(raw: unknown): RateLimits | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
   const data = raw as RawMap;
-  const def = data["default"];
-  if (!def || typeof def !== "object" || Array.isArray(def)) return {};
-  const d = def as RawMap;
+  const result: RateLimits = {};
+  const def = parseRateLimitTier(data["default"]);
+  if (def) result.default = def;
+  const authn = parseRateLimitTier(data["authenticated"]);
+  if (authn) result.authenticated = authn;
+  const prem = parseRateLimitTier(data["premium"]);
+  if (prem) result.premium = prem;
+  const tk = data["tokens"];
+  if (tk && typeof tk === "object" && !Array.isArray(tk)) {
+    const t = tk as RawMap;
+    result.tokens = {
+      default: parseRateLimitTokensTier(t["default"]),
+      authenticated: parseRateLimitTokensTier(t["authenticated"]),
+      premium: parseRateLimitTokensTier(t["premium"]),
+    };
+  }
+  const hd = data["headers"];
+  if (hd && typeof hd === "object" && !Array.isArray(hd)) {
+    const h = hd as RawMap;
+    result.headers = {
+      remaining: h["remaining"] !== undefined ? String(h["remaining"]) : undefined,
+      reset: h["reset"] !== undefined ? String(h["reset"]) : undefined,
+      retry_after: h["retry_after"] !== undefined ? String(h["retry_after"]) : undefined,
+    };
+  }
+  if (data["backoff"] !== undefined) result.backoff = String(data["backoff"]);
+  return result;
+}
+
+function parsePaymentMethod(raw: unknown): PaymentMethod {
+  const d = (raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {}) as RawMap;
   return {
-    default: {
-      requests_per_minute: d["requests_per_minute"] !== undefined ? Number(d["requests_per_minute"]) : undefined,
-      requests_per_day: d["requests_per_day"] !== undefined ? Number(d["requests_per_day"]) : undefined,
-    },
+    type: String(d["type"] ?? ""),
+    currency: d["currency"] !== undefined ? String(d["currency"]) : undefined,
+    price_per_request: d["price_per_request"] !== undefined ? String(d["price_per_request"]) : undefined,
+    networks: Array.isArray(d["networks"]) ? (d["networks"] as unknown[]).map(String) : undefined,
+    wallet: d["wallet"] !== undefined ? String(d["wallet"]) : undefined,
+    provider: d["provider"] !== undefined ? String(d["provider"]) : undefined,
+    plans_url: d["plans_url"] !== undefined ? String(d["plans_url"]) : undefined,
+    free_tier: d["free_tier"] !== undefined ? Boolean(d["free_tier"]) : undefined,
+    free_requests_per_day: d["free_requests_per_day"] !== undefined ? Number(d["free_requests_per_day"]) : undefined,
+    upgrade_url: d["upgrade_url"] !== undefined ? String(d["upgrade_url"]) : undefined,
+  };
+}
+
+function parsePayment(raw: unknown): Payment | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const d = raw as RawMap;
+  return {
+    default_tier: d["default_tier"] !== undefined ? String(d["default_tier"]) : undefined,
+    methods: Array.isArray(d["methods"]) ? (d["methods"] as unknown[]).map(parsePaymentMethod) : undefined,
+    billing_contact: d["billing_contact"] !== undefined ? String(d["billing_contact"]) : undefined,
   };
 }
 
@@ -482,10 +554,7 @@ export function parseDict(data: RawMap): KnowledgeManifest {
     auth: parseAuth(data["auth"]),
     delegation: parseDelegation(data["delegation"]),
     compliance: parseCompliance(data["compliance"]),
-    payment:
-      data["payment"] !== undefined && typeof data["payment"] === "object" && !Array.isArray(data["payment"])
-        ? (data["payment"] as Record<string, unknown>)
-        : undefined,
+    payment: parsePayment(data["payment"]),
     rate_limits: parseRateLimits(data["rate_limits"]),
     units: rawUnits.map(parseUnit),
     relationships: rawRels.map(parseRelationship),

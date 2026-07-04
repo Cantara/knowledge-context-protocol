@@ -12,6 +12,9 @@ import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
 import no.cantara.kcp.model.AgentIdentity;
 import no.cantara.kcp.model.ManifestRef;
+import no.cantara.kcp.model.Payment;
+import no.cantara.kcp.model.PaymentMethod;
+import no.cantara.kcp.model.RateLimits;
 import no.cantara.kcp.model.Relationship;
 import no.cantara.kcp.model.Temporal;
 
@@ -55,7 +58,7 @@ public class KcpValidator {
     private static final Set<String> VALID_ACCESS_VALUES = Set.of("public", "authenticated", "restricted");
     private static final Set<String> VALID_SENSITIVITY_VALUES = Set.of("public", "internal", "confidential", "restricted");
     private static final Set<String> VALID_HITL_MECHANISMS = Set.of("oauth_consent", "uma", "custom");
-    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24");
+    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25");
     // content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
     private static final Set<String> VALID_CONTENT_MODALITIES = Set.of("prose", "table", "code", "list", "diagram", "reference", "mixed");
     private static final Set<String> VALID_DENSITY = Set.of("sparse", "normal", "dense");
@@ -502,7 +505,49 @@ public class KcpValidator {
             errors.add("manifests[].temporal.superseded_by cycle detected involving '" + cid + "'");
         }
 
+        // Payment + rate_limits validation (§4.14/§4.15, RFC-0005, v0.25) — root and per-unit.
+        validateEconomics("manifest", manifest.payment(), manifest.rateLimits(), warnings);
+        for (KnowledgeUnit unit : manifest.units()) {
+            validateEconomics("unit '" + unit.id() + "'", unit.payment(), unit.rateLimits(), warnings);
+        }
+
         return new ValidationResult(errors, warnings);
+    }
+
+    private static final Set<String> VALID_PAYMENT_METHOD_TYPES = Set.of("free", "x402", "meter", "subscription");
+    private static final Set<String> VALID_BACKOFF = Set.of("linear", "exponential", "none");
+    private static final java.util.regex.Pattern DECIMAL_STRING = java.util.regex.Pattern.compile("^\\d+(\\.\\d+)?$");
+
+    private static void validateEconomics(String where, Payment payment, RateLimits rateLimits, List<String> warnings) {
+        if (payment != null && payment.methods() != null) {
+            for (PaymentMethod m : payment.methods()) {
+                if (m.type() != null && !VALID_PAYMENT_METHOD_TYPES.contains(m.type())) {
+                    warnings.add(where + ": payment.methods[] has unknown type '" + m.type()
+                            + "' (expected free, x402, meter, or subscription)");
+                }
+                if ("x402".equals(m.type())) {
+                    if (m.currency() == null || m.currency().isBlank()) {
+                        warnings.add(where + ": payment x402 method is missing required 'currency'");
+                    }
+                    if (m.pricePerRequest() == null || m.pricePerRequest().isBlank()) {
+                        warnings.add(where + ": payment x402 method is missing required 'price_per_request'");
+                    } else if (!DECIMAL_STRING.matcher(m.pricePerRequest()).matches()) {
+                        warnings.add(where + ": payment x402 price_per_request '" + m.pricePerRequest()
+                                + "' SHOULD be a decimal string (e.g. \"0.001\")");
+                    }
+                }
+            }
+            String tier = payment.defaultTier();
+            boolean hasPaid = payment.methods().stream().anyMatch(m -> m.type() != null && !"free".equals(m.type()));
+            if (("metered".equals(tier) || "subscription".equals(tier)) && !payment.methods().isEmpty() && !hasPaid) {
+                warnings.add(where + ": payment.default_tier is '" + tier
+                        + "' but no paid method (x402/meter/subscription) is declared");
+            }
+        }
+        if (rateLimits != null && rateLimits.backoff() != null && !VALID_BACKOFF.contains(rateLimits.backoff())) {
+            warnings.add(where + ": rate_limits.backoff must be one of [linear, exponential, none], got '"
+                    + rateLimits.backoff() + "'");
+        }
     }
 
     /**

@@ -6,10 +6,11 @@
     "fields": [
       "id", "kind", "path", "intent", "format", "content_type", "language",
       "scope", "audience", "license", "validated", "update_frequency",
-      "triggers", "not_for"
+      "triggers", "not_for", "payment", "rate_limits"
     ],
     "free_text": ["intent", "triggers", "not_for"]
   },
+  "manifest_blocks": ["payment", "rate_limits"],
   "content_structure": {
     "fields": ["primary", "contains", "density"]
   },

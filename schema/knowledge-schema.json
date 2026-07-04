@@ -9,8 +9,8 @@
   "properties": {
     "kcp_version": {
       "type": "string",
-      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.24\". Prior drafts \"0.1\" through \"0.14\", \"0.16\" through \"0.23\" are also accepted for backward compatibility (\"0.15\" was never a spec version).",
-      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24"]
+      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.25\". Prior drafts \"0.1\" through \"0.14\", \"0.16\" through \"0.24\" are also accepted for backward compatibility (\"0.15\" was never a spec version).",
+      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25"]
     },
     "project": {
       "type": "string",
@@ -648,37 +648,134 @@
     },
     "payment_object": {
       "type": "object",
-      "description": "Monetisation tier declaration. Can appear at root level (as default for all units) or at unit level (as override). See SPEC.md §4.14.",
+      "description": "Monetisation model. Can appear at root level (as default for all units) or at unit level (as override; replaces root, no merge). Advisory — KCP declares economics and settles nothing. See SPEC.md §4.14.",
       "additionalProperties": true,
       "properties": {
         "default_tier": {
           "type": "string",
           "description": "Monetisation tier. Values: free (default), metered (per-request billing), subscription (requires active plan).",
           "enum": ["free", "metered", "subscription"]
+        },
+        "methods": {
+          "type": "array",
+          "description": "Ordered list of accepted payment methods (v0.25). Ordered by publisher preference; an agent SHOULD select the first it supports.",
+          "items": { "$ref": "#/definitions/payment_method" }
+        },
+        "billing_contact": {
+          "type": "string",
+          "description": "Contact (email or URL) for billing questions (v0.25)."
         }
+      }
+    },
+    "payment_method": {
+      "type": "object",
+      "description": "One accepted payment mechanism (v0.25). See SPEC.md §4.14.",
+      "required": ["type"],
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Payment mechanism. free (no cost), x402 (HTTP 402 micropayment), meter (metered API billing), subscription (plan-based).",
+          "enum": ["free", "x402", "meter", "subscription"]
+        },
+        "currency": {
+          "type": "string",
+          "description": "x402: ISO 4217 code (USD, EUR) or crypto ticker (USDC, ETH). Required for x402."
+        },
+        "price_per_request": {
+          "type": "string",
+          "description": "x402: amount as a decimal string (e.g. \"0.001\") to avoid floating-point rounding. Required for x402."
+        },
+        "networks": {
+          "type": "array",
+          "description": "x402: settlement networks accepted (ethereum, base, solana, polygon).",
+          "items": { "type": "string" }
+        },
+        "wallet": {
+          "type": "string",
+          "description": "x402: receiving wallet address or payment-processor endpoint URL. KCP never dereferences it."
+        },
+        "provider": {
+          "type": "string",
+          "description": "meter: billing provider, e.g. stripe, google-ap2, generic."
+        },
+        "plans_url": {
+          "type": "string",
+          "description": "meter / subscription: URL describing plans or pricing."
+        },
+        "free_tier": {
+          "type": "boolean",
+          "description": "subscription: whether a free tier exists under the plan."
+        },
+        "free_requests_per_day": {
+          "type": "integer",
+          "description": "subscription: free-tier request budget per day.",
+          "minimum": 0
+        },
+        "upgrade_url": {
+          "type": "string",
+          "description": "subscription: URL to upgrade from the free tier."
+        }
+      }
+    },
+    "rate_limit_count": {
+      "description": "A request/token count limit: a positive integer, or the sentinel \"unlimited\" (v0.25).",
+      "oneOf": [
+        { "type": "integer", "minimum": 1 },
+        { "type": "string", "enum": ["unlimited"] }
+      ]
+    },
+    "rate_limit_tier": {
+      "type": "object",
+      "description": "Rate limits for one authentication tier. See SPEC.md §4.15.",
+      "additionalProperties": true,
+      "properties": {
+        "requests_per_minute": { "$ref": "#/definitions/rate_limit_count", "description": "Maximum requests per 60-second rolling window." },
+        "requests_per_hour": { "$ref": "#/definitions/rate_limit_count", "description": "Maximum requests per 60-minute window (v0.25)." },
+        "requests_per_day": { "$ref": "#/definitions/rate_limit_count", "description": "Maximum requests per calendar day (UTC)." }
+      }
+    },
+    "rate_limit_tokens_tier": {
+      "type": "object",
+      "description": "Token-based limits for one authentication tier (v0.25).",
+      "additionalProperties": true,
+      "properties": {
+        "tokens_per_minute": { "$ref": "#/definitions/rate_limit_count" },
+        "tokens_per_day": { "$ref": "#/definitions/rate_limit_count" }
       }
     },
     "rate_limits_object": {
       "type": "object",
-      "description": "Rate limit declarations. Can appear at root level (as default for all units) or at unit level (as override). See SPEC.md §4.15.",
+      "description": "Rate limit declarations. Can appear at root level (as default for all units) or at unit level (as override). Advisory — agents self-throttle, KCP does not enforce. See SPEC.md §4.15.",
       "additionalProperties": true,
       "properties": {
-        "default": {
+        "default": { "$ref": "#/definitions/rate_limit_tier", "description": "Limits for anonymous access." },
+        "authenticated": { "$ref": "#/definitions/rate_limit_tier", "description": "Limits for an authenticated non-premium agent (v0.25)." },
+        "premium": { "$ref": "#/definitions/rate_limit_tier", "description": "Limits for a paid/subscription-tier agent (v0.25)." },
+        "tokens": {
           "type": "object",
-          "description": "Default rate limit applied when no tier-specific limit is declared.",
+          "description": "Token-based limits mirroring the tier structure (v0.25).",
           "additionalProperties": true,
           "properties": {
-            "requests_per_minute": {
-              "type": "integer",
-              "description": "Maximum requests per 60-second rolling window. Omit for no limit.",
-              "minimum": 1
-            },
-            "requests_per_day": {
-              "type": "integer",
-              "description": "Maximum requests per calendar day (UTC). Omit for no limit.",
-              "minimum": 1
-            }
+            "default": { "$ref": "#/definitions/rate_limit_tokens_tier" },
+            "authenticated": { "$ref": "#/definitions/rate_limit_tokens_tier" },
+            "premium": { "$ref": "#/definitions/rate_limit_tokens_tier" }
           }
+        },
+        "headers": {
+          "type": "object",
+          "description": "Names of response headers carrying live limit state (v0.25).",
+          "additionalProperties": true,
+          "properties": {
+            "remaining": { "type": "string" },
+            "reset": { "type": "string" },
+            "retry_after": { "type": "string" }
+          }
+        },
+        "backoff": {
+          "type": "string",
+          "description": "Recommended backoff strategy (v0.25).",
+          "enum": ["linear", "exponential", "none"]
         }
       }
     },

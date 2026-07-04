@@ -865,3 +865,94 @@ manifests:
     expect(w.some((x) => x.includes("issuer_hint is only meaningful for credential_hint 'oauth2'"))).toBe(true);
   });
 });
+
+// v0.25 Economic Metadata: structured payment.methods + rate_limits tiers (RFC-0005).
+describe("v0.25 payment + rate_limits", () => {
+  const yaml = (require("js-yaml") as typeof import("js-yaml"));
+  const M = `
+kcp_version: "0.25"
+project: paid-api
+version: 1.0.0
+payment:
+  default_tier: metered
+  methods:
+    - type: free
+    - type: x402
+      currency: USDC
+      price_per_request: "0.001"
+      networks: [base, ethereum]
+      wallet: "0xABC"
+    - type: subscription
+      plans_url: "https://ex.com/pricing"
+      free_tier: true
+      free_requests_per_day: 100
+  billing_contact: "billing@ex.com"
+rate_limits:
+  default: {requests_per_minute: 10, requests_per_day: 500}
+  authenticated: {requests_per_minute: 100}
+  premium: {requests_per_minute: 1000, requests_per_day: unlimited}
+  tokens:
+    default: {tokens_per_minute: 40000}
+  headers: {remaining: "X-RateLimit-Remaining", retry_after: "Retry-After"}
+  backoff: exponential
+units:
+  - {id: docs, path: docs.md, intent: x, scope: global, audience: [agent]}
+`;
+
+  it("parses structured payment methods and rate-limit tiers", () => {
+    const m = parseDict(yaml.load(M) as Record<string, unknown>);
+    expect(m.payment!.default_tier).toBe("metered");
+    expect(m.payment!.methods!.map((x) => x.type)).toEqual(["free", "x402", "subscription"]);
+    const x402 = m.payment!.methods!.find((x) => x.type === "x402")!;
+    expect(x402.currency).toBe("USDC");
+    expect(x402.price_per_request).toBe("0.001");
+    expect(x402.networks).toEqual(["base", "ethereum"]);
+    const sub = m.payment!.methods!.find((x) => x.type === "subscription")!;
+    expect(sub.free_tier).toBe(true);
+    expect(sub.free_requests_per_day).toBe(100);
+    expect(m.payment!.billing_contact).toBe("billing@ex.com");
+    expect(m.rate_limits!.authenticated!.requests_per_minute).toBe(100);
+    expect(m.rate_limits!.premium!.requests_per_day).toBe("unlimited");
+    expect(m.rate_limits!.tokens!.default!.tokens_per_minute).toBe(40000);
+    expect(m.rate_limits!.headers!.remaining).toBe("X-RateLimit-Remaining");
+    expect(m.rate_limits!.backoff).toBe("exponential");
+    expect(validate(m as unknown as Record<string, unknown>, ".").warnings.filter((w) => w.includes("payment") || w.includes("backoff"))).toEqual([]);
+  });
+
+  it("warns on x402 missing fields, unknown method, and bad backoff", () => {
+    const bad = parseDict(yaml.load(`
+kcp_version: "0.25"
+project: bad
+version: 1.0.0
+payment:
+  methods:
+    - type: x402
+    - type: crypto-hug
+rate_limits:
+  backoff: aggressive
+units:
+  - {id: u, path: u.md, intent: x, scope: project, audience: [agent]}
+`) as Record<string, unknown>);
+    const w = validate(bad, ".").warnings;
+    expect(w.some((x) => x.includes("x402 method is missing required 'currency'"))).toBe(true);
+    expect(w.some((x) => x.includes("x402 method is missing required 'price_per_request'"))).toBe(true);
+    expect(w.some((x) => x.includes("unknown type 'crypto-hug'"))).toBe(true);
+    expect(w.some((x) => x.includes("backoff must be one of"))).toBe(true);
+  });
+
+  it("warns when default_tier is paid but only a free method is declared", () => {
+    const bad = parseDict(yaml.load(`
+kcp_version: "0.25"
+project: bad2
+version: 1.0.0
+payment:
+  default_tier: metered
+  methods:
+    - type: free
+units:
+  - {id: u, path: u.md, intent: x, scope: project, audience: [agent]}
+`) as Record<string, unknown>);
+    const w = validate(bad, ".").warnings;
+    expect(w.some((x) => x.includes("default_tier is 'metered' but no paid method"))).toBe(true);
+  });
+});

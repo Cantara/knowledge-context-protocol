@@ -94,7 +94,7 @@ VALID_INDEXING_SHORTHANDS = {"open", "read-only", "no-train", "none"}
 VALID_ACCESS_VALUES = {"public", "authenticated", "restricted"}
 VALID_SENSITIVITY_VALUES = {"public", "internal", "confidential", "restricted"}
 # human_in_the_loop is an object per spec §3.4 — no HITL enum, validation done inline
-KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24"}
+KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25"}
 # content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
 VALID_CONTENT_MODALITIES = {"prose", "table", "code", "list", "diagram", "reference", "mixed"}
 VALID_DENSITY = {"sparse", "normal", "dense"}
@@ -629,7 +629,53 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
     for cid in _superseded_cycle_ids(ref_successor):
         errors.append(f"manifests[].temporal.superseded_by cycle detected involving '{cid}'")
 
+    # Payment + rate_limits validation (§4.14/§4.15, RFC-0005, v0.25) — root and per-unit.
+    _validate_economics("manifest", manifest.payment, manifest.rate_limits, warnings)
+    for unit in manifest.units:
+        _validate_economics(f"unit '{unit.id}'", unit.payment, unit.rate_limits, warnings)
+
     return ValidationResult(errors=errors, warnings=warnings)
+
+
+_VALID_PAYMENT_METHOD_TYPES = {"free", "x402", "meter", "subscription"}
+_VALID_BACKOFF = {"linear", "exponential", "none"}
+_DECIMAL_STRING = re.compile(r"^\d+(\.\d+)?$")
+
+
+def _validate_economics(where: str, payment, rate_limits, warnings: list[str]) -> None:
+    """Advisory payment + rate_limits validation (§4.14/§4.15, RFC-0005, v0.25)."""
+    if payment is not None:
+        methods = payment.methods or []
+        for m in methods:
+            if m.type and m.type not in _VALID_PAYMENT_METHOD_TYPES:
+                warnings.append(
+                    f"{where}: payment.methods[] has unknown type '{m.type}' "
+                    "(expected free, x402, meter, or subscription)"
+                )
+            if m.type == "x402":
+                if not m.currency:
+                    warnings.append(f"{where}: payment x402 method is missing required 'currency'")
+                if not m.price_per_request:
+                    warnings.append(f"{where}: payment x402 method is missing required 'price_per_request'")
+                elif not _DECIMAL_STRING.match(str(m.price_per_request)):
+                    warnings.append(
+                        f"{where}: payment x402 price_per_request '{m.price_per_request}' "
+                        'SHOULD be a decimal string (e.g. "0.001")'
+                    )
+        if (
+            payment.default_tier in ("metered", "subscription")
+            and methods
+            and not any(m.type and m.type != "free" for m in methods)
+        ):
+            warnings.append(
+                f"{where}: payment.default_tier is '{payment.default_tier}' but no paid method "
+                "(x402/meter/subscription) is declared"
+            )
+    if rate_limits is not None and rate_limits.backoff and rate_limits.backoff not in _VALID_BACKOFF:
+        warnings.append(
+            f"{where}: rate_limits.backoff must be one of [linear, exponential, none], "
+            f"got '{rate_limits.backoff}'"
+        )
 
 
 def _validate_discovery(discovery, unit_ids: set[str], prefix: str, errors: list[str], warnings: list[str]) -> None:

@@ -150,7 +150,7 @@ class KnowledgeUnit:
     auth_scope: Optional[str] = None
     sensitivity: Optional[str] = None
     deprecated: Optional[bool] = None
-    payment: Optional[dict] = None
+    payment: Optional["Payment"] = None
     rate_limits: Optional["RateLimits"] = None
     delegation: Optional[Delegation] = None
     compliance: Optional[Compliance] = None
@@ -168,17 +168,73 @@ class KnowledgeUnit:
     temporal: Optional[Temporal] = None  # RFC-0010 / §4.22 (v0.19)
 
 
+# A rate-limit count is a positive int or the sentinel "unlimited" (v0.25).
+RateLimitCount = Union[int, str]
+
+
 @dataclass
 class RateLimit:
-    """Default rate limit tier — part of the rate_limits block. See SPEC.md §4.15."""
-    requests_per_minute: Optional[int] = None
-    requests_per_day: Optional[int] = None
+    """Rate limits for one authentication tier — part of the rate_limits block. See SPEC.md §4.15."""
+    requests_per_minute: Optional[RateLimitCount] = None
+    requests_per_hour: Optional[RateLimitCount] = None   # v0.25
+    requests_per_day: Optional[RateLimitCount] = None
+
+
+@dataclass
+class RateLimitTokensTier:
+    """Token-based limits for one authentication tier. See SPEC.md §4.15 (v0.25)."""
+    tokens_per_minute: Optional[RateLimitCount] = None
+    tokens_per_day: Optional[RateLimitCount] = None
+
+
+@dataclass
+class RateLimitTokens:
+    """Token-based limits, mirroring the tier structure. See SPEC.md §4.15 (v0.25)."""
+    default: Optional[RateLimitTokensTier] = None
+    authenticated: Optional[RateLimitTokensTier] = None
+    premium: Optional[RateLimitTokensTier] = None
+
+
+@dataclass
+class RateLimitHeaders:
+    """Response-header names carrying live limit state. See SPEC.md §4.15 (v0.25)."""
+    remaining: Optional[str] = None
+    reset: Optional[str] = None
+    retry_after: Optional[str] = None
 
 
 @dataclass
 class RateLimits:
     """Rate limits block — root-level and per-unit override. See SPEC.md §4.15."""
     default: Optional[RateLimit] = None
+    authenticated: Optional[RateLimit] = None            # v0.25
+    premium: Optional[RateLimit] = None                  # v0.25
+    tokens: Optional[RateLimitTokens] = None             # v0.25
+    headers: Optional[RateLimitHeaders] = None           # v0.25
+    backoff: Optional[str] = None                        # v0.25
+
+
+@dataclass
+class PaymentMethod:
+    """A single accepted payment method. See SPEC.md §4.14 (v0.25)."""
+    type: str = ""
+    currency: Optional[str] = None
+    price_per_request: Optional[str] = None
+    networks: Optional[List[str]] = None
+    wallet: Optional[str] = None
+    provider: Optional[str] = None
+    plans_url: Optional[str] = None
+    free_tier: Optional[bool] = None
+    free_requests_per_day: Optional[int] = None
+    upgrade_url: Optional[str] = None
+
+
+@dataclass
+class Payment:
+    """Monetisation block — root-level and per-unit override. See SPEC.md §4.14."""
+    default_tier: Optional[str] = None
+    methods: Optional[List[PaymentMethod]] = None        # v0.25
+    billing_contact: Optional[str] = None                # v0.25
 
 
 @dataclass
@@ -296,7 +352,7 @@ class KnowledgeManifest:
     auth: Optional[Auth] = None
     delegation: Optional[Delegation] = None
     compliance: Optional[Compliance] = None
-    payment: Optional[dict] = None
+    payment: Optional["Payment"] = None
     rate_limits: Optional[RateLimits] = None
     relationships: list[Relationship] = field(default_factory=list)
     manifests: list[ManifestRef] = field(default_factory=list)

@@ -35,7 +35,7 @@ const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 
-export const RENDERER_VERSION = "kcp-cli 0.24.0";
+export const RENDERER_VERSION = "kcp-cli 0.25.0";
 export const RENDER_SCHEMA = "kcp-render-schema-0.2";
 export const DEFAULT_KEYS_PATH = join(homedir(), ".kcp", "trusted-keys.yaml");
 
@@ -48,6 +48,7 @@ const NEVER_LOAD_KINDS = ["service", "executable"];
 interface RenderSchemaFile {
   top_scalars: string[];
   unit: { fields: string[]; free_text: string[] };
+  manifest_blocks: string[];
   content_structure: { fields: string[] };
   relationship: { fields: string[] };
   federation: { fields: string[] };
@@ -72,6 +73,10 @@ const PROVENANCE_FIELDS = _rs.provenance.fields;
 // §3.2 trust.agent_requirements passthrough (v0.22). Surfaced as data only — the
 // renderer never dereferences attestation_url/jwks (C19; deterministic + network-free).
 const AGENT_REQ_FIELDS = _rs.agent_requirements.fields;
+// §4.14/§4.15 economic blocks (payment, rate_limits) surfaced at manifest level as
+// data (v0.25). Advisory declarations — the renderer copies the numbers/enums/URLs
+// through and never dereferences a wallet, plans_url, or upgrade_url.
+const MANIFEST_BLOCK_FIELDS = _rs.manifest_blocks;
 
 // §5.1: default tier→confidence mapping, monotone in tier.
 const TIER_CONFIDENCE: Record<string, number> = { trusted: 0.7, known: 0.6, unsigned: 0.5 };
@@ -742,10 +747,29 @@ export function renderManifest(options: RenderOptions): RenderResult {
     }
   }
 
+  // --- manifest-level economic blocks (§4.14/§4.15, v0.25) ---------------------
+  // Surfaced as data so a cost-aware agent can plan before loading. Pure economic
+  // declarations (tiers, prices, limits, URLs) — no free-text lint, never dereferenced.
+  const economics: RawMap = {};
+  for (const blk of MANIFEST_BLOCK_FIELDS) {
+    const v = doc[blk];
+    if (v === undefined) continue;
+    const n = countLeaves(v);
+    fieldsIn += n;
+    if (v && typeof v === "object" && !Array.isArray(v)) {
+      economics[blk] = v;
+      fieldsRendered += n;
+    } else {
+      dropped.push({ path: blk, reason: "not_in_schema" });
+      fieldsDropped += n;
+    }
+  }
+
   // --- remaining top-level blocks ----------------------------------------------
   const handled = new Set([
     ...TOP_SCALAR_FIELDS, "kcp_version", "units", "relationships", "manifests", "trust",
     "composition", // consumed during resolution above (counted there)
+    ...MANIFEST_BLOCK_FIELDS, // surfaced as economics above
   ]);
   for (const [k, v] of Object.entries(doc)) {
     if (handled.has(k)) continue;
@@ -790,6 +814,8 @@ export function renderManifest(options: RenderOptions): RenderResult {
       confidence: TIER_CONFIDENCE[tier],
     },
     project,
+    ...(economics.payment !== undefined ? { payment: economics.payment } : {}),
+    ...(economics.rate_limits !== undefined ? { rate_limits: economics.rate_limits } : {}),
     units,
     ...(relationships.length ? { relationships } : {}),
     ...(federation.length ? { federation } : {}),
