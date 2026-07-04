@@ -482,8 +482,8 @@ public final class KcpServer {
             "If true, skip temporal filtering and return all units regardless of valid_from/valid_until (§15.13). Mutually exclusive with as_of."));
         searchProps.put("attestation", Map.of("type", "string", "description",
             "Agent attestation credential (§3.2). When presented, restricted units are not marked requires_attestation. Presence is checked; the credential is not verified."));
-        McpSchema.JsonSchema searchSchema = new McpSchema.JsonSchema(
-            "object", searchProps, List.of("query"), null, null, null
+        Map<String, Object> searchSchema = Map.of(
+            "type", "object", "properties", searchProps, "required", List.of("query")
         );
 
         server.addTool(new McpServerFeatures.SyncToolSpecification(
@@ -494,15 +494,15 @@ public final class KcpServer {
         ));
 
         // Tool: get_unit
-        McpSchema.JsonSchema getUnitSchema = new McpSchema.JsonSchema(
-            "object",
-            Map.of(
+        Map<String, Object> getUnitSchema = Map.of(
+            "type", "object",
+            "properties", Map.of(
                 "unit_id", Map.of("type", "string", "description",
                     "The unit id from search_knowledge results"),
                 "attestation", Map.of("type", "string", "description",
                     "Agent attestation credential (§3.2). Required to fetch access: restricted units when the manifest sets require_attestation. Presence is checked; the credential is not verified.")
             ),
-            List.of("unit_id"), null, null, null
+            "required", List.of("unit_id")
         );
 
         server.addTool(new McpServerFeatures.SyncToolSpecification(
@@ -514,13 +514,13 @@ public final class KcpServer {
 
         // Tool: get_command_syntax (only if commandManifests loaded)
         if (commandManifests != null && !commandManifests.isEmpty()) {
-            McpSchema.JsonSchema cmdSchema = new McpSchema.JsonSchema(
-                "object",
-                Map.of(
+            Map<String, Object> cmdSchema = Map.of(
+                "type", "object",
+                "properties", Map.of(
                     "command", Map.of("type", "string", "description",
                         "Command name e.g. 'git commit', 'mvn', 'docker'")
                 ),
-                List.of("command"), null, null, null
+                "required", List.of("command")
             );
 
             server.addTool(new McpServerFeatures.SyncToolSpecification(
@@ -532,11 +532,11 @@ public final class KcpServer {
         }
 
         // Tool: list_manifests
-        McpSchema.JsonSchema listManifestsSchema = new McpSchema.JsonSchema(
-            "object",
-            Map.of("as_of", Map.of("type", "string", "description",
+        Map<String, Object> listManifestsSchema = Map.of(
+            "type", "object",
+            "properties", Map.of("as_of", Map.of("type", "string", "description",
                 "ISO 8601 date (YYYY-MM-DD) to evaluate temporally_active against (§3.6). Default: today (UTC).")),
-            List.of(), null, null, null
+            "required", List.of()
         );
 
         server.addTool(new McpServerFeatures.SyncToolSpecification(
