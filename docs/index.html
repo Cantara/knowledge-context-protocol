@@ -2175,7 +2175,7 @@ relationships:
       <div class="section-header reveal">
         <span class="section-label">Roadmap</span>
         <h2>Where KCP is headed</h2>
-        <p>v0.24 is the current release. Fields are promoted from RFC proposals to core as they accumulate real-world validation. Remaining RFCs are open for community feedback through 2026.</p>
+        <p>v0.25 is the current release. Fields are promoted from RFC proposals to core as they accumulate real-world validation. Remaining RFCs are open for community feedback through 2026.</p>
       </div>
 
       <div class="roadmap-core reveal">
@@ -2454,7 +2454,7 @@ relationships:
 
       <div class="roadmap-core reveal">
         <div class="roadmap-core__info">
-          <span class="roadmap-core__badge">v0.24 — Current</span>
+          <span class="roadmap-core__badge">v0.24 — Shipped</span>
           <h3>Org-Federation</h3>
           <p>Answers the enterprise bootstrap — how an agent that knows only a company domain finds its first manifest, gets through the door, and learns what else exists. Two fields join the §3.6 federation graph: <code>manifests[].context</code> tags each sub-manifest reference with the environment(s) it is valid for (<code>dev</code>/<code>test</code>/<code>staging</code>/<code>prod</code>), and <code>manifests[].agent_identity</code> is a pre-fetch credential hint so an agent acquires the right token <em>before</em> it fetches. Advisory declarations — the hub declares; the agent acts. The Org Hub and progressive-disclosure patterns ship as usage conventions. Promoted from RFC-0011.</p>
         </div>
@@ -2463,6 +2463,20 @@ relationships:
           <span class="roadmap-field-pill">agent_identity</span>
           <span class="roadmap-field-pill">org hub</span>
           <span class="roadmap-field-pill">RFC-0011</span>
+        </div>
+      </div>
+
+      <div class="roadmap-core reveal">
+        <div class="roadmap-core__info">
+          <span class="roadmap-core__badge">v0.25 — Current</span>
+          <h3>Economic Metadata</h3>
+          <p>An agent should know what access costs and how much it can consume <em>before</em> it issues a request. <code>payment.methods[]</code> declares accepted mechanisms in publisher-preference order — <code>free</code>, <code>x402</code> stablecoin micropayments (currency, per-request price, settlement networks, wallet), <code>meter</code>, and <code>subscription</code> — and <code>rate_limits</code> discloses per-tier budgets (<code>default</code>/<code>authenticated</code>/<code>premium</code>), token limits, and a backoff strategy. The agent picks a method it supports and budgets up front. Advisory — KCP declares the economics and settles nothing. Promoted from RFC-0005.</p>
+        </div>
+        <div class="roadmap-core__fields">
+          <span class="roadmap-field-pill">payment.methods</span>
+          <span class="roadmap-field-pill">x402</span>
+          <span class="roadmap-field-pill">rate_limits tiers</span>
+          <span class="roadmap-field-pill">RFC-0005</span>
         </div>
       </div>
 
@@ -2533,9 +2547,9 @@ relationships:
             <span class="rfc-card__block">payment.x402</span>
             <span class="rfc-card__block">rate_limits</span>
           </div>
-          <p>x402 stablecoin micropayments, metered billing (Stripe, Google AP2), and per-tier rate limits with token-based quotas for LLM pipelines. <code>payment.default_tier</code> was promoted to core in v0.5; <code>rate_limits</code> was promoted to core in v0.8. Remaining RFC scope: payment methods, x402, per-tier rate limit overrides.</p>
+          <p>x402 stablecoin micropayments, metered billing (Stripe, Google AP2), and per-tier rate limits with token-based quotas for LLM pipelines. <code>payment.default_tier</code> was promoted to core in v0.5 and <code>rate_limits.default</code> in v0.8; the structured <code>payment.methods[]</code> (incl. x402) and the <code>rate_limits</code> per-tier/token/header/backoff extensions were promoted in v0.25. Fully accepted — nothing remains RFC-only.</p>
           <div class="rfc-card__footer">
-            <span class="rfc-card__status">Open for feedback</span>
+            <span class="rfc-card__status">Accepted — v0.25</span>
             <a class="rfc-card__link" href="https://github.com/Cantara/knowledge-context-protocol/blob/main/RFC-0005-Payment-and-Rate-Limits.md" target="_blank" rel="noopener">Read RFC →</a>
           </div>
         </div>
