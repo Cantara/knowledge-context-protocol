@@ -59,7 +59,7 @@ units:
     triggers: [ spec, specification, fields, validation, conformance, yaml, format ]
     content_hash:
       algorithm: sha256
-      value: cc78add960a2f6f3eb165cc2467aa30f0a982a194c8396f1d8bf6db51b12db12
+      value: 1ff29e752a02ff100feec500fac5c2800d6a1da07bbe486d7e60f6a2ca0909bb
 
   - id: proposal
     path: PROPOSAL.md
@@ -482,7 +482,7 @@ units:
     triggers: [ org federation, hub and spoke, multi-org, federation topology, rfc-0011 ]
     content_hash:
       algorithm: sha256
-      value: 08f50e3249bc2796a51d71ac88ac754ade5e30b36d6e8eb664ce3697e544efdc
+      value: e205035b69dca193eeb443d23ab3cc22f0fb900359ccdc5ce3e43e665ecd8f51
 
   - id: rfc-0013
     path: RFC-0013-Cartridge-Catalog-Distribution.md
