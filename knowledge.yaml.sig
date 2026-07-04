@@ -2,5 +2,5 @@
   "key_id": "cantara-org-2026",
   "algorithm": "EdDSA",
   "public_key": "MCowBQYDK2VwAyEAPaELavsY8mkbWPPBfxQ+plvYtzucW0gxnUULpvAwzlM=",
-  "signature": "Yr7LfOwjpF+LE1ngfi7l0UM/E4Rh+pGfVUrpaEJGG1Rnzri2MBjMIJZQ9GPJKg/mM1GY/rxiV9h8CHBBludMAw=="
+  "signature": "BxPXPwLhBY5AmseSMbYipzxdAjqLae5I4Z+XN/1/+6zXrUR4CqPKAWRyO0b8O/xth4b7QEVn+aPKZz7B6NS2Aw=="
 }
