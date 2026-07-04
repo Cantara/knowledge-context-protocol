@@ -296,6 +296,30 @@ public class KcpValidator {
             warnings.add("manifest: units with access 'authenticated' or 'restricted' exist but no 'auth' block is declared");
         }
 
+        // Agent attestation requirements validation (§3.2, v0.22)
+        var ar = manifest.trust() != null ? manifest.trust().agentRequirements() : null;
+        if (ar != null) {
+            if (ar.attestationUrl() != null && !ar.attestationUrl().startsWith("https://")) {
+                warnings.add("manifest: trust.agent_requirements.attestation_url SHOULD use HTTPS, got '" + ar.attestationUrl() + "'");
+            }
+            if (ar.attestationJwks() != null && !ar.attestationJwks().startsWith("https://")) {
+                warnings.add("manifest: trust.agent_requirements.attestation_jwks SHOULD use HTTPS, got '" + ar.attestationJwks() + "'");
+            }
+            if (Boolean.TRUE.equals(ar.requireAttestation())
+                    && ar.trustedProviders().isEmpty() && ar.attestationUrl() == null) {
+                warnings.add("manifest: trust.agent_requirements.require_attestation is true but neither "
+                        + "trusted_providers nor attestation_url is declared — the requirement cannot be satisfied");
+            }
+            if (Boolean.TRUE.equals(ar.propagateToGoverned())) {
+                boolean hasGoverns = manifest.relationships().stream().anyMatch(r -> "governs".equals(r.type()))
+                        || manifest.manifests().stream().anyMatch(m -> "governs".equals(m.relationship()));
+                if (!hasGoverns) {
+                    warnings.add("manifest: trust.agent_requirements.propagate_to_governed is true but the "
+                            + "manifest declares no 'governs' relationship — nothing to propagate to");
+                }
+            }
+        }
+
         for (Relationship rel : manifest.relationships()) {
             String p = "relationship '" + rel.fromId() + "' -> '" + rel.toId() + "'";
             if (!unitIds.contains(rel.fromId())) {

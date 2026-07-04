@@ -427,6 +427,32 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
             "but no 'auth' block is declared"
         )
 
+    # Agent attestation requirements validation (§3.2, v0.22)
+    ar = manifest.trust.agent_requirements if manifest.trust else None
+    if ar is not None:
+        if ar.attestation_url and not ar.attestation_url.startswith("https://"):
+            warnings.append(
+                f"manifest: trust.agent_requirements.attestation_url SHOULD use HTTPS, got '{ar.attestation_url}'"
+            )
+        if ar.attestation_jwks and not ar.attestation_jwks.startswith("https://"):
+            warnings.append(
+                f"manifest: trust.agent_requirements.attestation_jwks SHOULD use HTTPS, got '{ar.attestation_jwks}'"
+            )
+        if ar.require_attestation and not ar.trusted_providers and not ar.attestation_url:
+            warnings.append(
+                "manifest: trust.agent_requirements.require_attestation is true but neither "
+                "trusted_providers nor attestation_url is declared — the requirement cannot be satisfied"
+            )
+        if ar.propagate_to_governed:
+            has_governs = any(r.type == "governs" for r in manifest.relationships) or any(
+                m.relationship == "governs" for m in manifest.manifests
+            )
+            if not has_governs:
+                warnings.append(
+                    "manifest: trust.agent_requirements.propagate_to_governed is true but the "
+                    "manifest declares no 'governs' relationship — nothing to propagate to"
+                )
+
     for rel in manifest.relationships:
         p = f"relationship '{rel.from_id}' -> '{rel.to_id}'"
         if rel.from_id not in unit_ids:

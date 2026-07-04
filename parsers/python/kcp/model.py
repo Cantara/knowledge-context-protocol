@@ -219,6 +219,11 @@ class AuthMethod:
     scopes: list[str] = field(default_factory=list)
     header: Optional[str] = None
     registration_url: Optional[str] = None
+    # Extended method sub-fields (RFC-0002, v0.22):
+    trust_domain: Optional[str] = None       # spiffe
+    supported_methods: list[str] = field(default_factory=list)  # did
+    key_id: Optional[str] = None             # http_signature
+    algorithm: Optional[str] = None          # http_signature
 
 
 @dataclass
@@ -243,10 +248,21 @@ class TrustAudit:
 
 
 @dataclass
+class TrustAgentRequirements:
+    """Agent attestation requirements within the trust block. See SPEC.md section 3.2 (v0.22)."""
+    require_attestation: Optional[bool] = None
+    trusted_providers: list[str] = field(default_factory=list)
+    attestation_url: Optional[str] = None
+    attestation_jwks: Optional[str] = None
+    propagate_to_governed: Optional[bool] = None
+
+
+@dataclass
 class Trust:
     """Root-level trust block. See SPEC.md section 3.2."""
     provenance: Optional[TrustProvenance] = None
     audit: Optional[TrustAudit] = None
+    agent_requirements: Optional[TrustAgentRequirements] = None
 
 
 @dataclass

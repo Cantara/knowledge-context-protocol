@@ -149,11 +149,16 @@ export interface ExternalRelationship {
 
 /** A single authentication method declaration. See SPEC.md §3.3. */
 export interface AuthMethod {
-  type: string;            // "none" | "oauth2" | "api_key" (core types)
+  type: string;            // none | oauth2 | api_key | bearer_token | spiffe | did | http_signature
   issuer?: string;         // OAuth 2.1 issuer URL
   scopes?: string[];       // OAuth 2.1 scopes
   header?: string;         // API key header name (default: "X-API-Key")
   registration_url?: string;
+  // Extended method sub-fields (RFC-0002, v0.22):
+  trust_domain?: string;      // spiffe: accepted SPIFFE trust domain
+  supported_methods?: string[]; // did: accepted DID methods (e.g. did:web, did:key)
+  key_id?: string;            // http_signature: signing key identifier
+  algorithm?: string;         // http_signature: signature algorithm
 }
 
 /** Root-level authentication block. See SPEC.md §3.3. */
@@ -174,10 +179,20 @@ export interface TrustAudit {
   require_trace_context?: boolean;
 }
 
+/** Agent attestation requirements within the trust block. See SPEC.md §3.2 (v0.22). */
+export interface TrustAgentRequirements {
+  require_attestation?: boolean;
+  trusted_providers?: string[];   // identity-based (OIDC-A agent_provider)
+  attestation_url?: string;       // credential-based (HTTPS)
+  attestation_jwks?: string;      // JWKS for verifying attestation_url responses
+  propagate_to_governed?: boolean; // governs-edge policy floor (#47)
+}
+
 /** Root-level trust block. See SPEC.md §3.2. */
 export interface Trust {
   provenance?: TrustProvenance;
   audit?: TrustAudit;
+  agent_requirements?: TrustAgentRequirements;
 }
 
 /** Human-in-the-loop approval object — see SPEC.md §3.4. */

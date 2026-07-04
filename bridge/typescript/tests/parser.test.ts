@@ -664,3 +664,92 @@ describe("parseFile", () => {
     expect(api?.depends_on).toEqual(["spec"]);
   });
 });
+
+// v0.22 Trust & Attestation: trust.agent_requirements + extended auth.methods (RFC-0004/0002)
+import { validate } from "../src/validator.js";
+
+const ATTEST_YAML = `
+kcp_version: "0.21"
+project: attest-demo
+version: 1.0.0
+trust:
+  agent_requirements:
+    require_attestation: true
+    trusted_providers: [internal-agents.acme.com]
+    attestation_url: https://acme.com/v1/attest
+    attestation_jwks: https://acme.com/.well-known/jwks.json
+    propagate_to_governed: true
+auth:
+  methods:
+    - type: spiffe
+      trust_domain: acme.internal
+    - type: did
+      supported_methods: [did:web, did:key]
+    - type: http_signature
+      key_id: k1
+      algorithm: ed25519
+    - type: bearer_token
+      registration_url: https://acme.com/token
+relationships:
+  - from: overview
+    to: overview
+    type: governs
+units:
+  - id: overview
+    path: README.md
+    intent: "restricted overview"
+    scope: project
+    audience: [agent]
+    access: restricted
+`;
+
+describe("trust.agent_requirements + extended auth (v0.22)", () => {
+  it("parses agent_requirements fields", () => {
+    const m = parseDict((require("js-yaml") as typeof import("js-yaml")).load(ATTEST_YAML) as Record<string, unknown>);
+    const ar = m.trust!.agent_requirements!;
+    expect(ar.require_attestation).toBe(true);
+    expect(ar.trusted_providers).toEqual(["internal-agents.acme.com"]);
+    expect(ar.attestation_url).toBe("https://acme.com/v1/attest");
+    expect(ar.propagate_to_governed).toBe(true);
+  });
+
+  it("parses the extended auth method sub-fields", () => {
+    const m = parseDict((require("js-yaml") as typeof import("js-yaml")).load(ATTEST_YAML) as Record<string, unknown>);
+    const byType = Object.fromEntries(m.auth!.methods.map((x) => [x.type, x]));
+    expect(byType["spiffe"].trust_domain).toBe("acme.internal");
+    expect(byType["did"].supported_methods).toEqual(["did:web", "did:key"]);
+    expect(byType["http_signature"].key_id).toBe("k1");
+    expect(byType["http_signature"].algorithm).toBe("ed25519");
+  });
+
+  it("warns on non-HTTPS attestation_url and unsatisfiable require_attestation", () => {
+    const m = parseDict((require("js-yaml") as typeof import("js-yaml")).load(`
+kcp_version: "0.21"
+project: bad
+version: 1.0.0
+trust:
+  agent_requirements:
+    require_attestation: true
+    attestation_url: http://insecure.example/attest
+units:
+  - {id: u, path: u.md, intent: x, scope: project, audience: [agent]}
+`) as Record<string, unknown>);
+    const r = validate(m, ".");
+    expect(r.warnings.some((w) => w.includes("attestation_url SHOULD use HTTPS"))).toBe(true);
+  });
+
+  it("warns when propagate_to_governed is set but no governs relationship exists", () => {
+    const m = parseDict((require("js-yaml") as typeof import("js-yaml")).load(`
+kcp_version: "0.21"
+project: nogov
+version: 1.0.0
+trust:
+  agent_requirements:
+    propagate_to_governed: true
+units:
+  - {id: u, path: u.md, intent: x, scope: project, audience: [agent]}
+`) as Record<string, unknown>);
+    const r = validate(m, ".");
+    expect(r.warnings.some((w) => w.includes("propagate_to_governed"))).toBe(true);
+  });
+});

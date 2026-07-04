@@ -6,6 +6,7 @@ package no.cantara.kcp.model;
  */
 public record Trust(
         TrustProvenance provenance,
-        TrustAudit audit
+        TrustAudit audit,
+        TrustAgentRequirements agentRequirements
 ) {
 }

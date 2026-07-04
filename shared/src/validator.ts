@@ -557,6 +557,40 @@ export function validate(
     );
   }
 
+  // Agent attestation requirements validation (§3.2, v0.22)
+  const ar = manifest.trust?.agent_requirements;
+  if (ar) {
+    if (ar.attestation_url && !ar.attestation_url.startsWith("https://")) {
+      warnings.push(
+        `manifest: trust.agent_requirements.attestation_url SHOULD use HTTPS, got '${ar.attestation_url}'`
+      );
+    }
+    if (ar.attestation_jwks && !ar.attestation_jwks.startsWith("https://")) {
+      warnings.push(
+        `manifest: trust.agent_requirements.attestation_jwks SHOULD use HTTPS, got '${ar.attestation_jwks}'`
+      );
+    }
+    if (
+      ar.require_attestation &&
+      !(ar.trusted_providers && ar.trusted_providers.length) &&
+      !ar.attestation_url
+    ) {
+      warnings.push(
+        "manifest: trust.agent_requirements.require_attestation is true but neither trusted_providers nor attestation_url is declared — the requirement cannot be satisfied"
+      );
+    }
+    if (ar.propagate_to_governed) {
+      const hasGoverns =
+        manifest.relationships.some((r) => r.type === "governs") ||
+        manifest.manifests.some((m) => m.relationship === "governs");
+      if (!hasGoverns) {
+        warnings.push(
+          "manifest: trust.agent_requirements.propagate_to_governed is true but the manifest declares no 'governs' relationship — nothing to propagate to"
+        );
+      }
+    }
+  }
+
   // Federation validation (§3.6)
   const manifestIds = new Set<string>();
   for (const ref of manifest.manifests) {
