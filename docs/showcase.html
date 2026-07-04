@@ -178,6 +178,35 @@
         so it cannot drift from reality.
       </p>
     </section>
+
+    <section class="rsim-reel" data-reel="pay">
+      <h2 class="rsim-reel__label">Go deeper: economic metadata</h2>
+      <p class="rsim-reel__sub">The v0.25 layer up close — an agent surveying prices, selecting a payment method, computing a bill, and reading its rate-limit budget, all before the first request.</p>
+      <div class="rsim-tabs" role="tablist" aria-label="Payment scenarios"></div>
+      <div class="rsim-controls"><button class="btn btn--primary rsim-play">▶ Replay</button></div>
+      <div class="rsim-stage">
+        <section class="rsim-usecase">
+          <h2 class="rsim-title"></h2>
+          <p class="rsim-usecase-text"></p>
+          <div class="rsim-verdict" role="status"></div>
+        </section>
+        <div class="code-block" aria-live="polite">
+          <div class="code-block__header">
+            <div class="code-block__dots"><span class="code-block__dot"></span><span class="code-block__dot"></span><span class="code-block__dot"></span></div>
+            <span class="code-block__filename">kcp</span>
+          </div>
+          <div class="code-block__body rsim-term__body"><pre class="rsim-term"></pre></div>
+        </div>
+      </div>
+      <div class="rsim-run">
+        <h3>Run this scenario yourself</h3>
+        <div class="rsim-run__cmd"><code class="rsim-run-cmd"></code><button class="btn btn--ghost rsim-copy" aria-label="Copy command">Copy</button></div>
+      </div>
+      <p class="rsim-note">
+        Replays captures from
+        <a href="https://github.com/Cantara/knowledge-context-protocol/blob/main/examples/paid-knowledge-api/demo.js" target="_blank" rel="noopener"><code>examples/paid-knowledge-api/demo.js</code></a>.
+      </p>
+    </section>
   </main>
 
   <footer class="footer">
@@ -191,6 +220,7 @@
   <script src="js/app.js"></script>
   <script src="js/grand-tour-captures.js"></script>
   <script src="js/org-federation-captures.js"></script>
+  <script src="js/payment-captures.js"></script>
   <script>
     (function () {
       function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
@@ -268,6 +298,7 @@
 
       wireReel(document.querySelector('[data-reel="grand"]'), window.GRAND_TOUR_CAPTURES, 'badge');
       wireReel(document.querySelector('[data-reel="org"]'), window.ORG_FEDERATION_CAPTURES, 'id');
+      wireReel(document.querySelector('[data-reel="pay"]'), window.PAYMENT_CAPTURES, 'id');
     })();
   </script>
 </body>

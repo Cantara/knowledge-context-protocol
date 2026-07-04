@@ -206,6 +206,26 @@ const STOPS = [
       'context and agent_identity surface per federated edge. The prod agent takes the prod ' +
       'sources and plans a GitHub PAT / OAuth token up front. Full walk: examples/org-federation/demo.js.',
   },
+  {
+    id: 'monetize',
+    badge: 'Monetize · v0.25',
+    title: 'What access costs, before the first request',
+    blurb:
+      'The economic layer: a manifest declares what each unit costs and how much an agent may ' +
+      'consume. A free index, an x402-metered price feed, and a subscription corpus — the agent ' +
+      'reads the prices and rate limits from the render and budgets before it spends a cent.',
+    run() {
+      const r = kcp(['render', ex('paid-knowledge-api/knowledge.yaml')]);
+      return {
+        command: r.command,
+        output: r.stdout,
+        highlights: pick(r.stdout, ['default_tier:', 'type: x402', 'price_per_request:', 'requests_per_minute:', 'requests_per_day:', 'backoff:'], 12),
+      };
+    },
+    verdict:
+      'payment (tiers, x402 prices) and rate_limits (per-tier budgets) surface as data — never ' +
+      'dereferenced. The agent plans cost and throttle up front. Full walk: examples/paid-knowledge-api/demo.js.',
+  },
 ];
 
 function printStop(s, rec, i, total) {

@@ -21,6 +21,7 @@ node examples/grand-tour/demo.js --list     # list stop ids
 | **render** | Trusted render pipeline (v0.16–0.18) | `kcp render` tiers an unsigned manifest as readable data, never load-eligible — fail-closed |
 | **attest** | Trust & attestation (v0.22) | `kcp render` surfaces `requires_attestation` without ever calling `attestation_url` |
 | **federate** | Org-federation (v0.24) | `kcp render` surfaces per-edge `context` and `agent_identity` for enterprise discovery |
+| **monetize** | Economic metadata (v0.25) | `kcp render` surfaces `payment` (tiers, x402 prices) and `rate_limits` so an agent budgets before spending |
 
 ## Authenticity
 
