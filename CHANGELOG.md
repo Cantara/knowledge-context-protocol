@@ -8,26 +8,57 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-### Spec — v0.22 "Trust & Attestation" foundation (RFC-0004 + RFC-0002 promotion)
+_Nothing yet._
 
-The consumer-identity half of the security model, promoted to the spec (implementation lands in
-subsequent phases across parsers, renderer, and bridges):
+---
 
-- **`trust.agent_requirements` (SPEC §3.2)** — `require_attestation`, `trusted_providers`
-  (identity), `attestation_url` + `attestation_jwks` (credential), and `propagate_to_governed`.
-  Declares what an agent must prove about *itself* before a source serves `access: restricted`
-  units — the counterpart to `content_integrity`, which authenticates the producer. **KCP
-  declares; agents attest** — the renderer never dereferences `attestation_url` (stays
-  deterministic/network-free).
-- **Extended `auth.methods` types (SPEC §3.3)** — `bearer_token`, `spiffe`, `did`,
-  `http_signature` (RFC 9421) promoted from RFC-0002; `type` values beyond the now-seven defined
-  remain silently ignored.
-- **`governs` attestation propagation (#47)** — resolved via `agent_requirements.propagate_to_governed`:
-  a governing manifest's attestation requirements become a floor on its governed sources.
-- **Conformance C19–C21 (SPEC §16.5)** — C19 renderer surfaces `agent_requirements` and never
-  attests; C20 bridges refuse restricted-unit content on every retrieval path unless the declared
-  credential is presented (never calling `attestation_url` themselves); C21 `governs` propagation.
-- RFC-0004 and RFC-0002 headers updated to mark these Accepted → v0.22.
+## [0.22.0] — 2026-07-04 — Trust & Attestation
+
+**Spec version:** `"0.22"` | **Prior:** `"0.21"` (v0.21.0, 2026-06-13)
+
+The consumer-identity half of the security model. Where v0.16–v0.21 answered "is this knowledge
+intact and current?", v0.22 answers "who may consume it, and how do they prove it?" — promoting
+the attestation half of RFC-0004 and the extended-auth remainder of RFC-0002.
+
+**Load-bearing principle: KCP *declares* trust requirements; it never *performs* auth.** The
+renderer never dereferences `attestation_url` (deterministic/network-free, C1/C7); the bridge
+gates restricted-unit content on a *presented* credential but never verifies it. Agents attest.
+
+### Spec — RFC-0004 + RFC-0002 promotion
+
+- **`trust.agent_requirements` (§3.2)** — `require_attestation`, `trusted_providers` (identity),
+  `attestation_url` + `attestation_jwks` (credential), and `propagate_to_governed`. Declares what
+  an agent must prove about *itself* before a source serves `access: restricted` units — the
+  consumer counterpart to `content_integrity`, which authenticates the producer.
+- **Extended `auth.methods` types (§3.3)** — `bearer_token`, `spiffe`, `did`, `http_signature`
+  (RFC 9421) promoted; `type` values beyond the now-seven defined remain silently ignored.
+- **`governs` attestation propagation (closes #47)** — `agent_requirements.propagate_to_governed`:
+  a governing manifest's attestation requirements become a floor on its governed sources (C21).
+- **Conformance C19–C21 (§16.5).**
+
+### Parsers (Level 1)
+
+- All four implementations parse, expose, and validate `trust.agent_requirements` and the
+  extended `auth.methods` sub-fields (`trust_domain`, `supported_methods`, `key_id`, `algorithm`).
+- Validator warnings: non-HTTPS `attestation_url`/`jwks`; unsatisfiable `require_attestation`
+  (no providers/url); `propagate_to_governed` with no `governs` relationship.
+- `knowledge-schema.json` gains `trust_agent_requirements` + the new auth sub-fields.
+
+### Renderer (C19)
+
+- `kcp render` surfaces `trust.agent_requirements` as data and marks `access: restricted` units
+  `requires_attestation: true` when the manifest requires it — copying declared strings verbatim,
+  never dereferencing them. Load-eligibility is **not** gated on attestation (flag, not gate — the
+  renderer can't attest; the bridge does the real gate). `render-schema.json` whitelists the block.
+
+### Bridges (C20)
+
+- All three MCP bridges refuse restricted-unit *content* on every retrieval path (`get_unit`,
+  `read_resource`, `list_resources`) unless the client presents an `attestation` argument, which
+  the bridge checks for presence only — it never calls `attestation_url`. `get_unit` returns
+  `attestation_required` (surfacing the declared providers/url); `search_knowledge` marks restricted
+  units `requires_attestation`. New `attestation` argument on `get_unit` + `search_knowledge`.
+- Bridges bumped to 0.22.0 (parity rule).
 
 ---
 
