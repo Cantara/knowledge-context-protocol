@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Any, Optional, Union
+from typing import Any, List, Optional, Union
 
 
 @dataclass
@@ -201,6 +201,17 @@ class ManifestRef:
     version_pin: Optional[str] = None
     version_policy: Optional[str] = None  # "exact" | "minimum" | "compatible" (default)
     temporal: Optional["Temporal"] = None  # RFC-0021 / §3.6 (v0.21) — source-level validity window
+    context: Optional[List[str]] = None  # RFC-0011 / §3.6 (v0.24) — environment labels this ref is valid for
+    agent_identity: Optional["AgentIdentity"] = None  # RFC-0011 / §3.6 (v0.24) — pre-fetch credential hint
+
+
+@dataclass
+class AgentIdentity:
+    """Pre-fetch credential-planning hint on a manifests[] entry. See SPEC.md §3.6 (v0.24)."""
+    required: Optional[bool] = None       # default false
+    credential_hint: Optional[str] = None  # github_pat | oauth2 | confluence_pat | api_key | none
+    issuer_hint: Optional[str] = None     # for oauth2: issuer URL
+    docs_url: Optional[str] = None        # where a developer finds credential instructions
 
 
 @dataclass

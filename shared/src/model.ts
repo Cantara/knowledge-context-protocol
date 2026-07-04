@@ -118,6 +118,14 @@ export interface Relationship {
   type: string;            // "enables" | "context" | "supersedes" | "contradicts" | "depends_on" | "governs"
 }
 
+/** Pre-fetch credential-planning hint on a manifests[] entry. See SPEC.md §3.6 (v0.24). */
+export interface AgentIdentity {
+  required?: boolean;       // default false
+  credential_hint?: string; // github_pat | oauth2 | confluence_pat | api_key | none
+  issuer_hint?: string;     // for oauth2: issuer URL
+  docs_url?: string;        // where a developer finds credential instructions
+}
+
 /** A reference to an external KCP manifest in the federation. See SPEC.md §3.6. */
 export interface ManifestRef {
   id: string;
@@ -130,6 +138,8 @@ export interface ManifestRef {
   version_pin?: string;
   version_policy?: string; // "exact" | "minimum" | "compatible" (default: "compatible")
   temporal?: Temporal;     // RFC-0021 / §3.6 (v0.21) — source-level validity window
+  context?: string[];      // RFC-0011 / §3.6 (v0.24) — environment labels this ref is valid for
+  agent_identity?: AgentIdentity;  // RFC-0011 / §3.6 (v0.24) — pre-fetch credential hint
 }
 
 /** A cross-manifest dependency for a knowledge unit. See SPEC.md §3.6. */

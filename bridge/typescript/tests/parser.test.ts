@@ -803,3 +803,65 @@ units:
     expect(w.some((x) => x.includes("provides_access_receipts is true but no receipt_format"))).toBe(true);
   });
 });
+
+// v0.24 Org-Federation: manifests[].context + manifests[].agent_identity (RFC-0011).
+describe("v0.24 org-federation manifest fields", () => {
+  const yaml = (require("js-yaml") as typeof import("js-yaml"));
+  const HUB = `
+kcp_version: "0.24"
+project: hub
+version: 1.0.0
+units:
+  - {id: front-door, path: README.md, intent: x, scope: global, audience: [agent]}
+manifests:
+  - id: platform
+    url: "https://git.example.com/platform/knowledge.yaml"
+    relationship: foundation
+    context: ["prod"]
+    agent_identity:
+      required: true
+      credential_hint: github_pat
+      docs_url: "https://kcp.example.com/auth.md"
+  - id: data
+    url: "https://git.example.com/data/knowledge.yaml"
+    relationship: peer
+    agent_identity:
+      required: true
+      credential_hint: oauth2
+      issuer_hint: "https://auth.example.com"
+`;
+
+  it("parses context and agent_identity on manifests[] entries", () => {
+    const m = parseDict(yaml.load(HUB) as Record<string, unknown>);
+    const platform = m.manifests.find((x) => x.id === "platform")!;
+    expect(platform.context).toEqual(["prod"]);
+    expect(platform.agent_identity!.required).toBe(true);
+    expect(platform.agent_identity!.credential_hint).toBe("github_pat");
+    expect(platform.agent_identity!.docs_url).toBe("https://kcp.example.com/auth.md");
+    const data = m.manifests.find((x) => x.id === "data")!;
+    expect(data.agent_identity!.issuer_hint).toBe("https://auth.example.com");
+    expect(data.context).toBeUndefined(); // absent = all environments
+  });
+
+  it("warns on empty context, required-without-hint, and issuer_hint misuse", () => {
+    const bad = parseDict(yaml.load(`
+kcp_version: "0.24"
+project: bad
+version: 1.0.0
+units:
+  - {id: u, path: u.md, intent: x, scope: project, audience: [agent]}
+manifests:
+  - id: a
+    url: "https://git.example.com/a/knowledge.yaml"
+    context: []
+    agent_identity: {required: true}
+  - id: b
+    url: "https://git.example.com/b/knowledge.yaml"
+    agent_identity: {credential_hint: github_pat, issuer_hint: "https://x.example.com"}
+`) as Record<string, unknown>);
+    const w = validate(bad, ".").warnings;
+    expect(w.some((x) => x.includes("context is present but empty"))).toBe(true);
+    expect(w.some((x) => x.includes("required is true but no credential_hint"))).toBe(true);
+    expect(w.some((x) => x.includes("issuer_hint is only meaningful for credential_hint 'oauth2'"))).toBe(true);
+  });
+});

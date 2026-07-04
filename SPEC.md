@@ -1,6 +1,6 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.23
+**Version:** 0.24
 **Status:** Draft
 **Date:** 2026-06-12
 **Repository:** github.com/cantara/knowledge-context-protocol
@@ -727,6 +727,8 @@ manifests:
 | `version_pin` | OPTIONAL | string | Semver version to pin this sub-manifest to. When present, validators SHOULD compare against the remote manifest's `version` field. See version pinning below. |
 | `version_policy` | OPTIONAL | string | How to interpret `version_pin`. Values: `exact` (versions must be equal), `minimum` (remote version >= pin), `compatible` (same major version, default). Unknown values MUST be treated as `compatible`. |
 | `temporal` | OPTIONAL | object | Source-level validity window. See `manifests[].temporal` below (v0.21). |
+| `context` | OPTIONAL | array | Environment labels for which this sub-manifest reference is valid. See `manifests[].context` below (v0.24). |
+| `agent_identity` | OPTIONAL | object | Pre-fetch credential-planning hint. See `manifests[].agent_identity` below (v0.24). |
 
 #### `manifests[].relationship` values
 
@@ -804,6 +806,93 @@ own root-level `temporal.recorded_at` already covers when the hub recorded its f
 
 **Conformance:** Parse and expose `manifests[].temporal` and detect `superseded_by` cycles —
 Level 1. Manifest-level temporal filtering at resolution time — Level 2 (C18).
+
+#### `manifests[].context` (v0.24)
+
+Promoted from [RFC-0011](./RFC-0011-Org-Federation.md). An OPTIONAL `context` list declares the
+runtime environments for which a `manifests[]` entry is valid. It lets a hub publish one
+federation list that spans environments — the same service's `dev`, `staging`, and `prod`
+manifests appear as sibling entries, and a traversing agent selects only the entries matching
+its own environment without fetching all of them and reconciling.
+
+```yaml
+manifests:
+  - id: payments-prod
+    url: "https://git.example.com/payments/knowledge.yaml"
+    relationship: child
+    context: ["prod"]
+  - id: payments-dev
+    url: "https://git.example.com/payments/knowledge-dev.yaml"
+    relationship: child
+    context: ["dev", "test"]
+```
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `context` | OPTIONAL | array of string | Environment labels for which this entry is valid. Absent = valid in **all** environments. |
+
+**Vocabulary (non-normative):** `dev`, `test`, `staging`, `prod`. Implementations MAY extend this
+set with their own labels; unknown labels MUST NOT be treated as errors.
+
+**Resolution behaviour:** `context` is an **advisory selection hint**, not an access control. An
+agent operating in a known environment SHOULD select only the entries whose `context` list
+contains its environment (an entry with no `context` always qualifies). KCP does not enforce the
+selection; an agent with no environment notion MAY traverse every entry. This mirrors the
+advisory posture of `rate_limits` (§4.15) and `update_frequency`.
+
+**Validation:** `context` present but empty (`[]`) is a §7 warning — an entry valid in no
+environment is almost certainly a mistake; declare no `context` to mean "all environments".
+
+#### `manifests[].agent_identity` (v0.24)
+
+Promoted from [RFC-0011](./RFC-0011-Org-Federation.md). An OPTIONAL `agent_identity` block is a
+**pre-fetch credential-planning hint**: it tells a traversing agent what credential it will need
+*before* it attempts to load the sub-manifest, so the agent can acquire the credential (or prompt
+its developer to) rather than discovering the requirement only after a failed fetch. It is a
+declaration layer, **not an auth protocol** — the sub-manifest's own `auth` block (§3.3) remains
+the enforcement point.
+
+```yaml
+manifests:
+  - id: platform-engineering
+    url: "https://git.example.com/platform/knowledge.yaml"
+    relationship: foundation
+    context: ["prod"]
+    agent_identity:
+      required: true
+      credential_hint: github_pat
+      docs_url: "https://kcp.example.com/guides/agent-authentication.md"
+  - id: data-warehouse
+    url: "https://git.example.com/data/knowledge.yaml"
+    relationship: peer
+    agent_identity:
+      required: true
+      credential_hint: oauth2
+      issuer_hint: "https://auth.example.com"
+```
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `required` | OPTIONAL | boolean | Whether a credential is expected before fetch. Default `false`. |
+| `credential_hint` | OPTIONAL | string | Advisory credential type. Non-normative vocabulary: `github_pat`, `oauth2`, `confluence_pat`, `api_key`, `none`. Implementations MAY extend. |
+| `issuer_hint` | OPTIONAL | string | For `oauth2`: the issuer URL the agent should use to obtain a token. |
+| `docs_url` | OPTIONAL | string | Where a developer finds instructions for acquiring the credential. |
+
+**Resolution behaviour:** An agent encountering `agent_identity` SHOULD (1) check whether it
+already holds a matching credential, (2) if not and `required` is true, surface `docs_url` and
+pause for acquisition before fetching, (3) if `required` is false, attempt the fetch anyway and
+let the sub-manifest's `auth.methods[]` govern. KCP performs none of these steps itself and never
+dereferences `docs_url` or `issuer_hint` — consistent with the trust model's **KCP declares;
+agents act** principle (§3.2).
+
+**Validation:**
+- `agent_identity.required: true` with no `credential_hint`: §7 warning (the agent is told a
+  credential is needed but not which kind).
+- `issuer_hint` present with `credential_hint` other than `oauth2`: §7 warning (`issuer_hint` is
+  only meaningful for OAuth 2.1).
+
+**Conformance:** Parse and expose `manifests[].context` and `manifests[].agent_identity` —
+Level 1. Both are declaration-level; KCP surfaces them and never acts on them.
 
 #### Transitive resolution
 

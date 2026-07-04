@@ -94,7 +94,7 @@ VALID_INDEXING_SHORTHANDS = {"open", "read-only", "no-train", "none"}
 VALID_ACCESS_VALUES = {"public", "authenticated", "restricted"}
 VALID_SENSITIVITY_VALUES = {"public", "internal", "confidential", "restricted"}
 # human_in_the_loop is an object per spec §3.4 — no HITL enum, validation done inline
-KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23"}
+KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24"}
 # content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
 VALID_CONTENT_MODALITIES = {"prose", "table", "code", "list", "diagram", "reference", "mixed"}
 VALID_DENSITY = {"sparse", "normal", "dense"}
@@ -504,6 +504,24 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
             warnings.append(
                 f"{p}: 'version_pin' is set but 'version_policy' is not declared; defaulting to 'compatible'"
             )
+        # Federation: context and agent_identity (§3.6, RFC-0011, v0.24)
+        if ref.context is not None and len(ref.context) == 0:
+            warnings.append(
+                f"{p}: context is present but empty; an entry valid in no environment is likely a mistake "
+                "(omit context to mean 'all environments')"
+            )
+        if ref.agent_identity is not None:
+            ai = ref.agent_identity
+            if ai.required is True and not ai.credential_hint:
+                warnings.append(
+                    f"{p}: agent_identity.required is true but no credential_hint is declared "
+                    "(agents are told a credential is needed but not which kind)"
+                )
+            if ai.issuer_hint and ai.credential_hint is not None and ai.credential_hint != "oauth2":
+                warnings.append(
+                    f"{p}: agent_identity.issuer_hint is only meaningful for credential_hint 'oauth2', "
+                    f"got '{ai.credential_hint}'"
+                )
 
     # Validate external_depends_on references in units
     for unit in manifest.units:
