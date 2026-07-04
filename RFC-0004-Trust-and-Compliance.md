@@ -30,7 +30,7 @@ The following proposals from this RFC have been promoted to the core specificati
 **Still RFC-only (not yet promoted):**
 - ~~`trust.content_integrity`~~ — **promoted to SPEC.md §3.2 in v0.16**, activated by the trusted render pipeline (RFC-0018), with `EdDSA` (Ed25519, RFC 8037) profiled as the mandatory-to-implement JWS algorithm.
 - `trust.audit.provides_access_receipts` / `receipt_format` — awaiting implementation feedback on receipt formats.
-- `trust.agent_requirements` — `require_attestation`, `trusted_providers`, `attestation_url`, `attestation_jwks` awaiting OIDC-A ratification and community input.
+- ~~`trust.agent_requirements`~~ — **promoted to SPEC.md §3.2 in v0.22** (`require_attestation`, `trusted_providers`, `attestation_url`, `attestation_jwks`, plus `propagate_to_governed` for `governs`-edge policy propagation, resolving [#47](https://github.com/Cantara/knowledge-context-protocol/issues/47)). Conformance C19 (renderer surfaces, never attests), C20 (bridge gates restricted-unit content on presented credential), C21 (`governs` propagation). KCP declares; agents attest.
 - `trust.provenance.publisher_did` — W3C DID resolution not yet common enough for core.
 - `compliance` at unit level (per-unit compliance override) — promoted at root level in v0.7; per-unit override awaiting real-world validation.
 

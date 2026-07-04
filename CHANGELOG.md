@@ -8,7 +8,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-_Nothing yet._
+### Spec — v0.22 "Trust & Attestation" foundation (RFC-0004 + RFC-0002 promotion)
+
+The consumer-identity half of the security model, promoted to the spec (implementation lands in
+subsequent phases across parsers, renderer, and bridges):
+
+- **`trust.agent_requirements` (SPEC §3.2)** — `require_attestation`, `trusted_providers`
+  (identity), `attestation_url` + `attestation_jwks` (credential), and `propagate_to_governed`.
+  Declares what an agent must prove about *itself* before a source serves `access: restricted`
+  units — the counterpart to `content_integrity`, which authenticates the producer. **KCP
+  declares; agents attest** — the renderer never dereferences `attestation_url` (stays
+  deterministic/network-free).
+- **Extended `auth.methods` types (SPEC §3.3)** — `bearer_token`, `spiffe`, `did`,
+  `http_signature` (RFC 9421) promoted from RFC-0002; `type` values beyond the now-seven defined
+  remain silently ignored.
+- **`governs` attestation propagation (#47)** — resolved via `agent_requirements.propagate_to_governed`:
+  a governing manifest's attestation requirements become a floor on its governed sources.
+- **Conformance C19–C21 (SPEC §16.5)** — C19 renderer surfaces `agent_requirements` and never
+  attests; C20 bridges refuse restricted-unit content on every retrieval path unless the declared
+  credential is presented (never calling `attestation_url` themselves); C21 `governs` propagation.
+- RFC-0004 and RFC-0002 headers updated to mark these Accepted → v0.22.
 
 ---
 

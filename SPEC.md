@@ -283,8 +283,43 @@ Tier semantics are defined in §16.2.
 All sub-fields of `trust` are OPTIONAL. An empty `trust` block (no sub-fields) is valid and
 SHOULD be silently accepted. Unknown sub-fields MUST be silently ignored.
 
-Access receipts and agent attestation requirements remain in
-[RFC-0004](./RFC-0004-Trust-and-Compliance.md) and may be promoted in a future version.
+#### `trust.agent_requirements` sub-fields (v0.22)
+
+Promoted from [RFC-0004](./RFC-0004-Trust-and-Compliance.md). Where `content_integrity`
+authenticates *who published* a manifest, `agent_requirements` declares what an agent must
+prove about *itself* before the source serves its `access: restricted` units — the
+consumer-identity counterpart to the producer-integrity block above.
+
+**KCP declares these requirements; it does not perform authentication.** The verification
+mechanism — an on-chain token check, a W3C Verifiable Credential, an OIDC-A claim, a SPIFFE
+assertion — is outside KCP's scope. The agent runtime attests; the manifest only declares what
+attestation is expected, so agents can plan before attempting access. A conforming renderer
+never calls `attestation_url` (it stays deterministic and network-free, §16.5 C19).
+
+```yaml
+trust:
+  agent_requirements:
+    require_attestation: true
+    # Satisfied by EITHER trusted_providers (identity-based) OR attestation_url
+    # (credential-based) — either is sufficient.
+    trusted_providers: ["internal-agents.acme.com"]
+    attestation_url: "https://acme.com/v1/attest"
+    attestation_jwks: "https://acme.com/.well-known/jwks.json"
+    propagate_to_governed: false
+```
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `require_attestation` | OPTIONAL | boolean | If `true`, agents MUST present attestation before accessing `access: restricted` units. Satisfied by `trusted_providers` OR `attestation_url` — either is sufficient. Default: `false`. |
+| `trusted_providers` | OPTIONAL | list of strings | Trusted agent-provider domain names (identity-based). Matched against the OIDC-A `agent_provider` claim or equivalent. Agents not matching SHOULD be refused access to restricted units. |
+| `attestation_url` | OPTIONAL | string | HTTPS endpoint that verifies agent credentials (credential-based). MUST use HTTPS. If present, `require_attestation` SHOULD be `true`. The verification mechanism is out of scope. |
+| `attestation_jwks` | OPTIONAL | string | JWKS endpoint URL for verifying signed responses from `attestation_url`. If absent, agents MUST use the TLS certificate of `attestation_url` as the trust anchor. |
+| `propagate_to_governed` | OPTIONAL | boolean | If `true`, a manifest that `governs` another (§3.6) declares that its governed manifests MUST satisfy at least these attestation requirements. Agents resolving a `governs` edge SHOULD enforce the governing manifest's requirements on the governed source, or surface a §7 warning when the governed manifest declares weaker requirements. Default: `false`. |
+
+Attestation and payment ([RFC-0005](./RFC-0005-Payment-and-Rate-Limits.md)) are independent
+axes that compose as **token-gated access**: an agent calls `attestation_url` first; on success
+access is granted, on failure it falls through to `payment.methods`. Access-by-proof lives in
+`trust`; access-by-transaction lives in `payment`.
 
 ### 3.3 `auth`
 
@@ -331,10 +366,15 @@ specification:
 | `none` | No credentials required. | None. |
 | `oauth2` | OAuth 2.1 authentication. | `issuer`, `scopes`, `registration_url` |
 | `api_key` | API key passed in a named HTTP header. | `header`, `registration_url` |
+| `bearer_token` | Opaque bearer token in the `Authorization` header (v0.22). | `registration_url` |
+| `spiffe` | SPIFFE/SPIRE workload identity — the agent presents an SVID (v0.22). | `trust_domain` |
+| `did` | Decentralized Identifier authentication (v0.22). | `supported_methods` (e.g. `did:web`, `did:key`) |
+| `http_signature` | HTTP Message Signatures, [RFC 9421](https://datatracker.ietf.org/doc/html/rfc9421) — used by Visa TAP and Mastercard Agent Pay (v0.22). | `key_id`, `algorithm` |
 
-Unknown `type` values MUST be silently ignored by parsers. This enables forward compatibility
-with additional auth types defined in [RFC-0002](./RFC-0002-Auth-and-Delegation.md) (e.g.
-`spiffe`, `did`, `bearer_token`, `http_signature`) without requiring core spec changes.
+The `bearer_token`, `spiffe`, `did`, and `http_signature` types are promoted from
+[RFC-0002](./RFC-0002-Auth-and-Delegation.md) in v0.22. Parsers MUST parse and expose them.
+`type` values beyond those in the table above MUST still be silently ignored, preserving
+forward compatibility for auth types defined in future versions.
 
 ##### `type: none`
 
@@ -372,6 +412,47 @@ authorization.
 |-----------|----------|-------------|
 | `header` | REQUIRED | Name of the HTTP header that carries the API key (e.g. `"X-API-Key"`, `"Authorization"`). |
 | `registration_url` | OPTIONAL | URL where agents or operators can register for an API key. |
+
+##### `type: bearer_token` (v0.22)
+
+Declares that the source accepts an opaque bearer token in the `Authorization: Bearer <token>`
+header. Unlike `oauth2`, no issuer/discovery flow is implied — the token is obtained
+out-of-band.
+
+| Sub-field | Required | Description |
+|-----------|----------|-------------|
+| `registration_url` | OPTIONAL | URL where agents or operators can obtain a token. |
+
+##### `type: spiffe` (v0.22)
+
+Declares that the source authenticates agents by [SPIFFE](https://spiffe.io/) workload
+identity — the agent presents an SVID (X.509 or JWT) proving membership in a trust domain.
+Suited to non-human / agentic workloads.
+
+| Sub-field | Required | Description |
+|-----------|----------|-------------|
+| `trust_domain` | REQUIRED | The SPIFFE trust domain the source accepts (e.g. `"acme.internal"`). |
+
+##### `type: did` (v0.22)
+
+Declares that the source authenticates agents via a [Decentralized Identifier](https://www.w3.org/TR/did-core/).
+The agent proves control of a DID; the source resolves it to verify.
+
+| Sub-field | Required | Description |
+|-----------|----------|-------------|
+| `supported_methods` | OPTIONAL | List of accepted DID methods (e.g. `["did:web", "did:key"]`). Absent = any resolvable method. |
+
+##### `type: http_signature` (v0.22)
+
+Declares that the source authenticates requests with [HTTP Message Signatures (RFC 9421)](https://datatracker.ietf.org/doc/html/rfc9421) —
+the emerging agent-payments authentication standard (Visa TAP, Mastercard Agent Pay). Note this
+is the same mechanism `trust.content_integrity.signing.method: http_signature` names for
+transport integrity (§3.2); here it authenticates the *consumer*.
+
+| Sub-field | Required | Description |
+|-----------|----------|-------------|
+| `key_id` | RECOMMENDED | Identifier of the key the agent signs with, echoed in the signature's `keyid` parameter. |
+| `algorithm` | OPTIONAL | Signature algorithm (e.g. `"ed25519"`, `"ecdsa-p256-sha256"`). |
 
 #### `auth` block conformance
 
@@ -3301,7 +3382,7 @@ minimum trigger `on_failure: warn` (§3.6). Pinning applies per-edge.
 
 ### 16.5 Renderer conformance
 
-A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18), C15 (RFC-0020, v0.19), C16 (v0.20), C17 (RFC-0022, v0.21), and C18 (RFC-0021, v0.21):
+A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18), C15 (RFC-0020, v0.19), C16 (v0.20), C17 (RFC-0022, v0.21), C18 (RFC-0021, v0.21), and C19–C21 (RFC-0004/0002, v0.22):
 
 - **C1–C10** (RFC-0018): determinism (C1), fail-closed emission (C2), schema-only output (C3),
   no `load_eligible: true` on executable/service/unknown kinds (C4), no auto-traversal below
@@ -3345,6 +3426,26 @@ A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18)
   unsearchable; (f) reject an `as_of` that is not a valid ISO-8601 date/datetime rather than
   comparing it lexically. Parsers MUST detect `superseded_by` cycles among `manifests[]`
   entries as a manifest error.
+- **C19** (v0.22): The renderer surfaces `trust.agent_requirements` (§3.2) as data and **never
+  performs attestation** — it MUST NOT dereference `attestation_url`, `attestation_jwks`, or
+  `trusted_providers`, keeping the render deterministic (C1) and network-free (C7). A unit whose
+  `access` is `restricted` under a manifest declaring `require_attestation: true` is rendered
+  with a `requires_attestation: true` marker; the renderer does **not** on that basis alone set
+  `load_eligible: false` (attestation is the agent's runtime act, not the renderer's — gating it
+  at render time would be theater). Trust-tier and integrity gating (C4/C11/C17) still apply
+  independently.
+- **C20** (v0.22): Bridges that implement attestation gating MUST refuse to serve the *content*
+  of an `access: restricted` unit — on every retrieval path (search, point lookup, resource
+  read) — unless the client has presented the credential type the manifest declares in
+  `trust.agent_requirements` (identity via `trusted_providers`, or a credential accepted by
+  `attestation_url`). The bridge MUST NOT itself call `attestation_url`; it verifies that a
+  declared credential was presented, surfacing the requirement (and refusal reason) as data. A
+  restricted unit served to an unattested client is a C20 violation.
+- **C21** (v0.22): When a manifest `governs` another (§3.6) and its `agent_requirements` sets
+  `propagate_to_governed: true`, an agent resolving the `governs` edge MUST treat the governing
+  manifest's attestation requirements as a floor on the governed source, emitting a §7 warning
+  when the governed manifest declares weaker requirements (or none). Parsers expose
+  `propagate_to_governed`; enforcement is a resolution-time (Level 2) behaviour.
 
 The reference implementation is `kcp render` in [`cli/`](./cli/); the render validation corpus
 lives in [`experiments/rfc-0018-render/`](./experiments/rfc-0018-render/) (cases A10–A12, B17–B20

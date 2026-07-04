@@ -22,7 +22,7 @@ The following proposals from this RFC have been promoted to the core specificati
 | `delegation` (root-level) | v0.7 | Level 3 | Proposal 3. `max_depth`, `require_capability_attenuation`, `audit_chain`, `human_in_the_loop`. |
 
 **Still RFC-only (not yet promoted):**
-- `auth.methods` types beyond the core three: `bearer_token`, `spiffe`, `did`, `http_signature` — awaiting implementation feedback.
+- ~~`auth.methods` types beyond the core three: `bearer_token`, `spiffe`, `did`, `http_signature`~~ — **promoted to SPEC.md §3.3 in v0.22**. Parsers MUST parse and expose them; `type` values beyond the now-seven defined types are still silently ignored for forward compatibility.
 - `auth` at unit level (per-unit auth override) — awaiting real-world use cases.
 - `delegation` at unit level (per-unit delegation override) — promoted at root level in v0.7; per-unit override awaiting real-world use cases.
 - `require_delegation_proof` — awaiting XAA / OIDC-A stabilization.
