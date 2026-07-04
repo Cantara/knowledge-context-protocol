@@ -21,5 +21,8 @@
   },
   "provenance": {
     "fields": ["publisher", "publisher_url", "contact"]
+  },
+  "agent_requirements": {
+    "fields": ["require_attestation", "trusted_providers", "attestation_url", "attestation_jwks", "propagate_to_governed"]
   }
 }

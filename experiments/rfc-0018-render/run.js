@@ -196,7 +196,7 @@ const ALLOWED_TOP = ['render', 'trust', 'discovery', 'project', 'units',
 const ALLOWED_UNIT = ['id', 'kind', 'path', 'intent', 'format', 'content_type',
   'language', 'scope', 'audience', 'license', 'validated', 'update_frequency',
   'triggers', 'not_for', 'content_structure', 'load_eligible', 'invocation',
-  'content_verified'];
+  'content_verified', 'requires_attestation'];
 
 function checkCase(c, r) {
   const problems = [];
