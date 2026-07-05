@@ -1,6 +1,6 @@
 {
   "key_id": "cantara-org-2026",
   "algorithm": "EdDSA",
-  "public_key": "MCowBQYDK2VwAyEAPaELavsY8mkbWPPBfxQ+plvYtzucW0gxnUULpvAwzlM=",
-  "signature": "FWDAxIoCERiGKy0PFtQMVwOqaTRPp8ou2eh0f7gwTvsQ5wlYa3Q69Ko94LYOLfh428C3t3BGoaYYDGWHTPvcCQ=="
+  "public_key": "MCowBQYDK2VwAyEAuipgusnqU9vjf3p2yPVLD/DmERT6tBbLOqEETdxAhMU=",
+  "signature": "BoFv5ETE/PYAfe9zFSJKDbdfwZko2vQ5aIhVCpTygA7BQDeeHbLiBbzpI+HIsqlGG93dApvBXlQEiDcxU+TLDg=="
 }
