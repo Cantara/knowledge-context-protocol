@@ -38,7 +38,10 @@ jobs:
         env:
           KCP_SIGNING_KEY: ${{ secrets.KCP_SIGNING_KEY }}
         run: |
-          printf '%s' "$KCP_SIGNING_KEY" > /tmp/kcp-signing.pem
+          # Org convention since the 2026-05-07 rotation: KCP_SIGNING_KEY is
+          # the base64-encoded Ed25519 private key PEM (see Cantara/.github
+          # sign-kcp.yml). Decode before use.
+          printf '%s' "$KCP_SIGNING_KEY" | base64 -d > /tmp/kcp-signing.pem
           chmod 600 /tmp/kcp-signing.pem
 
       - name: Sign manifests (RFC-0018 §4.2 detached envelope)
