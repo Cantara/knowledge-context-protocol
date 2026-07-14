@@ -713,13 +713,17 @@ export function createKcpServer(
       }
 
       case "get_unit": {
+        // Exact match, no trimming (parity with the Python + Java bridges); an id/alias can
+        // never legitimately carry surrounding whitespace (§4.2 char rules).
         const requestedId = String(args?.["unit_id"] ?? "");
         // §4.2a (v0.26): resolve a declared alias to its canonical unit. The canonical id
-        // takes precedence; matchedAlias is set only when the lookup came in via an alias.
-        let ctx = unitContextMap.get(requestedId);
+        // takes precedence; matchedAlias is set only when the lookup came in via an alias. An
+        // empty unit_id never resolves — guard before the alias lookup so a malformed
+        // empty-string alias can't match.
+        let ctx = requestedId ? unitContextMap.get(requestedId) : undefined;
         let matchedAlias: string | undefined;
         let unitId = requestedId;
-        if (!ctx) {
+        if (!ctx && requestedId) {
           const canonical = aliasToId.get(requestedId);
           if (canonical) {
             ctx = unitContextMap.get(canonical);

@@ -1009,4 +1009,31 @@ units:
     expect(r.errors.some((e) => e.includes("serving.manifest entry 'http://insecure/knowledge.yaml' must be an HTTPS URL"))).toBe(true);
     expect(r.isValid).toBe(false);
   });
+
+  it("coerces malformed aliases/serving to absent (parser parity with Python + Java)", () => {
+    // A scalar where a list is expected is *absent* (not a one-element list); non-string
+    // entries are dropped; a non-object serving block is absent without throwing.
+    const m = parseDict(yaml.load(`
+kcp_version: "0.26"
+project: malformed
+version: 1.0.0
+serving: "https://not-an-object/knowledge.yaml"
+units:
+  - id: u1
+    path: a.txt
+    intent: x
+    scope: global
+    audience: [agent]
+    aliases: reg-art-21-2a
+  - id: u2
+    path: b.txt
+    intent: y
+    scope: global
+    audience: [agent]
+    aliases: [good-alias, null, 42, true]
+`) as Record<string, unknown>);
+    expect(m.serving).toBeUndefined();                 // scalar serving -> absent
+    expect(m.units[0].aliases).toBeUndefined();        // scalar aliases -> absent, not ["reg-art-21-2a"]
+    expect(m.units[1].aliases).toEqual(["good-alias"]); // null/number/bool dropped
+  });
 });

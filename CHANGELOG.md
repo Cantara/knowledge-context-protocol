@@ -12,6 +12,59 @@ _Nothing yet._
 
 ---
 
+## [0.26.1] — 2026-07-14 — v0.26 Hardening
+
+**Spec version:** `"0.26"` (unchanged — one conformance fix + clarifications, no new fields) | **Prior:** v0.26.0 (2026-07-14)
+
+A red-team pass over the v0.26 features (`serving`/C22 and `aliases`) surfaced one genuine
+fail-open, a cross-implementation parser divergence, and several spec overclaims. All corrected
+here. No new fields; conformant v0.26.0 manifests are unaffected except where a `serving.manifest`
+mismatch should have demoted and previously did not.
+
+### Fixed (security / correctness)
+
+- **C22 present-empty fail-open (§3.12).** A **present-but-empty** `serving.manifest: []` is an
+  *exhaustive-empty* assertion ("no HTTP(S) URL is authoritative") and MUST demote every HTTP(S)
+  retrieval. The renderer previously gated on list length and treated `[]` as "no assertion",
+  silently keeping `trusted` — reopening the T11 rogue-representative attack for MCP-only
+  publishers. It now gates on presence, not length. (`kcp render`)
+- **Parser coercion parity (all four).** A YAML scalar where `aliases`/`serving` expect a list, and
+  non-string list entries, now resolve identically across TypeScript, Python, and Java: a non-list
+  is *absent* (never coerced into a one-element list) and non-string entries are dropped. Java's
+  `serving:` cast is now type-guarded so a non-object block can no longer throw. Previously Java
+  coerced scalars while TS/Python dropped them — the same signed bytes could resolve to different
+  trust decisions per implementation.
+- **Bridge `get_unit` parity.** All three bridges now match `unit_id` exactly (no whitespace
+  trimming — Python previously trimmed) and never resolve an empty `unit_id`.
+
+### Clarified / hardened (spec text)
+
+- **§3.12 `serving.mcp` honesty.** C22 covers only `serving.manifest`; the spec now states plainly
+  that `serving.mcp` has no MUST-level consumer enforcement in this version (only a server-side
+  startup SHOULD-warn and an optional client-side check), so the rogue-MCP-proxy case is closed only
+  for clients that independently re-fetch and compare.
+- **§3.12 scoping of "can only add protection."** True only for verifiers predating the block; for a
+  v0.26 verifier an incomplete/stale `serving.manifest` demotes legitimate retrievals. Added an
+  operator note (enumerate every CDN edge/mirror/redirect target; exact post-redirect matching, no
+  normalization) and two limitations: `serving` is consultable only after signature verification
+  (no origin bootstrap), and it binds location not recency (a once-listed URL can replay old signed
+  bytes — anti-rollback needs §4.22 pinning).
+- **§4.2a alias char rule.** Corrected the prose: an alias rule (`^[a-z0-9][a-z0-9._-]*$`) is *close
+  to but not identical* to the `id` rule — it permits an underscore and forbids a leading dot/hyphen.
+- **§4.2a uniqueness reconciled.** A collision is a §7 **warning** (not "MUST reject", which
+  contradicted the field prose); resolution now defines a deterministic tie-break (canonical `id`
+  first, then first-declared alias) so the outcome never depends on map ordering. RFC-0023's
+  conformance line updated to match.
+- **§4.2a resolver-side MUST.** Aliases are barred as `depends_on` / `supersedes` / `overrides` /
+  `excludes` / **`external_depends_on`** targets not just for authors but for resolvers: reference
+  resolution MUST match only canonical `id`, never aliases, including across federation boundaries
+  (closes a cross-manifest reference-hijack).
+- **§4.2a citation integrity.** An alias asserts *resolution*, not content-span containment;
+  `content_hash` covers the whole unit. Audit/citation systems MUST NOT treat an alias match as
+  evidence the content contains the aliased element.
+
+---
+
 ## [0.26.0] — 2026-07-14 — Serving Endpoint Binding + Unit Aliases
 
 **Spec version:** `"0.26"` | **Prior:** `"0.25"` (v0.25.1, 2026-07-04)

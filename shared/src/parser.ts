@@ -98,7 +98,7 @@ function asLicenseOrIndexing(value: unknown): LicenseValue | undefined {
 function parseUnit(raw: RawMap): KnowledgeUnit {
   return {
     id: String(raw["id"] ?? ""),
-    aliases: Array.isArray(raw["aliases"]) ? (raw["aliases"] as unknown[]).map(String) : undefined,
+    aliases: stringListOrUndefined(raw["aliases"]),
     path: validateUnitPath(String(raw["path"] ?? "")),
     intent: String(raw["intent"] ?? ""),
     scope: String(raw["scope"] ?? "global"),
@@ -365,12 +365,26 @@ function parsePayment(raw: unknown): Payment | undefined {
   };
 }
 
+/**
+ * v0.26: coerce a raw value into a string list for `aliases` / `serving`. A non-list is
+ * treated as *absent* (undefined) and non-string entries are dropped — so the TypeScript,
+ * Python, and Java parsers agree byte-for-byte on malformed input instead of one coercing a
+ * scalar to a one-element list while another drops it (a cross-impl divergence that would let
+ * the same signed bytes resolve to different trust decisions). Structural validity (must be a
+ * list of strings) is the JSON schema's job; this keeps the runtime parsers in lockstep.
+ */
+function stringListOrUndefined(raw: unknown): string[] | undefined {
+  return Array.isArray(raw)
+    ? (raw as unknown[]).filter((x): x is string => typeof x === "string")
+    : undefined;
+}
+
 function parseServing(raw: unknown): Serving | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
   const d = raw as RawMap;
   return {
-    manifest: Array.isArray(d["manifest"]) ? (d["manifest"] as unknown[]).map(String) : undefined,
-    mcp: Array.isArray(d["mcp"]) ? (d["mcp"] as unknown[]).map(String) : undefined,
+    manifest: stringListOrUndefined(d["manifest"]),
+    mcp: stringListOrUndefined(d["mcp"]),
   };
 }
 

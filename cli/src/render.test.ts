@@ -611,6 +611,66 @@ units:
     expect(doc.trust.serving_check.result).toBe("match");
   });
 
+  it("demotes on a present-but-empty serving.manifest — [] is exhaustive-empty, not absent (§3.12)", () => {
+    // A signer who distributes only via MCP writes `manifest: []` to assert "no HTTP URL
+    // is authoritative". Any HTTP retrieval must then demote — an empty list must NOT be
+    // conflated with an omitted list (that fail-open would reopen T11).
+    const manifestPath = writeManifest(`kcp_version: "0.26"
+project: mcp-only
+version: 1.0.0
+serving:
+  manifest: []
+  mcp:
+    - https://mcp.example.com/mcp
+units:
+  - id: overview
+    path: docs/overview.md
+    intent: "Architecture overview and module boundaries"
+`);
+    const pub = signManifest(manifestPath, "org-key");
+    const keysPath = writeAllowlist([
+      { key_id: "org-key", method: "jws", algorithm: "EdDSA", public_key: pub,
+        scope: { domains: ["github.com/testorg"] } },
+    ]);
+    const { doc, result } = renderOk(manifestPath, {
+      keysPath, origin: "github.com/testorg/repo",
+      retrievedFrom: "https://any.example.com/knowledge.yaml",
+    });
+    expect(doc.trust.tier).toBe("known");
+    expect(doc.trust.serving_check.result).toBe("mismatch");
+    expect(result.warnings.some((w) => w.includes("(empty)") && w.includes("C22"))).toBe(true);
+  });
+
+  it("treats a non-list serving.manifest as no assertion (not_declared), never crashes", () => {
+    const manifestPath = writeManifest(`kcp_version: "0.26"
+project: malformed
+version: 1.0.0
+serving:
+  manifest: "https://wiki.example.com/knowledge.yaml"
+units:
+  - id: overview
+    path: docs/overview.md
+    intent: "Architecture overview and module boundaries"
+`);
+    const { doc } = renderOk(manifestPath, {
+      retrievedFrom: "https://rogue.example.net/knowledge.yaml",
+    });
+    expect(doc.trust.serving_check.result).toBe("not_declared");
+  });
+
+  it("does not claim a demotion in the warning when the tier was already below trusted", () => {
+    // Unsigned manifest (empty allowlist) with a mismatched retrieval URL: the check still
+    // records a mismatch, but the warning must not say "trusted tier demoted".
+    const manifestPath = writeManifest(SERVING_MANIFEST);
+    const { doc, result } = renderOk(manifestPath, {
+      retrievedFrom: "https://rogue.example.net/knowledge.yaml",
+    });
+    expect(doc.trust.tier).toBe("unsigned");
+    expect(doc.trust.serving_check.result).toBe("mismatch");
+    expect(result.warnings.some((w) => w.includes("demoted to known"))).toBe(false);
+    expect(result.warnings.some((w) => w.includes("tier remains unsigned"))).toBe(true);
+  });
+
   it("records not_declared and never demotes when the manifest omits serving.manifest", () => {
     const manifestPath = writeManifest(MINIMAL_MANIFEST);
     const pub = signManifest(manifestPath, "org-key");

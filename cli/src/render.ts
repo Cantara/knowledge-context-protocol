@@ -35,7 +35,7 @@ const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 
-export const RENDERER_VERSION = "kcp-cli 0.26.0";
+export const RENDERER_VERSION = "kcp-cli 0.26.1";
 export const RENDER_SCHEMA = "kcp-render-schema-0.2";
 export const DEFAULT_KEYS_PATH = join(homedir(), ".kcp", "trusted-keys.yaml");
 
@@ -456,12 +456,20 @@ export function renderManifest(options: RenderOptions): RenderResult {
   // bytes are intact — only the authorization-to-serve claim failed (recognized,
   // not trusted). Local retrieval (no retrievedFrom) is out of scope here.
   let servingCheck: RawMap | undefined;
-  const servingBlock = doc.serving as RawMap | undefined;
-  const servingManifest = servingBlock && Array.isArray(servingBlock.manifest)
-    ? (servingBlock.manifest as unknown[]).map(String)
-    : undefined;
+  const servingBlock =
+    doc.serving && typeof doc.serving === "object" && !Array.isArray(doc.serving)
+      ? (doc.serving as RawMap)
+      : undefined;
+  // §3.12: a *declared* serving.manifest list is exhaustive for its class — even when
+  // empty (an empty list asserts "no HTTP URL is authoritative", so every HTTP retrieval
+  // must demote). Only an absent/non-list `manifest` means "no assertion". Gate on
+  // presence (Array.isArray), never on length, or a `manifest: []` fails open (T11).
+  const servingManifest =
+    servingBlock && Array.isArray(servingBlock.manifest)
+      ? (servingBlock.manifest as unknown[]).map(String)
+      : undefined;
   if (options.retrievedFrom !== undefined) {
-    if (servingManifest && servingManifest.length > 0) {
+    if (servingManifest !== undefined) {
       const got = normalizeServingUrl(options.retrievedFrom);
       const allowed = servingManifest
         .map(normalizeServingUrl)
@@ -472,15 +480,21 @@ export function renderManifest(options: RenderOptions): RenderResult {
         result: matched ? "match" : "mismatch",
       };
       if (!matched) {
-        if (tier === "trusted") tier = "known";
+        // Only a `trusted` tier is demoted; below that the warning must not claim a
+        // demotion that did not happen (the signer/bytes verdict is unchanged).
+        const wasTrusted = tier === "trusted";
+        if (wasTrusted) tier = "known";
+        const listText = servingManifest.length ? servingManifest.join(", ") : "(empty)";
         warnings.push(
           `retrieval URL '${options.retrievedFrom}' is not in the manifest's serving.manifest ` +
-            `list [${servingManifest.join(", ")}]; trusted tier demoted to known (§3.12 / C22)`
+            `list [${listText}]` +
+            (wasTrusted ? "; trusted tier demoted to known" : `; tier remains ${tier}`) +
+            ` (§3.12 / C22)`
         );
       }
     } else {
       // A retrieval URL was supplied but the manifest makes no serving.manifest
-      // assertion — nothing to enforce, recorded for auditability only.
+      // assertion (absent or non-list) — nothing to enforce, recorded for audit only.
       servingCheck = { retrieved_from: options.retrievedFrom, result: "not_declared" };
     }
   }

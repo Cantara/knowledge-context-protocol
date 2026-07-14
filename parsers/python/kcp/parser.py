@@ -206,13 +206,24 @@ def _parse_payment(data: Optional[dict]) -> Optional[Payment]:
     )
 
 
+def _string_list_or_none(raw: object) -> Optional[list]:
+    """v0.26: coerce a raw value into a string list for aliases/serving. A non-list is
+    *absent* (None) and non-string entries are dropped — so the TypeScript, Python, and Java
+    parsers agree byte-for-byte on malformed input rather than one coercing a scalar to a
+    one-element list while another drops it. Structural validity (must be a list of strings)
+    is the JSON schema's job; this keeps the runtime parsers in lockstep."""
+    if not isinstance(raw, list):
+        return None
+    return [x for x in raw if isinstance(x, str)]
+
+
 def _parse_serving(data: Optional[dict]) -> Optional[Serving]:
     """Parse a serving block (root-level). See SPEC.md §3.12 (v0.26)."""
     if not isinstance(data, dict):
         return None
     return Serving(
-        manifest=[str(u) for u in data["manifest"]] if isinstance(data.get("manifest"), list) else None,
-        mcp=[str(u) for u in data["mcp"]] if isinstance(data.get("mcp"), list) else None,
+        manifest=_string_list_or_none(data.get("manifest")),
+        mcp=_string_list_or_none(data.get("mcp")),
     )
 
 
@@ -382,7 +393,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
     units = [
         KnowledgeUnit(
             id=u["id"],
-            aliases=[str(a) for a in u["aliases"]] if isinstance(u.get("aliases"), list) else None,
+            aliases=_string_list_or_none(u.get("aliases")),
             path=_validate_unit_path(u["path"]),
             intent=u["intent"],
             scope=u.get("scope", "global"),
