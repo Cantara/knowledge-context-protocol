@@ -255,6 +255,11 @@ async function main(): Promise<void> {
       if (!sessionTransport) {
         sessionTransport = new StreamableHTTPServerTransport({
           sessionIdGenerator: undefined, // stateless
+          // Respond with plain application/json bodies instead of SSE frames,
+          // so simple JSON-RPC HTTP clients (axios/fetch) can consume tool
+          // results directly. Clients must still send
+          // "Accept: application/json, text/event-stream" per the MCP spec.
+          enableJsonResponse: true,
         });
         await kcpServer.server.connect(sessionTransport);
       }

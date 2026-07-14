@@ -31,7 +31,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "~1.25.3",
     "js-yaml": "^4.1.0"
   },
   "devDependencies": {
