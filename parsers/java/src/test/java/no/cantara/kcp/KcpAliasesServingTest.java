@@ -79,6 +79,34 @@ class KcpAliasesServingTest {
                 () -> "expected bad-char warning, got: " + w);
     }
 
+    @Test void malformedAliasesAndServingCoerceToAbsent() {
+        // v0.26 parser parity: a scalar where a list is expected is *absent* (not coerced to a
+        // one-element list), non-string entries are dropped, and a non-object serving block is
+        // absent without throwing — matching the TypeScript and Python parsers exactly.
+        KnowledgeManifest m = parse("""
+            kcp_version: "0.26"
+            project: malformed
+            version: 1.0.0
+            serving: "https://not-an-object/knowledge.yaml"
+            units:
+              - id: u1
+                path: a.txt
+                intent: x
+                scope: global
+                audience: [agent]
+                aliases: reg-art-21-2a
+              - id: u2
+                path: b.txt
+                intent: y
+                scope: global
+                audience: [agent]
+                aliases: [good-alias, null, 42, true]
+            """);
+        assertNull(m.serving());                                      // scalar serving -> absent, no throw
+        assertNull(m.units().get(0).aliases());                       // scalar aliases -> absent
+        assertEquals(List.of("good-alias"), m.units().get(1).aliases()); // null/int/bool dropped
+    }
+
     @Test void servingRequiresHttps() {
         KnowledgeManifest m = parse("""
             kcp_version: "0.26"

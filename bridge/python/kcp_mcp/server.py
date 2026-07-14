@@ -675,14 +675,17 @@ def _handle_get_unit(
     """Fetch the content of a specific knowledge unit by id."""
     source_temporal = source_temporal or {}
     ref_temporal_by_id = ref_temporal_by_id or {}
-    requested_id = arguments.get("unit_id", "").strip()
+    # Exact match, no trimming — the TS and Java bridges do not trim either, and an id/alias
+    # can never legitimately contain surrounding whitespace (§4.2 char rules).
+    requested_id = arguments.get("unit_id", "")
     # §4.2a (v0.26): resolve a declared alias to its canonical unit. The canonical id wins;
     # matched_alias is set only when the lookup came in via an alias, and the first-declared
-    # unit wins an alias collision (mirrors the duplicate-id rule).
+    # unit wins an alias collision (mirrors the duplicate-id rule). An empty unit_id never
+    # resolves (guard before the alias scan so a malformed empty-string alias can't match).
     matched_alias: str | None = None
     unit_id = requested_id
-    ctx = unit_context.get(requested_id)
-    if ctx is None:
+    ctx = unit_context.get(requested_id) if requested_id else None
+    if ctx is None and requested_id:
         for uid, (u, _d) in unit_context.items():
             if requested_id in (u.aliases or []):
                 ctx = unit_context[uid]

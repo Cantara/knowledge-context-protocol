@@ -81,7 +81,7 @@ public class KcpParser {
         Compliance compliance = parseCompliance((Map<String, Object>) data.get("compliance"));
         Payment payment = parsePayment(data.get("payment"));
         RateLimits rateLimits = parseRateLimits((Map<String, Object>) data.get("rate_limits"));
-        Serving serving = parseServing((Map<String, Object>) data.get("serving"));
+        Serving serving = parseServing(data.get("serving"));
 
         List<Map<String, Object>> unitMaps = (List<Map<String, Object>>) data.getOrDefault("units", List.of());
         List<KnowledgeUnit> units = unitMaps.stream().map(KcpParser::parseUnit).toList();
@@ -133,7 +133,7 @@ public class KcpParser {
 
         return new KnowledgeUnit(
                 (String) u.get("id"),
-                asStringList(u.get("aliases")),
+                asStringListStrict(u.get("aliases")),
                 validateUnitPath((String) u.get("path")),
                 (String) u.get("kind"),
                 (String) u.get("intent"),
@@ -382,9 +382,11 @@ public class KcpParser {
         );
     }
 
-    private static Serving parseServing(Map<String, Object> s) {
-        if (s == null) return null;
-        return new Serving(asStringList(s.get("manifest")), asStringList(s.get("mcp")));
+    private static Serving parseServing(Object raw) {
+        // Type-guard rather than cast: a non-object `serving:` (a string/list/number) must
+        // parse to "no serving block", not throw ClassCastException as an unchecked cast would.
+        if (!(raw instanceof Map<?, ?> s)) return null;
+        return new Serving(asStringListStrict(s.get("manifest")), asStringListStrict(s.get("mcp")));
     }
 
     @SuppressWarnings("unchecked")
@@ -535,6 +537,18 @@ public class KcpParser {
             return list.stream().filter(java.util.Objects::nonNull).map(Object::toString).toList();
         }
         return List.of(raw.toString());
+    }
+
+    /**
+     * v0.26 strict string-list coercion for {@code aliases} and {@code serving} — a non-{@code List}
+     * is *absent* (null) and non-{@code String} entries are dropped, matching the TypeScript and
+     * Python parsers exactly. Unlike {@link #asStringList}, it never coerces a scalar into a
+     * one-element list, so the same signed bytes cannot resolve to different trust decisions across
+     * implementations. Structural validity (must be a list of strings) is the JSON schema's job.
+     */
+    private static List<String> asStringListStrict(Object raw) {
+        if (!(raw instanceof List<?> list)) return null;
+        return list.stream().filter(x -> x instanceof String).map(x -> (String) x).toList();
     }
 
     /**

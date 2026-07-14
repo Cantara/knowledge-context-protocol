@@ -1280,12 +1280,21 @@ serving:
 
 Each declared list is **exhaustive for its class**: declaring `serving.manifest` asserts "these are
 the only authoritative manifest URLs"; declaring `serving.mcp` asserts "these are the only
-authorized MCP representatives". Omitting a list makes no assertion about that class. Every entry
-MUST be HTTPS — an `http://` entry is a manifest validation error (§7).
+authorized MCP representatives". *Omitting* a list makes no assertion about that class; a **present
+but empty** list (`manifest: []`) is still an assertion — the exhaustive-empty set — meaning "no URL
+of this class is authoritative", so under §"Verifier behaviour" every HTTP(S) retrieval of that
+class demotes. A verifier MUST distinguish an absent list (no assertion) from a present-empty list
+(exhaustive-empty assertion); conflating them reopens T11. Every entry MUST be HTTPS — an `http://`
+entry is a manifest validation error (§7).
 
 **URL matching.** Comparison is on the **final post-redirect** URL for retrieval, and the **dialed**
 URL for MCP endpoints. Match on scheme, host, and path after: lowercasing scheme and host, removing
-a default `:443` port, and stripping any query string and fragment. No wildcard or prefix matching.
+a default `:443` port, and stripping any query string and fragment. The path is compared exactly
+(no percent-decoding, no trailing-slash or dot-segment normalization); no wildcard or prefix
+matching. Because matching is exact on the post-redirect URL, an **incomplete** `serving.manifest`
+list demotes legitimate retrievals from unlisted-but-authentic URLs: authors MUST enumerate every
+CDN edge, redirect target, mirror, and path variant an agent may legitimately land on, or accept
+that those retrievals render at `known` rather than `trusted`.
 
 **Verifier behaviour (T11).** When a verifier retrieved the manifest over HTTP(S), `serving.manifest`
 is declared, and the final retrieval URL is not in the list, a render or plan that would tier
@@ -1293,10 +1302,19 @@ is declared, and the final retrieval URL is not in the list, a render or plan th
 retrieval URL and the declared list. This mirrors the demotion discipline of §16 corroboration and
 §4.21 content-hash mismatch: the content is intact and the signer is known, but an authorization
 claim failed — so the manifest is treated as *recognized*, not *trusted*. Local retrieval (file
-paths, git checkouts) is out of scope here — it is governed by RFC-0019 origin evidence. A
-KCP-aware MCP **server** whose default manifest declares a `serving.mcp` list that omits the
-server's own public URL SHOULD log a startup warning (it may not always know its public URL, so
-serving is still permitted).
+paths, git checkouts) is out of scope here — it is governed by RFC-0019 origin evidence.
+
+**`serving.mcp` has no MUST-level consumer enforcement in this version.** C22 covers only
+`serving.manifest` (the direct retrieval URL). For the MCP class, the only defined behaviour is a
+server-side self-check: a KCP-aware MCP **server** whose default manifest declares a `serving.mcp`
+list that omits the server's own public URL SHOULD log a startup warning (it may not always know
+its public URL, so serving is still permitted). A **client** MAY compare the MCP endpoint it dialed
+against `serving.mcp` and treat a mismatch like a C22 demotion, but this is not yet a numbered
+conformance rule — so the rogue-MCP-proxy case (the headline T11 scenario) is closed only for
+clients that both independently re-fetch the signed manifest *and* perform that dialed-URL check. A
+future revision may promote the client-side MCP check to a normative rule; until then, treat
+`serving.mcp` as an expressible, signed declaration whose enforcement is advisory on the consumer
+side.
 
 **T11 — rogue-representative attack.** A genuinely signed manifest is served, mirrored, or
 MCP-fronted by an endpoint the signer never authorized, lending the endpoint's own behaviour
@@ -1308,11 +1326,31 @@ block makes the authorization claim expressible and signed; enforcement scales w
 independently the consumer can verify, the same trust topology as certificate pinning.
 
 `serving` is OPTIONAL and additive: an absent block asserts nothing and preserves today's behaviour,
-and verifiers predating this block ignore it (unknown-field rule) — it can only *add* protection,
-never make a manifest less trusted.
+and verifiers predating this block ignore it (unknown-field rule) — **for a verifier that does not
+understand `serving`, it can only add protection, never make a manifest less trusted.** For a v0.26
+verifier the claim is narrower: as noted under §"URL matching", an incomplete or stale
+`serving.manifest` will demote legitimate retrievals, so declaring `serving` *can* lower the tier a
+correct consumer assigns to authentic content the author forgot to enumerate. Declaring `serving`
+therefore protects only the upgraded, checking subset of consumers; an attacker retains full T11
+leverage against every non-checking or pre-v0.26 consumer by serving the same signed bytes from a
+rogue URL. This is the certificate-pinning trust topology: coverage scales with adoption, not with
+declaration.
+
+**Limitations.**
+- **Consultable only after signature verification.** `serving` lives inside the signed bytes, so it
+  is meaningful only once a signature from a pinned/known key has verified the manifest. It does not
+  bootstrap origin trust and does not protect first contact with an unsigned or self-signed manifest
+  (the same trust-on-first-use floor as the rest of §16).
+- **Binds location, not recency.** `serving` carries no freshness, version, or revocation signal, and
+  a KCP signature over old bytes remains valid indefinitely (§4.21). A URL that was *ever* a
+  legitimate `serving.manifest` entry can replay an older, genuinely-signed manifest from that
+  once-listed URL and still match — so the "stale mirror" branch of T11 is closed only for URLs that
+  were never listed. Anti-rollback requires consumer-side version/temporal pinning (§4.22), which
+  `serving` does not provide.
 
 **Conformance:** C22 (serving demotion on retrieval-URL mismatch) — see §16.5. The MCP-server
-startup self-check is a Level-2 SHOULD.
+startup self-check and the client-side `serving.mcp` dialed-URL check are Level-2 SHOULDs (no
+numbered conformance rule in this version).
 
 ---
 
@@ -1405,28 +1443,45 @@ units:
 
 **Rules:**
 
-- Each alias MUST follow the same character rules as `id` (§4.2): lowercase ASCII letters, digits,
-  hyphens, and dots, and MUST NOT be empty.
+- An alias MUST match `^[a-z0-9][a-z0-9._-]*$`: lowercase ASCII letters, digits, dots, hyphens, and
+  underscores, beginning with a letter or digit, and MUST NOT be empty. (This is *close to* but not
+  identical to the `id` rule of §4.2: unlike `id`, an alias may contain an underscore and MUST NOT
+  begin with a dot or hyphen. The stricter leading-character rule keeps aliases unambiguous with the
+  reference syntaxes they must never appear in.)
 - An alias MUST be unique across **all** `id` values **and** all `aliases` values within the same
-  manifest (after composition resolution). A collision is a §7 warning.
+  manifest (after composition resolution). A collision is a §7 **warning**, not a rejection — the
+  manifest still loads. Because a collision is only warned, resolution defines a deterministic
+  tie-break so the outcome never depends on hash-map ordering: a canonical `id` always wins over any
+  alias, and among colliding aliases the **first declared** (units in document order, then aliases in
+  list order) wins. Validators SHOULD warn on every collision so authors can remove the ambiguity.
 - A lookup by an alias resolves to the same unit as a lookup by that unit's `id`. The alias does not
   create a separate unit — it is an alternative reference to the existing one. Implementations that
-  resolve by identifier MUST also match against declared aliases.
+  resolve *content by identifier* (e.g. `get_unit`, search) MUST also match against declared aliases.
 - `id` remains the **canonical** identifier. Aliases are secondary: they are NOT valid targets for
-  `depends_on`, `supersedes`, `relationships`, `overrides`, or `excludes`. This keeps the topology
-  and composition layers unambiguous. When a lookup matched an alias, serialized output (search
-  results, audit logs) SHOULD surface both the matched alias and the canonical `id`.
+  `depends_on`, `supersedes`, `relationships`, `overrides`, `excludes`, or `external_depends_on`.
+  This binds authors — but resolvers MUST also enforce it: when resolving any of those reference
+  targets (including across a federation boundary, where the target manifest is attacker-influenceable),
+  a resolver MUST match **only** canonical `id` values, never `aliases`. Matching an alias there would
+  let a hostile federated manifest declare an alias equal to a canonical id you expect and silently
+  divert the reference. Alias matching is confined to direct content lookup (`get_unit`, search).
+  When a lookup matched an alias, serialized output (search results, audit logs) SHOULD surface both
+  the matched alias and the canonical `id`.
 - Aliases share their unit's temporal validity (§4.22) and `content_hash` (§4.21) — they are
-  identifier-level indirection only, never a distinct content payload.
+  identifier-level indirection only, never a distinct content payload. An alias therefore asserts
+  *resolution*, not content-span containment: `content_hash` covers the whole unit, not the
+  subdivision an alias names. A precise-looking alias (`reg-art-21-2d`) that resolves to a
+  full-article unit is "verified" against the *article's* hash — it carries no integrity assurance
+  that the article actually contains that sub-clause. Audit and citation systems MUST NOT treat an
+  alias match as evidence that the referenced content contains the aliased element.
 
 Implementations MAY impose a reasonable upper bound on alias count (RECOMMENDED: 100 per unit) and
 SHOULD warn when a unit exceeds it. `aliases` is OPTIONAL and additive: manifests without it are
 unaffected, and a parser that ignores it simply fails to resolve alias lookups (existing
 unknown-id behaviour).
 
-**Conformance:** Parse and expose `aliases`, reject duplicate aliases, and resolve alias lookups to
-the canonical unit — Level 1. Surfacing `matched_alias` in bridge responses and listing aliases —
-Level 2.
+**Conformance:** Parse and expose `aliases`, **warn on** duplicate aliases (with the deterministic
+tie-break above), and resolve alias lookups to the canonical unit — Level 1. Surfacing
+`matched_alias` in bridge responses and listing aliases — Level 2.
 
 ### 4.3 `path`
 
@@ -3790,7 +3845,10 @@ A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18)
 - **C22** (v0.26): When a verifier retrieved the manifest over HTTP(S), the manifest declares a
   `serving.manifest` list (§3.12), and the final post-redirect retrieval URL is **not** in that
   list (per the §3.12 matching rules), the render/plan MUST NOT tier above `known` and MUST emit a
-  §7 warning naming both the retrieval URL and the declared list. The signer is authentic and the
+  §7 warning naming both the retrieval URL and the declared list. A **present-but-empty** list
+  (`manifest: []`) is an exhaustive-empty assertion — no HTTP(S) URL is authoritative — so *every*
+  HTTP(S) retrieval matches nothing and demotes; only an **absent** list means "no assertion" and
+  never demotes. A verifier MUST NOT conflate the two. The signer is authentic and the
   bytes intact — but an authorization claim failed, so the manifest is treated as *recognized*, not
   *trusted* (T11, the rogue-representative attack). The retrieval URL is a determinism input to the
   render (C1 preserved), supplied by the consumer's channel as with §16 corroboration; local

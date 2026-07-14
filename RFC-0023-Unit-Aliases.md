@@ -147,7 +147,10 @@ When a consumer requests a unit by identifier `X`:
 4. Not found → resolution failure (existing behaviour)
 ```
 
-Step 2 is new. The resolution is deterministic because alias uniqueness is enforced.
+Step 2 is new. Uniqueness is a §7 **warning**, not a hard rejection (see SPEC.md §4.2a), so
+resolution is made deterministic by a defined tie-break rather than by assuming uniqueness holds: a
+canonical `id` always wins over any alias, and among colliding aliases the first declared (units in
+document order, then aliases in list order) wins.
 
 ### Bridge behavior
 
@@ -325,7 +328,7 @@ Aliases solve the problem with minimal spec surface:
 | Feature | Level | Notes |
 |---------|-------|-------|
 | Parse `aliases` field | Level 1 | MUST read and expose. |
-| Alias uniqueness validation | Level 1 | MUST reject duplicate aliases within manifest. |
+| Alias uniqueness validation | Level 1 | MUST warn (§7) on duplicate aliases within manifest; resolution applies the deterministic tie-break (canonical id first, then first-declared alias). |
 | Alias-based resolution | Level 1 | MUST resolve alias lookups to canonical unit. |
 | `matched_alias` in response | Level 2 | RECOMMENDED in bridge responses. |
 | Alias in `list_knowledge` | Level 2 | RECOMMENDED for discoverability. |

@@ -62,6 +62,34 @@ units:
     assert any("must match" in x for x in w)  # "BAD Alias" fails the char rule
 
 
+def test_malformed_aliases_and_serving_coerce_to_absent():
+    # v0.26 parser parity: a scalar where a list is expected is treated as *absent*
+    # (not coerced into a one-element list), non-string entries are dropped, and a
+    # non-object serving block is absent — matching the TS and Java parsers exactly.
+    m = parse_dict(yaml.safe_load("""
+kcp_version: "0.26"
+project: malformed
+version: 1.0.0
+serving: "https://not-an-object/knowledge.yaml"
+units:
+  - id: u1
+    path: a.txt
+    intent: x
+    scope: global
+    audience: [agent]
+    aliases: reg-art-21-2a
+  - id: u2
+    path: b.txt
+    intent: y
+    scope: global
+    audience: [agent]
+    aliases: [good-alias, null, 42, true]
+"""))
+    assert m.serving is None                       # scalar serving -> absent, no crash
+    assert m.units[0].aliases is None              # scalar aliases -> absent, not ["reg-art-21-2a"]
+    assert m.units[1].aliases == ["good-alias"]    # null/int/bool entries dropped
+
+
 def test_serving_requires_https():
     m = parse_dict(yaml.safe_load("""
 kcp_version: "0.26"

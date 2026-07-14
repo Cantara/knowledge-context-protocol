@@ -759,11 +759,12 @@ public final class KcpServer {
 
         // §4.2a (v0.26): resolve a declared alias to its canonical unit. The canonical id wins;
         // matchedAlias is set only when the lookup came in via an alias, and the first-declared
-        // unit wins an alias collision (mirrors the duplicate-id rule).
+        // unit wins an alias collision (mirrors the duplicate-id rule). An empty unit_id never
+        // resolves — guard before the alias scan so a malformed empty-string alias can't match.
         String unitId = requestedId;
         String matchedAlias = null;
-        KnowledgeUnit unit = rs.units().get(requestedId);
-        if (unit == null) {
+        KnowledgeUnit unit = requestedId.isEmpty() ? null : rs.units().get(requestedId);
+        if (unit == null && !requestedId.isEmpty()) {
             for (Map.Entry<String, KnowledgeUnit> e : rs.units().entrySet()) {
                 if (e.getValue().aliases() != null && e.getValue().aliases().contains(requestedId)) {
                     unit = e.getValue();
