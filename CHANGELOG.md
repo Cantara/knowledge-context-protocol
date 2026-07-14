@@ -12,6 +12,69 @@ _Nothing yet._
 
 ---
 
+## [0.26.0] — 2026-07-14 — Serving Endpoint Binding + Unit Aliases
+
+**Spec version:** `"0.26"` | **Prior:** `"0.25"` (v0.25.1, 2026-07-04)
+
+A combined promotion wave of two independent, additive declarations. Both live inside the signed
+manifest bytes, both are OPTIONAL, and a verifier predating them ignores them (unknown-field rule) —
+they can only *add* capability, never make a conforming manifest behave differently.
+
+### Promoted — Serving Endpoint Binding (RFC-0024, §3.12)
+
+- **`serving.manifest` / `serving.mcp`** — a signed, in-manifest declaration of the HTTPS URLs at
+  which the manifest is *authoritatively served* and the MCP endpoints authorized to represent it.
+  A KCP signature proves **who** signed and that the bytes are intact; `serving` adds **where** the
+  knowledge web is legitimately served. Each declared list is exhaustive for its class; every entry
+  MUST be HTTPS (an `http://` entry is a §7 validation error).
+- **C22 (§16.5) — retrieval-URL demotion.** When a verifier retrieved the manifest over HTTP(S),
+  `serving.manifest` is declared, and the final post-redirect URL is **not** in that list (per the
+  §3.12 matching rules — lowercase scheme/host, drop default `:443`, strip query/fragment, exact
+  path, no wildcards), a render or plan that would tier `trusted` is demoted to `known` and a
+  warning names both the retrieval URL and the declared list. Closes **T11** (rogue-representative:
+  a genuinely-signed manifest fronted by an endpoint the signer never authorized), the network-layer
+  sibling of T9 (§4.21) and T10 (§3.11).
+- **`kcp render --retrieved-from <url>`** — surfaces `serving` as data and records a `serving_check`
+  (`match` / `mismatch` / `not_declared`) in the `trust` block; enforces C22 deterministically and
+  offline (the URL is a caller-supplied input, never fetched by the renderer). Local retrieval
+  (file paths, git checkouts) stays out of scope — governed by RFC-0019 origin evidence.
+
+### Promoted — Unit Aliases (RFC-0023, §4.2a)
+
+- **`aliases`** on a unit — additional identifiers that resolve to the **same unit** as its
+  canonical `id`. Lets consumers reference fine-grained logical subdivisions (regulation
+  sub-clauses, standard clauses, contract paragraphs, individual API endpoints) while content stays
+  at its natural authoring granularity — no file-per-sub-clause sprawl, no undeclared
+  suffix-stripping heuristics. Each alias follows the `id` character rules and MUST be unique across
+  all ids **and** aliases (a collision is a §7 warning). `id` remains canonical: aliases are NOT
+  valid targets for `depends_on`, `supersedes`, `relationships`, `overrides`, or `excludes`, and
+  they share their unit's temporal window and `content_hash`.
+- **Bridge resolution (all three) —** `get_unit` resolves a declared alias to its canonical unit and
+  leads the response with a `{ matched_alias, canonical_id }` metadata block; `search_knowledge`
+  matches alias terms (`alias` in `match_reason`) and reports `matched_alias` on the hit. A direct
+  id lookup is unchanged (single content item, no metadata block).
+
+### Parsers + validators (all four)
+
+- Parse and expose `unit.aliases` and the manifest `serving` block. Validators warn on alias
+  character-rule violations, alias/id collisions, and >100 aliases per unit (RECOMMENDED cap); they
+  error on a non-HTTPS `serving.manifest`/`serving.mcp` entry. TypeScript (shared core → CLI +
+  bridge), Python, Java.
+
+### Renderer
+
+- The `kcp render` whitelist (`render-schema.json`) surfaces `aliases` as a unit field and `serving`
+  as a manifest block. `RENDERER_VERSION` → `kcp-cli 0.26.0`.
+
+### Tooling
+
+- `RFC-0023` and `RFC-0024` marked **Accepted**. Version strings bumped to `0.26.0` across the CLI,
+  all three bridges, and the JSON-schema `kcp_version` enum. New example
+  [`examples/serving-and-aliases/`](./examples/serving-and-aliases/) exercises both features
+  end-to-end.
+
+---
+
 ## [0.25.1] — 2026-07-04 — Interop Clarifications
 
 **Spec version:** `"0.25"` (unchanged — clarifications only, no new fields) | **Prior:** v0.25.0 (2026-07-04)

@@ -7,7 +7,7 @@ import yaml
 from .model import (
     AgentIdentity, Auth, AuthMethod, Authority, Compliance, ContentHash, ContentStructure,
     Delegation, Discovery, ExternalDependency, ExternalRelationship, FreshnessPolicy,
-    KnowledgeManifest, KnowledgeUnit, ManifestRef, Payment, PaymentMethod,
+    KnowledgeManifest, KnowledgeUnit, ManifestRef, Payment, PaymentMethod, Serving,
     RateLimit, RateLimits, RateLimitHeaders, RateLimitTokens, RateLimitTokensTier, Relationship,
     Trust, TrustAudit, TrustAgentRequirements, TrustProvenance, Visibility,
 )
@@ -206,6 +206,16 @@ def _parse_payment(data: Optional[dict]) -> Optional[Payment]:
     )
 
 
+def _parse_serving(data: Optional[dict]) -> Optional[Serving]:
+    """Parse a serving block (root-level). See SPEC.md §3.12 (v0.26)."""
+    if not isinstance(data, dict):
+        return None
+    return Serving(
+        manifest=[str(u) for u in data["manifest"]] if isinstance(data.get("manifest"), list) else None,
+        mcp=[str(u) for u in data["mcp"]] if isinstance(data.get("mcp"), list) else None,
+    )
+
+
 def _parse_freshness_policy(data: Optional[dict]) -> Optional[FreshnessPolicy]:
     """Parse a freshness_policy block (root-level or per-unit). See SPEC.md §3.7 (v0.11)."""
     if data is None:
@@ -372,6 +382,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
     units = [
         KnowledgeUnit(
             id=u["id"],
+            aliases=[str(a) for a in u["aliases"]] if isinstance(u.get("aliases"), list) else None,
             path=_validate_unit_path(u["path"]),
             intent=u["intent"],
             scope=u.get("scope", "global"),
@@ -441,6 +452,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
         compliance=_parse_compliance(data.get("compliance")),
         payment=_parse_payment(data.get("payment")),
         rate_limits=_parse_rate_limits(data.get("rate_limits")),
+        serving=_parse_serving(data.get("serving")),
         units=units,
         relationships=relationships,
         manifests=manifests,

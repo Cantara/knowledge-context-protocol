@@ -1,6 +1,6 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.25
+**Version:** 0.26
 **Status:** Draft
 **Date:** 2026-06-12
 **Repository:** github.com/cantara/knowledge-context-protocol
@@ -198,6 +198,7 @@ relationships:               # OPTIONAL; list of cross-unit relationship declara
 | `not_for` | OPTIONAL | list | Advisory manifest-wide scope boundary — contexts this manifest does NOT cover. Used for federation decisions. See §3.10. |
 | `temporal` | OPTIONAL | object | Default temporal validity window applied to all units that do not declare their own `temporal` block. Field-level override at unit level. See §4.22. |
 | `composition` | OPTIONAL | object | Declares how this manifest is assembled from other manifests via includes, overrides, and excludes. See §3.11. |
+| `serving` | OPTIONAL | object | Signed declaration of the manifest's authoritative retrieval URLs and authorized MCP endpoints. See §3.12 (v0.26). |
 | `units` | REQUIRED | list | Ordered list of knowledge unit declarations. MUST contain at least one unit. |
 | `relationships` | OPTIONAL | list | Explicit cross-unit relationship declarations. See §5. |
 
@@ -1253,6 +1254,68 @@ pinning at Level 2; recursive composition (includes within includes) at Level 2.
 
 ---
 
+### 3.12 Serving Endpoint Binding (`serving` block) (v0.26)
+
+Promoted from [RFC-0024](./RFC-0024-Serving-Endpoint-Binding.md). A KCP signature proves **who**
+signed a manifest and that its bytes and referenced content are intact (§16, §4.21) — but says
+nothing about **where** the knowledge web is legitimately served. The OPTIONAL `serving` block
+closes that gap: it is a signed, in-manifest declaration of the authoritative retrieval URLs and
+the MCP endpoints authorized to represent this manifest to agents. Because it lives inside the
+signed bytes, declaring it needs no new cryptography and no `.well-known` artifacts — moving an
+endpoint is an edit plus a re-sign.
+
+```yaml
+serving:
+  manifest:
+    - https://wiki.cantara.no/knowledge.yaml
+    - https://mirror.example.org/cantara/knowledge.yaml   # a declared mirror is legitimate
+  mcp:
+    - https://mcp.cantara.no/mcp
+```
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `serving.manifest` | OPTIONAL | list of strings | HTTPS URLs at which this manifest is authoritatively served. |
+| `serving.mcp` | OPTIONAL | list of strings | HTTPS URLs of MCP endpoints authorized to represent this manifest to agents. |
+
+Each declared list is **exhaustive for its class**: declaring `serving.manifest` asserts "these are
+the only authoritative manifest URLs"; declaring `serving.mcp` asserts "these are the only
+authorized MCP representatives". Omitting a list makes no assertion about that class. Every entry
+MUST be HTTPS — an `http://` entry is a manifest validation error (§7).
+
+**URL matching.** Comparison is on the **final post-redirect** URL for retrieval, and the **dialed**
+URL for MCP endpoints. Match on scheme, host, and path after: lowercasing scheme and host, removing
+a default `:443` port, and stripping any query string and fragment. No wildcard or prefix matching.
+
+**Verifier behaviour (T11).** When a verifier retrieved the manifest over HTTP(S), `serving.manifest`
+is declared, and the final retrieval URL is not in the list, a render or plan that would tier
+`trusted` MUST be demoted to `known`, and the verifier MUST surface a warning naming both the
+retrieval URL and the declared list. This mirrors the demotion discipline of §16 corroboration and
+§4.21 content-hash mismatch: the content is intact and the signer is known, but an authorization
+claim failed — so the manifest is treated as *recognized*, not *trusted*. Local retrieval (file
+paths, git checkouts) is out of scope here — it is governed by RFC-0019 origin evidence. A
+KCP-aware MCP **server** whose default manifest declares a `serving.mcp` list that omits the
+server's own public URL SHOULD log a startup warning (it may not always know its public URL, so
+serving is still permitted).
+
+**T11 — rogue-representative attack.** A genuinely signed manifest is served, mirrored, or
+MCP-fronted by an endpoint the signer never authorized, lending the endpoint's own behaviour
+(tampered mediation, stale pinning, selective serving) the credibility of a valid signature. T9
+(§4.21) was this pattern for local directories, T10 (§3.11) for composition includes; T11 is the
+same pattern for the network serving layer. It is closed **only for consumers that check** — a
+client that never independently fetches the manifest cannot detect a rogue proxy. The `serving`
+block makes the authorization claim expressible and signed; enforcement scales with how
+independently the consumer can verify, the same trust topology as certificate pinning.
+
+`serving` is OPTIONAL and additive: an absent block asserts nothing and preserves today's behaviour,
+and verifiers predating this block ignore it (unknown-field rule) — it can only *add* protection,
+never make a manifest less trusted.
+
+**Conformance:** C22 (serving demotion on retrieval-URL mismatch) — see §16.5. The MCP-server
+startup self-check is a Level-2 SHOULD.
+
+---
+
 ## 4. Knowledge Units
 
 Each entry in `units` describes a self-contained piece of knowledge.
@@ -1262,6 +1325,7 @@ Each entry in `units` describes a self-contained piece of knowledge.
 | Field | Required | Type | Description |
 |-------|----------|------|-------------|
 | `id` | REQUIRED | string | Unique identifier within this manifest. See §4.2. |
+| `aliases` | OPTIONAL | list of strings | Additional identifiers that resolve to this unit. See §4.2a (v0.26). |
 | `path` | REQUIRED | string | Relative path to the content file. See §4.3. |
 | `kind` | OPTIONAL | string | Type of artifact. One of: `knowledge`, `schema`, `service`, `policy`, `executable`. See §4.3a. Default: `knowledge`. |
 | `intent` | REQUIRED | string | One sentence: what question does this unit answer? See §4.4. |
@@ -1319,6 +1383,50 @@ The `id` MUST be unique within the manifest. It MUST contain only lowercase ASCI
 ```yaml
 id: api-authentication-guide
 ```
+
+### 4.2a `aliases` (v0.26)
+
+Promoted from [RFC-0023](./RFC-0023-Unit-Aliases.md). The OPTIONAL `aliases` field declares
+additional identifiers that resolve to the **same unit** as the canonical `id`. It lets consumers
+reference fine-grained logical subdivisions (regulation sub-clauses, standard clauses, contract
+paragraphs, individual API endpoints) while the repository stores content at its natural authoring
+granularity — without file-per-sub-clause sprawl or undeclared suffix-stripping heuristics.
+
+```yaml
+units:
+  - id: reg-art-021
+    path: articles/art-021.txt
+    intent: "What cybersecurity risk management measures must entities implement?"
+    aliases:
+      - reg-art-21-2a
+      - reg-art-21-2b
+      - reg-art-21-2c
+```
+
+**Rules:**
+
+- Each alias MUST follow the same character rules as `id` (§4.2): lowercase ASCII letters, digits,
+  hyphens, and dots, and MUST NOT be empty.
+- An alias MUST be unique across **all** `id` values **and** all `aliases` values within the same
+  manifest (after composition resolution). A collision is a §7 warning.
+- A lookup by an alias resolves to the same unit as a lookup by that unit's `id`. The alias does not
+  create a separate unit — it is an alternative reference to the existing one. Implementations that
+  resolve by identifier MUST also match against declared aliases.
+- `id` remains the **canonical** identifier. Aliases are secondary: they are NOT valid targets for
+  `depends_on`, `supersedes`, `relationships`, `overrides`, or `excludes`. This keeps the topology
+  and composition layers unambiguous. When a lookup matched an alias, serialized output (search
+  results, audit logs) SHOULD surface both the matched alias and the canonical `id`.
+- Aliases share their unit's temporal validity (§4.22) and `content_hash` (§4.21) — they are
+  identifier-level indirection only, never a distinct content payload.
+
+Implementations MAY impose a reasonable upper bound on alias count (RECOMMENDED: 100 per unit) and
+SHOULD warn when a unit exceeds it. `aliases` is OPTIONAL and additive: manifests without it are
+unaffected, and a parser that ignores it simply fails to resolve alias lookups (existing
+unknown-id behaviour).
+
+**Conformance:** Parse and expose `aliases`, reject duplicate aliases, and resolve alias lookups to
+the canonical unit — Level 1. Surfacing `matched_alias` in bridge responses and listing aliases —
+Level 2.
 
 ### 4.3 `path`
 
@@ -3615,7 +3723,7 @@ minimum trigger `on_failure: warn` (§3.6). Pinning applies per-edge.
 
 ### 16.5 Renderer conformance
 
-A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18), C15 (RFC-0020, v0.19), C16 (v0.20), C17 (RFC-0022, v0.21), C18 (RFC-0021, v0.21), and C19–C21 (RFC-0004/0002, v0.22):
+A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18), C15 (RFC-0020, v0.19), C16 (v0.20), C17 (RFC-0022, v0.21), C18 (RFC-0021, v0.21), C19–C21 (RFC-0004/0002, v0.22), and C22 (RFC-0024, v0.26):
 
 - **C1–C10** (RFC-0018): determinism (C1), fail-closed emission (C2), schema-only output (C3),
   no `load_eligible: true` on executable/service/unknown kinds (C4), no auto-traversal below
@@ -3679,6 +3787,16 @@ A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18)
   manifest's attestation requirements as a floor on the governed source, emitting a §7 warning
   when the governed manifest declares weaker requirements (or none). Parsers expose
   `propagate_to_governed`; enforcement is a resolution-time (Level 2) behaviour.
+- **C22** (v0.26): When a verifier retrieved the manifest over HTTP(S), the manifest declares a
+  `serving.manifest` list (§3.12), and the final post-redirect retrieval URL is **not** in that
+  list (per the §3.12 matching rules), the render/plan MUST NOT tier above `known` and MUST emit a
+  §7 warning naming both the retrieval URL and the declared list. The signer is authentic and the
+  bytes intact — but an authorization claim failed, so the manifest is treated as *recognized*, not
+  *trusted* (T11, the rogue-representative attack). The retrieval URL is a determinism input to the
+  render (C1 preserved), supplied by the consumer's channel as with §16 corroboration; local
+  (file/git) retrieval is out of scope, governed by origin evidence (C13). A KCP-aware MCP server
+  whose default manifest's `serving.mcp` list omits the server's own public URL SHOULD warn at
+  startup (Level 2 SHOULD — a server may not know its public URL).
 
 The reference implementation is `kcp render` in [`cli/`](./cli/); the render validation corpus
 lives in [`experiments/rfc-0018-render/`](./experiments/rfc-0018-render/) (cases A10–A12, B17–B20

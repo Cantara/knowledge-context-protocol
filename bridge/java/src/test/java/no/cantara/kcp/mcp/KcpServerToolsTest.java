@@ -138,6 +138,60 @@ class KcpServerToolsTest {
         assertTrue(text.contains("Available units:"));
     }
 
+    // ── unit aliases (v0.26, §4.2a) ─────────────────────────────────────────────
+
+    @Test void getUnitResolvesAliasAndSurfacesMatchedAlias() throws Exception {
+        KcpServer.ResourceSet rs = KcpServer.buildResources(fixture("aliases"), false);
+        String slug = KcpMapper.projectSlug(rs.primaryManifest().project());
+        McpSchema.CallToolRequest request = new McpSchema.CallToolRequest("get_unit",
+            Map.of("unit_id", "reg-art-21-2b"));
+        McpSchema.CallToolResult result = KcpServer.handleGetUnit(request, rs, slug);
+
+        assertFalse(result.isError());
+        String meta = ((McpSchema.TextContent) result.content().get(0)).text();
+        assertTrue(meta.contains("\"matched_alias\":\"reg-art-21-2b\""), meta);
+        assertTrue(meta.contains("\"canonical_id\":\"reg-art-021\""), meta);
+        String body = ((McpSchema.TextContent) result.content().get(1)).text();
+        assertTrue(body.contains("cybersecurity risk-management"), body);
+    }
+
+    @Test void getUnitByCanonicalIdHasNoAliasBlock() throws Exception {
+        KcpServer.ResourceSet rs = KcpServer.buildResources(fixture("aliases"), false);
+        String slug = KcpMapper.projectSlug(rs.primaryManifest().project());
+        McpSchema.CallToolRequest request = new McpSchema.CallToolRequest("get_unit",
+            Map.of("unit_id", "reg-art-021"));
+        McpSchema.CallToolResult result = KcpServer.handleGetUnit(request, rs, slug);
+
+        assertEquals(1, result.content().size());
+        String body = ((McpSchema.TextContent) result.content().get(0)).text();
+        assertTrue(body.contains("cybersecurity risk-management"), body);
+    }
+
+    @Test void searchMatchesAliasAndReportsMatchedAlias() throws Exception {
+        KcpServer.ResourceSet rs = KcpServer.buildResources(fixture("aliases"), false);
+        String slug = KcpMapper.projectSlug(rs.primaryManifest().project());
+        McpSchema.CallToolRequest request = new McpSchema.CallToolRequest("search_knowledge",
+            Map.of("query", "reg-art-21-2c"));
+        McpSchema.CallToolResult result = KcpServer.handleSearchKnowledge(request, rs, slug);
+
+        String json = ((McpSchema.TextContent) result.content().get(0)).text();
+        assertTrue(json.contains("\"id\":\"reg-art-021\""), json);
+        assertTrue(json.contains("\"matched_alias\":\"reg-art-21-2c\""), json);
+        assertTrue(json.contains("alias"), json); // match_reason includes "alias"
+    }
+
+    @Test void getUnitUnknownAliasStill404s() throws Exception {
+        KcpServer.ResourceSet rs = KcpServer.buildResources(fixture("aliases"), false);
+        String slug = KcpMapper.projectSlug(rs.primaryManifest().project());
+        McpSchema.CallToolRequest request = new McpSchema.CallToolRequest("get_unit",
+            Map.of("unit_id", "reg-art-21-2z"));
+        McpSchema.CallToolResult result = KcpServer.handleGetUnit(request, rs, slug);
+
+        assertTrue(result.isError());
+        String text = ((McpSchema.TextContent) result.content().get(0)).text();
+        assertTrue(text.contains("Unit not found"));
+    }
+
     // ── get_command_syntax ────────────────────────────────────────────────────
 
     @Test void getCommandSyntaxReturnsFormattedBlock() {

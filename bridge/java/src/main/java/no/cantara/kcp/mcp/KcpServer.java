@@ -224,7 +224,7 @@ public final class KcpServer {
     record SearchResult(
             String id, String intent, String path, String uri, int score,
             List<String> matchReason, Integer tokenEstimate, String summaryUnit,
-            String caution) {}
+            String caution, String matchedAlias) {}
 
     /**
      * Score a unit against a set of query terms.
@@ -242,6 +242,10 @@ public final class KcpServer {
         String lowerIntent = unit.intent() != null ? unit.intent().toLowerCase() : "";
         String lowerId     = unit.id().toLowerCase();
         String lowerPath   = unit.path() != null ? unit.path().toLowerCase() : "";
+        List<String> aliases = unit.aliases() != null ? unit.aliases() : List.of();
+        // §4.2a (v0.26): an alias is an alternative reference to this unit; a query term that
+        // hits one scores like an id match and surfaces the matched alias in the result.
+        String matchedAlias = null;
 
         for (String term : terms) {
             String lterm = term.toLowerCase();
@@ -259,6 +263,16 @@ public final class KcpServer {
 
             // Path match — 1 pt
             if (lowerPath.contains(lterm)) { score += 1; matchReason.add("path"); }
+
+            // Alias match — 1 pt; prefer an exact alias hit for matched_alias surfacing (§4.2a).
+            for (String alias : aliases) {
+                String lalias = alias.toLowerCase();
+                if (lalias.contains(lterm)) {
+                    score += 1;
+                    matchReason.add("alias");
+                    if (matchedAlias == null || lalias.equals(lterm)) matchedAlias = alias;
+                }
+            }
         }
 
         // hints: token_estimate and summary_unit
@@ -274,7 +288,7 @@ public final class KcpServer {
         return new SearchResult(
             unit.id(), unit.intent(), unit.path(),
             KcpMapper.unitUri(slug, unit.id()), score,
-            List.copyOf(matchReason), tokenEstimate, summaryUnit, null);
+            List.copyOf(matchReason), tokenEstimate, summaryUnit, null, matchedAlias);
     }
 
     /** Returns the first not_for phrase matched by any query term, or null (§15.11). */
@@ -642,7 +656,7 @@ public final class KcpServer {
                 r.id(), r.intent(), r.path(), r.uri(),
                 Math.max(1, r.score() / 2),
                 r.matchReason(), r.tokenEstimate(), r.summaryUnit(),
-                "not_for match: '" + matched + "'"));
+                "not_for match: '" + matched + "'", r.matchedAlias()));
         }
 
         // §15.13 temporal filter: applied after not_for, before top-N cut
@@ -658,7 +672,7 @@ public final class KcpServer {
                     ? r.caution() + "; temporal filtering bypassed"
                     : "temporal filtering bypassed (include_all_temporal)";
                 return new SearchResult(r.id(), r.intent(), r.path(), r.uri(), r.score(),
-                    r.matchReason(), r.tokenEstimate(), r.summaryUnit(), note);
+                    r.matchReason(), r.tokenEstimate(), r.summaryUnit(), note, r.matchedAlias());
             });
         }
 
@@ -719,6 +733,10 @@ public final class KcpServer {
             if (!attested && ru != null && unitNeedsAttestation(rs.primaryManifest(), ru)) {
                 sb.append(",\"requires_attestation\":true");
             }
+            // §4.2a (v0.26): surface matched_alias when a query term hit a declared alias.
+            if (r.matchedAlias() != null) {
+                sb.append(",\"matched_alias\":\"").append(escapeJson(r.matchedAlias())).append("\"");
+            }
             sb.append("}");
         }
         sb.append("\n]");
@@ -736,15 +754,30 @@ public final class KcpServer {
             String slug) {
 
         Map<String, Object> args = request.arguments();
-        String unitId = args != null && args.get("unit_id") != null
+        String requestedId = args != null && args.get("unit_id") != null
             ? String.valueOf(args.get("unit_id")) : "";
 
-        KnowledgeUnit unit = rs.units().get(unitId);
+        // §4.2a (v0.26): resolve a declared alias to its canonical unit. The canonical id wins;
+        // matchedAlias is set only when the lookup came in via an alias, and the first-declared
+        // unit wins an alias collision (mirrors the duplicate-id rule).
+        String unitId = requestedId;
+        String matchedAlias = null;
+        KnowledgeUnit unit = rs.units().get(requestedId);
+        if (unit == null) {
+            for (Map.Entry<String, KnowledgeUnit> e : rs.units().entrySet()) {
+                if (e.getValue().aliases() != null && e.getValue().aliases().contains(requestedId)) {
+                    unit = e.getValue();
+                    unitId = e.getKey();
+                    matchedAlias = requestedId;
+                    break;
+                }
+            }
+        }
         if (unit == null) {
             String ids = String.join(", ", rs.units().keySet());
             return new McpSchema.CallToolResult(
                 List.of(new McpSchema.TextContent(
-                    "Unit not found: \"" + unitId + "\". Available units: " + ids)),
+                    "Unit not found: \"" + requestedId + "\". Available units: " + ids)),
                 true, null, null);
         }
         // F1: refuse a temporally-excluded unit by id, matching search / resource paths.
@@ -794,16 +827,22 @@ public final class KcpServer {
             }
             UsageLogger.logGetUnit(rs.primaryManifest().project(), unitId, tokenEstimate, rs.manifestTokenTotal());
 
-            if (content.binary()) {
-                return new McpSchema.CallToolResult(
-                    List.of(new McpSchema.TextContent(
-                        "[Binary content: " + mime + ", base64 length: " + content.text().length() + "]")),
-                    false, null, null);
-            } else {
-                return new McpSchema.CallToolResult(
-                    List.of(new McpSchema.TextContent(content.text())),
-                    false, null, null);
+            // §4.2a (v0.26): when the lookup resolved through an alias, lead with a metadata block
+            // surfacing both the matched alias and the canonical id (L2). Direct id lookups are
+            // unchanged — the content is the sole item, as before.
+            List<McpSchema.Content> out = new ArrayList<>();
+            if (matchedAlias != null) {
+                out.add(new McpSchema.TextContent(
+                    "{\"matched_alias\":\"" + escapeJson(matchedAlias)
+                        + "\",\"canonical_id\":\"" + escapeJson(unitId) + "\"}"));
             }
+            if (content.binary()) {
+                out.add(new McpSchema.TextContent(
+                    "[Binary content: " + mime + ", base64 length: " + content.text().length() + "]"));
+            } else {
+                out.add(new McpSchema.TextContent(content.text()));
+            }
+            return new McpSchema.CallToolResult(out, false, null, null);
         } catch (IOException e) {
             return new McpSchema.CallToolResult(
                 List.of(new McpSchema.TextContent("Error reading unit: " + e.getMessage())),

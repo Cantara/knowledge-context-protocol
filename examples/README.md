@@ -182,6 +182,28 @@ Validates clean: `kcp validate examples/paid-knowledge-api/knowledge.yaml`.
 
 ---
 
+## [serving-and-aliases/](./serving-and-aliases/)
+
+**Serving endpoint binding + unit aliases (v0.26).**
+
+A regulatory knowledge base that exercises both v0.26 features together
+(RFC-0023 + RFC-0024, SPEC §4.2a / §3.12):
+- `serving.manifest` / `serving.mcp` — a signed, in-manifest declaration of the authoritative
+  retrieval URLs (primary wiki + declared mirror) and the authorized MCP endpoint. A verifier that
+  fetched the manifest from a URL *not* in the list demotes `trusted` → `known` and warns (C22, the
+  T11 rogue-representative defense)
+- `aliases` — sub-clause identifiers (`reg-art-21-2a/b/c`) that resolve to the article unit that
+  covers them; `id` stays canonical and remains the only valid `depends_on` target
+- The bridge resolves `get_unit("reg-art-21-2b")` → `reg-art-021` and leads with a
+  `{ matched_alias, canonical_id }` block; `search_knowledge` reports `matched_alias` on an
+  alias hit
+- Both are OPTIONAL and additive — a pre-v0.26 verifier ignores them (unknown-field rule)
+
+Try the demotion: `kcp render examples/serving-and-aliases/knowledge.yaml --retrieved-from https://rogue.example.net/knowledge.yaml`.
+Validates clean: `kcp validate examples/serving-and-aliases/knowledge.yaml`.
+
+---
+
 ## [trusted-render-demo/](./trusted-render-demo/)
 
 **Interactive walk-through of the trusted render pipeline (RFC-0018/0019/0022, SPEC §16).**

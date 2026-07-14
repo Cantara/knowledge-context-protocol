@@ -930,6 +930,46 @@ async def test_get_unit_listed_in_tools():
     assert "get_unit" in names
 
 
+# ── unit aliases (v0.26, §4.2a) ───────────────────────────────────────────────
+
+ALIASES_DIR = Path(__file__).parent / "fixtures" / "aliases"
+
+
+@pytest.mark.asyncio
+async def test_get_unit_resolves_alias_and_surfaces_matched_alias():
+    server = get_server(ALIASES_DIR)
+    result = await call_tool(server, "get_unit", {"unit_id": "reg-art-21-2b"})
+    meta = json.loads(result.content[0].text)
+    assert meta["matched_alias"] == "reg-art-21-2b"
+    assert meta["canonical_id"] == "reg-art-021"
+    assert "cybersecurity risk-management" in result.content[1].text
+
+
+@pytest.mark.asyncio
+async def test_get_unit_by_canonical_id_has_no_alias_block():
+    server = get_server(ALIASES_DIR)
+    result = await call_tool(server, "get_unit", {"unit_id": "reg-art-021"})
+    assert len(result.content) == 1
+    assert "cybersecurity risk-management" in result.content[0].text
+
+
+@pytest.mark.asyncio
+async def test_search_matches_alias_and_reports_matched_alias():
+    server = get_server(ALIASES_DIR)
+    result = await call_tool(server, "search_knowledge", {"query": "reg-art-21-2c"})
+    results = json.loads(result.content[0].text)
+    assert results[0]["id"] == "reg-art-021"
+    assert "alias" in results[0]["match_reason"]
+    assert results[0]["matched_alias"] == "reg-art-21-2c"
+
+
+@pytest.mark.asyncio
+async def test_get_unit_unknown_alias_still_404s():
+    server = get_server(ALIASES_DIR)
+    result = await call_tool(server, "get_unit", {"unit_id": "reg-art-21-2z"})
+    assert "not found" in result.content[0].text.lower()
+
+
 # ── get_command_syntax tool ───────────────────────────────────────────────────
 
 

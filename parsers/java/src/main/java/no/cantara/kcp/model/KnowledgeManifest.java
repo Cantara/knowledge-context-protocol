@@ -21,6 +21,7 @@ public record KnowledgeManifest(
         Compliance compliance,
         Payment payment,
         RateLimits rateLimits,
+        Serving serving,                 // RFC-0024 / §3.12 (v0.26)
         List<KnowledgeUnit> units,
         List<Relationship> relationships,
         List<ManifestRef> manifests,

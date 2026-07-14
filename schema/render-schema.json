@@ -4,13 +4,13 @@
   "top_scalars": ["project", "version", "updated", "language", "license"],
   "unit": {
     "fields": [
-      "id", "kind", "path", "intent", "format", "content_type", "language",
+      "id", "aliases", "kind", "path", "intent", "format", "content_type", "language",
       "scope", "audience", "license", "validated", "update_frequency",
       "triggers", "not_for", "payment", "rate_limits"
     ],
     "free_text": ["intent", "triggers", "not_for"]
   },
-  "manifest_blocks": ["payment", "rate_limits"],
+  "manifest_blocks": ["payment", "rate_limits", "serving"],
   "content_structure": {
     "fields": ["primary", "contains", "density"]
   },

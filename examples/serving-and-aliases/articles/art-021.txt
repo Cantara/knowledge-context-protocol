@@ -1,0 +1,11 @@
+Article 21 — Cybersecurity risk-management measures
+
+Essential and important entities shall take appropriate and proportionate
+technical, operational and organisational measures to manage the risks posed
+to the security of network and information systems.
+
+(2) Those measures shall include at least the following:
+  (a) policies on risk analysis and information system security;
+  (b) incident handling;
+  (c) business continuity, such as backup management and disaster recovery,
+      and crisis management.
