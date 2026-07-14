@@ -23,11 +23,11 @@ By the end you will have:
 ## 0. Install the CLI
 
 ```bash
-npm install -g kcp-commands     # provides the `kcp` developer CLI
+npm install -g kcp-cli          # provides the `kcp` developer CLI
 kcp --help
 ```
 
-No global install? Every command below also works as `npx kcp <command>`.
+No global install? Every command below also works as `npx --package kcp-cli kcp <command>`.
 
 ---
 
@@ -264,7 +264,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
-      - run: npm install -g kcp-commands
+      - run: npm install -g kcp-cli
       - name: Restore signing key
         env: { KCP_SIGNING_KEY: "${{ secrets.KCP_SIGNING_KEY }}" }
         run: printf '%s' "$KCP_SIGNING_KEY" > /tmp/k.pem && chmod 600 /tmp/k.pem

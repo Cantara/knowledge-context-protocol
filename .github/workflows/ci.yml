@@ -3,8 +3,12 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
+  # Manual publish path: a workflow_dispatch run publishes whatever version is
+  # on the dispatched ref (also the retry path if a publish fails after tagging).
+  workflow_dispatch:
 
 jobs:
   python-tests:
@@ -233,3 +237,52 @@ jobs:
         run: |
           cd bridge/typescript
           npx tsx ../../conformance/runners/typescript/conformance_runner.ts ../../conformance/fixtures
+
+  # Publishes kcp-mcp (bridge/typescript) to npm via npm Trusted Publishing
+  # (OIDC — no token secret). Requires npm >= 11.5.1, hence Node 24. Runs on a
+  # v* tag push (the release flow) or on workflow_dispatch (manual/retry path).
+  # Same pattern as kcp-agent and kcp-harness.
+  publish-kcp-mcp:
+    needs: [typescript-bridge-tests, conformance-typescript]
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # OIDC for trusted publishing + provenance attestation
+    defaults:
+      run:
+        working-directory: bridge/typescript
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          # NB: no registry-url here — setup-node would write an .npmrc with a
+          # placeholder NODE_AUTH_TOKEN, which takes precedence over OIDC and
+          # makes npm fail the PUT with a masked E404. Trusted Publishing is
+          # auto-detected by npm >= 11.5.1 when no token is configured.
+      - run: npm ci
+      - run: npm run build
+      - run: npm publish --provenance --access public
+
+  # Publishes kcp-cli (cli/) the same way. No other CI job covers cli/, so this
+  # job runs its build and test suite itself before publishing.
+  publish-kcp-cli:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # OIDC for trusted publishing + provenance attestation
+    defaults:
+      run:
+        working-directory: cli
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          # NB: no registry-url — see publish-kcp-mcp.
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - run: npm publish --provenance --access public
