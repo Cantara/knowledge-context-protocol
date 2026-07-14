@@ -2,5 +2,12 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "local>cantara/Cantara-Renovate-Config"
+  ],
+  "packageRules": [
+    {
+      "description": "SDK >=1.26 (hono transport rewrite) breaks kcp-mcp's reused stateless StreamableHTTPServerTransport: every HTTP request after initialize returns an empty 500. Pinned in PR #128. Lift once cli.ts adopts the per-request transport pattern (issue #131).",
+      "matchPackageNames": ["@modelcontextprotocol/sdk"],
+      "allowedVersions": "<1.26.0"
+    }
   ]
 }
