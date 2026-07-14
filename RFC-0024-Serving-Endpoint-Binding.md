@@ -1,6 +1,6 @@
 # RFC-0024: Serving Endpoint Binding
 
-**Status:** Draft
+**Status:** Accepted — promoted to SPEC.md §3.12 (`serving` block) and §16.5 C22 in v0.26. Amends §16 threat model with T11.
 **Author:** Thor Henning Hetland (eXOReaction AS)
 **Created:** 2026-07-14
 **Discussion:** [GitHub Discussions](https://github.com/Cantara/knowledge-context-protocol/discussions)

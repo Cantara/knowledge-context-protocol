@@ -344,6 +344,63 @@ describe("get_unit tool", () => {
   });
 });
 
+const ALIASES_DIR = join(import.meta.dirname, "fixtures/aliases");
+
+describe("unit aliases (v0.26, §4.2a)", () => {
+  it("get_unit resolves a declared alias to its canonical unit and surfaces matched_alias", async () => {
+    const client = await connectClient(join(ALIASES_DIR, "knowledge.yaml"));
+    const result = await client.callTool({
+      name: "get_unit",
+      arguments: { unit_id: "reg-art-21-2b" },
+    });
+    const content = result.content as Array<{ type: string; text: string }>;
+    // Leads with the alias-resolution metadata block, then the canonical unit's content.
+    const meta = JSON.parse(content[0].text);
+    expect(meta.matched_alias).toBe("reg-art-21-2b");
+    expect(meta.canonical_id).toBe("reg-art-021");
+    expect(content[1].text).toContain("cybersecurity risk-management");
+    expect(result.isError).not.toBe(true);
+    await client.close();
+  });
+
+  it("get_unit by canonical id returns content with no alias metadata block", async () => {
+    const client = await connectClient(join(ALIASES_DIR, "knowledge.yaml"));
+    const result = await client.callTool({
+      name: "get_unit",
+      arguments: { unit_id: "reg-art-021" },
+    });
+    const content = result.content as Array<{ type: string; text: string }>;
+    expect(content).toHaveLength(1);
+    expect(content[0].text).toContain("cybersecurity risk-management");
+    await client.close();
+  });
+
+  it("search_knowledge matches an alias term and reports matched_alias", async () => {
+    const client = await connectClient(join(ALIASES_DIR, "knowledge.yaml"));
+    const result = await client.callTool({
+      name: "search_knowledge",
+      arguments: { query: "reg-art-21-2c" },
+    });
+    const results = JSON.parse((result.content as Array<{ type: string; text: string }>)[0].text);
+    expect(results[0].id).toBe("reg-art-021");
+    expect(results[0].match_reason).toContain("alias");
+    expect(results[0].matched_alias).toBe("reg-art-21-2c");
+    await client.close();
+  });
+
+  it("get_unit still 404s on an identifier that is neither an id nor an alias", async () => {
+    const client = await connectClient(join(ALIASES_DIR, "knowledge.yaml"));
+    const result = await client.callTool({
+      name: "get_unit",
+      arguments: { unit_id: "reg-art-21-2z" },
+    });
+    const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+    expect(text).toContain("Unit not found");
+    expect(result.isError).toBe(true);
+    await client.close();
+  });
+});
+
 describe("get_command_syntax tool", () => {
   it("returns formatted syntax block for known command", async () => {
     const commandManifests = loadCommandManifests(COMMANDS_DIR);

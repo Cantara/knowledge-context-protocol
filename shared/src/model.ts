@@ -74,6 +74,7 @@ export interface FreshnessPolicy {
 
 export interface KnowledgeUnit {
   id: string;
+  aliases?: string[];      // RFC-0023 / §4.2a (v0.26) — additional identifiers resolving to this unit
   path: string;
   intent: string;
   scope: string;           // "global" | "project" | "module"
@@ -310,6 +311,7 @@ export interface KnowledgeManifest {
   compliance?: Compliance;
   payment?: Payment;
   rate_limits?: RateLimits;
+  serving?: Serving;       // RFC-0024 / §3.12 (v0.26) — authoritative serving endpoints
   relationships: Relationship[];  // defaults to []
   manifests: ManifestRef[];       // defaults to []
   external_relationships: ExternalRelationship[];  // defaults to []
@@ -319,6 +321,12 @@ export interface KnowledgeManifest {
   discovery?: Discovery;
   not_for?: string[];      // RFC-0015 (v0.17) — manifest-level negative-space declarations
   temporal?: Temporal;     // RFC-0010 / §4.22 (v0.19) — manifest-level defaults
+}
+
+/** Signed declaration of authoritative serving endpoints. See SPEC.md §3.12 (v0.26). */
+export interface Serving {
+  manifest?: string[];     // HTTPS URLs authoritatively serving this manifest
+  mcp?: string[];          // HTTPS URLs of authorized MCP endpoints
 }
 
 export interface ValidationResult {

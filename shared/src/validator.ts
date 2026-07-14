@@ -55,6 +55,8 @@ export function computeContentDigest(target: string, algorithm: string): string 
 }
 
 const VALID_SCOPES = new Set(["global", "project", "module"]);
+// Alias character rule (§4.2a, v0.26): lowercase letters/digits, then dots/hyphens/underscores.
+const ALIAS_PATTERN = /^[a-z0-9][a-z0-9._-]*$/;
 const VALID_KINDS = new Set([
   "knowledge",
   "schema",
@@ -103,6 +105,7 @@ const KNOWN_KCP_VERSIONS = new Set([
   "0.23",
   "0.24",
   "0.25",
+  "0.26",
 ]);
 // content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
 const VALID_CONTENT_MODALITIES = new Set([
@@ -577,6 +580,39 @@ export function validate(
   validateEconomics("manifest", manifest.payment, manifest.rate_limits, warnings);
   for (const unit of manifest.units) {
     validateEconomics(`unit '${unit.id}'`, unit.payment, unit.rate_limits, warnings);
+  }
+
+  // Unit aliases validation (§4.2a, RFC-0023, v0.26): char rule, uniqueness across all ids +
+  // aliases, and a soft cap warning.
+  const seenIdentifiers = new Set<string>();
+  for (const unit of manifest.units) if (unit.id) seenIdentifiers.add(unit.id);
+  for (const unit of manifest.units) {
+    const aliases = unit.aliases ?? [];
+    if (aliases.length > 100) {
+      warnings.push(`unit '${unit.id}': declares ${aliases.length} aliases (RECOMMENDED max 100)`);
+    }
+    for (const alias of aliases) {
+      if (!ALIAS_PATTERN.test(alias)) {
+        warnings.push(`unit '${unit.id}': alias '${alias}' must match ${ALIAS_PATTERN.source} (lowercase letters, digits, dots, hyphens, underscores)`);
+      }
+      if (seenIdentifiers.has(alias)) {
+        warnings.push(`unit '${unit.id}': alias '${alias}' collides with an existing unit id or alias (must be unique across all ids and aliases)`);
+      } else {
+        seenIdentifiers.add(alias);
+      }
+    }
+  }
+
+  // Serving endpoint binding validation (§3.12, RFC-0024, v0.26): entries MUST be HTTPS.
+  const serving = manifest.serving;
+  if (serving) {
+    for (const [key, list] of [["serving.manifest", serving.manifest], ["serving.mcp", serving.mcp]] as const) {
+      for (const url of list ?? []) {
+        if (!url.startsWith("https://")) {
+          errors.push(`manifest: ${key} entry '${url}' must be an HTTPS URL`);
+        }
+      }
+    }
   }
 
   // Warn if any unit requires auth but no root-level auth block is present (§7)

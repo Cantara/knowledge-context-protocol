@@ -134,6 +134,7 @@ class KnowledgeUnit:
     intent: str
     scope: str
     audience: list[str]
+    aliases: Optional[list[str]] = None  # RFC-0023 / §4.2a (v0.26)
     kind: Optional[str] = None
     format: Optional[str] = None
     content_type: Optional[str] = None
@@ -235,6 +236,13 @@ class Payment:
     default_tier: Optional[str] = None
     methods: Optional[List[PaymentMethod]] = None        # v0.25
     billing_contact: Optional[str] = None                # v0.25
+
+
+@dataclass
+class Serving:
+    """Signed declaration of authoritative serving endpoints. See SPEC.md §3.12 (v0.26)."""
+    manifest: Optional[List[str]] = None   # HTTPS URLs serving this manifest
+    mcp: Optional[List[str]] = None        # HTTPS URLs of authorized MCP endpoints
 
 
 @dataclass
@@ -354,6 +362,7 @@ class KnowledgeManifest:
     compliance: Optional[Compliance] = None
     payment: Optional["Payment"] = None
     rate_limits: Optional[RateLimits] = None
+    serving: Optional["Serving"] = None  # RFC-0024 / §3.12 (v0.26)
     relationships: list[Relationship] = field(default_factory=list)
     manifests: list[ManifestRef] = field(default_factory=list)
     external_relationships: list[ExternalRelationship] = field(default_factory=list)

@@ -1,0 +1,73 @@
+kcp_version: "0.26"
+project: cantara-cyber-reg
+version: 1.0.0
+updated: "2026-07-14"
+language: en
+
+# ---------------------------------------------------------------------------
+# v0.26 — two new declarations, both signed-in-manifest, both additive.
+#
+#   serving (§3.12, RFC-0024) — where this knowledge web is legitimately served.
+#     A KCP signature proves WHO signed and that the bytes are intact; it says
+#     nothing about WHERE the manifest is authoritatively served. `serving`
+#     closes that gap: an in-manifest, signed list of authoritative retrieval
+#     URLs and authorized MCP endpoints. A verifier that fetched the manifest
+#     from a URL NOT in serving.manifest demotes trusted -> known (C22, T11).
+#
+#   aliases (§4.2a, RFC-0023) — fine-grained identifiers that resolve to a unit.
+#     A regulation is authored one article per file, but agents and citations
+#     reference sub-clauses (Art. 21(2)(a), (b), (c)). Aliases let a lookup by
+#     any sub-clause id resolve to the same unit, with no file-per-sub-clause
+#     sprawl and no undeclared suffix-stripping heuristics.
+# ---------------------------------------------------------------------------
+
+# The manifest is served from a primary wiki and a declared mirror; a single
+# MCP endpoint is authorized to represent it to agents. Because this block is
+# inside the signed bytes, moving an endpoint is an edit plus a re-sign — no
+# .well-known artifacts, no new cryptography.
+serving:
+  manifest:
+    - https://wiki.cantara.no/cyber-reg/knowledge.yaml
+    - https://mirror.example.org/cantara/cyber-reg/knowledge.yaml   # a declared mirror is legitimate
+  mcp:
+    - https://mcp.cantara.no/cyber-reg
+
+trust:
+  provenance:
+    publisher: "Cantara Regulatory Working Group"
+    publisher_url: "https://cantara.no"
+    publisher_did: "did:web:cantara.no"
+
+units:
+  # One article, authored at its natural granularity. The sub-clauses it covers
+  # are declared as aliases: reg-art-021 stays the canonical id, and a lookup by
+  # any of the three sub-clause ids resolves to this same unit. `id` remains the
+  # only valid target for depends_on / relationships — aliases are references,
+  # not distinct units.
+  - id: reg-art-021
+    path: articles/art-021.txt
+    intent: "What cybersecurity risk-management measures must entities implement?"
+    scope: global
+    audience: [agent, operator]
+    triggers: [cybersecurity, risk-management, article-21]
+    aliases:
+      - reg-art-21-2a   # (a) policies on risk analysis and information system security
+      - reg-art-21-2b   # (b) incident handling
+      - reg-art-21-2c   # (c) business continuity and crisis management
+
+  - id: reg-art-023
+    path: articles/art-023.txt
+    intent: "What are the incident reporting obligations and timelines?"
+    scope: global
+    audience: [agent, operator]
+    triggers: [incident-reporting, notification, article-23]
+    aliases:
+      - reg-art-23-1    # early warning (24h)
+      - reg-art-23-4    # final report (1 month)
+
+relationships:
+  # depends_on targets the canonical id — never an alias (§4.2a keeps the
+  # topology layer unambiguous).
+  - from: reg-art-023
+    to: reg-art-021
+    type: depends_on

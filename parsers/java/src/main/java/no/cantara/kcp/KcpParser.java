@@ -17,6 +17,7 @@ import no.cantara.kcp.model.KnowledgeUnit;
 import no.cantara.kcp.model.AgentIdentity;
 import no.cantara.kcp.model.ManifestRef;
 import no.cantara.kcp.model.Payment;
+import no.cantara.kcp.model.Serving;
 import no.cantara.kcp.model.PaymentMethod;
 import no.cantara.kcp.model.RateLimit;
 import no.cantara.kcp.model.RateLimitHeaders;
@@ -80,6 +81,7 @@ public class KcpParser {
         Compliance compliance = parseCompliance((Map<String, Object>) data.get("compliance"));
         Payment payment = parsePayment(data.get("payment"));
         RateLimits rateLimits = parseRateLimits((Map<String, Object>) data.get("rate_limits"));
+        Serving serving = parseServing((Map<String, Object>) data.get("serving"));
 
         List<Map<String, Object>> unitMaps = (List<Map<String, Object>>) data.getOrDefault("units", List.of());
         List<KnowledgeUnit> units = unitMaps.stream().map(KcpParser::parseUnit).toList();
@@ -99,7 +101,7 @@ public class KcpParser {
         Discovery discovery = parseDiscovery((Map<String, Object>) data.get("discovery"));
         List<String> notFor = asStringList(data.get("not_for"));
         Temporal temporal = parseTemporal((Map<String, Object>) data.get("temporal"));
-        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, rateLimits, units, relationships, manifests, externalRelationships, freshnessPolicy, visibility, authority, discovery, notFor, temporal);
+        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, rateLimits, serving, units, relationships, manifests, externalRelationships, freshnessPolicy, visibility, authority, discovery, notFor, temporal);
     }
 
     /**
@@ -131,6 +133,7 @@ public class KcpParser {
 
         return new KnowledgeUnit(
                 (String) u.get("id"),
+                asStringList(u.get("aliases")),
                 validateUnitPath((String) u.get("path")),
                 (String) u.get("kind"),
                 (String) u.get("intent"),
@@ -377,6 +380,11 @@ public class KcpParser {
                 methods,
                 (String) d.get("billing_contact")
         );
+    }
+
+    private static Serving parseServing(Map<String, Object> s) {
+        if (s == null) return null;
+        return new Serving(asStringList(s.get("manifest")), asStringList(s.get("mcp")));
     }
 
     @SuppressWarnings("unchecked")

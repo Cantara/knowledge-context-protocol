@@ -58,7 +58,7 @@ public class KcpValidator {
     private static final Set<String> VALID_ACCESS_VALUES = Set.of("public", "authenticated", "restricted");
     private static final Set<String> VALID_SENSITIVITY_VALUES = Set.of("public", "internal", "confidential", "restricted");
     private static final Set<String> VALID_HITL_MECHANISMS = Set.of("oauth_consent", "uma", "custom");
-    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25");
+    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26");
     // content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
     private static final Set<String> VALID_CONTENT_MODALITIES = Set.of("prose", "table", "code", "list", "diagram", "reference", "mixed");
     private static final Set<String> VALID_DENSITY = Set.of("sparse", "normal", "dense");
@@ -74,6 +74,7 @@ public class KcpValidator {
             "sha256", "SHA-256", "sha384", "SHA-384", "sha512", "SHA-512");
     private static final Pattern HEX_PATTERN = Pattern.compile("^[0-9a-fA-F]+$");
     private static final Pattern ID_PATTERN = Pattern.compile("^[a-z0-9.\\-]+$");
+    private static final Pattern ALIAS_PATTERN = Pattern.compile("^[a-z0-9][a-z0-9._-]*$");  // §4.2a (v0.26)
     private static final int MAX_TRIGGER_LENGTH = 60;
     private static final int MAX_TRIGGERS_PER_UNIT = 20;
 
@@ -517,6 +518,43 @@ public class KcpValidator {
         validateEconomics("manifest", manifest.payment(), manifest.rateLimits(), warnings);
         for (KnowledgeUnit unit : manifest.units()) {
             validateEconomics("unit '" + unit.id() + "'", unit.payment(), unit.rateLimits(), warnings);
+        }
+
+        // Unit aliases (§4.2a, RFC-0023, v0.26): char rule, uniqueness across ids + aliases, cap.
+        java.util.Set<String> seenIdentifiers = new java.util.HashSet<>();
+        for (KnowledgeUnit unit : manifest.units()) {
+            if (unit.id() != null) seenIdentifiers.add(unit.id());
+        }
+        for (KnowledgeUnit unit : manifest.units()) {
+            List<String> aliases = unit.aliases();
+            if (aliases == null) continue;
+            if (aliases.size() > 100) {
+                warnings.add("unit '" + unit.id() + "': declares " + aliases.size() + " aliases (RECOMMENDED max 100)");
+            }
+            for (String alias : aliases) {
+                if (!ALIAS_PATTERN.matcher(alias).matches()) {
+                    warnings.add("unit '" + unit.id() + "': alias '" + alias + "' must match "
+                            + ALIAS_PATTERN.pattern() + " (lowercase letters, digits, dots, hyphens, underscores)");
+                }
+                if (!seenIdentifiers.add(alias)) {
+                    warnings.add("unit '" + unit.id() + "': alias '" + alias
+                            + "' collides with an existing unit id or alias (must be unique across all ids and aliases)");
+                }
+            }
+        }
+
+        // Serving endpoint binding (§3.12, RFC-0024, v0.26): entries MUST be HTTPS.
+        if (manifest.serving() != null) {
+            java.util.List<Map.Entry<String, List<String>>> lists = List.of(
+                    Map.entry("serving.manifest", manifest.serving().manifest() == null ? List.<String>of() : manifest.serving().manifest()),
+                    Map.entry("serving.mcp", manifest.serving().mcp() == null ? List.<String>of() : manifest.serving().mcp()));
+            for (Map.Entry<String, List<String>> e : lists) {
+                for (String url : e.getValue()) {
+                    if (url == null || !url.startsWith("https://")) {
+                        errors.add("manifest: " + e.getKey() + " entry '" + url + "' must be an HTTPS URL");
+                    }
+                }
+            }
         }
 
         return new ValidationResult(errors, warnings);

@@ -8,6 +8,7 @@ import java.util.List;
  */
 public record KnowledgeUnit(
         String id,
+        java.util.List<String> aliases,   // RFC-0023 / §4.2a (v0.26)
         String path,
         String kind,
         String intent,

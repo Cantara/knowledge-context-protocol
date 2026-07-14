@@ -1,0 +1,9 @@
+Article 23 — Reporting obligations
+
+Entities shall notify the CSIRT or competent authority of any incident having
+a significant impact on the provision of their services.
+
+(1) Early warning — without undue delay and in any event within 24 hours of
+    becoming aware of the significant incident.
+(4) Final report — not later than one month after the incident notification,
+    including a detailed description, severity, impact, and mitigation applied.

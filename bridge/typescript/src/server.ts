@@ -76,6 +76,7 @@ interface SearchResult {
   summary_unit: string | null;
   caution: string | null;
   requires_attestation?: boolean;
+  matched_alias?: string;
 }
 
 /**
@@ -96,6 +97,10 @@ function scoreUnit(
   const lowerIntent = unit.intent.toLowerCase();
   const lowerId = unit.id.toLowerCase();
   const lowerPath = unit.path.toLowerCase();
+  const aliases = unit.aliases ?? [];
+  // §4.2a (v0.26): an alias is an alternative reference to this unit; a query term that
+  // hits one scores like an id match and surfaces the matched alias in the result.
+  let matchedAlias: string | undefined;
 
   for (const term of terms) {
     const lterm = term.toLowerCase();
@@ -113,6 +118,16 @@ function scoreUnit(
 
     // Path match — 1 pt
     if (lowerPath.includes(lterm)) { score += 1; matchReason.add("path"); }
+
+    // Alias match — 1 pt; prefer an exact alias hit for matched_alias surfacing (§4.2a).
+    for (const alias of aliases) {
+      const lalias = alias.toLowerCase();
+      if (lalias.includes(lterm)) {
+        score += 1;
+        matchReason.add("alias");
+        if (matchedAlias === undefined || lalias === lterm) matchedAlias = alias;
+      }
+    }
   }
 
   const hints = unit.hints as Record<string, unknown> | undefined;
@@ -130,6 +145,7 @@ function scoreUnit(
     token_estimate: tokenEstimate,
     summary_unit: summaryUnit,
     caution: null,
+    ...(matchedAlias !== undefined ? { matched_alias: matchedAlias } : {}),
   };
 }
 
@@ -317,6 +333,16 @@ export function createKcpServer(
       process.stderr.write(
         `  [kcp-mcp] loaded sub-manifest ${resolvedSub} — ${added} unit(s)\n`
       );
+    }
+  }
+
+  // §4.2a (v0.26): alias → canonical unit id, so get_unit can resolve a declared alias to the
+  // same unit as its id. A canonical id always wins over an alias, and the first-loaded unit
+  // wins an alias collision (mirrors the duplicate-id rule) — validation already warned on it.
+  const aliasToId = new Map<string, string>();
+  for (const [id, ctx] of unitContextMap) {
+    for (const alias of ctx.unit.aliases ?? []) {
+      if (!unitContextMap.has(alias) && !aliasToId.has(alias)) aliasToId.set(alias, id);
     }
   }
 
@@ -687,8 +713,20 @@ export function createKcpServer(
       }
 
       case "get_unit": {
-        const unitId = String(args?.["unit_id"] ?? "");
-        const ctx = unitContextMap.get(unitId);
+        const requestedId = String(args?.["unit_id"] ?? "");
+        // §4.2a (v0.26): resolve a declared alias to its canonical unit. The canonical id
+        // takes precedence; matchedAlias is set only when the lookup came in via an alias.
+        let ctx = unitContextMap.get(requestedId);
+        let matchedAlias: string | undefined;
+        let unitId = requestedId;
+        if (!ctx) {
+          const canonical = aliasToId.get(requestedId);
+          if (canonical) {
+            ctx = unitContextMap.get(canonical);
+            matchedAlias = requestedId;
+            unitId = canonical;
+          }
+        }
 
         if (!ctx) {
           const ids = [...unitContextMap.keys()].join(", ");
@@ -696,7 +734,7 @@ export function createKcpServer(
             content: [
               {
                 type: "text" as const,
-                text: `Unit not found: "${unitId}". Available units: ${ids}`,
+                text: `Unit not found: "${requestedId}". Available units: ${ids}`,
               },
             ],
             isError: true,
@@ -741,9 +779,17 @@ export function createKcpServer(
         const uri = buildUnitUri(projectSlug, unitId);
         const unitContent = readUnitContent(ctx.manifestDir, ctx.unit, uri);
 
+        // §4.2a (v0.26): when the lookup resolved through an alias, lead with a metadata block
+        // surfacing both the matched alias and the canonical id (L2). Direct id lookups are
+        // unchanged — the content is the sole item, as before.
+        const aliasNote = matchedAlias !== undefined
+          ? [{ type: "text" as const, text: JSON.stringify({ matched_alias: matchedAlias, canonical_id: unitId }) }]
+          : [];
+
         if (unitContent.type === "text") {
           return {
             content: [
+              ...aliasNote,
               {
                 type: "text" as const,
                 text: unitContent.text,
@@ -753,6 +799,7 @@ export function createKcpServer(
         } else {
           return {
             content: [
+              ...aliasNote,
               {
                 type: "text" as const,
                 text: `[Binary content: ${unitContent.mimeType}, base64 length: ${unitContent.blob.length}]`,

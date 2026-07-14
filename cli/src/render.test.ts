@@ -523,6 +523,122 @@ units:
   });
 });
 
+describe("serving endpoint binding + C22 (§3.12, RFC-0024, v0.26)", () => {
+  const SERVING_MANIFEST = `kcp_version: "0.26"
+project: served
+version: 1.0.0
+serving:
+  manifest:
+    - https://wiki.example.com/knowledge.yaml
+    - https://mirror.example.org/knowledge.yaml
+  mcp:
+    - https://mcp.example.com/mcp
+units:
+  - id: overview
+    path: docs/overview.md
+    intent: "Architecture overview and module boundaries"
+    triggers: [architecture]
+`;
+
+  /** A signed, allowlisted, trusted-tier manifest with a serving block. */
+  function trustedServed() {
+    const manifestPath = writeManifest(SERVING_MANIFEST);
+    const pub = signManifest(manifestPath, "org-key");
+    const keysPath = writeAllowlist([
+      { key_id: "org-key", method: "jws", algorithm: "EdDSA", public_key: pub,
+        scope: { domains: ["github.com/testorg"] } },
+    ]);
+    return { manifestPath, keysPath };
+  }
+
+  it("surfaces declared unit aliases in the render output (§4.2a)", () => {
+    const manifestPath = writeManifest(`kcp_version: "0.26"
+project: aliased
+version: 1.0.0
+units:
+  - id: reg-art-021
+    path: docs/overview.md
+    intent: "Architecture overview and module boundaries"
+    aliases: [reg-art-21-2a, reg-art-21-2b]
+`);
+    const { doc } = renderOk(manifestPath);
+    expect(doc.units[0].aliases).toEqual(["reg-art-21-2a", "reg-art-21-2b"]);
+  });
+
+  it("surfaces the serving block as data in the render output", () => {
+    const { manifestPath, keysPath } = trustedServed();
+    const { doc } = renderOk(manifestPath, { keysPath, origin: "github.com/testorg/repo" });
+    expect(doc.serving.manifest).toEqual([
+      "https://wiki.example.com/knowledge.yaml",
+      "https://mirror.example.org/knowledge.yaml",
+    ]);
+    expect(doc.serving.mcp).toEqual(["https://mcp.example.com/mcp"]);
+  });
+
+  it("keeps trusted when the retrieval URL matches a declared serving.manifest entry", () => {
+    const { manifestPath, keysPath } = trustedServed();
+    const { result, doc } = renderOk(manifestPath, {
+      keysPath, origin: "github.com/testorg/repo",
+      retrievedFrom: "https://mirror.example.org/knowledge.yaml",
+    });
+    expect(doc.trust.tier).toBe("trusted");
+    expect(doc.trust.serving_check).toEqual({
+      retrieved_from: "https://mirror.example.org/knowledge.yaml", result: "match",
+    });
+    expect(result.warnings.some((w) => w.includes("C22"))).toBe(false);
+  });
+
+  it("demotes trusted→known and warns on a serving.manifest mismatch (C22)", () => {
+    const { manifestPath, keysPath } = trustedServed();
+    const { result, doc } = renderOk(manifestPath, {
+      keysPath, origin: "github.com/testorg/repo",
+      retrievedFrom: "https://rogue.example.net/knowledge.yaml",
+    });
+    expect(doc.trust.tier).toBe("known");
+    expect(doc.trust.serving_check.result).toBe("mismatch");
+    expect(doc.discovery.confidence).toBe(0.6); // known-tier confidence
+    expect(result.warnings.some((w) =>
+      w.includes("rogue.example.net") && w.includes("C22"))).toBe(true);
+  });
+
+  it("matches per §3.12: default :443, query, and fragment are ignored", () => {
+    const { manifestPath, keysPath } = trustedServed();
+    const { doc } = renderOk(manifestPath, {
+      keysPath, origin: "github.com/testorg/repo",
+      retrievedFrom: "https://wiki.example.com:443/knowledge.yaml?ref=main#top",
+    });
+    expect(doc.trust.tier).toBe("trusted");
+    expect(doc.trust.serving_check.result).toBe("match");
+  });
+
+  it("records not_declared and never demotes when the manifest omits serving.manifest", () => {
+    const manifestPath = writeManifest(MINIMAL_MANIFEST);
+    const pub = signManifest(manifestPath, "org-key");
+    const keysPath = writeAllowlist([
+      { key_id: "org-key", method: "jws", algorithm: "EdDSA", public_key: pub,
+        scope: { domains: ["github.com/testorg"] } },
+    ]);
+    const { doc } = renderOk(manifestPath, {
+      keysPath, origin: "github.com/testorg/repo",
+      retrievedFrom: "https://anywhere.example.com/knowledge.yaml",
+    });
+    expect(doc.trust.tier).toBe("trusted");
+    expect(doc.trust.serving_check).toEqual({
+      retrieved_from: "https://anywhere.example.com/knowledge.yaml", result: "not_declared",
+    });
+  });
+
+  it("stays deterministic: retrieved_from is not a timestamp, same input → same bytes", () => {
+    const { manifestPath, keysPath } = trustedServed();
+    const opts = { keysPath, origin: "github.com/testorg/repo",
+      retrievedFrom: "https://rogue.example.net/knowledge.yaml" };
+    const a = renderManifest({ manifestPath, ...opts });
+    const b = renderManifest({ manifestPath, ...opts });
+    if (!a.ok || !b.ok) throw new Error("expected both renders to succeed");
+    expect(a.text).toBe(b.text);
+  });
+});
+
 describe("origin derivation (§4.1)", () => {
   it("normalizes remote URLs: scheme, credentials, case, .git", () => {
     expect(normalizeOrigin("https://GitHub.com/Cantara/lib-pcb.git")).toBe("github.com/Cantara/lib-pcb");

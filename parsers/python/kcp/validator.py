@@ -94,7 +94,7 @@ VALID_INDEXING_SHORTHANDS = {"open", "read-only", "no-train", "none"}
 VALID_ACCESS_VALUES = {"public", "authenticated", "restricted"}
 VALID_SENSITIVITY_VALUES = {"public", "internal", "confidential", "restricted"}
 # human_in_the_loop is an object per spec §3.4 — no HITL enum, validation done inline
-KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25"}
+KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26"}
 # content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
 VALID_CONTENT_MODALITIES = {"prose", "table", "code", "list", "diagram", "reference", "mixed"}
 VALID_DENSITY = {"sparse", "normal", "dense"}
@@ -651,12 +651,40 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
     for unit in manifest.units:
         _validate_economics(f"unit '{unit.id}'", unit.payment, unit.rate_limits, warnings)
 
+    # Unit aliases (§4.2a, RFC-0023, v0.26): char rule, uniqueness across ids + aliases, cap.
+    seen_identifiers = {u.id for u in manifest.units if u.id}
+    for unit in manifest.units:
+        aliases = unit.aliases or []
+        if len(aliases) > 100:
+            warnings.append(f"unit '{unit.id}': declares {len(aliases)} aliases (RECOMMENDED max 100)")
+        for alias in aliases:
+            if not _ALIAS_PATTERN.match(alias):
+                warnings.append(
+                    f"unit '{unit.id}': alias '{alias}' must match {_ALIAS_PATTERN.pattern} "
+                    "(lowercase letters, digits, dots, hyphens, underscores)"
+                )
+            if alias in seen_identifiers:
+                warnings.append(
+                    f"unit '{unit.id}': alias '{alias}' collides with an existing unit id or alias "
+                    "(must be unique across all ids and aliases)"
+                )
+            else:
+                seen_identifiers.add(alias)
+
+    # Serving endpoint binding (§3.12, RFC-0024, v0.26): entries MUST be HTTPS.
+    if manifest.serving is not None:
+        for key, urls in (("serving.manifest", manifest.serving.manifest), ("serving.mcp", manifest.serving.mcp)):
+            for url in urls or []:
+                if not str(url).startswith("https://"):
+                    errors.append(f"manifest: {key} entry '{url}' must be an HTTPS URL")
+
     return ValidationResult(errors=errors, warnings=warnings)
 
 
 _VALID_PAYMENT_METHOD_TYPES = {"free", "x402", "meter", "subscription"}
 _VALID_BACKOFF = {"linear", "exponential", "none"}
 _DECIMAL_STRING = re.compile(r"^\d+(\.\d+)?$")
+_ALIAS_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]*$")  # §4.2a (v0.26)
 
 
 def _validate_economics(where: str, payment, rate_limits, warnings: list[str]) -> None:

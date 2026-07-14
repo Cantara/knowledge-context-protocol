@@ -1,0 +1,20 @@
+kcp_version: "0.26"
+project: aliased
+version: 1.0.0
+
+units:
+  - id: reg-art-021
+    path: art-021.txt
+    intent: "What cybersecurity risk management measures must entities implement?"
+    scope: global
+    audience: [agent]
+    triggers: [cybersecurity, risk-management]
+    aliases:
+      - reg-art-21-2a
+      - reg-art-21-2b
+      - reg-art-21-2c
+  - id: plain
+    path: plain.txt
+    intent: "A unit with no aliases."
+    scope: global
+    audience: [agent]

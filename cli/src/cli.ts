@@ -6,7 +6,7 @@ import { parseArgs } from "node:util";
 
 function printUsage(): void {
   process.stderr.write(
-    `\nKCP Developer CLI — v0.25.0
+    `\nKCP Developer CLI — v0.26.0
 
 Usage: kcp <command> [options]
 
@@ -29,6 +29,7 @@ Options:
   --require-unit-hashes    Deny standing-context eligibility to units without content_hash (RFC-0019 §3.3)
   --corroborate            Verify a derived origin by fetching the manifest from it (RFC-0019 §4.3)
   --corroborate-url <url>  Explicit manifest URL for corroboration (implies --corroborate)
+  --retrieved-from <url>   Final URL the manifest was retrieved from; demotes trusted→known on a serving.manifest mismatch (RFC-0024 §3.12 / C22)
   --key <path>        Ed25519 private key (PEM, PKCS#8) for sign
   --key-id <id>       Allowlist key id recorded in the signature (sign)
   --update-hashes     Recompute declared content_hash values before signing (RFC-0019 §3.1)
@@ -77,6 +78,7 @@ async function main(): Promise<void> {
       "include-all-temporal": { type: "boolean", default: false },
       corroborate:        { type: "boolean", default: false },
       "corroborate-url":  { type: "string" },
+      "retrieved-from":   { type: "string" },
       key:                { type: "string" },
       "key-id":           { type: "string" },
       "update-hashes":    { type: "boolean", default: false },
@@ -130,6 +132,7 @@ async function main(): Promise<void> {
       requireUnitHashes:  values["require-unit-hashes"] as boolean,
       corroborate:        values.corroborate as boolean,
       corroborateUrl:     values["corroborate-url"] as string | undefined,
+      retrievedFrom:      values["retrieved-from"] as string | undefined,
     });
     return;
   }

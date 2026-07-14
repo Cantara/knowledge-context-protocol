@@ -35,7 +35,7 @@ const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 
-export const RENDERER_VERSION = "kcp-cli 0.25.0";
+export const RENDERER_VERSION = "kcp-cli 0.26.0";
 export const RENDER_SCHEMA = "kcp-render-schema-0.2";
 export const DEFAULT_KEYS_PATH = join(homedir(), ".kcp", "trusted-keys.yaml");
 
@@ -112,6 +112,31 @@ export interface RenderOptions {
    * unverified (fail-safe).
    */
   resolvedIncludes?: ResolvedInclude[];
+  /**
+   * RFC-0024 §3.12 (C22): the final post-redirect URL the manifest was
+   * retrieved from over HTTP(S). When the manifest declares `serving.manifest`
+   * and this URL is not in that list, a trusted tier is demoted to `known`.
+   * Absent for local retrieval (file paths / git checkouts) — that path is
+   * governed by RFC-0019 origin evidence, not serving binding.
+   */
+  retrievedFrom?: string;
+}
+
+/**
+ * RFC-0024 §3.12 URL matching: normalize for comparison by lowercasing scheme
+ * and host, removing a default `:443` port, and stripping query and fragment.
+ * The path is compared exactly. Returns null for an unparseable URL.
+ */
+export function normalizeServingUrl(u: string): string | null {
+  try {
+    const url = new URL(u);
+    const scheme = url.protocol.toLowerCase(); // includes trailing ':'
+    const host = url.hostname.toLowerCase();
+    const port = url.port === "443" ? "" : url.port ? `:${url.port}` : "";
+    return `${scheme}//${host}${port}${url.pathname}`;
+  } catch {
+    return null;
+  }
 }
 
 export interface CorroborationOutcome {
@@ -393,7 +418,7 @@ export function renderManifest(options: RenderOptions): RenderResult {
     // Fail-closed (§3.1, R4, C2): emit nothing.
     return { ok: false, tier: "failed", origin, reason: trust.reason ?? "failed" };
   }
-  const tier = trust.tier;
+  let tier = trust.tier;
 
   const warnings: string[] = [];
   if (trust.capped) {
@@ -422,6 +447,44 @@ export function renderManifest(options: RenderOptions): RenderResult {
   }
 
   const doc = (yaml.load(manifestBytes.toString("utf8")) ?? {}) as RawMap;
+
+  // --- C22: serving endpoint binding (§3.12, RFC-0024, v0.26) ------------------
+  // When the manifest was retrieved over HTTP(S) (a retrieval URL was supplied),
+  // the manifest declares serving.manifest, and the final retrieval URL is not in
+  // that list (per §3.12 matching), a trusted tier is demoted to known and a
+  // warning names both the URL and the declared list. The signer is known and the
+  // bytes are intact — only the authorization-to-serve claim failed (recognized,
+  // not trusted). Local retrieval (no retrievedFrom) is out of scope here.
+  let servingCheck: RawMap | undefined;
+  const servingBlock = doc.serving as RawMap | undefined;
+  const servingManifest = servingBlock && Array.isArray(servingBlock.manifest)
+    ? (servingBlock.manifest as unknown[]).map(String)
+    : undefined;
+  if (options.retrievedFrom !== undefined) {
+    if (servingManifest && servingManifest.length > 0) {
+      const got = normalizeServingUrl(options.retrievedFrom);
+      const allowed = servingManifest
+        .map(normalizeServingUrl)
+        .filter((u): u is string => u !== null);
+      const matched = got !== null && allowed.includes(got);
+      servingCheck = {
+        retrieved_from: options.retrievedFrom,
+        result: matched ? "match" : "mismatch",
+      };
+      if (!matched) {
+        if (tier === "trusted") tier = "known";
+        warnings.push(
+          `retrieval URL '${options.retrievedFrom}' is not in the manifest's serving.manifest ` +
+            `list [${servingManifest.join(", ")}]; trusted tier demoted to known (§3.12 / C22)`
+        );
+      }
+    } else {
+      // A retrieval URL was supplied but the manifest makes no serving.manifest
+      // assertion — nothing to enforce, recorded for auditability only.
+      servingCheck = { retrieved_from: options.retrievedFrom, result: "not_declared" };
+    }
+  }
+
   const dropped: DropEntry[] = [];
   const quarantined: QuarantineEntry[] = [];
   let fieldsIn = 0;
@@ -798,6 +861,7 @@ export function renderManifest(options: RenderOptions): RenderResult {
       ...(options.corroboration
         ? { corroboration: { url: options.corroboration.url, result: options.corroboration.result } }
         : {}),
+      ...(servingCheck ? { serving_check: servingCheck } : {}),
       signature: {
         method: "jws",
         algorithm: "EdDSA",
@@ -816,6 +880,7 @@ export function renderManifest(options: RenderOptions): RenderResult {
     project,
     ...(economics.payment !== undefined ? { payment: economics.payment } : {}),
     ...(economics.rate_limits !== undefined ? { rate_limits: economics.rate_limits } : {}),
+    ...(economics.serving !== undefined ? { serving: economics.serving } : {}),
     units,
     ...(relationships.length ? { relationships } : {}),
     ...(federation.length ? { federation } : {}),
@@ -961,6 +1026,8 @@ export interface RunRenderOptions {
   requireUnitHashes?: boolean;
   corroborate?: boolean;
   corroborateUrl?: string;
+  /** RFC-0024 §3.12 (C22): final retrieval URL, for serving-binding demotion. */
+  retrievedFrom?: string;
 }
 
 function expandHome(p: string): string {
@@ -1003,6 +1070,7 @@ export async function runRender(options: RunRenderOptions): Promise<void> {
       requireUnitHashes: options.requireUnitHashes,
       corroboration,
       resolvedIncludes,
+      retrievedFrom: options.retrievedFrom,
     });
   } catch (err) {
     process.stderr.write(red(`Error: ${err instanceof Error ? err.message : String(err)}\n`));

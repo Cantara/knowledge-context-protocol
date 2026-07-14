@@ -402,6 +402,10 @@ def _score_unit(unit, terms: list[str], slug: str) -> dict:
     lower_intent = (unit.intent or "").lower()
     lower_id = unit.id.lower()
     lower_path = (unit.path or "").lower()
+    aliases = unit.aliases or []
+    # §4.2a (v0.26): an alias is an alternative reference to this unit; a query term that hits
+    # one scores like an id match and surfaces the matched alias in the result.
+    matched_alias: str | None = None
 
     for term in terms:
         lterm = term.lower()
@@ -428,11 +432,21 @@ def _score_unit(unit, terms: list[str], slug: str) -> dict:
             if "path" not in match_reason:
                 match_reason.append("path")
 
+        # Alias match — 1 pt; prefer an exact alias hit for matched_alias surfacing (§4.2a).
+        for alias in aliases:
+            lalias = alias.lower()
+            if lterm in lalias:
+                score += 1
+                if "alias" not in match_reason:
+                    match_reason.append("alias")
+                if matched_alias is None or lalias == lterm:
+                    matched_alias = alias
+
     hints = unit.hints or {}
     token_estimate = hints.get("token_estimate")
     summary_unit = hints.get("summary_unit")
 
-    return {
+    result = {
         "id": unit.id,
         "intent": unit.intent,
         "path": unit.path,
@@ -443,6 +457,9 @@ def _score_unit(unit, terms: list[str], slug: str) -> dict:
         "summary_unit": str(summary_unit) if summary_unit is not None else None,
         "caution": None,
     }
+    if matched_alias is not None:
+        result["matched_alias"] = matched_alias
+    return result
 
 
 def _is_temporally_included(t, as_of: str) -> bool:
@@ -658,11 +675,23 @@ def _handle_get_unit(
     """Fetch the content of a specific knowledge unit by id."""
     source_temporal = source_temporal or {}
     ref_temporal_by_id = ref_temporal_by_id or {}
-    unit_id = arguments.get("unit_id", "").strip()
-    ctx = unit_context.get(unit_id)
+    requested_id = arguments.get("unit_id", "").strip()
+    # §4.2a (v0.26): resolve a declared alias to its canonical unit. The canonical id wins;
+    # matched_alias is set only when the lookup came in via an alias, and the first-declared
+    # unit wins an alias collision (mirrors the duplicate-id rule).
+    matched_alias: str | None = None
+    unit_id = requested_id
+    ctx = unit_context.get(requested_id)
+    if ctx is None:
+        for uid, (u, _d) in unit_context.items():
+            if requested_id in (u.aliases or []):
+                ctx = unit_context[uid]
+                matched_alias = requested_id
+                unit_id = uid
+                break
     if ctx is None:
         ids = ", ".join(unit_context.keys())
-        return [TextContent(type="text", text=f'Unit not found: "{unit_id}". Available units: {ids}')]
+        return [TextContent(type="text", text=f'Unit not found: "{requested_id}". Available units: {ids}')]
 
     unit, unit_dir = ctx
     # F1: refuse a temporally-excluded unit by id, matching search / read_resource. Default
@@ -686,9 +715,17 @@ def _handle_get_unit(
     except (ResourceNotFoundError, PathTraversalError) as e:
         return [TextContent(type="text", text=f"Error reading unit: {e}")]
 
+    # §4.2a (v0.26): when the lookup resolved through an alias, lead with a metadata block
+    # surfacing both the matched alias and the canonical id (L2). Direct id lookups are
+    # unchanged — the content is the sole item, as before.
+    alias_note = (
+        [TextContent(type="text", text=json.dumps({"matched_alias": matched_alias, "canonical_id": unit_id}))]
+        if matched_alias is not None else []
+    )
+
     if is_binary:
-        return [TextContent(type="text", text=f"[Binary content: {mime}, base64 length: {len(content)}]")]
-    return [TextContent(type="text", text=content)]
+        return alias_note + [TextContent(type="text", text=f"[Binary content: {mime}, base64 length: {len(content)}]")]
+    return alias_note + [TextContent(type="text", text=content)]
 
 
 def _handle_get_command_syntax(

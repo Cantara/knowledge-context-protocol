@@ -25,6 +25,7 @@ import type {
   RateLimitsDefault,
   RateLimitTokensTier,
   Payment,
+  Serving,
   PaymentMethod,
   Relationship,
   Trust,
@@ -97,6 +98,7 @@ function asLicenseOrIndexing(value: unknown): LicenseValue | undefined {
 function parseUnit(raw: RawMap): KnowledgeUnit {
   return {
     id: String(raw["id"] ?? ""),
+    aliases: Array.isArray(raw["aliases"]) ? (raw["aliases"] as unknown[]).map(String) : undefined,
     path: validateUnitPath(String(raw["path"] ?? "")),
     intent: String(raw["intent"] ?? ""),
     scope: String(raw["scope"] ?? "global"),
@@ -363,6 +365,15 @@ function parsePayment(raw: unknown): Payment | undefined {
   };
 }
 
+function parseServing(raw: unknown): Serving | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const d = raw as RawMap;
+  return {
+    manifest: Array.isArray(d["manifest"]) ? (d["manifest"] as unknown[]).map(String) : undefined,
+    mcp: Array.isArray(d["mcp"]) ? (d["mcp"] as unknown[]).map(String) : undefined,
+  };
+}
+
 function parseFreshnessPolicy(raw: unknown): FreshnessPolicy | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
   const d = raw as RawMap;
@@ -556,6 +567,7 @@ export function parseDict(data: RawMap): KnowledgeManifest {
     compliance: parseCompliance(data["compliance"]),
     payment: parsePayment(data["payment"]),
     rate_limits: parseRateLimits(data["rate_limits"]),
+    serving: parseServing(data["serving"]),
     units: rawUnits.map(parseUnit),
     relationships: rawRels.map(parseRelationship),
     manifests: rawManifests.map(parseManifestRef),

@@ -956,3 +956,57 @@ units:
     expect(w.some((x) => x.includes("default_tier is 'metered' but no paid method"))).toBe(true);
   });
 });
+
+// v0.26 Unit Aliases (RFC-0023) + Serving Endpoint Binding (RFC-0024).
+describe("v0.26 aliases + serving", () => {
+  const yaml = (require("js-yaml") as typeof import("js-yaml"));
+
+  it("parses unit aliases and the serving block; clean manifest has no alias/serving diagnostics", () => {
+    const m = parseDict(yaml.load(`
+kcp_version: "0.26"
+project: v26
+version: 1.0.0
+serving:
+  manifest: [https://wiki.example.com/knowledge.yaml, https://mirror.example.org/knowledge.yaml]
+  mcp: [https://mcp.example.com/mcp]
+units:
+  - id: reg-art-021
+    path: art.txt
+    intent: x
+    scope: global
+    audience: [agent]
+    aliases: [reg-art-21-2a, reg-art-21-2b]
+  - {id: other, path: b.txt, intent: y, scope: global, audience: [agent]}
+`) as Record<string, unknown>);
+    expect(m.units[0].aliases).toEqual(["reg-art-21-2a", "reg-art-21-2b"]);
+    expect(m.units[1].aliases).toBeUndefined();
+    expect(m.serving!.manifest).toEqual(["https://wiki.example.com/knowledge.yaml", "https://mirror.example.org/knowledge.yaml"]);
+    expect(m.serving!.mcp).toEqual(["https://mcp.example.com/mcp"]);
+    const r = validate(m as unknown as Record<string, unknown>, ".");
+    expect(r.errors).toEqual([]);
+    expect(r.warnings.some((w) => w.includes("alias"))).toBe(false);
+  });
+
+  it("warns on alias collision and bad alias char; errors on non-HTTPS serving entry", () => {
+    const bad = parseDict(yaml.load(`
+kcp_version: "0.26"
+project: bad
+version: 1.0.0
+serving:
+  manifest: ["http://insecure/knowledge.yaml"]
+units:
+  - id: a
+    path: a.txt
+    intent: x
+    scope: global
+    audience: [agent]
+    aliases: [b, "BAD Alias"]
+  - {id: b, path: b.txt, intent: y, scope: global, audience: [agent]}
+`) as Record<string, unknown>);
+    const r = validate(bad, ".");
+    expect(r.warnings.some((w) => w.includes("alias 'b' collides with an existing unit id"))).toBe(true);
+    expect(r.warnings.some((w) => w.includes("alias 'BAD Alias' must match"))).toBe(true);
+    expect(r.errors.some((e) => e.includes("serving.manifest entry 'http://insecure/knowledge.yaml' must be an HTTPS URL"))).toBe(true);
+    expect(r.isValid).toBe(false);
+  });
+});

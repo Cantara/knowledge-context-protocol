@@ -1,6 +1,6 @@
 # RFC-0023: Unit Aliases
 
-**Status:** Draft
+**Status:** Accepted — promoted to SPEC.md §4.2a (unit `aliases`) in v0.26. Conformance: parse/resolve/uniqueness at Level 1, `matched_alias` surfacing at Level 2.
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-07-11
 **Discussion:** [GitHub Discussions](https://github.com/Cantara/knowledge-context-protocol/discussions)
