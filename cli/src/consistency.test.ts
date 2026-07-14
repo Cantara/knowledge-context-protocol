@@ -5,8 +5,9 @@
 // cli/ package (cwd = cli) and read sibling files directly.
 
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { lstatSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { SCAFFOLD_KCP_VERSION } from "./init.js";
 
 const REPO = resolve(process.cwd(), "..");
 const r = (p: string) => resolve(REPO, p);
@@ -131,6 +132,31 @@ describe("shared-core single-source-of-truth guard", () => {
       expect(bridge, `bridge/typescript/src/${name}.ts diverged from shared/src/${name}.ts`).toBe(shared);
     });
   }
+});
+
+describe("packaged schema copy", () => {
+  // cli/schema/render-schema.json ships in the npm tarball (package.json
+  // "files"). npm pack SKIPS symlinks, so this must be a regular file — the
+  // 0.26.0 release shipped without it because it was a symlink, and `kcp
+  // sign`/`kcp render` crashed for every npm user. Content equality with the
+  // authoritative root schema is guarded so the copy cannot drift.
+  it("cli/schema/render-schema.json is a regular file, not a symlink", () => {
+    expect(lstatSync(r("cli/schema/render-schema.json")).isSymbolicLink()).toBe(false);
+  });
+
+  it("cli/schema/render-schema.json is byte-identical to schema/render-schema.json", () => {
+    const root = readFileSync(r("schema/render-schema.json"), "utf8");
+    const cli = readFileSync(r("cli/schema/render-schema.json"), "utf8");
+    expect(cli).toBe(root);
+  });
+});
+
+describe("init scaffold version", () => {
+  it("SCAFFOLD_KCP_VERSION matches the current SPEC.md version", () => {
+    const m = readFileSync(r("SPEC.md"), "utf8").match(/\*\*Version:\*\*\s*([\d.]+)/);
+    expect(m, "SPEC.md version header not found").toBeTruthy();
+    expect(SCAFFOLD_KCP_VERSION).toBe(m![1]);
+  });
 });
 
 describe("render-schema.json guards", () => {

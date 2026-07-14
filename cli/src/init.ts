@@ -215,6 +215,17 @@ export async function runInit(outputPath: string, yes = false): Promise<void> {
   writeManifest(outputPath, projectName, language, selectedFiles);
 }
 
+// Escape a string for embedding in a double-quoted YAML scalar. Derived
+// intents can contain double quotes (filename-based fallback wraps the name
+// in quotes), which produced invalid YAML when embedded unescaped.
+function yamlQuote(s: string): string {
+  return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+// Scaffolded manifests declare the spec version this CLI release implements.
+// Guarded against the validator's known-version list in consistency.test.ts.
+export const SCAFFOLD_KCP_VERSION = "0.26";
+
 function writeManifest(
   outputPath: string,
   projectName: string,
@@ -224,8 +235,8 @@ function writeManifest(
   const today = new Date().toISOString().slice(0, 10);
 
   const lines: string[] = [
-    `kcp_version: "0.16"`,
-    `project: "${projectName}"`,
+    `kcp_version: "${SCAFFOLD_KCP_VERSION}"`,
+    `project: ${yamlQuote(projectName)}`,
     `version: "1.0.0"`,
     `updated: "${today}"`,
     `language: ${language}`,
@@ -245,7 +256,7 @@ function writeManifest(
     for (const f of selectedFiles) {
       lines.push(`  - id: ${f.suggestedId}`);
       lines.push(`    path: ${f.path}`);
-      lines.push(`    intent: "${f.suggestedIntent}"`);
+      lines.push(`    intent: ${yamlQuote(f.suggestedIntent)}`);
       lines.push(`    scope: ${f.suggestedScope}`);
       lines.push(`    audience: [human, agent]`);
       lines.push(``);
