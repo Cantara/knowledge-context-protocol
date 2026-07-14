@@ -32,7 +32,7 @@ signing:
   signature: https://cantara.github.io/knowledge-context-protocol/knowledge.yaml.sig
 
 # Legacy header fields (preserved for consumers that read them directly)
-kcp_version: "0.21"
+kcp_version: "0.26"
 project: knowledge-context-protocol
 spec_version: 0.21.0
 updated: "2026-06-13"
@@ -1094,3 +1094,11 @@ relationships:
   - from: rfc-0012
     to: spec
     type: enables
+
+# Serving Endpoint Binding (KCP SPEC v0.26 §3.12): authoritative manifest URL
+# and authorized MCP representative. Ignored by pre-0.26 verifiers.
+serving:
+  manifest:
+    - https://raw.githubusercontent.com/Cantara/knowledge-context-protocol/main/knowledge.yaml
+  mcp:
+    - https://mcp.cantara.no/mcp
