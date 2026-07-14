@@ -265,9 +265,11 @@ jobs:
       - run: npm run build
       - run: npm publish --provenance --access public
 
-  # Publishes kcp-cli (cli/) the same way. No other CI job covers cli/, so this
-  # job runs its build and test suite itself before publishing.
-  publish-kcp-cli:
+  # Publishes @cantara.no/kcp (cli/) the same way. No other CI job covers cli/,
+  # so this job runs its build and test suite itself before publishing.
+  # (The name is scoped: npm's typosquat filter rejects `kcp-cli` — too similar
+  # to cp-cli/cpy-cli — and the bare `kcp` name is held by an unrelated package.)
+  publish-cli:
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
