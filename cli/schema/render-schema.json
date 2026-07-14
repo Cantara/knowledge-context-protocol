@@ -1,1 +1,29 @@
-../../schema/render-schema.json
+{
+  "$id": "kcp-render-schema-0.2",
+  "description": "RFC-0018 §6.1 render-schema whitelist. Declares exactly which fields the KCP renderer passes through to agents. This file is the single authoritative source for the whitelist arrays in cli/src/render.ts — update this file to change what the renderer emits. The `free_text` annotation is render-specific and marks fields subject to the §6.2 imperative-mood lint; it has no equivalent in knowledge-schema.json.",
+  "top_scalars": ["project", "version", "updated", "language", "license"],
+  "unit": {
+    "fields": [
+      "id", "aliases", "kind", "path", "intent", "format", "content_type", "language",
+      "scope", "audience", "license", "validated", "update_frequency",
+      "triggers", "not_for", "payment", "rate_limits"
+    ],
+    "free_text": ["intent", "triggers", "not_for"]
+  },
+  "manifest_blocks": ["payment", "rate_limits", "serving"],
+  "content_structure": {
+    "fields": ["primary", "contains", "density"]
+  },
+  "relationship": {
+    "fields": ["from", "to", "type"]
+  },
+  "federation": {
+    "fields": ["id", "url", "relationship", "context", "agent_identity"]
+  },
+  "provenance": {
+    "fields": ["publisher", "publisher_url", "contact", "publisher_did"]
+  },
+  "agent_requirements": {
+    "fields": ["require_attestation", "trusted_providers", "attestation_url", "attestation_jwks", "propagate_to_governed"]
+  }
+}
