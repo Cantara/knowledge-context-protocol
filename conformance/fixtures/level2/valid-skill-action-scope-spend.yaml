@@ -1,0 +1,33 @@
+# Level 2 — kind: skill unit whose action_scope declares a spend envelope (§4.3a, v0.26)
+# spend governs the purchases a skill may make: a per-purchase max_spend cap, an
+# allowed_vendors allowlist, and the currency the cap is denominated in. All sub-fields
+# are OPTIONAL and action_scope remains an opaque passthrough object.
+kcp_version: "0.26"
+project: test-skill-spend
+version: "1.0.0"
+
+units:
+  - id: provision-ci-runner
+    path: skills/provision-ci-runner.md
+    kind: skill
+    intent: "How do I provision an on-demand CI runner within budget?"
+    scope: project
+    audience: [agent, operator]
+    action_scope:
+      tools: [terraform, gh]
+      capabilities: [infra-provision]
+      spend:
+        max_spend: 25.00
+        allowed_vendors: [github, aws]
+        currency: USD
+
+  - id: buy-research-credit
+    path: skills/buy-research-credit.md
+    kind: skill
+    intent: "How do I purchase a paid research report if within cap?"
+    scope: project
+    audience: [agent]
+    action_scope:
+      spend:
+        max_spend: 0.05
+        currency: USDC

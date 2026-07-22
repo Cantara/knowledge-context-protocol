@@ -8,7 +8,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **`action_scope.spend` — the spend dimension of a `kind: skill` envelope (§4.3a).** A skill may
+  now declare what it is permitted to **buy** alongside the tools/paths/capabilities it may touch:
+  an optional `spend` object with a per-purchase `max_spend` cap, an `allowed_vendors` allowlist,
+  and the `currency` the cap is denominated in (all sub-fields OPTIONAL; `action_scope` stays an
+  opaque passthrough object). The conformance gate adjudicates purchases fail-closed the way it does
+  `tools`/`paths` — an unlisted vendor or over-cap buy is held — composing with (never overriding)
+  the session-cumulative `money_budget` ceiling of §4.14. The purchase **price** comes from the paid
+  resource's own `payment`/`price_per_request` declaration (§4.14, x402): KCP governs the buy
+  *decision*, a runtime wallet settles. Additive and backward-compatible. (#139)
 
 ---
 

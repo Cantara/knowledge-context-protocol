@@ -180,7 +180,7 @@
         },
         "action_scope": {
           "type": "object",
-          "description": "The tools, paths, and capabilities a procedure or skill is permitted to touch (v0.26). Advisory declaration surfaced to agents and used for conformance checking of a kind: skill unit. All sub-fields OPTIONAL. See SPEC.md §4.3a.",
+          "description": "The tools, paths, capabilities, and spend a procedure or skill is permitted to touch (v0.26). Advisory declaration surfaced to agents and used for conformance checking of a kind: skill unit. All sub-fields OPTIONAL. See SPEC.md §4.3a.",
           "properties": {
             "tools": {
               "type": "array",
@@ -196,6 +196,25 @@
               "type": "array",
               "description": "Named capabilities the procedure requires or exercises.",
               "items": { "type": "string" }
+            },
+            "spend": {
+              "type": "object",
+              "description": "Purchases the procedure may make (v0.26). Governs the buy decision fail-closed alongside the session-cumulative money_budget ceiling (§4.14). All sub-fields OPTIONAL.",
+              "properties": {
+                "max_spend": {
+                  "type": "number",
+                  "description": "Per-purchase spend cap, in units of 'currency'. A purchase exceeding this is held."
+                },
+                "allowed_vendors": {
+                  "type": "array",
+                  "description": "Allowlist of vendor/payee identifiers the procedure may pay. A purchase to an unlisted vendor is held.",
+                  "items": { "type": "string" }
+                },
+                "currency": {
+                  "type": "string",
+                  "description": "ISO 4217 code (USD, EUR) or crypto ticker (USDC, ETH) that 'max_spend' is denominated in."
+                }
+              }
             }
           }
         },
