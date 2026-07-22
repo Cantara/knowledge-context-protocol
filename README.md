@@ -1,5 +1,8 @@
 # Knowledge Context Protocol (KCP)
 
+### 🧾 See it run — [interactive KCP playground](https://cantara.github.io/pi-kcp/playground/) · [read the reveal](https://wiki.totto.org/blog/2026/07/22/the-ai-agent-that-keeps-the-receipts/)
+
+
 > A structured metadata standard that makes knowledge navigable by AI agents.
 
 **KCP is to knowledge what MCP is to tools.**
