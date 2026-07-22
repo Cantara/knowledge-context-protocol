@@ -3,7 +3,7 @@
 All three bridges (TypeScript, Java, Python) are required to stay at feature parity on **MCP tools and prompts**.
 Static generation CLI flags (Tier 2) are currently TS + Java only — Python support is planned.
 
-**Current version:** 0.25.1 (all three bridges — aligned with KCP spec version)
+**Current version:** 0.26.0 (all three bridges — aligned with KCP spec version). Spec is at v0.26.1 (2026-07-22, `kind: skill` procedural plane) — see **Known gaps** below, this has not yet reached bridge parity.
 
 > Scope note: the `kcp` developer CLI (`cli/` — init, validate, query, stats, and as of
 > spec v0.16 `render`) versions independently of the bridges and is outside this parity
@@ -88,9 +88,23 @@ When adding any MCP capability:
 
 ---
 
-## Known Python gaps (Tier 1)
+## Known gaps (all bridges) — v0.26.1 `kind: skill`
 
-No known gaps — all three bridges are at full parity.
+Spec v0.26.1 (2026-07-22, #134) added the procedural plane: `kind: skill` units and the
+`action_scope` field (§4.3a — the tools/paths/capabilities a skill procedure may touch).
+Verified 2026-07-22:
+
+- **TypeScript** — `bridge/typescript/src/model.ts` and `parser.ts` are symlinks to
+  `shared/src/`, which was updated by #134, so parsing/validation of `kind: skill` and
+  `action_scope` is already current. However, `mapper.ts`'s manifest-entry builder
+  (~line 268) does not include `action_scope` in the fields it copies onto the exposed
+  unit entry — it is parsed but not surfaced. Needs a one-line fix + a mapper test.
+- **Java** (`bridge/java/`) and **Python** (`bridge/python/`) — not symlinked, real
+  separate source trees. Zero references to `action_scope` or `"skill"` found in either.
+  Full Tier 1 port required (see **Rule** above) before the next version bump.
+
+This is a real parity gap, not yet closed — tracked here rather than silently left off
+this table. Do not claim "full parity" again until all three items above are done.
 
 ---
 

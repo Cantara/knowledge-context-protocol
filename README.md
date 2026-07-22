@@ -420,7 +420,7 @@ Until formal acceptance, KCP remains an Apache 2.0 open specification proposed b
 
 ## Status
 
-**Current:** Draft specification — v0.21 (there is no v0.15 spec; the number was skipped to re-sync with the `kcp` CLI release train)
+**Current:** Draft specification — v0.26 (there is no v0.15 spec; the number was skipped to re-sync with the `kcp` CLI release train)
 
 The format is intentionally minimal and builds incrementally through promoted RFCs. Feedback, use cases, and pull requests are welcome.
 
