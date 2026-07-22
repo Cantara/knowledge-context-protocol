@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import yaml from "js-yaml";
 import type {
   ActionScope,
+  Spend,
   Auth,
   AuthMethod,
   Authority,
@@ -390,7 +391,7 @@ function parseServing(raw: unknown): Serving | undefined {
   };
 }
 
-/** §4.3a (v0.26): the tools/paths/capabilities a `kind: skill` procedure may touch. */
+/** §4.3a (v0.26): the tools/paths/capabilities/spend a `kind: skill` procedure may touch. */
 function parseActionScope(raw: unknown): ActionScope | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
   const d = raw as RawMap;
@@ -398,6 +399,18 @@ function parseActionScope(raw: unknown): ActionScope | undefined {
     tools: stringListOrUndefined(d["tools"]),
     paths: stringListOrUndefined(d["paths"]),
     capabilities: stringListOrUndefined(d["capabilities"]),
+    spend: parseSpend(d["spend"]),
+  };
+}
+
+/** §4.3a (v0.26): purchases a `kind: skill` procedure may make. */
+function parseSpend(raw: unknown): Spend | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const d = raw as RawMap;
+  return {
+    max_spend: d["max_spend"] !== undefined ? Number(d["max_spend"]) : undefined,
+    allowed_vendors: stringListOrUndefined(d["allowed_vendors"]),
+    currency: d["currency"] !== undefined ? String(d["currency"]) : undefined,
   };
 }
 

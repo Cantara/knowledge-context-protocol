@@ -114,11 +114,19 @@ export interface KnowledgeUnit {
   temporal?: Temporal;          // RFC-0010 / §4.22 (v0.19)
 }
 
-/** Envelope of tools/paths/capabilities a `kind: skill` procedure may touch. See SPEC.md §4.3a (v0.26). */
+/** Purchases a `kind: skill` procedure may make. See SPEC.md §4.3a (v0.26). */
+export interface Spend {
+  max_spend?: number;         // per-purchase cap, denominated in `currency`
+  allowed_vendors?: string[]; // allowlist of vendor/payee identifiers the procedure may pay
+  currency?: string;          // ISO 4217 code or crypto ticker `max_spend` is denominated in
+}
+
+/** Envelope of tools/paths/capabilities/spend a `kind: skill` procedure may touch. See SPEC.md §4.3a (v0.26). */
 export interface ActionScope {
   tools?: string[];         // tool names the procedure may invoke
   paths?: string[];         // file-system paths (globs permitted) the procedure may read/write
   capabilities?: string[];  // named capabilities the procedure requires or exercises
+  spend?: Spend;            // purchases the procedure may make (per-purchase cap + vendor allowlist)
 }
 
 export interface Relationship {

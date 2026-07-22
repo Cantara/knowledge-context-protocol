@@ -1529,7 +1529,7 @@ declarative plane (knowledge that is loaded) and the procedural plane (procedure
 its **selection** is gated exactly like `knowledge` — the same intent-matching, `audience`,
 `scope`, temporal validity (§4.22), and negative-space (§4.20) signals decide whether the skill
 is offered to an agent — while its **enaction** is governed like an `executable`, constrained by
-an explicitly declared envelope of the tools, paths, and capabilities it is permitted to touch.
+an explicitly declared envelope of the tools, paths, capabilities, and spend it is permitted to touch.
 
 That envelope is the `action_scope` object (all sub-fields OPTIONAL):
 
@@ -1538,6 +1538,7 @@ That envelope is the `action_scope` object (all sub-fields OPTIONAL):
 | `tools` | array of string | Tool names the procedure may invoke. |
 | `paths` | array of string | File-system paths (globs permitted) the procedure may read or write. |
 | `capabilities` | array of string | Named capabilities the procedure requires or exercises. |
+| `spend` | object | Purchases the procedure may make: a per-purchase `max_spend` cap, an `allowed_vendors` allowlist, and the `currency` the cap is denominated in (all OPTIONAL). |
 
 ```yaml
 - id: rotate-signing-key
@@ -1550,7 +1551,23 @@ That envelope is the `action_scope` object (all sub-fields OPTIONAL):
     tools: [kcp-sign, git]
     paths: ["schema/**", ".well-known/kcp-signing-key"]
     capabilities: [key-management]
+    spend:
+      max_spend: 5.00
+      allowed_vendors: [github, cloudflare]
+      currency: USD
 ```
+
+The `spend` sub-object governs **purchases** a skill may make. Like `tools` and `paths`, it is
+adjudicated fail-closed by the conformance gate: a purchase whose payee is not in
+`allowed_vendors`, or whose price exceeds `max_spend` (denominated in `currency`), is *held* — a
+declared-but-unmatched buy is refused the same way a call to an undeclared tool or a write to an
+undeclared path is. `max_spend` bounds a **single** purchase; it composes with — and never
+overrides — the session-cumulative `money_budget` ceiling of §4.14: a buy proceeds only if it
+clears *both* the per-purchase `spend` envelope here and the cumulative budget there, and either
+gate can hold it. The purchase **price** itself is not declared here — it comes from the paid
+resource's own `payment` / `price_per_request` declaration (§4.14, x402): KCP governs the buy
+*decision* against the declared envelope, while a runtime wallet performs the settlement. KCP
+dereferences no wallet and moves no funds.
 
 `action_scope` is advisory metadata at the parser level — declaring it carries no cryptographic
 weight — but it is the input a trusted renderer (§16) and a conformance checker use to decide
