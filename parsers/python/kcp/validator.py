@@ -84,7 +84,7 @@ def compute_content_digest(target: str, algorithm: str) -> Optional[str]:
 VALID_SCOPES = {"global", "project", "module"}
 VALID_AUDIENCES = {"human", "agent", "developer", "operator", "architect", "devops"}
 VALID_RELATIONSHIP_TYPES = {"enables", "context", "supersedes", "contradicts", "depends_on", "governs"}
-VALID_KINDS = {"knowledge", "schema", "service", "policy", "executable"}
+VALID_KINDS = {"knowledge", "schema", "service", "policy", "executable", "skill"}
 VALID_FORMATS = {
     "markdown", "pdf", "openapi", "json-schema", "jupyter",
     "html", "asciidoc", "rst", "vtt", "yaml", "json", "csv", "text",

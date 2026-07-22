@@ -63,6 +63,7 @@ const VALID_KINDS = new Set([
   "service",
   "policy",
   "executable",
+  "skill",
 ]);
 const VALID_REL_TYPES = new Set([
   "enables",

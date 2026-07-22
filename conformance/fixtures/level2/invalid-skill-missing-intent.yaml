@@ -1,0 +1,16 @@
+# Level 2 — kind: skill unit declares an action_scope but omits the required 'intent'.
+# A skill is selected like knowledge (§4.3a), so it is held to the same required-field
+# discipline: an envelope without a routing intent is not a loadable/selectable unit.
+kcp_version: "0.26"
+project: test-skill-missing-intent
+version: "1.0.0"
+
+units:
+  - id: rotate-signing-key
+    path: skills/rotate-signing-key.md
+    kind: skill
+    scope: project
+    audience: [agent, operator]
+    action_scope:
+      tools: [kcp-sign, git]
+      paths: ["schema/**"]

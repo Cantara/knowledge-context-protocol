@@ -79,7 +79,8 @@ export interface KnowledgeUnit {
   intent: string;
   scope: string;           // "global" | "project" | "module"
   audience: string[];
-  kind?: string;           // "knowledge" | "schema" | "service" | "policy" | "executable"
+  kind?: string;           // "knowledge" | "schema" | "service" | "policy" | "executable" | "skill"
+  action_scope?: ActionScope;  // §4.3a (v0.26) — tools/paths/capabilities a kind: skill procedure may touch
   format?: string;         // "markdown" | "pdf" | "openapi" | "json-schema" | etc.
   content_type?: string;
   language?: string;
@@ -111,6 +112,13 @@ export interface KnowledgeUnit {
   content_structure?: ContentStructure;  // RFC-0016 (v0.17)
   content_hash?: ContentHash;  // RFC-0019 (draft)
   temporal?: Temporal;          // RFC-0010 / §4.22 (v0.19)
+}
+
+/** Envelope of tools/paths/capabilities a `kind: skill` procedure may touch. See SPEC.md §4.3a (v0.26). */
+export interface ActionScope {
+  tools?: string[];         // tool names the procedure may invoke
+  paths?: string[];         // file-system paths (globs permitted) the procedure may read/write
+  capabilities?: string[];  // named capabilities the procedure requires or exercises
 }
 
 export interface Relationship {

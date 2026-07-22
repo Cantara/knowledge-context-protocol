@@ -39,8 +39,10 @@ export const RENDERER_VERSION = "kcp-cli 0.26.1";
 export const RENDER_SCHEMA = "kcp-render-schema-0.2";
 export const DEFAULT_KEYS_PATH = join(homedir(), ".kcp", "trusted-keys.yaml");
 
-const KNOWN_KINDS = ["knowledge", "schema", "policy", "service", "executable"];
-const NEVER_LOAD_KINDS = ["service", "executable"];
+const KNOWN_KINDS = ["knowledge", "schema", "policy", "service", "executable", "skill"];
+// skill fails closed by default like executable/service (§4.3a, §16.3 C4); an explicit
+// eligibility grant is required to make it load/invoke-eligible.
+const NEVER_LOAD_KINDS = ["service", "executable", "skill"];
 
 // Render-schema whitelist (§6.1) — loaded from the authoritative
 // schema/render-schema.json (the file RENDER_SCHEMA names). Update

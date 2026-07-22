@@ -174,9 +174,30 @@
         },
         "kind": {
           "type": "string",
-          "description": "Type of artifact. Default: knowledge. Values: knowledge (documentation), schema (machine-readable definition), service (callable endpoint), policy (authoritative rules), executable (runnable artifact).",
-          "enum": ["knowledge", "schema", "service", "policy", "executable"],
+          "description": "Type of artifact. Default: knowledge. Values: knowledge (documentation), schema (machine-readable definition), service (callable endpoint), policy (authoritative rules), executable (runnable artifact), skill (governed executable procedure/playbook whose selection is gated like knowledge; declares an action_scope). See SPEC.md §4.3a.",
+          "enum": ["knowledge", "schema", "service", "policy", "executable", "skill"],
           "default": "knowledge"
+        },
+        "action_scope": {
+          "type": "object",
+          "description": "The tools, paths, and capabilities a procedure or skill is permitted to touch (v0.26). Advisory declaration surfaced to agents and used for conformance checking of a kind: skill unit. All sub-fields OPTIONAL. See SPEC.md §4.3a.",
+          "properties": {
+            "tools": {
+              "type": "array",
+              "description": "Tool names the procedure may invoke.",
+              "items": { "type": "string" }
+            },
+            "paths": {
+              "type": "array",
+              "description": "File-system paths (globs permitted) the procedure may read or write.",
+              "items": { "type": "string" }
+            },
+            "capabilities": {
+              "type": "array",
+              "description": "Named capabilities the procedure requires or exercises.",
+              "items": { "type": "string" }
+            }
+          }
         },
         "intent": {
           "type": "string",

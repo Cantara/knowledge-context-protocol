@@ -272,6 +272,28 @@ units:
     expect(doc.units[0].invocation).toBe("explicit");
   });
 
+  it("never sets load_eligible on kind: skill by default, even when trusted (C4)", () => {
+    const manifestPath = writeManifest(`project: test
+version: 1.0.0
+units:
+  - id: rotate-signing-key
+    kind: skill
+    path: skills/rotate-signing-key.md
+    intent: "How do I rotate the manifest signing key safely?"
+`);
+    // make it trusted: signed + allowlisted, so tier-dependence cannot mask the rule
+    const pub = signManifest(manifestPath, "org-key");
+    const keysPath = writeAllowlist([
+      { key_id: "org-key", method: "jws", algorithm: "EdDSA", public_key: pub },
+    ]);
+
+    const { doc } = renderOk(manifestPath, { keysPath });
+    expect(doc.trust.tier).toBe("trusted");
+    expect(doc.units[0].load_eligible).toBe(false);
+    expect(doc.units[0].invocation).toBe("explicit");
+    expect(doc.units[0].kind).toBe("skill"); // known kind, not dropped as unknown
+  });
+
   it("fails closed on unknown kind values (§6.3)", () => {
     const manifestPath = writeManifest(`project: test
 version: 1.0.0

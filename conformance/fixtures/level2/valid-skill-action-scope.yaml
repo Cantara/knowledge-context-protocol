@@ -1,0 +1,25 @@
+# Level 2 — kind: skill unit with an action_scope envelope (§4.3a, v0.26)
+kcp_version: "0.26"
+project: test-skill
+version: "1.0.0"
+
+units:
+  - id: rotate-signing-key
+    path: skills/rotate-signing-key.md
+    kind: skill
+    intent: "How do I rotate the manifest signing key safely?"
+    scope: project
+    audience: [agent, operator]
+    action_scope:
+      tools: [kcp-sign, git]
+      paths: ["schema/**", ".well-known/kcp-signing-key"]
+      capabilities: [key-management]
+
+  - id: reindex-catalog
+    path: skills/reindex-catalog.md
+    kind: skill
+    intent: "How do I rebuild the catalog index after a bulk import?"
+    scope: project
+    audience: [agent]
+    action_scope:
+      capabilities: [catalog-write]
