@@ -1500,7 +1500,8 @@ a parse error. The manifest may describe knowledge that has not yet been created
 The `kind` field declares what type of artifact a knowledge unit represents. It provides a
 machine-readable dispatch signal that tells agents how to interact with the unit: load and
 embed (knowledge), parse as a structured definition (schema), invoke via protocol (service),
-evaluate as a gate (policy), or run on demand (executable).
+evaluate as a gate (policy), run on demand (executable), or select and enact as a governed
+procedure (skill).
 
 | Value | Meaning | Agent behaviour |
 |-------|---------|-----------------|
@@ -1509,6 +1510,7 @@ evaluate as a gate (policy), or run on demand (executable).
 | `service` | A running or callable endpoint: API, MCP server, webhook | Invoke via protocol |
 | `policy` | Rules, constraints, compliance documents | Evaluate as authoritative gate |
 | `executable` | Runnable artifacts: scripts, notebooks, workflow definitions | Invoke on demand |
+| `skill` | A governed, executable procedure or playbook | Select like knowledge; enact within a declared `action_scope` |
 
 If `kind` is omitted, parsers MUST treat the unit as `kind: knowledge`. This ensures full
 backward compatibility with v0.2 manifests.
@@ -1518,6 +1520,44 @@ Unknown `kind` values MUST be silently ignored by parsers.
 ```yaml
 kind: schema
 ```
+
+#### `kind: skill` (v0.26)
+
+A `kind: skill` unit is a governed, *executable* procedure or playbook — a repeatable sequence
+of steps an agent enacts, not prose it merely reads. It sits on the boundary between the
+declarative plane (knowledge that is loaded) and the procedural plane (procedures that are run):
+its **selection** is gated exactly like `knowledge` — the same intent-matching, `audience`,
+`scope`, temporal validity (§4.22), and negative-space (§4.20) signals decide whether the skill
+is offered to an agent — while its **enaction** is governed like an `executable`, constrained by
+an explicitly declared envelope of the tools, paths, and capabilities it is permitted to touch.
+
+That envelope is the `action_scope` object (all sub-fields OPTIONAL):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `tools` | array of string | Tool names the procedure may invoke. |
+| `paths` | array of string | File-system paths (globs permitted) the procedure may read or write. |
+| `capabilities` | array of string | Named capabilities the procedure requires or exercises. |
+
+```yaml
+- id: rotate-signing-key
+  path: skills/rotate-signing-key.md
+  kind: skill
+  intent: "How do I rotate the manifest signing key safely?"
+  scope: project
+  audience: [agent, operator]
+  action_scope:
+    tools: [kcp-sign, git]
+    paths: ["schema/**", ".well-known/kcp-signing-key"]
+    capabilities: [key-management]
+```
+
+`action_scope` is advisory metadata at the parser level — declaring it carries no cryptographic
+weight — but it is the input a trusted renderer (§16) and a conformance checker use to decide
+whether the skill may be invoked and to bound what it may reach when it is. A skill fails closed
+by default like `executable`/`service`: absent an explicit eligibility grant it renders as a
+pointer with `invocation: explicit` (§16.3, C4). Skills are the manifest-declared counterpart of
+the runtime-depth lifecycle recorded in §17 (`skill_selected` … `verdict_emitted`).
 
 ### 4.4 `intent`
 
@@ -3761,7 +3801,11 @@ corroboration confirms the manifest's presence at the origin, not the checkout's
 - **Kind-based load eligibility.** Units of `kind: service` or `kind: executable` — and units
   with an *unknown* `kind`, which fail closed here even though parsers treat them leniently
   (§4.3a) — are never load-eligible at any tier. They render as pointers with
-  `invocation: explicit`.
+  `invocation: explicit`. A `kind: skill` unit (§4.3a) is governed the same way: it **fails
+  closed by default** — rendering as a pointer with `invocation: explicit` — and becomes
+  load/invoke-eligible only when the manifest carries an explicit eligibility grant for it,
+  bounded by its declared `action_scope`. The default matches `executable`/`service`; the
+  explicit-grant exception is what distinguishes a skill from a bare executable.
 - **Stats identity.** `sanitization.stats` counts leaf fields:
   `fields_in = fields_rendered + fields_dropped + fields_quarantined`.
 
@@ -3781,9 +3825,12 @@ minimum trigger `on_failure: warn` (§3.6). Pinning applies per-edge.
 A conforming renderer satisfies C1–C10 (RFC-0018), C11–C14 (RFC-0019, v0.18), C15 (RFC-0020, v0.19), C16 (v0.20), C17 (RFC-0022, v0.21), C18 (RFC-0021, v0.21), C19–C21 (RFC-0004/0002, v0.22), and C22 (RFC-0024, v0.26):
 
 - **C1–C10** (RFC-0018): determinism (C1), fail-closed emission (C2), schema-only output (C3),
-  no `load_eligible: true` on executable/service/unknown kinds (C4), no auto-traversal below
-  `trusted` (C5), recorded drops and quarantines (C6), LLM-free (C7), data-framed content at
-  every tier (C8), consumer-installed renderer only (C9), in-session artifact verification (C10).
+  no `load_eligible: true` on executable/service/unknown kinds — nor on a `kind: skill` unit
+  (§4.3a) that lacks an explicit eligibility grant, which fails closed by default and becomes
+  load/invoke-eligible only when explicitly granted, bounded by its `action_scope` (C4) — no
+  auto-traversal below `trusted` (C5), recorded drops and quarantines (C6), LLM-free (C7),
+  data-framed content at every tier (C8), consumer-installed renderer only (C9), in-session
+  artifact verification (C10).
 - **C11** (v0.18): Verifies every declared `content_hash` at render time; forces
   `load_eligible: false` with both digests recorded on mismatch; never emits
   `content_verified: true` without a matching digest.
@@ -3875,9 +3922,15 @@ convention: bridges and renderers MAY record events to a well-known SQLite datab
 
 Three tables:
 
-- **`usage_events`** — bridge query traffic. Columns: `timestamp`, `event_type`
-  (`search` | `get_unit` | `inject`), `project`, `query`, `unit_id`, `result_count`,
-  `token_estimate`, `manifest_token_total`. Defined in RFC-0017 §"Event schema".
+- **`usage_events`** — bridge query traffic and the runtime-depth procedural lifecycle. Columns:
+  `timestamp`, `event_type` (`search` | `get_unit` | `inject` | `skill_selected` |
+  `plan_formed` | `conclusion` | `action_trace` | `verdict_emitted`), `project`, `query`,
+  `unit_id`, `result_count`, `token_estimate`, `manifest_token_total`, `correlation_id` (the
+  W3C Trace Context `traceparent` that stitches one procedural run's events into a single trace;
+  reuses `trust.audit.require_trace_context`, §3.2). Defined in RFC-0017 §"Event schema". The
+  five lifecycle events (`skill_selected` → `verdict_emitted`) are the observable counterpart of
+  a `kind: skill` unit (§4.3a). This data remains **local-only**: implementations MUST NOT
+  transmit usage events to external services without explicit user consent.
 - **`render_events`** — one row per render: `timestamp`, `source_path`, `source_sha256`,
   `origin`, `tier`, `pinned`, `renderer_version`, `lint_rules`, and the four stats counters.
 - **`quarantine_events`** — one row per quarantined field, referencing `render_events(id)`:

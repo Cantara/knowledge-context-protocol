@@ -52,13 +52,14 @@ Each usage event is a row in the `usage_events` table:
 |--------|------|----------|-------------|
 | `id` | INTEGER | yes | Auto-increment row id |
 | `timestamp` | TEXT | yes | ISO 8601 UTC (e.g. `2026-03-27T14:30:00Z`) |
-| `event_type` | TEXT | yes | One of: `search`, `get_unit`, `inject` |
+| `event_type` | TEXT | yes | One of: `search`, `get_unit`, `inject`, `skill_selected`, `plan_formed`, `conclusion`, `action_trace`, `verdict_emitted` |
 | `project` | TEXT | yes | Manifest `project` field value (or basename of working directory) |
 | `query` | TEXT | no | The search query string (`search` events only) |
-| `unit_id` | TEXT | no | The unit id fetched (`get_unit`) or manifest key injected (`inject`) |
+| `unit_id` | TEXT | no | The unit id fetched (`get_unit`), manifest key injected (`inject`), or `kind: skill` unit selected/enacted (lifecycle events) |
 | `result_count` | INTEGER | no | Number of results returned (`search` events only) |
 | `token_estimate` | INTEGER | no | Token estimate of the fetched/injected content (chars / 4) |
 | `manifest_token_total` | INTEGER | no | Sum of `hints.token_estimate` across all units in the manifest |
+| `correlation_id` | TEXT | no | W3C Trace Context `traceparent` (v0.26) stitching the events of one procedural run into a single trace. Reuses `trust.audit.require_trace_context` (SPEC §3.2). |
 | `session_id` | TEXT | no | Opaque session identifier, if available |
 
 ### DDL
@@ -74,12 +75,14 @@ CREATE TABLE IF NOT EXISTS usage_events (
     result_count         INTEGER,
     token_estimate       INTEGER,
     manifest_token_total INTEGER,
+    correlation_id       TEXT,
     session_id           TEXT
 );
 
-CREATE INDEX IF NOT EXISTS idx_usage_timestamp ON usage_events(timestamp);
-CREATE INDEX IF NOT EXISTS idx_usage_project   ON usage_events(project);
-CREATE INDEX IF NOT EXISTS idx_usage_unit_id   ON usage_events(unit_id);
+CREATE INDEX IF NOT EXISTS idx_usage_timestamp      ON usage_events(timestamp);
+CREATE INDEX IF NOT EXISTS idx_usage_project        ON usage_events(project);
+CREATE INDEX IF NOT EXISTS idx_usage_unit_id        ON usage_events(unit_id);
+CREATE INDEX IF NOT EXISTS idx_usage_correlation_id ON usage_events(correlation_id);
 ```
 
 ### Storage convention
@@ -97,10 +100,34 @@ CREATE INDEX IF NOT EXISTS idx_usage_unit_id   ON usage_events(unit_id);
 | `search` | kcp-mcp bridge | Agent calls `search_knowledge` tool |
 | `get_unit` | kcp-mcp bridge | Agent calls `get_unit` tool |
 | `inject` | kcp-commands daemon | Manifest hit served to Claude Code PreToolUse hook |
+| `skill_selected` | procedural runtime | A `kind: skill` unit (SPEC §4.3a) is chosen to enact a task |
+| `plan_formed` | procedural runtime | The agent commits to a plan of steps for the selected skill |
+| `conclusion` | procedural runtime | An intermediate finding or decision reached while enacting the plan |
+| `action_trace` | procedural runtime | A single governed action taken inside the skill's `action_scope` |
+| `verdict_emitted` | procedural runtime | The terminal outcome of the run (success/failure/abstain) |
 
 For `inject` events: `unit_id` is the resolved manifest key (e.g. `git`, `git-log`, `docker-run`),
 `token_estimate` is `max(1, contextLength / 4)` where `contextLength` is the character length of the
 injected `additionalContext` string, and `project` is the basename of the working directory (`cwd`).
+
+### Runtime-depth lifecycle events (v0.26)
+
+The five lifecycle events — `skill_selected`, `plan_formed`, `conclusion`, `action_trace`,
+`verdict_emitted` — record the *procedural plane*: what an agent did after a `kind: skill` unit
+(SPEC §4.3a) was selected, not merely which knowledge it read. For these events `unit_id` is the
+skill's unit id, and all events of one procedural run share a single `correlation_id`.
+
+The `correlation_id` carries a [W3C Trace Context](https://www.w3.org/TR/trace-context/)
+`traceparent` value, so a run's events can be reconstructed in order and correlated with the
+HTTP access chain that `trust.audit.require_trace_context` (SPEC §3.2) governs. When a skill is
+enacted over local file access rather than HTTP, the runtime SHOULD still generate a
+conforming `traceparent` and record it here — mirroring the local-access guidance in §3.2 — so
+every run is traceable regardless of transport. `correlation_id` is OPTIONAL on the pre-existing
+`search`/`get_unit`/`inject` events and is not required for KCP conformance.
+
+These events are subject to the same **local-only** posture as all rows in `usage_events`:
+implementations MUST NOT transmit them to external services without explicit user consent
+(see *Privacy note* below).
 
 ### `tokens_saved` calculation
 

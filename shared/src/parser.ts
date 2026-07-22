@@ -4,6 +4,7 @@
 import { readFileSync } from "node:fs";
 import yaml from "js-yaml";
 import type {
+  ActionScope,
   Auth,
   AuthMethod,
   Authority,
@@ -104,6 +105,7 @@ function parseUnit(raw: RawMap): KnowledgeUnit {
     scope: String(raw["scope"] ?? "global"),
     audience: asStringArray(raw["audience"]),
     kind: raw["kind"] !== undefined ? String(raw["kind"]) : undefined,
+    action_scope: parseActionScope(raw["action_scope"]),
     format: raw["format"] !== undefined ? String(raw["format"]) : undefined,
     content_type:
       raw["content_type"] !== undefined
@@ -385,6 +387,17 @@ function parseServing(raw: unknown): Serving | undefined {
   return {
     manifest: stringListOrUndefined(d["manifest"]),
     mcp: stringListOrUndefined(d["mcp"]),
+  };
+}
+
+/** §4.3a (v0.26): the tools/paths/capabilities a `kind: skill` procedure may touch. */
+function parseActionScope(raw: unknown): ActionScope | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const d = raw as RawMap;
+  return {
+    tools: stringListOrUndefined(d["tools"]),
+    paths: stringListOrUndefined(d["paths"]),
+    capabilities: stringListOrUndefined(d["capabilities"]),
   };
 }
 

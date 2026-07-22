@@ -49,7 +49,7 @@ public class KcpValidator {
     private static final Set<String> VALID_SCOPES = Set.of("global", "project", "module");
     private static final Set<String> VALID_AUDIENCES = Set.of("human", "agent", "developer", "operator", "architect", "devops");
     private static final Set<String> VALID_RELATIONSHIP_TYPES = Set.of("enables", "context", "supersedes", "contradicts", "depends_on", "governs");
-    private static final Set<String> VALID_KINDS = Set.of("knowledge", "schema", "service", "policy", "executable");
+    private static final Set<String> VALID_KINDS = Set.of("knowledge", "schema", "service", "policy", "executable", "skill");
     private static final Set<String> VALID_FORMATS = Set.of(
             "markdown", "pdf", "openapi", "json-schema", "jupyter",
             "html", "asciidoc", "rst", "vtt", "yaml", "json", "csv", "text");
