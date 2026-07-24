@@ -1,5 +1,6 @@
 package no.cantara.kcp;
 
+import no.cantara.kcp.model.Agent;
 import no.cantara.kcp.model.Auth;
 import no.cantara.kcp.model.AuthMethod;
 import no.cantara.kcp.model.Authority;
@@ -11,6 +12,8 @@ import no.cantara.kcp.model.Discovery;
 import no.cantara.kcp.model.ExternalDependency;
 import no.cantara.kcp.model.FreshnessPolicy;
 import no.cantara.kcp.model.ExternalRelationship;
+import no.cantara.kcp.model.GrantCeiling;
+import no.cantara.kcp.model.GrantCeilingSource;
 import no.cantara.kcp.model.HumanInTheLoop;
 import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
@@ -25,6 +28,7 @@ import no.cantara.kcp.model.RateLimits;
 import no.cantara.kcp.model.RateLimitTokens;
 import no.cantara.kcp.model.RateLimitTokensTier;
 import no.cantara.kcp.model.Relationship;
+import no.cantara.kcp.model.TaskType;
 import no.cantara.kcp.model.Trust;
 import no.cantara.kcp.model.TrustAgentRequirements;
 import no.cantara.kcp.model.TrustAudit;
@@ -101,7 +105,56 @@ public class KcpParser {
         Discovery discovery = parseDiscovery((Map<String, Object>) data.get("discovery"));
         List<String> notFor = asStringList(data.get("not_for"));
         Temporal temporal = parseTemporal((Map<String, Object>) data.get("temporal"));
-        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, rateLimits, serving, units, relationships, manifests, externalRelationships, freshnessPolicy, visibility, authority, discovery, notFor, temporal);
+
+        // §3.13 (RFC-0025, v0.27): authority_level_scale, task_types[], agents[], grant_ceiling.
+        List<String> authorityLevelScale = asStringListStrict(data.get("authority_level_scale"));
+        List<Map<String, Object>> taskTypeMaps = (List<Map<String, Object>>) data.getOrDefault("task_types", List.of());
+        List<TaskType> taskTypes = taskTypeMaps.stream().map(KcpParser::parseTaskType).toList();
+        List<Map<String, Object>> agentMaps = (List<Map<String, Object>>) data.getOrDefault("agents", List.of());
+        List<Agent> agents = agentMaps.stream().map(KcpParser::parseAgent).toList();
+        GrantCeiling grantCeiling = parseGrantCeiling(data.get("grant_ceiling"));
+
+        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, rateLimits, serving, units, relationships, manifests, externalRelationships, freshnessPolicy, visibility, authority, discovery, notFor, temporal, authorityLevelScale, taskTypes, agents, grantCeiling);
+    }
+
+    /** §3.13 (RFC-0025, v0.27): a task-type declaration. */
+    private static TaskType parseTaskType(Map<String, Object> raw) {
+        return new TaskType(
+                (String) raw.get("id"),
+                (String) raw.get("intent"),
+                (String) raw.get("authority_level")
+        );
+    }
+
+    /** §3.13 (RFC-0025, v0.27): an agent declaration (Capability Profile). */
+    private static Agent parseAgent(Map<String, Object> raw) {
+        return new Agent(
+                (String) raw.get("id"),
+                (String) raw.get("name"),
+                (String) raw.get("authority_level")
+        );
+    }
+
+    /** §3.13 (RFC-0025, v0.27): one source in a grant_ceiling minimum computation. */
+    private static GrantCeilingSource parseGrantCeilingSource(Map<String, Object> raw) {
+        return new GrantCeilingSource(
+                (String) raw.get("id"),
+                (String) raw.get("authority_level"),
+                (String) raw.get("unit_ref"),
+                (String) raw.get("task_type_ref"),
+                (String) raw.get("agent_ref")
+        );
+    }
+
+    /** §3.13 (RFC-0025, v0.27): multi-source minimum ceiling computation. */
+    @SuppressWarnings("unchecked")
+    private static GrantCeiling parseGrantCeiling(Object raw) {
+        if (!(raw instanceof Map<?, ?> d)) return null;
+        Map<String, Object> data = (Map<String, Object>) d;
+        List<Map<String, Object>> sourceMaps = (List<Map<String, Object>>) data.getOrDefault("sources", List.of());
+        List<GrantCeilingSource> sources = sourceMaps.stream().map(KcpParser::parseGrantCeilingSource).toList();
+        List<String> mandatorySources = asStringListStrict(data.get("mandatory_sources"));
+        return new GrantCeiling(sources, mandatorySources);
     }
 
     /**
@@ -169,7 +222,8 @@ public class KcpParser {
                 asBoolean(u.get("not_for_strict")),
                 parseContentStructure(u.get("content_structure")),
                 parseContentHash(u.get("content_hash")),
-                parseTemporal((Map<String, Object>) u.get("temporal"))
+                parseTemporal((Map<String, Object>) u.get("temporal")),
+                (String) u.get("authority_level")
         );
     }
 

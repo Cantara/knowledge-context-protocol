@@ -31,7 +31,11 @@ public record KnowledgeManifest(
         Authority authority,
         Discovery discovery,
         List<String> notFor,
-        Temporal temporal
+        Temporal temporal,
+        List<String> authorityLevelScale,  // RFC-0025 / §3.13 (v0.27) — fixed ordinal scale; null = not declared
+        List<TaskType> taskTypes,          // RFC-0025 / §3.13 (v0.27) — defaults to []
+        List<Agent> agents,                // RFC-0025 / §3.13 (v0.27) — defaults to []
+        GrantCeiling grantCeiling          // RFC-0025 / §3.13 (v0.27)
 ) {
     public KnowledgeManifest {
         units = units != null ? List.copyOf(units) : List.of();
@@ -39,5 +43,7 @@ public record KnowledgeManifest(
         manifests = manifests != null ? List.copyOf(manifests) : List.of();
         externalRelationships = externalRelationships != null ? List.copyOf(externalRelationships) : List.of();
         notFor = notFor != null ? List.copyOf(notFor) : List.of();
+        taskTypes = taskTypes != null ? List.copyOf(taskTypes) : List.of();
+        agents = agents != null ? List.copyOf(agents) : List.of();
     }
 }

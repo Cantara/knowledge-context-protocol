@@ -44,7 +44,8 @@ public record KnowledgeUnit(
         Boolean notForStrict,
         ContentStructure contentStructure,
         ContentHash contentHash,
-        Temporal temporal
+        Temporal temporal,
+        String authorityLevel  // RFC-0025 / §4.23 (v0.27) — ceiling on the root authority_level_scale
 ) {
     public KnowledgeUnit {
         audience = audience != null ? List.copyOf(audience) : List.of();

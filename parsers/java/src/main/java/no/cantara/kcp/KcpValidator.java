@@ -1,5 +1,6 @@
 package no.cantara.kcp;
 
+import no.cantara.kcp.model.Agent;
 import no.cantara.kcp.model.Compliance;
 import no.cantara.kcp.model.ContentHash;
 import no.cantara.kcp.model.ContentStructure;
@@ -7,6 +8,8 @@ import no.cantara.kcp.model.Delegation;
 import no.cantara.kcp.model.Discovery;
 import no.cantara.kcp.model.ExternalDependency;
 import no.cantara.kcp.model.ExternalRelationship;
+import no.cantara.kcp.model.GrantCeiling;
+import no.cantara.kcp.model.GrantCeilingSource;
 import no.cantara.kcp.model.HumanInTheLoop;
 import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.KnowledgeUnit;
@@ -16,6 +19,7 @@ import no.cantara.kcp.model.Payment;
 import no.cantara.kcp.model.PaymentMethod;
 import no.cantara.kcp.model.RateLimits;
 import no.cantara.kcp.model.Relationship;
+import no.cantara.kcp.model.TaskType;
 import no.cantara.kcp.model.Temporal;
 
 import java.io.IOException;
@@ -557,7 +561,227 @@ public class KcpValidator {
             }
         }
 
+        // §3.13 (RFC-0025, v0.27): authority_level_scale, task_types[], agents[], grant_ceiling.
+        Set<String> knownAuthorityLevels = manifest.authorityLevelScale() != null
+                ? new HashSet<>(manifest.authorityLevelScale()) : Set.of();
+
+        Set<String> taskTypeIds = new HashSet<>();
+        for (TaskType tt : manifest.taskTypes()) {
+            String ttId = tt.id() != null ? tt.id() : "";
+            if (ttId.isBlank()) {
+                errors.add("A task_types[] entry is missing required field 'id'");
+            } else if (!taskTypeIds.add(ttId)) {
+                errors.add("Duplicate task_types[].id: '" + ttId + "'");
+            }
+            checkAuthorityLevel("task_types['" + ttId + "']", tt.authorityLevel(), knownAuthorityLevels, warnings);
+            if (manifest.authorityLevelScale() != null && tt.authorityLevel() == null && manifest.grantCeiling() == null) {
+                warnings.add("task_types['" + ttId + "']: authority_ceiling_undeclared — 'authority_level_scale' is "
+                        + "declared at manifest root but this task-type declares neither 'authority_level' nor a 'grant_ceiling'");
+            }
+        }
+
+        Set<String> agentIds = new HashSet<>();
+        for (Agent agent : manifest.agents()) {
+            String agentId = agent.id() != null ? agent.id() : "";
+            if (agentId.isBlank()) {
+                errors.add("An agents[] entry is missing required field 'id'");
+            } else if (!agentIds.add(agentId)) {
+                errors.add("Duplicate agents[].id: '" + agentId + "'");
+            }
+            checkAuthorityLevel("agents['" + agentId + "']", agent.authorityLevel(), knownAuthorityLevels, warnings);
+        }
+
+        for (KnowledgeUnit unit : manifest.units()) {
+            checkAuthorityLevel("Unit '" + unit.id() + "'", unit.authorityLevel(), knownAuthorityLevels, warnings);
+        }
+
+        if (manifest.grantCeiling() != null) {
+            GrantCeiling gc = manifest.grantCeiling();
+            Set<String> sourceIds = new HashSet<>();
+            // Visited-set across the reference chain — mirrors supersededCycleIds' discipline
+            // (§4.22, §3.11). In the current schema, unit_ref/task_type_ref/agent_ref resolve to a
+            // scalar authority_level with no further chaining, so a cycle cannot yet occur — this
+            // guard exists to fail closed if a future extension adds nested grant_ceiling references.
+            Set<String> visiting = new HashSet<>();
+
+            for (GrantCeilingSource src : gc.sources()) {
+                String sp = "grant_ceiling.sources";
+                String srcId = src.id() != null ? src.id() : "";
+                if (srcId.isBlank()) {
+                    errors.add(sp + ": an entry is missing required field 'id'");
+                } else if (!sourceIds.add(srcId)) {
+                    errors.add(sp + ": duplicate source id '" + srcId + "'");
+                }
+
+                int refCount = (src.unitRef() != null ? 1 : 0) + (src.taskTypeRef() != null ? 1 : 0)
+                        + (src.agentRef() != null ? 1 : 0);
+                if (src.authorityLevel() != null && refCount > 0) {
+                    errors.add(sp + "['" + srcId + "']: 'authority_level' is mutually exclusive with "
+                            + "unit_ref/task_type_ref/agent_ref");
+                }
+                if (src.authorityLevel() == null && refCount == 0) {
+                    errors.add(sp + "['" + srcId + "']: must declare exactly one of authority_level, unit_ref, "
+                            + "task_type_ref, agent_ref");
+                }
+                checkAuthorityLevel(sp + "['" + srcId + "']", src.authorityLevel(), knownAuthorityLevels, warnings);
+
+                if (src.unitRef() != null) {
+                    if (visiting.contains("unit:" + src.unitRef())) {
+                        errors.add(sp + "['" + srcId + "']: grant_ceiling reference cycle detected at unit '"
+                                + src.unitRef() + "'");
+                    } else if (!unitIds.contains(src.unitRef())) {
+                        errors.add(sp + "['" + srcId + "']: 'unit_ref' references unknown unit '" + src.unitRef() + "'");
+                    }
+                }
+                if (src.taskTypeRef() != null) {
+                    if (visiting.contains("task_type:" + src.taskTypeRef())) {
+                        errors.add(sp + "['" + srcId + "']: grant_ceiling reference cycle detected at task_type '"
+                                + src.taskTypeRef() + "'");
+                    } else if (!taskTypeIds.contains(src.taskTypeRef())) {
+                        errors.add(sp + "['" + srcId + "']: 'task_type_ref' references unknown task_types[].id '"
+                                + src.taskTypeRef() + "'");
+                    }
+                }
+                if (src.agentRef() != null) {
+                    if (visiting.contains("agent:" + src.agentRef())) {
+                        errors.add(sp + "['" + srcId + "']: grant_ceiling reference cycle detected at agent '"
+                                + src.agentRef() + "'");
+                    } else if (!agentIds.contains(src.agentRef())) {
+                        errors.add(sp + "['" + srcId + "']: 'agent_ref' references unknown agents[].id '"
+                                + src.agentRef() + "'");
+                    }
+                }
+            }
+
+            if (gc.mandatorySources() != null) {
+                for (String mandatoryId : gc.mandatorySources()) {
+                    if (!sourceIds.contains(mandatoryId)) {
+                        errors.add("grant_ceiling.sources: missing mandatory source '" + mandatoryId
+                                + "' declared in grant_ceiling.mandatory_sources");
+                    }
+                }
+            }
+        }
+
         return new ValidationResult(errors, warnings);
+    }
+
+    private static void checkAuthorityLevel(String ctx, String level, Set<String> knownAuthorityLevels, List<String> warnings) {
+        if (level != null && !knownAuthorityLevels.isEmpty() && !knownAuthorityLevels.contains(level)) {
+            warnings.add(ctx + ": 'authority_level' value '" + level + "' is not in the declared 'authority_level_scale'");
+        }
+    }
+
+    /**
+     * Resolve one grant_ceiling source to an authority_level, given the manifest to look up
+     * unit_ref/task_type_ref/agent_ref against. Returns {@code null} if the source is a reference
+     * to an entity with no declared authority_level (non-binding — absence is not a grant, §3.13).
+     */
+    private static String resolveSourceLevel(KnowledgeManifest manifest, GrantCeilingSource source) {
+        // NOTE: deliberately not Stream.map(...).findFirst() — the JDK's FindOps sink calls
+        // Optional.of(value) unconditionally on a match, which throws NPE the moment the mapped
+        // field (authorityLevel here) is itself null. A plain loop sidesteps that JDK gotcha.
+        if (source.authorityLevel() != null) return source.authorityLevel();
+        if (source.unitRef() != null) {
+            for (KnowledgeUnit u : manifest.units()) {
+                if (source.unitRef().equals(u.id())) return u.authorityLevel();
+            }
+            return null;
+        }
+        if (source.taskTypeRef() != null) {
+            for (TaskType t : manifest.taskTypes()) {
+                if (source.taskTypeRef().equals(t.id())) return t.authorityLevel();
+            }
+            return null;
+        }
+        if (source.agentRef() != null) {
+            for (Agent a : manifest.agents()) {
+                if (source.agentRef().equals(a.id())) return a.authorityLevel();
+            }
+            return null;
+        }
+        return null;
+    }
+
+    /**
+     * Result of {@link #computeGrantCeiling}: the effective authority level (or {@code null} if
+     * no source is binding), and the full set of source ids that tied for the minimum.
+     */
+    public record GrantCeilingResult(String effectiveLevel, List<String> bindingSourceIds) {
+        public GrantCeilingResult {
+            bindingSourceIds = List.copyOf(bindingSourceIds);
+        }
+    }
+
+    /**
+     * Compute the effective authority_level for a manifest's grant_ceiling — the minimum across
+     * all resolved sources, with the source(s) that produced it named for the audit trail (§3.13,
+     * RFC-0025). Ordering of {@code authority_level_scale} defines the total order used for the
+     * minimum; a source that resolves outside the declared scale is ignored (non-binding),
+     * matching the "absence of a declared ceiling is not itself a grant" rule.
+     */
+    public static GrantCeilingResult computeGrantCeiling(KnowledgeManifest manifest) {
+        List<String> scale = manifest.authorityLevelScale() != null ? manifest.authorityLevelScale() : List.of();
+        Map<String, Integer> rank = new HashMap<>();
+        for (int i = 0; i < scale.size(); i++) rank.put(scale.get(i), i);
+
+        GrantCeiling gc = manifest.grantCeiling();
+        if (gc == null) return new GrantCeilingResult(null, List.of());
+
+        int minRank = Integer.MAX_VALUE;
+        List<Map.Entry<String, Integer>> resolved = new ArrayList<>();
+        for (GrantCeilingSource src : gc.sources()) {
+            String level = resolveSourceLevel(manifest, src);
+            if (level == null || !rank.containsKey(level)) continue; // non-binding
+            int r = rank.get(level);
+            resolved.add(Map.entry(src.id(), r));
+            if (r < minRank) minRank = r;
+        }
+        if (minRank == Integer.MAX_VALUE) return new GrantCeilingResult(null, List.of());
+
+        final int finalMinRank = minRank;
+        List<String> bindingSourceIds = resolved.stream()
+                .filter(e -> e.getValue() == finalMinRank)
+                .map(Map.Entry::getKey)
+                .toList();
+        return new GrantCeilingResult(scale.get(minRank), bindingSourceIds);
+    }
+
+    // Normative §3.13/§4.17 capping table (SPEC.md §3.13): caps an authority.<action> permission
+    // by an effective authority_level. Copied verbatim from the spec's 5x5 table.
+    private static final Map<String, Map<String, String>> AUTHORITY_LEVEL_CAPS = Map.of(
+            "observe", Map.of(
+                    "read", "initiative", "summarize", "requires_approval", "modify", "denied",
+                    "share_externally", "denied", "execute", "denied"),
+            "explain", Map.of(
+                    "read", "initiative", "summarize", "initiative", "modify", "denied",
+                    "share_externally", "denied", "execute", "denied"),
+            "suggest", Map.of(
+                    "read", "initiative", "summarize", "initiative", "modify", "requires_approval",
+                    "share_externally", "denied", "execute", "denied"),
+            "prepare", Map.of(
+                    "read", "initiative", "summarize", "initiative", "modify", "requires_approval",
+                    "share_externally", "requires_approval", "execute", "requires_approval"),
+            "commit", Map.of(
+                    "read", "initiative", "summarize", "initiative", "modify", "initiative",
+                    "share_externally", "initiative", "execute", "initiative")
+    );
+    private static final Map<String, Integer> PERMISSION_RANK = Map.of(
+            "denied", 0, "requires_approval", 1, "initiative", 2);
+
+    /**
+     * Normative §3.13/§4.17 capping table: caps an {@code authority} action permission by an
+     * effective {@code authority_level}. Returns the stricter of the unit's own declared value and
+     * the table's cap (using the denied &lt; requires_approval &lt; initiative order), never
+     * widening it.
+     */
+    public static String applyAuthorityCap(String declaredValue, String action, String effectiveLevel) {
+        if (effectiveLevel == null || !AUTHORITY_LEVEL_CAPS.containsKey(effectiveLevel)) return declaredValue;
+        String cap = AUTHORITY_LEVEL_CAPS.get(effectiveLevel).get(action);
+        if (cap == null || declaredValue == null) return declaredValue;
+        int capRank = PERMISSION_RANK.getOrDefault(cap, 2);
+        int declaredRank = PERMISSION_RANK.getOrDefault(declaredValue, 2);
+        return declaredRank <= capRank ? declaredValue : cap;
     }
 
     private static final Set<String> VALID_PAYMENT_METHOD_TYPES = Set.of("free", "x402", "meter", "subscription");
