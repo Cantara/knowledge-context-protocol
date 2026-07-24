@@ -678,7 +678,208 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
                 if not str(url).startswith("https://"):
                     errors.append(f"manifest: {key} entry '{url}' must be an HTTPS URL")
 
+    # §3.13 (RFC-0025, v0.27): authority_level_scale, task_types[], agents[], grant_ceiling.
+    known_authority_levels = set(manifest.authority_level_scale or [])
+
+    def _check_authority_level(ctx: str, level: Optional[str]) -> None:
+        if level is not None and known_authority_levels and level not in known_authority_levels:
+            warnings.append(
+                f"{ctx}: 'authority_level' value '{level}' is not in the declared 'authority_level_scale'"
+            )
+
+    task_type_ids: set[str] = set()
+    for tt in manifest.task_types:
+        if not tt.id:
+            errors.append("A task_types[] entry is missing required field 'id'")
+        elif tt.id in task_type_ids:
+            errors.append(f"Duplicate task_types[].id: '{tt.id}'")
+        else:
+            task_type_ids.add(tt.id)
+        _check_authority_level(f"task_types['{tt.id}']", tt.authority_level)
+        if (
+            manifest.authority_level_scale
+            and tt.authority_level is None
+            and manifest.grant_ceiling is None
+        ):
+            warnings.append(
+                f"task_types['{tt.id}']: authority_ceiling_undeclared — 'authority_level_scale' is "
+                "declared at manifest root but this task-type declares neither 'authority_level' "
+                "nor a 'grant_ceiling'"
+            )
+
+    agent_ids: set[str] = set()
+    for agent in manifest.agents:
+        if not agent.id:
+            errors.append("An agents[] entry is missing required field 'id'")
+        elif agent.id in agent_ids:
+            errors.append(f"Duplicate agents[].id: '{agent.id}'")
+        else:
+            agent_ids.add(agent.id)
+        _check_authority_level(f"agents['{agent.id}']", agent.authority_level)
+
+    for unit in manifest.units:
+        _check_authority_level(f"Unit '{unit.id}'", unit.authority_level)
+
+    if manifest.grant_ceiling is not None:
+        gc = manifest.grant_ceiling
+        source_ids: set[str] = set()
+        # Visited-set across the reference chain — mirrors _superseded_cycle_ids' discipline
+        # (§4.22, §3.11). In the current schema, unit_ref/task_type_ref/agent_ref resolve to a
+        # scalar authority_level with no further chaining, so a cycle cannot yet occur — this
+        # guard exists to fail closed if a future extension adds nested grant_ceiling references.
+        visiting: set[str] = set()
+
+        for src in gc.sources:
+            sp = "grant_ceiling.sources"
+            if not src.id:
+                errors.append(f"{sp}: an entry is missing required field 'id'")
+            elif src.id in source_ids:
+                errors.append(f"{sp}: duplicate source id '{src.id}'")
+            else:
+                source_ids.add(src.id)
+
+            ref_fields = [v for v in (src.unit_ref, src.task_type_ref, src.agent_ref) if v is not None]
+            if src.authority_level is not None and ref_fields:
+                errors.append(
+                    f"{sp}['{src.id}']: 'authority_level' is mutually exclusive with "
+                    "unit_ref/task_type_ref/agent_ref"
+                )
+            if src.authority_level is None and not ref_fields:
+                errors.append(
+                    f"{sp}['{src.id}']: must declare exactly one of authority_level, unit_ref, "
+                    "task_type_ref, agent_ref"
+                )
+            _check_authority_level(f"{sp}['{src.id}']", src.authority_level)
+
+            if src.unit_ref is not None:
+                if f"unit:{src.unit_ref}" in visiting:
+                    errors.append(
+                        f"{sp}['{src.id}']: grant_ceiling reference cycle detected at unit '{src.unit_ref}'"
+                    )
+                elif src.unit_ref not in unit_ids:
+                    errors.append(f"{sp}['{src.id}']: 'unit_ref' references unknown unit '{src.unit_ref}'")
+            if src.task_type_ref is not None:
+                if f"task_type:{src.task_type_ref}" in visiting:
+                    errors.append(
+                        f"{sp}['{src.id}']: grant_ceiling reference cycle detected at task_type "
+                        f"'{src.task_type_ref}'"
+                    )
+                elif src.task_type_ref not in task_type_ids:
+                    errors.append(
+                        f"{sp}['{src.id}']: 'task_type_ref' references unknown task_types[].id "
+                        f"'{src.task_type_ref}'"
+                    )
+            if src.agent_ref is not None:
+                if f"agent:{src.agent_ref}" in visiting:
+                    errors.append(
+                        f"{sp}['{src.id}']: grant_ceiling reference cycle detected at agent '{src.agent_ref}'"
+                    )
+                elif src.agent_ref not in agent_ids:
+                    errors.append(
+                        f"{sp}['{src.id}']: 'agent_ref' references unknown agents[].id '{src.agent_ref}'"
+                    )
+
+        if gc.mandatory_sources:
+            for mandatory_id in gc.mandatory_sources:
+                if mandatory_id not in source_ids:
+                    errors.append(
+                        f"grant_ceiling.sources: missing mandatory source '{mandatory_id}' declared "
+                        "in grant_ceiling.mandatory_sources"
+                    )
+
     return ValidationResult(errors=errors, warnings=warnings)
+
+
+def _resolve_source_level(manifest: KnowledgeManifest, source) -> Optional[str]:
+    """Resolve one grant_ceiling source to an authority_level, given the manifest to look up
+    unit_ref/task_type_ref/agent_ref against. Returns ``None`` if the source is a reference to
+    an entity with no declared authority_level (non-binding — absence is not a grant, §3.13).
+    """
+    if source.authority_level is not None:
+        return source.authority_level
+    if source.unit_ref is not None:
+        return next((u.authority_level for u in manifest.units if u.id == source.unit_ref), None)
+    if source.task_type_ref is not None:
+        return next((t.authority_level for t in manifest.task_types if t.id == source.task_type_ref), None)
+    if source.agent_ref is not None:
+        return next((a.authority_level for a in manifest.agents if a.id == source.agent_ref), None)
+    return None
+
+
+class GrantCeilingResult(NamedTuple):
+    """Result of :func:`compute_grant_ceiling` — the effective authority_level for a
+    manifest's grant_ceiling, and the source id(s) that produced it (for the audit trail).
+    """
+    effective_level: Optional[str]
+    binding_source_ids: list[str]
+
+
+def compute_grant_ceiling(manifest: KnowledgeManifest) -> GrantCeilingResult:
+    """Compute the effective authority_level for a manifest's grant_ceiling — the minimum
+    across all resolved sources, with the source(s) that produced it named for the audit
+    trail (§3.13, RFC-0025). Ordering of ``authority_level_scale`` defines the total order
+    used for the minimum; a source that resolves outside the declared scale is ignored
+    (non-binding), matching the "absence of a declared ceiling is not itself a grant" rule.
+    """
+    scale = manifest.authority_level_scale or []
+    rank = {level: i for i, level in enumerate(scale)}
+    gc = manifest.grant_ceiling
+    if gc is None:
+        return GrantCeilingResult(effective_level=None, binding_source_ids=[])
+
+    min_rank: Optional[int] = None
+    resolved: list[tuple[str, int]] = []
+    for src in gc.sources:
+        level = _resolve_source_level(manifest, src)
+        if level is None or level not in rank:
+            continue  # non-binding
+        r = rank[level]
+        resolved.append((src.id, r))
+        if min_rank is None or r < min_rank:
+            min_rank = r
+
+    if min_rank is None:
+        return GrantCeilingResult(effective_level=None, binding_source_ids=[])
+
+    return GrantCeilingResult(
+        effective_level=scale[min_rank],
+        binding_source_ids=[sid for sid, r in resolved if r == min_rank],
+    )
+
+
+# Normative §3.13/§4.17 capping table: caps an `authority` action permission by an effective
+# `authority_level`. Returns the stricter of the unit's own declared value and the table's cap
+# (using the denied < requires_approval < initiative order), never widening it.
+_AUTHORITY_LEVEL_CAPS: dict[str, dict[str, str]] = {
+    "observe": {"read": "initiative", "summarize": "requires_approval", "modify": "denied",
+                "share_externally": "denied", "execute": "denied"},
+    "explain": {"read": "initiative", "summarize": "initiative", "modify": "denied",
+                "share_externally": "denied", "execute": "denied"},
+    "suggest": {"read": "initiative", "summarize": "initiative", "modify": "requires_approval",
+                "share_externally": "denied", "execute": "denied"},
+    "prepare": {"read": "initiative", "summarize": "initiative", "modify": "requires_approval",
+                "share_externally": "requires_approval", "execute": "requires_approval"},
+    "commit": {"read": "initiative", "summarize": "initiative", "modify": "initiative",
+               "share_externally": "initiative", "execute": "initiative"},
+}
+_PERMISSION_RANK: dict[str, int] = {"denied": 0, "requires_approval": 1, "initiative": 2}
+
+
+def apply_authority_cap(
+    declared_value: Optional[str], action: str, effective_level: Optional[str]
+) -> Optional[str]:
+    """Apply the normative §3.13/§4.17 capping table: cap a declared ``authority.<action>``
+    permission value by an effective ``authority_level``. Returns the stricter of the unit's
+    own declared value and the table's cap — never widens a declared value.
+    """
+    if effective_level is None or effective_level not in _AUTHORITY_LEVEL_CAPS:
+        return declared_value
+    cap = _AUTHORITY_LEVEL_CAPS[effective_level].get(action)
+    if cap is None or declared_value is None:
+        return declared_value
+    cap_rank = _PERMISSION_RANK.get(cap, 2)
+    declared_rank = _PERMISSION_RANK.get(declared_value, 2)
+    return declared_value if declared_rank <= cap_rank else cap
 
 
 _VALID_PAYMENT_METHOD_TYPES = {"free", "x402", "meter", "subscription"}

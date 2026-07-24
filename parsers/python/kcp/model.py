@@ -167,6 +167,7 @@ class KnowledgeUnit:
     content_structure: Optional[ContentStructure] = None  # RFC-0016 (v0.17)
     content_hash: Optional[ContentHash] = None  # RFC-0019 (draft)
     temporal: Optional[Temporal] = None  # RFC-0010 / §4.22 (v0.19)
+    authority_level: Optional[str] = None  # RFC-0025 / §4.23 (v0.27) — ceiling on the root authority_level_scale
 
 
 # A rate-limit count is a positive int or the sentinel "unlimited" (v0.25).
@@ -346,6 +347,43 @@ class Trust:
 
 
 @dataclass
+class TaskType:
+    """A task-type declaration. See SPEC.md §3.13 (RFC-0025, v0.27)."""
+    id: str
+    intent: Optional[str] = None
+    authority_level: Optional[str] = None  # this task-type's own declared ceiling
+
+
+@dataclass
+class Agent:
+    """An agent declaration (Capability Profile). See SPEC.md §3.13 (RFC-0025, v0.27)."""
+    id: str
+    name: Optional[str] = None
+    authority_level: Optional[str] = None  # this agent's own capability ceiling, across all tasks
+
+
+@dataclass
+class GrantCeilingSource:
+    """One ceiling source in a grant_ceiling computation. Exactly one of
+    ``authority_level``, ``unit_ref``, ``task_type_ref``, ``agent_ref`` SHOULD be present —
+    the resolved value is either the inline ``authority_level`` or looked up from the
+    referenced entity's own declared ceiling. See SPEC.md §3.13 (RFC-0025, v0.27).
+    """
+    id: str
+    authority_level: Optional[str] = None
+    unit_ref: Optional[str] = None
+    task_type_ref: Optional[str] = None
+    agent_ref: Optional[str] = None
+
+
+@dataclass
+class GrantCeiling:
+    """Multi-source minimum ceiling computation. See SPEC.md §3.13 (RFC-0025, v0.27)."""
+    sources: list[GrantCeilingSource] = field(default_factory=list)
+    mandatory_sources: Optional[list[str]] = None  # source ids that MUST appear in every grant_ceiling
+
+
+@dataclass
 class KnowledgeManifest:
     project: str
     version: str
@@ -372,3 +410,7 @@ class KnowledgeManifest:
     discovery: Optional[Discovery] = None
     not_for: list[str] = field(default_factory=list)  # RFC-0015 (v0.17), manifest-level
     temporal: Optional[Temporal] = None  # RFC-0010 / §4.22 (v0.19) — manifest-level defaults
+    authority_level_scale: Optional[list[str]] = None  # RFC-0025 / §3.13 (v0.27) — fixed ordinal scale
+    task_types: list[TaskType] = field(default_factory=list)  # RFC-0025 / §3.13 (v0.27)
+    agents: list[Agent] = field(default_factory=list)  # RFC-0025 / §3.13 (v0.27)
+    grant_ceiling: Optional[GrantCeiling] = None  # RFC-0025 / §3.13 (v0.27)

@@ -5,10 +5,11 @@ from typing import Optional, Union
 import yaml
 
 from .model import (
-    AgentIdentity, Auth, AuthMethod, Authority, Compliance, ContentHash, ContentStructure,
+    Agent, AgentIdentity, Auth, AuthMethod, Authority, Compliance, ContentHash, ContentStructure,
     Delegation, Discovery, ExternalDependency, ExternalRelationship, FreshnessPolicy,
-    KnowledgeManifest, KnowledgeUnit, ManifestRef, Payment, PaymentMethod, Serving,
-    RateLimit, RateLimits, RateLimitHeaders, RateLimitTokens, RateLimitTokensTier, Relationship,
+    GrantCeiling, GrantCeilingSource, KnowledgeManifest, KnowledgeUnit, ManifestRef, Payment,
+    PaymentMethod, Serving, RateLimit, RateLimits, RateLimitHeaders, RateLimitTokens,
+    RateLimitTokensTier, Relationship, TaskType,
     Trust, TrustAudit, TrustAgentRequirements, TrustProvenance, Visibility,
 )
 
@@ -388,6 +389,46 @@ def _parse_external_relationship(data: dict) -> ExternalRelationship:
     )
 
 
+def _parse_task_type(data: dict) -> TaskType:
+    """§3.13 (RFC-0025, v0.27): a task-type declaration."""
+    return TaskType(
+        id=str(data.get("id") or ""),
+        intent=str(data["intent"]) if data.get("intent") is not None else None,
+        authority_level=str(data["authority_level"]) if data.get("authority_level") is not None else None,
+    )
+
+
+def _parse_agent(data: dict) -> Agent:
+    """§3.13 (RFC-0025, v0.27): an agent declaration (Capability Profile)."""
+    return Agent(
+        id=str(data.get("id") or ""),
+        name=str(data["name"]) if data.get("name") is not None else None,
+        authority_level=str(data["authority_level"]) if data.get("authority_level") is not None else None,
+    )
+
+
+def _parse_grant_ceiling_source(data: dict) -> GrantCeilingSource:
+    """§3.13 (RFC-0025, v0.27): one source in a grant_ceiling minimum computation."""
+    return GrantCeilingSource(
+        id=str(data.get("id") or ""),
+        authority_level=str(data["authority_level"]) if data.get("authority_level") is not None else None,
+        unit_ref=str(data["unit_ref"]) if data.get("unit_ref") is not None else None,
+        task_type_ref=str(data["task_type_ref"]) if data.get("task_type_ref") is not None else None,
+        agent_ref=str(data["agent_ref"]) if data.get("agent_ref") is not None else None,
+    )
+
+
+def _parse_grant_ceiling(data: Optional[dict]) -> Optional[GrantCeiling]:
+    """§3.13 (RFC-0025, v0.27): multi-source minimum ceiling computation."""
+    if not isinstance(data, dict):
+        return None
+    sources = data.get("sources") or []
+    return GrantCeiling(
+        sources=[_parse_grant_ceiling_source(s) for s in sources],
+        mandatory_sources=_string_list_or_none(data.get("mandatory_sources")),
+    )
+
+
 def parse_dict(data: dict) -> KnowledgeManifest:
     """Parse a knowledge manifest from a pre-loaded dict."""
     units = [
@@ -433,6 +474,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
             content_structure=_parse_content_structure(u.get("content_structure")),
             content_hash=_parse_content_hash(u.get("content_hash")),
             temporal=_parse_temporal(u.get("temporal")),
+            authority_level=str(u["authority_level"]) if u.get("authority_level") is not None else None,
         )
         for u in data.get("units", [])
     ]
@@ -474,4 +516,8 @@ def parse_dict(data: dict) -> KnowledgeManifest:
         discovery=_parse_discovery(data.get("discovery")),
         not_for=_as_string_list(data.get("not_for"), default=[]),
         temporal=_parse_temporal(data.get("temporal")),
+        authority_level_scale=_string_list_or_none(data.get("authority_level_scale")),
+        task_types=[_parse_task_type(tt) for tt in data.get("task_types", [])],
+        agents=[_parse_agent(a) for a in data.get("agents", [])],
+        grant_ceiling=_parse_grant_ceiling(data.get("grant_ceiling")),
     )
