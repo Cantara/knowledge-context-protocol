@@ -1,7 +1,9 @@
 # RFC-0026: Escalation and Grant Requests
 
-**Status:** Accepted (semantics) — promoted to SPEC.md v0.28. Wire format (manifest field vs.
-API/event shape) remains provisional pending Open Question 1.
+**Status:** Accepted (semantics + audit trail) — promoted to SPEC.md v0.28. The audit/record
+half of the manifest-vs-API question is resolved (a new §17 `grant_request_events` table); the
+active request/response coordination mechanism (new MCP tools) remains open, deferred to a
+future RFC — see "Resolution: manifest vs. API," below.
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-07-24
 **Related:** RFC-0002 (Auth and Delegation), RFC-0009 (Visibility and Authority Declarations),
@@ -273,20 +275,57 @@ until the second source is also raised. This is precisely the failure mode a sin
 
 ---
 
+## Resolution: manifest vs. API (formerly Open Question 1)
+
+`GrantRequest` is not a manifest field, and never should be — a signed, distributed, cached
+`knowledge.yaml` cannot be rewritten every time someone clicks approve without breaking the
+entire §16 trust model this protocol is built on. But "not a manifest field" splits into two
+genuinely different halves, one resolved here and one still open.
+
+**Resolved: the audit/record half fits §17 Observability (RFC-0017) directly, as a new table.**
+§17 already defines a local-first, append-only event system (`~/.kcp/usage.db`, WAL mode) with
+exactly the shape a `GrantRequest` audit trail needs — timestamped rows, a `correlation_id` for
+tracing, "MUST NOT transmit without explicit user consent" as the existing default. This RFC
+adds a fourth table, **`grant_request_events`**, one row per state transition (not one row per
+request — a request's full history is reconstructed by grouping rows on `id`):
+
+```
+grant_request_events(
+  id TEXT,                   -- the GrantRequest's own id (see the object shape above)
+  timestamp TEXT,             -- ISO 8601, when THIS transition happened
+  event_type TEXT,            -- created | granted | denied | expired
+  trigger TEXT,                -- requires_approval | insufficient_authority_level | confidence_below_threshold
+  task_type_ref TEXT,
+  agent_ref TEXT,
+  binding_source_refs TEXT,   -- JSON array, present for insufficient_authority_level
+  current_effective_level TEXT,
+  requested_level TEXT,
+  grantor_role TEXT,
+  resolved_by TEXT,           -- present on granted/denied rows only
+  correlation_id TEXT
+)
+```
+
+This is decisively settled — a mechanical, low-risk extension of an already-accepted pattern,
+not a new design.
+
+**Still open: active request/response coordination is genuinely new protocol surface.** An
+agent that raises a `GrantRequest` needs to know when it's resolved; a grantor needs to see
+pending requests and act. §17's tables are write-only telemetry — nothing in them has a mutable
+`pending → granted` state anything can wait on. Today's bridges only *serve* static manifest
+content over MCP; they have no "pause and wait for a human decision" primitive at all. This
+needs new MCP tools (something like `create_grant_request` / `list_pending_grant_requests` /
+`resolve_grant_request`) with their own open design questions this RFC does not resolve: who is
+authorized to call `resolve_grant_request` (auth binding, see Open Question 1 below), push vs.
+poll for the requesting agent, and multi-bridge consistency (a request created via one
+language's bridge must be visible to an agent talking to a different bridge). This is real
+enough design work to deserve its own RFC rather than being rushed as a footnote here.
+
+---
+
 ## Open Questions
 
-**1. Where does `grant_request` live — in the manifest, or as a separate runtime artifact?**
-
-Everything else in RFC-0025/RFC-0009 is manifest-declared, static configuration. A
-`GrantRequest` is inherently a runtime, per-instance artifact (it has a lifecycle, timestamps,
-a specific resolution). This RFC shows it in YAML for illustration, but it is likely wrong for
-`grant_request` objects to live inside `knowledge.yaml` itself, growing unboundedly with every
-request ever made. Should this RFC instead define an API/event shape (request created, request
-resolved) rather than a manifest field, with only the *reference* (`task_type_ref`,
-`binding_source_refs`) living in the manifest? Leaning yes; this draft did not fully resolve the
-manifest-vs-API boundary.
-
-**2. Does `resolved_by` need to be verifiably bound to `grantor.role`, or is recording it enough?**
+**1. Does `resolved_by` need to be verifiably bound to `grantor.role`, or is recording it enough?**
 
 The design requires recording `resolved_by` regardless of whether it matches the expected
 `grantor.role`, for audit honesty. It does not currently require *verifying* that whoever
@@ -295,7 +334,7 @@ the `approval_mechanism` (OAuth/UMA token claims, the same trust boundary RFC-00
 already draws for `agent_role`). Is that division of responsibility sufficient, or does this
 RFC need its own authorization check independent of the approval mechanism?
 
-**3. Should `confidence_below_threshold` support a threshold that varies by
+**2. Should `confidence_below_threshold` support a threshold that varies by
 `authority_level`, not just by task-type?**
 
 The current design ties `confidence_threshold` to a task-type only. A deployment might
@@ -303,7 +342,7 @@ reasonably want a stricter confidence bar at `suggest` than at `observe` for the
 task-type. Deferred as unnecessary complexity for v1; worth revisiting once real deployments
 report whether a single per-task-type threshold is too coarse.
 
-**4. Expiry semantics for `time_bound` grants that outlive the manifest version they were granted against**
+**3. Expiry semantics for `time_bound` grants that outlive the manifest version they were granted against**
 
 If a `time_bound` grant is still active when the manifest's `grant_ceiling` sources change
 (a new manifest version ships with a different `task-type-ceiling` value), does the grant
@@ -331,16 +370,18 @@ interaction and probably should before this leaves Draft.
 
 ## Conformance
 
-**These conformance levels are provisional**, pending resolution of Open Question 1 (whether
-`grant_request` is a manifest field, a separate API/event shape, or both). Two implementations
-that both claim Level 2/3 today could still diverge on where the object actually lives. This
-table should not be treated as final until Q1 resolves.
+The semantics and the §17 `grant_request_events` audit table below are normative. **The active
+request/response coordination mechanism (how a request is actually created and resolved, not
+just recorded) remains provisional** — deferred to a future RFC — so a conformance claim here
+covers "correctly computes triggers and records the audit trail," not "provides a working
+create/resolve API."
 
 | Feature | Level | Notes |
 |---------|-------|-------|
-| `grant_request` with `trigger: requires_approval` | Level 2 | Reuses existing RFC-0009/RFC-0002 mechanisms |
-| `grant_request` with `trigger: insufficient_authority_level` | Level 3 | Requires RFC-0025 `grant_ceiling` (Level 3) |
-| `grant_request` with `trigger: confidence_below_threshold` | Level 3 | Requires runtime (post-synthesis) evaluation, not just manifest parsing |
+| Trigger computation: `requires_approval` | Level 2 | Reuses existing RFC-0009/RFC-0002 mechanisms |
+| Trigger computation: `insufficient_authority_level` | Level 3 | Requires RFC-0025 `grant_ceiling` (Level 3) |
+| Trigger computation: `confidence_below_threshold` | Level 3 | Requires runtime (post-synthesis) evaluation, not just manifest parsing |
+| `grant_request_events` audit table (§17) | Level 3 | Normative — one row per state transition |
 | `grant_scope: single_use` | Level 2 | Default, simplest to reason about |
 | `grant_scope: time_bound` / `standing` | Level 3 | Requires expiry/revocation handling |
 
@@ -353,7 +394,8 @@ table should not be treated as final until Q1 resolves.
 
 | Addition | Pre-RFC-0026 behaviour | Risk |
 |----------|------------------------|------|
-| `grant_request` object, `task_types[].confidence_threshold` | Silently ignored per SPEC.md §2 | None |
+| `task_types[].confidence_threshold` (manifest field) | Silently ignored per SPEC.md §2 | None |
+| `grant_request_events` table (§17, new — additive to `~/.kcp/usage.db`) | Absent; observability consumers reading only the existing three tables are unaffected | None |
 | Manifests using only RFC-0002/0009/0025 | Fully valid, unaffected | None |
 
 This RFC adds no new required fields to any existing block and deprecates nothing.
@@ -362,6 +404,11 @@ This RFC adds no new required fields to any existing block and deprecates nothin
 
 ## Changelog
 
+- **v3 (2026-07-24):** Resolved the audit/record half of the manifest-vs-API question (former
+  Open Question 1): a new §17 `grant_request_events` table, mirroring the existing
+  `render_events`/`quarantine_events` pattern, one row per state transition. The active
+  request/response coordination half remains genuinely open — new MCP tools, deferred to a
+  future RFC rather than rushed here. Renumbered the remaining Open Questions (1-3) accordingly.
 - **v2 (2026-07-24):** Revised after adversarial review. Fixed a genuine correctness bug: the
   original `binding_source_ref` was singular, but RFC-0025's `grant_ceiling` allows multiple
   tied binding sources, and this RFC's own worked example demonstrated the singular field

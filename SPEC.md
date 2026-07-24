@@ -1489,12 +1489,22 @@ tie-break ordering, relationship to `delegation.human_in_the_loop`).
 
 ### 3.14 Escalation and Grant Requests (v0.28)
 
-Promoted from [RFC-0026](./RFC-0026-Escalation-and-Grant-Requests.md), with a narrower status
-than most promoted sections: **the object shape below is illustrative, not a fixed wire
-format.** Whether a `GrantRequest` is a manifest field, a separate runtime API/event shape, or
-both, is an open question RFC-0026 does not resolve. What *is* normative in this section is the
-semantics — the trigger vocabulary, the atomicity rule for tied binding sources, and the
-resolution rules — regardless of what concrete form an implementation gives the object.
+Promoted from [RFC-0026](./RFC-0026-Escalation-and-Grant-Requests.md). A `GrantRequest` is
+never a manifest field — a signed, distributed, cached `knowledge.yaml` cannot be rewritten
+every time someone clicks approve without breaking the §16 trust model. The object shape below
+is illustrative of the semantics, not a fixed wire format, but the underlying question splits
+into two halves with different maturity:
+
+- **Resolved: the audit/record half.** §17 Observability gains a fourth table,
+  `grant_request_events`, mirroring its existing `render_events`/`quarantine_events` pattern —
+  see §17. This is normative.
+- **Still open: active request/response coordination** (how an agent actually submits a
+  request and learns of its resolution, how a grantor sees and acts on pending ones). This
+  needs new MCP tool surface with its own auth/push-vs-poll/multi-bridge design questions,
+  deferred to a future RFC rather than resolved here.
+
+What *is* normative in this section, independent of that still-open half, is the semantics —
+the trigger vocabulary, the atomicity rule for tied binding sources, and the resolution rules.
 
 **The gap this closes:** §3.4 `delegation.human_in_the_loop`, §4.17 `authority` values of
 `requires_approval`, and §3.13 `grant_ceiling` all declare *that* a human must be involved, but
@@ -1554,7 +1564,7 @@ grant_request:
 - **`confidence_below_threshold` grants MUST be `single_use`** — a confidence observation is
   about one generated output, not a standing property of a task-type or agent.
 
-**Conformance (provisional — see RFC-0026 Open Question 1):**
+**Conformance:**
 
 | Feature | Level | Notes |
 |---------|-------|-------|
@@ -1563,10 +1573,12 @@ grant_request:
 | Escalation on `confidence_below_threshold` | Level 3 | Requires post-synthesis runtime evaluation |
 | Tied-source atomicity | Level 3 | Required whenever `grant_ceiling` can report ties |
 | Forced expiry on `standing` + `mandatory_sources` | Level 3 | Required interaction with §3.13 |
+| `grant_request_events` audit table (§17) | Level 3 | Normative — see §17 |
 
-This section will be revised once implementation experience resolves whether `grant_request`
-is a manifest field, an API/event shape, or both — see RFC-0026 for full design rationale and
-remaining open questions.
+The trigger vocabulary, tied-source atomicity, resolution rules, and the §17 audit table above
+are normative and conformance-testable now. The active request/response coordination mechanism
+(a working create/resolve API) is not — that half is deferred to a future RFC. See RFC-0026 for
+full design rationale and remaining open questions.
 
 ---
 
@@ -4172,7 +4184,7 @@ Promoted from [RFC-0017](./RFC-0017-Observability-Hooks.md). A local-first obser
 convention: bridges and renderers MAY record events to a well-known SQLite database at
 `~/.kcp/usage.db` (WAL mode required; writes MUST never block serving). `kcp stats` reads it.
 
-Three tables:
+Four tables:
 
 - **`usage_events`** — bridge query traffic and the runtime-depth procedural lifecycle. Columns:
   `timestamp`, `event_type` (`search` | `get_unit` | `inject` | `skill_selected` |
@@ -4187,6 +4199,16 @@ Three tables:
   `origin`, `tier`, `pinned`, `renderer_version`, `lint_rules`, and the four stats counters.
 - **`quarantine_events`** — one row per quarantined field, referencing `render_events(id)`:
   `field_path`, `reason`, `original_sha256`.
+- **`grant_request_events`** (v0.28, RFC-0026) — the audit trail for §3.14 escalation/grant
+  requests. One row per state transition, not one row per request — a request's full history is
+  reconstructed by grouping rows on `id`. Columns: `id` (the `GrantRequest`'s own id), `timestamp`,
+  `event_type` (`created` | `granted` | `denied` | `expired`), `trigger`
+  (`requires_approval` | `insufficient_authority_level` | `confidence_below_threshold`),
+  `task_type_ref`, `agent_ref`, `binding_source_refs` (JSON array, populated for
+  `insufficient_authority_level`), `current_effective_level`, `requested_level`, `grantor_role`,
+  `resolved_by` (populated on `granted`/`denied` rows only), `correlation_id`. Same local-only,
+  consent-gated transmission rule as `usage_events` — grant requests can contain sensitive
+  internal-escalation context.
 
 Wall-clock timestamps live here, not in rendered artifacts — observability wants time;
 render determinism (§16.1) forbids it. A repository whose quarantine count moves from 0 to 3
