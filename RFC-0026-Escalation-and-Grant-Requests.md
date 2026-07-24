@@ -1,6 +1,6 @@
 # RFC-0026: Escalation and Grant Requests
 
-**Status:** Draft
+**Status:** Draft (v2 — revised after adversarial review, see Changelog)
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-07-24
 **Related:** RFC-0002 (Auth and Delegation), RFC-0009 (Visibility and Authority Declarations),
@@ -99,7 +99,7 @@ grant_request:
   agent_ref: lara-compliance
 
   # populated for trigger: insufficient_authority_level
-  binding_source_ref: task-type-ceiling      # the grant_ceiling source (§3.13, RFC-0025) that capped the task
+  binding_source_refs: [task-type-ceiling]   # ALL grant_ceiling sources (§3.13, RFC-0025) tied for the binding minimum — a list even when only one ties
   current_effective_level: explain
   requested_level: suggest
 
@@ -124,9 +124,9 @@ grant_request:
 | `trigger` | REQUIRED | enum | One of the Trigger vocabulary values, below. |
 | `task_type_ref` | REQUIRED | string | The `task_types[].id` (RFC-0025 §3.13) this request concerns. |
 | `agent_ref` | OPTIONAL | string | The `agents[].id` (RFC-0025 §3.13) making the request, if applicable. |
-| `binding_source_ref` | REQUIRED for `insufficient_authority_level` | string | The `grant_ceiling.sources[].id` (§3.13) identified as the binding constraint in the original ceiling computation. |
+| `binding_source_refs` | REQUIRED for `insufficient_authority_level` | list of strings | **All** `grant_ceiling.sources[].id` (§3.13) tied for the binding minimum in the original ceiling computation — a list even when only one source ties. RFC-0025 itself requires reporting the full tied set (§3.13's "which source(s) produced the binding value"); a singular field here would silently break the moment a tie occurs (see Resolution semantics). |
 | `current_effective_level` | REQUIRED for `insufficient_authority_level` | string | The `authority_level` computed before this request. |
-| `requested_level` | REQUIRED for `insufficient_authority_level` | string | The `authority_level` the task needs. MUST exceed `current_effective_level` (a request that doesn't ask for more than the current ceiling is not an escalation). |
+| `requested_level` | REQUIRED for `insufficient_authority_level` | string | The `authority_level` the task needs. MUST exceed `current_effective_level`. A request where this does not hold MUST be rejected as a request-validation error before being surfaced to a grantor — it is not a judgment call for a human to make. |
 | `requested_action` | REQUIRED for `requires_approval` | string | The RFC-0009 §4.17 action (`modify`, `execute`, etc.) awaiting approval. |
 | `confidence_observed` | REQUIRED for `confidence_below_threshold` | float 0.0–1.0 | The agent-reported confidence that triggered escalation. |
 | `confidence_threshold_ref` | REQUIRED for `confidence_below_threshold` | string | Reference to the `task_types[].confidence_threshold` (below) that was breached. |
@@ -171,21 +171,40 @@ responsibility, the same division of labor RFC-0009 draws between declaring `exe
 and an alignment-dependent model actually respecting it (see RFC-0009 Appendix D). This field
 only defines the threshold and the resulting obligation to escalate.
 
+**Honest admission — self-reported confidence is gameable, and unlike `authority: denied` it
+fails silently.** RFC-0009 Appendix D is explicit that authority declarations are policy, not
+enforcement, and documents specific models that failed to respect them under adversarial
+testing. `confidence_threshold` has the identical enforcement gap, but a worse failure mode: an
+agent (or a compromised or simply poorly-calibrated runtime) that always reports high
+confidence never triggers escalation, and — unlike a denied `execute` action, which at least
+fails *loudly* under `agent-drift`-style probing (RFC-0009 Appendix D) — there is no manifest
+signal that this is happening. A confidence value that is always 0.95 looks identical, from
+the manifest's perspective, to an agent that is genuinely always confident. Deployments relying
+on this trigger SHOULD independently audit the distribution of reported confidence values
+against outcomes (does a "high confidence" output actually turn out right as often as claimed)
+rather than trusting the number in isolation — this is a runtime operational practice, not
+something this RFC can enforce structurally.
+
 ### Resolution semantics — how a grant feeds back into `grant_ceiling`
 
 This is the part that must be precise, or the whole discipline RFC-0025 built collapses the
 first time someone clicks "approve":
 
 - A **granted** `insufficient_authority_level` request raises *only* the specific
-  `grant_ceiling.sources[]` entry named in `binding_source_ref`, to (at most)
+  `grant_ceiling.sources[]` entries named in `binding_source_refs`, to (at most)
   `requested_level`, for the declared `grant_scope`. It does not touch, override, or bypass any
   other source.
+- **Tied binding sources MUST be raised together, atomically, as a single grant decision.**
+  If RFC-0025's ceiling computation reported more than one source tied for the minimum, all of
+  them appear in `binding_source_refs`, and a `granted` status raises all of them in the same
+  resolution. Raising only a subset of a tied set MUST NOT change the effective level — the
+  untouched tied source(s) still hold the minimum down, so a partial grant is a no-op by
+  construction. There is no such thing as "granting half a tie."
 - The effective `authority_level` MUST be **recomputed as the minimum across all sources**,
-  with the named source's value now raised. If a *different* source is now the binding
-  constraint (because it was already lower than the original binding source, or became lower
-  independently), the task remains capped by that other source, and a fresh `GrantRequest`
-  against *that* source is required — an escalation grant is never a blanket override of the
-  whole ceiling.
+  with the named source(s) now raised. If a *different* source (or a new tied set) is now the
+  binding constraint, the task remains capped there, and a fresh `GrantRequest` naming that new
+  set is required — an escalation grant is never a blanket override of the whole ceiling, and
+  granting one tie does not pre-authorize whatever ties next.
 - A **granted** `requires_approval` request permits exactly the one `requested_action` on the
   one unit/task combination the request named, per `grant_scope`. It does not grant other
   RFC-0009 actions, and does not touch `grant_ceiling` at all — the two mechanisms compose the
@@ -198,10 +217,15 @@ first time someone clicks "approve":
 - A **denied** or **expired** request leaves the effective level, action permission, or output
   suppression exactly as it was before the request — denial is not itself a demotion, it is a
   refusal to raise.
-- `grant_scope: standing` grants SHOULD be paired with a periodic-review obligation
-  (implementation-defined; this RFC does not mandate a specific review cadence) — a standing
-  grant that is never revisited reintroduces the exact silent-ceiling-erosion risk RFC-0025's
-  `mandatory_sources` was designed to prevent.
+- **`grant_scope: standing` against a `mandatory_sources`-protected source (RFC-0025 §3.13)
+  MUST carry an `expires_at` regardless of `grant_scope`.** `mandatory_sources` exists
+  specifically to stop a policy ceiling from being silently weakened; an indefinite `standing`
+  grant against exactly such a source is that same silent weakening, one layer up, achieved
+  through a single unreviewed approval instead of a missing manifest entry. A "SHOULD
+  periodically review" obligation is not sufficient protection for a MUST-level mechanism —
+  this RFC therefore requires a forced expiry (and re-approval to renew) specifically for
+  grants touching a `mandatory_sources` entry. `standing` grants against non-mandatory sources
+  are unaffected by this rule.
 
 ---
 
@@ -217,7 +241,7 @@ grant_request:
   trigger: insufficient_authority_level
   task_type_ref: change-formal-status
   agent_ref: lara-compliance
-  binding_source_ref: task-type-ceiling
+  binding_source_refs: [task-type-ceiling]   # sole binding source at request time — no tie yet
   current_effective_level: explain
   requested_level: suggest
   grantor:
@@ -235,10 +259,16 @@ grant_request:
 only. Recomputing the minimum across RFC-0025's six sources (`org-risk-policy: prepare`,
 `org-data-policy: suggest`, `regulatory-constraint: suggest`, `task-type-ceiling: suggest` [was
 `explain`, now raised], `agent-capability-ceiling: prepare`, `customer-setting: prepare`) — new
-effective level: `suggest`, now bound jointly by `org-data-policy` and `regulatory-constraint`
-(both at `suggest`, the new minimum). If the agent's task later needed `prepare`, a fresh
-`GrantRequest` naming one of *those* two sources as `binding_source_ref` would be required —
-this grant does not reach that far.
+effective level: `suggest`, now bound **jointly** by `org-data-policy` and
+`regulatory-constraint` (both at `suggest`, tied for the new minimum).
+
+If the agent's task later needed `prepare`, the *new* `GrantRequest` must name **both** tied
+sources: `binding_source_refs: [org-data-policy, regulatory-constraint]`. Per the atomicity
+rule above, a grant that raised only `org-data-policy` (say, because only that grantor was
+reachable) would leave the effective level at `suggest` — still capped by
+`regulatory-constraint` — and MUST NOT be reported as a successful escalation to `prepare`
+until the second source is also raised. This is precisely the failure mode a singular
+`binding_source_ref` field would have hidden.
 
 ---
 
@@ -252,7 +282,7 @@ a specific resolution). This RFC shows it in YAML for illustration, but it is li
 `grant_request` objects to live inside `knowledge.yaml` itself, growing unboundedly with every
 request ever made. Should this RFC instead define an API/event shape (request created, request
 resolved) rather than a manifest field, with only the *reference* (`task_type_ref`,
-`binding_source_ref`) living in the manifest? Leaning yes; this draft did not fully resolve the
+`binding_source_refs`) living in the manifest? Leaning yes; this draft did not fully resolve the
 manifest-vs-API boundary.
 
 **2. Does `resolved_by` need to be verifiably bound to `grantor.role`, or is recording it enough?**
@@ -292,13 +322,18 @@ interaction and probably should before this leaves Draft.
   through a `GrantRequest` with `trigger: requires_approval`. This RFC does not change RFC-0009's
   capping semantics.
 - **RFC-0025 (Authority Level and Multi-Source Grant Ceiling):** answers RFC-0025's own Open
-  Question 6. `binding_source_ref` and the recomputation rule depend directly on RFC-0025's
+  Question 6. `binding_source_refs` and the recomputation rule depend directly on RFC-0025's
   named-binding-source requirement (§3.13) — a `GrantRequest` cannot state what it is raising
   without RFC-0025 having named what was binding in the first place.
 
 ---
 
 ## Conformance
+
+**These conformance levels are provisional**, pending resolution of Open Question 1 (whether
+`grant_request` is a manifest field, a separate API/event shape, or both). Two implementations
+that both claim Level 2/3 today could still diverge on where the object actually lives. This
+table should not be treated as final until Q1 resolves.
 
 | Feature | Level | Notes |
 |---------|-------|-------|
@@ -321,6 +356,25 @@ interaction and probably should before this leaves Draft.
 | Manifests using only RFC-0002/0009/0025 | Fully valid, unaffected | None |
 
 This RFC adds no new required fields to any existing block and deprecates nothing.
+
+---
+
+## Changelog
+
+- **v2 (2026-07-24):** Revised after adversarial review. Fixed a genuine correctness bug: the
+  original `binding_source_ref` was singular, but RFC-0025's `grant_ceiling` allows multiple
+  tied binding sources, and this RFC's own worked example demonstrated the singular field
+  silently breaking (raising one of two tied sources does not change the effective level).
+  Changed to `binding_source_refs` (a list) with an explicit atomicity rule — tied sources must
+  be raised together, never partially. Added an explicit rejection consequence for
+  `requested_level` failing to exceed `current_effective_level` (previously an unenforced MUST).
+  Added an honest admission, mirroring RFC-0009 Appendix D, that self-reported confidence is
+  gameable and fails silently (no manifest-visible signal), with an operational
+  recommendation to audit confidence-vs-outcome. Tightened `standing` grants against
+  `mandatory_sources`-protected sources to require a forced expiry, closing a gap where a
+  single unreviewed approval could permanently defeat RFC-0025's silent-erosion protection.
+  Flagged the Conformance table as provisional pending Open Question 1.
+- **v1 (2026-07-24):** Initial draft.
 
 ---
 
