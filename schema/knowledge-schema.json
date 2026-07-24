@@ -9,8 +9,8 @@
   "properties": {
     "kcp_version": {
       "type": "string",
-      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.26\". Prior drafts \"0.1\" through \"0.14\", \"0.16\" through \"0.25\" are also accepted for backward compatibility (\"0.15\" was never a spec version).",
-      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26"]
+      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.28\". Prior drafts \"0.1\" through \"0.14\", \"0.16\" through \"0.27\" are also accepted for backward compatibility (\"0.15\" was never a spec version).",
+      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26", "0.27", "0.28"]
     },
     "project": {
       "type": "string",
@@ -72,6 +72,22 @@
     "payment": { "$ref": "#/definitions/payment_object" },
     "rate_limits": { "$ref": "#/definitions/rate_limits_object" },
     "serving": { "$ref": "#/definitions/serving_object" },
+    "authority_level_scale": {
+      "type": "array",
+      "description": "Fixed, total-ordered ordinal authority scale (v0.27). Recommended: [observe, explain, suggest, prepare, commit]. Not per-manifest extensible — grant_ceiling's minimum computation requires a shared total order across sources. See SPEC.md §3.13.",
+      "items": { "type": "string" }
+    },
+    "task_types": {
+      "type": "array",
+      "description": "Task-type declarations, each an id-keyed authority_level ceiling (v0.27). See SPEC.md §3.13.",
+      "items": { "$ref": "#/definitions/task_type" }
+    },
+    "agents": {
+      "type": "array",
+      "description": "Agent declarations (Capability Profiles), each an id-keyed authority_level ceiling (v0.27). See SPEC.md §3.13.",
+      "items": { "$ref": "#/definitions/agent" }
+    },
+    "grant_ceiling": { "$ref": "#/definitions/grant_ceiling_object" },
     "units": {
       "type": "array",
       "description": "Ordered list of knowledge unit declarations. REQUIRED. Must contain at least one unit.",
@@ -348,7 +364,11 @@
           "description": "If true, the not_for declarations are normative exclusions rather than advisory hints. Default: false. Only meaningful alongside not_for. See RFC-0015 (v0.17).",
           "default": false
         },
-        "content_structure": { "$ref": "#/definitions/content_structure_object" }
+        "content_structure": { "$ref": "#/definitions/content_structure_object" },
+        "authority_level": {
+          "type": "string",
+          "description": "Ceiling on the manifest's root authority_level_scale (v0.27). Consumable as a grant_ceiling source via unit_ref. See SPEC.md §4.23/§3.13."
+        }
       }
     },
     "content_structure_object": {
@@ -842,6 +862,95 @@
           "type": "array",
           "description": "HTTPS URLs of MCP endpoints authorized to represent this manifest to agents.",
           "items": { "type": "string", "pattern": "^https://" }
+        }
+      }
+    },
+    "task_type": {
+      "type": "object",
+      "description": "A task-type declaration with its own authority_level ceiling (v0.27). See SPEC.md §3.13.",
+      "required": ["id"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable identifier, unique within the manifest.",
+          "minLength": 1
+        },
+        "intent": {
+          "type": "string",
+          "description": "One-sentence description of the task-type, in the style of unit intent."
+        },
+        "authority_level": {
+          "type": "string",
+          "description": "This task-type's own declared ceiling, from the root authority_level_scale."
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "description": "An agent declaration (Capability Profile) with its own authority_level ceiling (v0.27). See SPEC.md §3.13.",
+      "required": ["id"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable identifier, unique within the manifest.",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name."
+        },
+        "authority_level": {
+          "type": "string",
+          "description": "This agent's own capability ceiling, across all tasks it is assigned, from the root authority_level_scale."
+        }
+      }
+    },
+    "grant_ceiling_source": {
+      "type": "object",
+      "description": "One ceiling source in a grant_ceiling minimum computation. Exactly one of authority_level, unit_ref, task_type_ref, agent_ref MUST be present. See SPEC.md §3.13.",
+      "required": ["id"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable identifier for this source, used in the effective-level trace and in mandatory_sources.",
+          "minLength": 1
+        },
+        "authority_level": {
+          "type": "string",
+          "description": "Inline ceiling value from authority_level_scale. Mutually exclusive with the *_ref fields."
+        },
+        "unit_ref": {
+          "type": "string",
+          "description": "Resolve ceiling from a referenced unit's own authority_level."
+        },
+        "task_type_ref": {
+          "type": "string",
+          "description": "Resolve ceiling from a referenced task_types[].id's own authority_level."
+        },
+        "agent_ref": {
+          "type": "string",
+          "description": "Resolve ceiling from a referenced agents[].id's own declared capability ceiling."
+        }
+      }
+    },
+    "grant_ceiling_object": {
+      "type": "object",
+      "description": "Multi-source minimum ceiling computation: the effective authority_level is the minimum across all resolved sources, with the binding source(s) named for the audit trail (v0.27). See SPEC.md §3.13.",
+      "required": ["sources"],
+      "additionalProperties": true,
+      "properties": {
+        "sources": {
+          "type": "array",
+          "description": "Ceiling sources. Every id declared in mandatory_sources MUST appear here.",
+          "items": { "$ref": "#/definitions/grant_ceiling_source" }
+        },
+        "mandatory_sources": {
+          "type": "array",
+          "description": "Source ids that MUST appear in every grant_ceiling in this manifest. A grant_ceiling missing one is a manifest error — this prevents a leaf from silently dropping an org policy ceiling.",
+          "items": { "type": "string" }
         }
       }
     },

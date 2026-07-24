@@ -3198,12 +3198,13 @@ A JSON Schema (draft-07) for `knowledge.yaml` is available at
 [`schema/knowledge-schema.json`](./schema/knowledge-schema.json). It covers all fields defined in
 this specification: root fields (`kcp_version`, `project`, `version`, `updated`, `language`,
 `license`, `indexing`, `hints`, `trust`, `auth`, `delegation`, `compliance`, `payment`,
-`rate_limits`, `manifests`, `external_relationships`), unit fields (`id`, `path`, `kind`,
+`rate_limits`, `manifests`, `external_relationships`, `authority_level_scale`, `task_types`,
+`agents`, `grant_ceiling` [v0.27]), unit fields (`id`, `path`, `kind`,
 `intent`, `format`, `content_type`, `language`, `scope`, `audience`, `license`, `validated`,
 `update_frequency`, `indexing`, `depends_on`, `supersedes`, `triggers`, `hints`, `access`,
 `auth_scope`, `sensitivity`, `deprecated`, `delegation`, `compliance`, `payment`, `rate_limits`,
-`content_structure`, `not_for`, `not_for_strict`, `external_depends_on`), and relationship
-fields (`from`, `to`, `type`).
+`content_structure`, `not_for`, `not_for_strict`, `external_depends_on`, `authority_level` [v0.27]),
+and relationship fields (`from`, `to`, `type`).
 
 The schema enforces required fields, value constraints (e.g. `id` pattern, `kind` enum,
 `format` enum, trigger `maxLength` and `maxItems`), and structural rules. It can be used with
