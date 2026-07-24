@@ -112,6 +112,7 @@ export interface KnowledgeUnit {
   content_structure?: ContentStructure;  // RFC-0016 (v0.17)
   content_hash?: ContentHash;  // RFC-0019 (draft)
   temporal?: Temporal;          // RFC-0010 / §4.22 (v0.19)
+  authority_level?: string;    // RFC-0025 / §4.23 (v0.27) — ceiling on the root authority_level_scale
 }
 
 /** Purchases a `kind: skill` procedure may make. See SPEC.md §4.3a (v0.26). */
@@ -337,12 +338,50 @@ export interface KnowledgeManifest {
   discovery?: Discovery;
   not_for?: string[];      // RFC-0015 (v0.17) — manifest-level negative-space declarations
   temporal?: Temporal;     // RFC-0010 / §4.22 (v0.19) — manifest-level defaults
+  authority_level_scale?: string[];  // RFC-0025 / §3.13 (v0.27) — fixed ordinal scale, e.g. [observe, explain, suggest, prepare, commit]
+  task_types: TaskType[];  // RFC-0025 / §3.13 (v0.27) — defaults to []
+  agents: Agent[];         // RFC-0025 / §3.13 (v0.27) — defaults to []
+  grant_ceiling?: GrantCeiling;  // RFC-0025 / §3.13 (v0.27)
 }
 
 /** Signed declaration of authoritative serving endpoints. See SPEC.md §3.12 (v0.26). */
 export interface Serving {
   manifest?: string[];     // HTTPS URLs authoritatively serving this manifest
   mcp?: string[];          // HTTPS URLs of authorized MCP endpoints
+}
+
+/** A task-type declaration. See SPEC.md §3.13 (RFC-0025, v0.27). */
+export interface TaskType {
+  id: string;
+  intent?: string;
+  authority_level?: string;   // this task-type's own declared ceiling
+}
+
+/** An agent declaration (Capability Profile). See SPEC.md §3.13 (RFC-0025, v0.27). */
+export interface Agent {
+  id: string;
+  name?: string;
+  authority_level?: string;   // this agent's own capability ceiling, across all tasks
+}
+
+/**
+ * One ceiling source in a `grant_ceiling` computation. Exactly one of `authority_level`,
+ * `unit_ref`, `task_type_ref`, `agent_ref` SHOULD be present — the resolved value is either
+ * the inline `authority_level` or looked up from the referenced entity's own declared ceiling.
+ * See SPEC.md §3.13 (RFC-0025, v0.27).
+ */
+export interface GrantCeilingSource {
+  id: string;
+  authority_level?: string;
+  unit_ref?: string;
+  task_type_ref?: string;
+  agent_ref?: string;
+}
+
+/** Multi-source minimum ceiling computation. See SPEC.md §3.13 (RFC-0025, v0.27). */
+export interface GrantCeiling {
+  sources: GrantCeilingSource[];   // defaults to []
+  mandatory_sources?: string[];    // source ids that MUST appear in every grant_ceiling in this manifest
 }
 
 export interface ValidationResult {

@@ -762,7 +762,202 @@ export function validate(
     }
   }
 
+  // §3.13 (RFC-0025, v0.27): authority_level_scale, task_types[], agents[], grant_ceiling.
+  const knownAuthorityLevels = new Set(manifest.authority_level_scale ?? []);
+
+  const checkAuthorityLevel = (ctx: string, level: string | undefined) => {
+    if (level !== undefined && knownAuthorityLevels.size > 0 && !knownAuthorityLevels.has(level)) {
+      warnings.push(`${ctx}: 'authority_level' value '${level}' is not in the declared 'authority_level_scale'`);
+    }
+  };
+
+  const taskTypeIds = new Set<string>();
+  for (const tt of manifest.task_types) {
+    if (!tt.id) {
+      errors.push("A task_types[] entry is missing required field 'id'");
+    } else if (taskTypeIds.has(tt.id)) {
+      errors.push(`Duplicate task_types[].id: '${tt.id}'`);
+    } else {
+      taskTypeIds.add(tt.id);
+    }
+    checkAuthorityLevel(`task_types['${tt.id}']`, tt.authority_level);
+    if (
+      manifest.authority_level_scale &&
+      tt.authority_level === undefined &&
+      !manifest.grant_ceiling
+    ) {
+      warnings.push(
+        `task_types['${tt.id}']: authority_ceiling_undeclared — 'authority_level_scale' is declared at manifest root but this task-type declares neither 'authority_level' nor a 'grant_ceiling'`
+      );
+    }
+  }
+
+  const agentIds = new Set<string>();
+  for (const agent of manifest.agents) {
+    if (!agent.id) {
+      errors.push("An agents[] entry is missing required field 'id'");
+    } else if (agentIds.has(agent.id)) {
+      errors.push(`Duplicate agents[].id: '${agent.id}'`);
+    } else {
+      agentIds.add(agent.id);
+    }
+    checkAuthorityLevel(`agents['${agent.id}']`, agent.authority_level);
+  }
+
+  for (const unit of manifest.units) {
+    checkAuthorityLevel(`Unit '${unit.id}'`, unit.authority_level);
+  }
+
+  if (manifest.grant_ceiling) {
+    const gc = manifest.grant_ceiling;
+    const sourceIds = new Set<string>();
+    // Visited-set across the reference chain — mirrors supersededCycleIds' discipline
+    // (§4.22, §3.11). In the current schema, unit_ref/task_type_ref/agent_ref resolve to a
+    // scalar authority_level with no further chaining, so a cycle cannot yet occur — this
+    // guard exists to fail closed if a future extension adds nested grant_ceiling references.
+    const visiting = new Set<string>();
+
+    for (const src of gc.sources) {
+      const sp = `grant_ceiling.sources`;
+      if (!src.id) {
+        errors.push(`${sp}: an entry is missing required field 'id'`);
+      } else if (sourceIds.has(src.id)) {
+        errors.push(`${sp}: duplicate source id '${src.id}'`);
+      } else {
+        sourceIds.add(src.id);
+      }
+
+      const refFields = [src.unit_ref, src.task_type_ref, src.agent_ref].filter(
+        (v) => v !== undefined
+      );
+      if (src.authority_level !== undefined && refFields.length > 0) {
+        errors.push(
+          `${sp}['${src.id}']: 'authority_level' is mutually exclusive with unit_ref/task_type_ref/agent_ref`
+        );
+      }
+      if (src.authority_level === undefined && refFields.length === 0) {
+        errors.push(
+          `${sp}['${src.id}']: must declare exactly one of authority_level, unit_ref, task_type_ref, agent_ref`
+        );
+      }
+      checkAuthorityLevel(`${sp}['${src.id}']`, src.authority_level);
+
+      if (src.unit_ref !== undefined) {
+        if (visiting.has(`unit:${src.unit_ref}`)) {
+          errors.push(`${sp}['${src.id}']: grant_ceiling reference cycle detected at unit '${src.unit_ref}'`);
+        } else if (!unitIds.has(src.unit_ref)) {
+          errors.push(`${sp}['${src.id}']: 'unit_ref' references unknown unit '${src.unit_ref}'`);
+        }
+      }
+      if (src.task_type_ref !== undefined) {
+        if (visiting.has(`task_type:${src.task_type_ref}`)) {
+          errors.push(`${sp}['${src.id}']: grant_ceiling reference cycle detected at task_type '${src.task_type_ref}'`);
+        } else if (!taskTypeIds.has(src.task_type_ref)) {
+          errors.push(`${sp}['${src.id}']: 'task_type_ref' references unknown task_types[].id '${src.task_type_ref}'`);
+        }
+      }
+      if (src.agent_ref !== undefined) {
+        if (visiting.has(`agent:${src.agent_ref}`)) {
+          errors.push(`${sp}['${src.id}']: grant_ceiling reference cycle detected at agent '${src.agent_ref}'`);
+        } else if (!agentIds.has(src.agent_ref)) {
+          errors.push(`${sp}['${src.id}']: 'agent_ref' references unknown agents[].id '${src.agent_ref}'`);
+        }
+      }
+    }
+
+    if (gc.mandatory_sources) {
+      for (const mandatoryId of gc.mandatory_sources) {
+        if (!sourceIds.has(mandatoryId)) {
+          errors.push(
+            `grant_ceiling.sources: missing mandatory source '${mandatoryId}' declared in grant_ceiling.mandatory_sources`
+          );
+        }
+      }
+    }
+  }
+
   return { errors, warnings, isValid: errors.length === 0 };
+}
+
+/**
+ * Resolve one grant_ceiling source to an authority_level, given the manifest to look up
+ * unit_ref/task_type_ref/agent_ref against. Returns undefined if the source is a reference to
+ * an entity with no declared authority_level (non-binding — absence is not a grant, §3.13).
+ */
+function resolveSourceLevel(
+  manifest: KnowledgeManifest,
+  source: import("./model.js").GrantCeilingSource
+): string | undefined {
+  if (source.authority_level !== undefined) return source.authority_level;
+  if (source.unit_ref !== undefined) {
+    return manifest.units.find((u) => u.id === source.unit_ref)?.authority_level;
+  }
+  if (source.task_type_ref !== undefined) {
+    return manifest.task_types.find((t) => t.id === source.task_type_ref)?.authority_level;
+  }
+  if (source.agent_ref !== undefined) {
+    return manifest.agents.find((a) => a.id === source.agent_ref)?.authority_level;
+  }
+  return undefined;
+}
+
+/**
+ * Compute the effective authority_level for a manifest's grant_ceiling — the minimum across
+ * all resolved sources, with the source(s) that produced it named for the audit trail (§3.13,
+ * RFC-0025). Ordering of `authority_level_scale` defines the total order used for the minimum;
+ * a source that resolves outside the declared scale is ignored (non-binding), matching the
+ * "absence of a declared ceiling is not itself a grant" rule.
+ */
+export function computeGrantCeiling(
+  manifest: KnowledgeManifest
+): { effectiveLevel: string | undefined; bindingSourceIds: string[] } {
+  const scale = manifest.authority_level_scale ?? [];
+  const rank = new Map(scale.map((level, i) => [level, i]));
+  const gc = manifest.grant_ceiling;
+  if (!gc) return { effectiveLevel: undefined, bindingSourceIds: [] };
+
+  let minRank = Infinity;
+  const resolved: { id: string; rank: number }[] = [];
+  for (const src of gc.sources) {
+    const level = resolveSourceLevel(manifest, src);
+    if (level === undefined || !rank.has(level)) continue; // non-binding
+    const r = rank.get(level)!;
+    resolved.push({ id: src.id, rank: r });
+    if (r < minRank) minRank = r;
+  }
+  if (minRank === Infinity) return { effectiveLevel: undefined, bindingSourceIds: [] };
+
+  return {
+    effectiveLevel: scale[minRank],
+    bindingSourceIds: resolved.filter((r) => r.rank === minRank).map((r) => r.id),
+  };
+}
+
+/**
+ * Normative §3.13/§4.17 capping table: caps an `authority` action permission by an effective
+ * `authority_level`. Returns the stricter of the unit's own declared value and the table's cap
+ * (using the denied < requires_approval < initiative order), never widening it.
+ */
+const AUTHORITY_LEVEL_CAPS: Record<string, Record<string, string>> = {
+  observe: { read: "initiative", summarize: "requires_approval", modify: "denied", share_externally: "denied", execute: "denied" },
+  explain: { read: "initiative", summarize: "initiative", modify: "denied", share_externally: "denied", execute: "denied" },
+  suggest: { read: "initiative", summarize: "initiative", modify: "requires_approval", share_externally: "denied", execute: "denied" },
+  prepare: { read: "initiative", summarize: "initiative", modify: "requires_approval", share_externally: "requires_approval", execute: "requires_approval" },
+  commit: { read: "initiative", summarize: "initiative", modify: "initiative", share_externally: "initiative", execute: "initiative" },
+};
+const PERMISSION_RANK: Record<string, number> = { denied: 0, requires_approval: 1, initiative: 2 };
+
+export function applyAuthorityCap(
+  declaredValue: string | undefined,
+  action: string,
+  effectiveLevel: string | undefined
+): string | undefined {
+  if (effectiveLevel === undefined || !(effectiveLevel in AUTHORITY_LEVEL_CAPS)) return declaredValue;
+  const cap = AUTHORITY_LEVEL_CAPS[effectiveLevel][action];
+  if (cap === undefined || declaredValue === undefined) return declaredValue;
+  const capRank = PERMISSION_RANK[cap] ?? 2;
+  const declaredRank = PERMISSION_RANK[declaredValue] ?? 2;
+  return declaredRank <= capRank ? declaredValue : cap;
 }
 
 // Payment + rate_limits advisory validation (§4.14/§4.15, RFC-0005, v0.25).

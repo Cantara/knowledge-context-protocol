@@ -38,6 +38,10 @@ import type {
   VisibilityCondition,
   LicenseValue,
   IndexingValue,
+  TaskType,
+  Agent,
+  GrantCeiling,
+  GrantCeilingSource,
 } from "./model.js";
 
 // --- Path safety (SPEC §12) ---
@@ -158,6 +162,8 @@ function parseUnit(raw: RawMap): KnowledgeUnit {
     content_structure: parseContentStructure(raw["content_structure"]),
     content_hash: parseContentHash(raw["content_hash"]),
     temporal: parseTemporal(raw["temporal"]),
+    authority_level:
+      raw["authority_level"] !== undefined ? String(raw["authority_level"]) : undefined,
   };
 }
 
@@ -391,6 +397,50 @@ function parseServing(raw: unknown): Serving | undefined {
   };
 }
 
+/** §3.13 (RFC-0025, v0.27): a task-type declaration. */
+function parseTaskType(raw: RawMap): TaskType {
+  return {
+    id: String(raw["id"] ?? ""),
+    intent: raw["intent"] !== undefined ? String(raw["intent"]) : undefined,
+    authority_level:
+      raw["authority_level"] !== undefined ? String(raw["authority_level"]) : undefined,
+  };
+}
+
+/** §3.13 (RFC-0025, v0.27): an agent declaration (Capability Profile). */
+function parseAgent(raw: RawMap): Agent {
+  return {
+    id: String(raw["id"] ?? ""),
+    name: raw["name"] !== undefined ? String(raw["name"]) : undefined,
+    authority_level:
+      raw["authority_level"] !== undefined ? String(raw["authority_level"]) : undefined,
+  };
+}
+
+/** §3.13 (RFC-0025, v0.27): one source in a grant_ceiling minimum computation. */
+function parseGrantCeilingSource(raw: RawMap): GrantCeilingSource {
+  return {
+    id: String(raw["id"] ?? ""),
+    authority_level:
+      raw["authority_level"] !== undefined ? String(raw["authority_level"]) : undefined,
+    unit_ref: raw["unit_ref"] !== undefined ? String(raw["unit_ref"]) : undefined,
+    task_type_ref:
+      raw["task_type_ref"] !== undefined ? String(raw["task_type_ref"]) : undefined,
+    agent_ref: raw["agent_ref"] !== undefined ? String(raw["agent_ref"]) : undefined,
+  };
+}
+
+/** §3.13 (RFC-0025, v0.27): multi-source minimum ceiling computation. */
+function parseGrantCeiling(raw: unknown): GrantCeiling | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const d = raw as RawMap;
+  const rawSources = (d["sources"] as RawMap[]) ?? [];
+  return {
+    sources: rawSources.map(parseGrantCeilingSource),
+    mandatory_sources: stringListOrUndefined(d["mandatory_sources"]),
+  };
+}
+
 /** §4.3a (v0.26): the tools/paths/capabilities/spend a `kind: skill` procedure may touch. */
 function parseActionScope(raw: unknown): ActionScope | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
@@ -584,6 +634,8 @@ export function parseDict(data: RawMap): KnowledgeManifest {
   const rawRels = (data["relationships"] as RawMap[]) ?? [];
   const rawManifests = (data["manifests"] as RawMap[]) ?? [];
   const rawExtRels = (data["external_relationships"] as RawMap[]) ?? [];
+  const rawTaskTypes = (data["task_types"] as RawMap[]) ?? [];
+  const rawAgents = (data["agents"] as RawMap[]) ?? [];
 
   return {
     project: String(data["project"] ?? ""),
@@ -618,6 +670,10 @@ export function parseDict(data: RawMap): KnowledgeManifest {
     discovery: parseDiscovery(data["discovery"]),
     not_for: data["not_for"] !== undefined ? asStringArray(data["not_for"]) : undefined,
     temporal: parseTemporal(data["temporal"]),
+    authority_level_scale: stringListOrUndefined(data["authority_level_scale"]),
+    task_types: rawTaskTypes.map(parseTaskType),
+    agents: rawAgents.map(parseAgent),
+    grant_ceiling: parseGrantCeiling(data["grant_ceiling"]),
   };
 }
 
