@@ -1,0 +1,8 @@
+{
+  "valid": false,
+  "errors": [
+    "grant_ceiling.sources: missing mandatory source 'org-data-policy' declared in grant_ceiling.mandatory_sources"
+  ],
+  "unit_count": 1,
+  "relationship_count": 0
+}

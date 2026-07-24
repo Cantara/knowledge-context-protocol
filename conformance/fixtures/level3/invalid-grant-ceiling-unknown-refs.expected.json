@@ -1,0 +1,10 @@
+{
+  "valid": false,
+  "errors": [
+    "grant_ceiling.sources['bad-unit-ref']: 'unit_ref' references unknown unit 'nonexistent-unit'",
+    "grant_ceiling.sources['bad-task-type-ref']: 'task_type_ref' references unknown task_types[].id 'nonexistent-task-type'",
+    "grant_ceiling.sources['bad-agent-ref']: 'agent_ref' references unknown agents[].id 'nonexistent-agent'"
+  ],
+  "unit_count": 1,
+  "relationship_count": 0
+}

@@ -1,0 +1,40 @@
+# Level 3 — grant_ceiling with cross-entity refs (unit_ref/task_type_ref/agent_ref) and
+# mandatory_sources enforcement (§3.13, RFC-0025, v0.27).
+kcp_version: "0.27"
+project: test-grant-ceiling-refs
+version: "1.0.0"
+
+authority_level_scale: [observe, explain, suggest, prepare, commit]
+
+task_types:
+  - id: change-formal-status
+    intent: "Change the formal status of a customer's compliance record"
+    authority_level: explain
+
+agents:
+  - id: lara-compliance
+    authority_level: prepare
+
+units:
+  - id: gdpr-art-30-processing-log
+    path: compliance/gdpr-art30.md
+    intent: "What personal data processing activities are recorded for GDPR Article 30?"
+    scope: project
+    audience: [agent]
+    authority_level: suggest
+
+grant_ceiling:
+  sources:
+    - id: org-risk-policy
+      authority_level: prepare
+    - id: org-data-policy
+      authority_level: suggest
+    - id: regulatory-constraint
+      unit_ref: gdpr-art-30-processing-log
+    - id: task-type-ceiling
+      task_type_ref: change-formal-status
+    - id: agent-capability-ceiling
+      agent_ref: lara-compliance
+    - id: customer-setting
+      authority_level: prepare
+  mandatory_sources: [org-risk-policy, org-data-policy]

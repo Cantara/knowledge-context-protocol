@@ -1,0 +1,23 @@
+# Invalid — grant_ceiling sources referencing unknown unit_ref/task_type_ref/agent_ref
+# (§3.13, RFC-0025, v0.27).
+kcp_version: "0.27"
+project: test-grant-ceiling-unknown-refs
+version: "1.0.0"
+
+authority_level_scale: [observe, explain, suggest, prepare, commit]
+
+units:
+  - id: overview
+    path: docs/overview.md
+    intent: "What does this service do?"
+    scope: global
+    audience: [agent]
+
+grant_ceiling:
+  sources:
+    - id: bad-unit-ref
+      unit_ref: nonexistent-unit
+    - id: bad-task-type-ref
+      task_type_ref: nonexistent-task-type
+    - id: bad-agent-ref
+      agent_ref: nonexistent-agent

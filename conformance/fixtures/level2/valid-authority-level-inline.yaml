@@ -1,0 +1,25 @@
+# Level 2 — authority_level declared inline on units/task_types/agents, no cross-references
+# (§3.13, RFC-0025, v0.27). No grant_ceiling — just the ordinal ceiling declaration.
+kcp_version: "0.27"
+project: test-authority-level-inline
+version: "1.0.0"
+
+authority_level_scale: [observe, explain, suggest, prepare, commit]
+
+task_types:
+  - id: propose-applicable-requirements
+    intent: "Propose which compliance requirements apply to this customer"
+    authority_level: suggest
+
+agents:
+  - id: lara-compliance
+    name: "Lara Compliance"
+    authority_level: prepare
+
+units:
+  - id: overview
+    path: docs/overview.md
+    intent: "What does this service do?"
+    scope: global
+    audience: [agent]
+    authority_level: observe

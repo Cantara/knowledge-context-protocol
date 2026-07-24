@@ -1,0 +1,25 @@
+# Invalid — a grant_ceiling source declares both an inline authority_level AND a *_ref
+# (§3.13, RFC-0025, v0.27). Exactly one of authority_level/unit_ref/task_type_ref/agent_ref
+# MUST be present.
+kcp_version: "0.27"
+project: test-grant-ceiling-mutually-exclusive
+version: "1.0.0"
+
+authority_level_scale: [observe, explain, suggest, prepare, commit]
+
+task_types:
+  - id: t1
+    authority_level: explain
+
+units:
+  - id: overview
+    path: docs/overview.md
+    intent: "What does this service do?"
+    scope: global
+    audience: [agent]
+
+grant_ceiling:
+  sources:
+    - id: bad-source
+      authority_level: prepare
+      task_type_ref: t1

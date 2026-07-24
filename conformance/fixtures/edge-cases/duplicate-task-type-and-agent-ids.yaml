@@ -1,0 +1,24 @@
+# Edge case — duplicate id within task_types[] and within agents[] (§3.13, RFC-0025, v0.27).
+# Both MUST be a manifest error, matching the units[].id uniqueness rule.
+kcp_version: "0.27"
+project: test-duplicate-task-type-agent-ids
+version: "1.0.0"
+
+task_types:
+  - id: dup-task
+    intent: "First"
+  - id: dup-task
+    intent: "Second — duplicate id"
+
+agents:
+  - id: dup-agent
+    name: "First"
+  - id: dup-agent
+    name: "Second — duplicate id"
+
+units:
+  - id: overview
+    path: docs/overview.md
+    intent: "What does this service do?"
+    scope: global
+    audience: [agent]

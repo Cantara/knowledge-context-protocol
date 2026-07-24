@@ -1,0 +1,21 @@
+# Invalid — grant_ceiling.sources omits a source id declared in mandatory_sources
+# (§3.13, RFC-0025, v0.27). This is the exact silent-policy-bypass gap mandatory_sources exists
+# to close: an org-wide ceiling (org-data-policy) is required but not cited.
+kcp_version: "0.27"
+project: test-grant-ceiling-missing-mandatory
+version: "1.0.0"
+
+authority_level_scale: [observe, explain, suggest, prepare, commit]
+
+units:
+  - id: overview
+    path: docs/overview.md
+    intent: "What does this service do?"
+    scope: global
+    audience: [agent]
+
+grant_ceiling:
+  sources:
+    - id: org-risk-policy
+      authority_level: prepare
+  mandatory_sources: [org-risk-policy, org-data-policy]

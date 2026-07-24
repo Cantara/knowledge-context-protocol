@@ -1,0 +1,8 @@
+{
+  "valid": false,
+  "errors": [
+    "grant_ceiling.sources['bad-source']: 'authority_level' is mutually exclusive with unit_ref/task_type_ref/agent_ref"
+  ],
+  "unit_count": 1,
+  "relationship_count": 0
+}

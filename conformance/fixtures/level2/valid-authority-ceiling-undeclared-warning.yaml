@@ -1,0 +1,20 @@
+# Valid but warns — authority_level_scale declared at root, but this task-type declares
+# neither authority_level nor a grant_ceiling (§3.13, RFC-0025, v0.27:
+# authority_ceiling_undeclared). Non-fatal: opting into the scale but leaving a task-type
+# unconstrained is far more likely an oversight than intentional, so it's a warning, not an error.
+kcp_version: "0.27"
+project: test-authority-ceiling-undeclared
+version: "1.0.0"
+
+authority_level_scale: [observe, explain, suggest, prepare, commit]
+
+task_types:
+  - id: undeclared-ceiling-task
+    intent: "A task-type with no authority_level and no grant_ceiling"
+
+units:
+  - id: overview
+    path: docs/overview.md
+    intent: "What does this service do?"
+    scope: global
+    audience: [agent]

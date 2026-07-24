@@ -1,0 +1,9 @@
+{
+  "valid": false,
+  "errors": [
+    "Duplicate task_types[].id: 'dup-task'",
+    "Duplicate agents[].id: 'dup-agent'"
+  ],
+  "unit_count": 1,
+  "relationship_count": 0
+}
