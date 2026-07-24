@@ -1,6 +1,7 @@
 # RFC-0026: Escalation and Grant Requests
 
-**Status:** Draft (v2 — revised after adversarial review, see Changelog)
+**Status:** Accepted (semantics) — promoted to SPEC.md v0.28. Wire format (manifest field vs.
+API/event shape) remains provisional pending Open Question 1.
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-07-24
 **Related:** RFC-0002 (Auth and Delegation), RFC-0009 (Visibility and Authority Declarations),

@@ -1,6 +1,6 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.27
+**Version:** 0.28
 **Status:** Draft
 **Date:** 2026-07-24
 **Repository:** github.com/cantara/knowledge-context-protocol
@@ -1484,6 +1484,89 @@ Backward compatible: `authority_level_scale`, `authority_level`, `grant_ceiling`
 parsers per §2. No existing field is modified or deprecated. See RFC-0025 for full design
 rationale, worked examples, and open questions (scale extensibility, `grant_ceiling` scoping,
 tie-break ordering, relationship to `delegation.human_in_the_loop`).
+
+---
+
+### 3.14 Escalation and Grant Requests (v0.28)
+
+Promoted from [RFC-0026](./RFC-0026-Escalation-and-Grant-Requests.md), with a narrower status
+than most promoted sections: **the object shape below is illustrative, not a fixed wire
+format.** Whether a `GrantRequest` is a manifest field, a separate runtime API/event shape, or
+both, is an open question RFC-0026 does not resolve. What *is* normative in this section is the
+semantics — the trigger vocabulary, the atomicity rule for tied binding sources, and the
+resolution rules — regardless of what concrete form an implementation gives the object.
+
+**The gap this closes:** §3.4 `delegation.human_in_the_loop`, §4.17 `authority` values of
+`requires_approval`, and §3.13 `grant_ceiling` all declare *that* a human must be involved, but
+none defines *what happens next*: asked how, asked whom by name or role, what an answer looks
+like, how long it lasts, or how a granted answer feeds back into evaluation.
+
+```yaml
+grant_request:
+  id: "gr-2026-07-24-0031"
+  trigger: insufficient_authority_level      # requires_approval | insufficient_authority_level | confidence_below_threshold
+  task_type_ref: change-formal-status
+  agent_ref: lara-compliance
+
+  binding_source_refs: [task-type-ceiling]   # ALL grant_ceiling (§3.13) sources tied for the binding minimum
+  current_effective_level: explain
+  requested_level: suggest
+
+  grantor:
+    role: "kundeansvarlig"
+    approval_mechanism: oauth_consent        # reuses §3.4's vocabulary — oauth_consent | uma | custom
+
+  grant_scope: single_use                   # single_use | time_bound | standing
+  status: pending                           # pending | granted | denied | expired
+  requested_at: "2026-07-24T09:15:00Z"
+  resolved_at: null
+  resolved_by: null
+```
+
+**Normative semantics, independent of wire format:**
+
+- **Trigger vocabulary:** `requires_approval` (§4.17 action pending approval), `insufficient_authority_level`
+  (§3.13 `grant_ceiling` computed a ceiling lower than the task needs), and
+  `confidence_below_threshold` — a fourth, categorically different trigger: unlike every other
+  mechanism in §3.13/§4.17, which is static declared metadata evaluated before an agent
+  generates anything, this one is evaluated **after** synthesis, from the agent's own reported
+  confidence in its output. It cannot be computed by a manifest parser and MUST NOT be modeled
+  as a `grant_ceiling` source.
+- **`task_types[].confidence_threshold`** (OPTIONAL, float 0.0–1.0): if declared, an agent
+  reporting confidence below this value for this task-type MUST raise a
+  `confidence_below_threshold` request before the output is surfaced as a decision. Absence
+  means no confidence-based escalation applies. Self-reported confidence is not independently
+  verifiable by the protocol — see RFC-0026 for the honest treatment of this gap (mirroring
+  RFC-0009 Appendix D's treatment of authority-declaration enforcement).
+- **Tied binding sources MUST be raised together, atomically.** If §3.13's ceiling computation
+  reports more than one source tied for the minimum, a grant that raises only a subset of them
+  MUST NOT be treated as changing the effective level — the untouched tied source(s) still hold
+  the minimum down. There is no partial grant of a tie.
+- **A grant raises only the named binding source(s), never the whole ceiling.** The effective
+  level MUST be recomputed as the minimum across all `grant_ceiling` sources with the named
+  source(s) raised; a newly-binding different source requires a fresh, separate request.
+- **`requested_level` MUST exceed `current_effective_level`.** A request that does not satisfy
+  this MUST be rejected as invalid before reaching a grantor.
+- **`grant_scope: standing` against a source listed in `grant_ceiling.mandatory_sources`
+  (§3.13) MUST carry a forced expiry**, regardless of the declared scope — an indefinite
+  standing grant against a mandatory-source ceiling is the same silent policy erosion
+  `mandatory_sources` exists to prevent, one layer up.
+- **`confidence_below_threshold` grants MUST be `single_use`** — a confidence observation is
+  about one generated output, not a standing property of a task-type or agent.
+
+**Conformance (provisional — see RFC-0026 Open Question 1):**
+
+| Feature | Level | Notes |
+|---------|-------|-------|
+| Escalation on `requires_approval` | Level 2 | Reuses existing §3.4/§4.17 mechanisms |
+| Escalation on `insufficient_authority_level` | Level 3 | Requires §3.13 `grant_ceiling` (Level 3) |
+| Escalation on `confidence_below_threshold` | Level 3 | Requires post-synthesis runtime evaluation |
+| Tied-source atomicity | Level 3 | Required whenever `grant_ceiling` can report ties |
+| Forced expiry on `standing` + `mandatory_sources` | Level 3 | Required interaction with §3.13 |
+
+This section will be revised once implementation experience resolves whether `grant_request`
+is a manifest field, an API/event shape, or both — see RFC-0026 for full design rationale and
+remaining open questions.
 
 ---
 
@@ -3158,8 +3241,11 @@ enforcement, and named binding-source audit output. A Level 3 manifest supports 
 routing, knowledge graph navigation, drift detection, usage rights declaration, cache
 management, AI crawling permissions, context eviction ordering, large-document chunked access,
 authentication discovery, auditable knowledge access, federated multi-manifest knowledge
-graphs, environment-aware conditional access control, and multi-source authority-ceiling
-resolution with a named, auditable binding constraint.
+graphs, environment-aware conditional access control, multi-source authority-ceiling
+resolution with a named, auditable binding constraint, and escalation/grant-request semantics
+(§3.14) — trigger vocabulary, tied-source atomicity, and forced expiry on standing grants
+against mandatory sources — independent of the still-provisional wire format for the
+`grant_request` object itself.
 
 All three levels are valid KCP. A tool MUST NOT reject a manifest for being below the
 level it was designed for — graceful degradation is required.
