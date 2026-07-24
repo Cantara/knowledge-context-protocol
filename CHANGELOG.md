@@ -22,6 +22,92 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.28] — 2026-07-24 — Escalation and Grant Requests
+
+**Spec version:** `"0.28"` | **Prior:** v0.27 (2026-07-24)
+
+Promoted from [RFC-0026](./RFC-0026-Escalation-and-Grant-Requests.md). Closes the "a human
+should approve" gap left open by `delegation.human_in_the_loop` (§3.4), `authority.<action>:
+requires_approval` (§4.17), and `grant_ceiling` (§3.13): none of them define what happens
+*after* a human is asked — who, how, what an answer looks like, how long it lasts, or how a
+granted answer feeds back into evaluation.
+
+### Added
+
+- **§3.14 Escalation and Grant Requests.** Trigger vocabulary (`requires_approval`,
+  `insufficient_authority_level`, `confidence_below_threshold`), the atomicity rule for tied
+  `grant_ceiling` binding sources (a grant must raise *all* tied sources together — raising a
+  subset is a no-op by construction), a rejection condition for `requested_level` failing to
+  exceed the current effective level, and forced-expiry semantics for `standing` grants against
+  a `mandatory_sources`-protected source (closing a loophole where a single unreviewed approval
+  could permanently defeat §3.13's silent-erosion protection).
+- **`task_types[].confidence_threshold`** — an agent-reported-confidence escalation trigger,
+  evaluated *after* synthesis rather than before (categorically different from every other KCP
+  mechanism, which is static declared metadata). Documented as self-reported and gameable,
+  mirroring RFC-0009 Appendix D's honest treatment of authority-declaration enforcement.
+
+### Provisional
+
+- **Wire format not fixed.** Whether `grant_request` is a manifest field, a separate API/event
+  shape, or both, is unresolved (RFC-0026 Open Question 1). The semantics above are normative;
+  the concrete object representation is not. Conformance levels for this section are marked
+  provisional pending resolution.
+
+---
+
+## [0.27] — 2026-07-24 — Authority Level and Grant Ceiling
+
+**Spec version:** `"0.27"` | **Prior:** v0.26.1 (2026-07-14)
+
+Promoted from [RFC-0025](./RFC-0025-Authority-Level-and-Grant-Ceiling.md). Extends §4.17
+`authority` (a per-unit, per-action permission) with a coarser, per-task-type ordinal ceiling,
+and resolves RFC-0009's own Open Question 2 (a federation-wide floor), generalized from
+hub-vs-sub-manifest to N independently-owned named sources.
+
+### Added
+
+- **§3.13 Authority Level and Grant Ceiling.** `authority_level_scale` (fixed, total-ordered:
+  `observe < explain < suggest < prepare < commit`), `task_types[]` and `agents[]` id-keyed
+  collections, and `grant_ceiling` — a multi-source minimum computation over named ceiling
+  sources (org policy, regulatory constraint, task-type, agent capability, customer setting),
+  with **required cycle detection** on the `unit_ref`/`task_type_ref`/`agent_ref` resolution
+  chain (matching `composition.includes`/`superseded_by` precedent) and `mandatory_sources`
+  enforcement to prevent a leaf task-type from silently dropping an org-wide ceiling.
+- **§4.23 `authority_level`** — the unit-level ceiling, consumable as a `grant_ceiling` source
+  via `unit_ref`.
+- **Normative §4.17 capping table** — an effective `authority_level` caps `authority.<action>`
+  permission values per a fixed 5×5 lookup, removing implementer discretion from how the two
+  mechanisms interact.
+- Two new §7 validation warnings (`authority_ceiling_undeclared`, unknown `authority_level`
+  value) and three new manifest-error conditions (`grant_ceiling` reference cycles, missing
+  `mandatory_sources` entries, duplicate `task_types[]`/`agents[]` ids).
+
+### Fixed
+
+- A red-team pass over the initial RFC-0025 draft found and corrected: a fabricated precedent
+  citation (referenced `money_budget`/`max_units` filters that do not exist anywhere in
+  SPEC.md), a semantically-empty `may_only_lower` flag (a minimum computation cannot be raised
+  by any single source — the flag was a no-op, removed and replaced with prose stating the
+  general principle), and a naming collision between the scale's top level and §4.17's
+  `execute` action (renamed `execute` → `commit` on the ordinal scale).
+- **`kcp_version` enum gap.** Neither the JSON Schema nor `shared/src/validator.ts`'s
+  `KNOWN_KCP_VERSIONS` set recognized `"0.27"` or `"0.28"` — found while smoke-testing the
+  schema update in this same release; a manifest declaring either would have failed schema
+  validation and warned as an unknown version despite being fully conformant. Fixed in both
+  places.
+
+### Implementation
+
+- Reference implementation landed in `shared/src/{model,parser,validator}.ts` (picked up
+  automatically by the TypeScript bridge via its existing symlinks), `parsers/java`, and
+  `parsers/python` — parsing, structural validation, `computeGrantCeiling()` (minimum +
+  named binding source(s), reporting the full tied set rather than a single source), and
+  `applyAuthorityCap()` (the §4.17 capping table). JSON Schema and conformance fixtures
+  (7 new fixture pairs, `expected.json` generated by running the reference validator rather
+  than hand-authored) updated to match.
+
+---
+
 ## [0.26.1] — 2026-07-14 — v0.26 Hardening
 
 **Spec version:** `"0.26"` (unchanged — one conformance fix + clarifications, no new fields) | **Prior:** v0.26.0 (2026-07-14)
