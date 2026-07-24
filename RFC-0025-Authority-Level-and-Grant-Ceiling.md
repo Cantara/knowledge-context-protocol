@@ -1,6 +1,6 @@
 # RFC-0025: Authority Level and Multi-Source Grant Ceiling
 
-**Status:** Draft (v2 — revised after adversarial review, see Changelog)
+**Status:** Accepted — promoted to SPEC.md v0.27
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-07-24
 **Related:** RFC-0009 (Visibility and Authority Declarations) — this RFC extends it, does not replace it.

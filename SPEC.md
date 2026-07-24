@@ -1,8 +1,8 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.26
+**Version:** 0.27
 **Status:** Draft
-**Date:** 2026-06-12
+**Date:** 2026-07-24
 **Repository:** github.com/cantara/knowledge-context-protocol
 
 ---
@@ -1354,6 +1354,139 @@ numbered conformance rule in this version).
 
 ---
 
+### 3.13 Authority Level and Grant Ceiling (`task_types`, `agents`, `grant_ceiling`) (v0.27)
+
+Promoted from [RFC-0025](./RFC-0025-Authority-Level-and-Grant-Ceiling.md). §4.17 `authority`
+answers "may an agent take this specific action on this specific unit?" — a per-unit,
+per-action question. This section answers a coarser, complementary question: "how much
+discretion does an agent hold for this task, as a single ordinal ceiling — and when several
+independently-owned policies each try to set that ceiling, which one wins?"
+
+**The ordinal scale.** Declared once, manifest-wide:
+
+```yaml
+authority_level_scale:
+  - observe    # agent may read/observe only; no output surfaced as a decision
+  - explain    # agent may explain/analyze; no proposal offered
+  - suggest    # agent may propose; a human decides
+  - prepare    # agent may prepare a change; a human commits it
+  - commit     # agent may commit the change itself
+```
+
+The scale is fixed and total — not per-manifest extensible, unlike §4.17's action vocabulary.
+This is deliberate: `grant_ceiling`'s minimum computation (below) only means something if
+every source, however declared, shares the same total order. Declaring `authority_level`
+anywhere in this section means "at most this level."
+
+**`task_types` and `agents`.** Two new root-level, id-keyed collections:
+
+```yaml
+task_types:
+  - id: change-formal-status
+    intent: "Change the formal status of a customer's compliance record"
+    authority_level: explain
+
+agents:
+  - id: lara-compliance
+    name: "Lara Compliance"
+    authority_level: prepare
+```
+
+| Field | Required | Type | Description |
+|-------|----------|------|--------------|
+| `task_types[].id` | REQUIRED | string | Stable identifier, unique within the manifest. Duplicate `id` is a manifest error, matching the `units[].id` uniqueness rule. |
+| `task_types[].intent` | OPTIONAL | string | One-sentence description, in the style of unit `intent`. |
+| `task_types[].authority_level` | OPTIONAL | string | One of `authority_level_scale`. This task-type's own declared ceiling. |
+| `agents[].id` | REQUIRED | string | Stable identifier, unique within the manifest. |
+| `agents[].name` | OPTIONAL | string | Display name. |
+| `agents[].authority_level` | OPTIONAL | string | One of `authority_level_scale`. This agent's own capability ceiling, across all tasks it is assigned. |
+
+**`grant_ceiling` — multi-source minimum with a named binding source.** Several real
+deployments need to combine multiple independently-owned ceilings that all apply
+simultaneously — none is "more authoritative" than another in the §4.17-style override-chain
+sense (unit beats root beats default); the effective level is their **minimum**:
+
+```yaml
+grant_ceiling:
+  sources:
+    - id: org-risk-policy
+      authority_level: prepare
+    - id: org-data-policy
+      authority_level: suggest
+    - id: regulatory-constraint
+      unit_ref: gdpr-art-30-processing-log
+    - id: task-type-ceiling
+      task_type_ref: change-formal-status
+    - id: agent-capability-ceiling
+      agent_ref: lara-compliance
+    - id: customer-setting
+      authority_level: prepare
+  mandatory_sources: [org-risk-policy, org-data-policy]
+```
+
+Evaluation semantics:
+
+- Each source resolves to one `authority_level` value, either inline or via `unit_ref` /
+  `task_type_ref` / `agent_ref` lookup against that entity's own declared `authority_level`.
+  A referenced entity with no `authority_level` declared makes that source non-binding
+  (excluded from the minimum) — absence of a declared ceiling on the referenced entity is not
+  itself a grant.
+- The **effective authority level is the minimum across all resolved sources**. No source
+  needs special "may only lower" semantics — a minimum cannot be raised by any single input,
+  by construction.
+- The evaluator MUST record which source(s) produced the binding value, mirroring the
+  `superseded_by` naming requirement (§4.22) and the `not_for` `caution` annotation (§15.11):
+  a capped result without a named cause is not sufficient for an audit trail.
+- **Cycle detection is REQUIRED.** Resolving `unit_ref` / `task_type_ref` / `agent_ref` MUST
+  maintain a visited-set across the resolution chain, the same discipline already normative
+  for `composition.includes` (§3.11) and `superseded_by` (§4.22). A reference chain that would
+  revisit an already-visited entity MUST be detected and reported as a manifest error.
+- **`grant_ceiling.mandatory_sources`** (OPTIONAL, list of source `id`s) pins source ids that
+  MUST appear in every `grant_ceiling` block in the manifest. A `grant_ceiling` missing a
+  mandatory source MUST be reported as a manifest error — this closes the gap where an org-wide
+  policy ceiling could otherwise be silently dropped by a leaf task-type simply not citing it.
+- If a manifest declares `authority_level_scale` at the root but a `task_types[]` entry
+  declares neither `authority_level` nor `grant_ceiling`, implementations SHOULD emit a §7
+  warning (`authority_ceiling_undeclared`) — opting into the scale but leaving a task-type
+  unconstrained by it is far more likely an oversight than an intentional choice.
+
+**Interaction with §4.17 `authority` — normative capping table.** An agent's effective
+`authority_level` for a task caps which §4.17 permission values are honored for units touched
+by that task. The effective §4.17 permission is the minimum of (a) the unit's own declared
+value and (b) this table's cap, using §4.17's ordering `denied < requires_approval < initiative`:
+
+| Effective `authority_level` | `read` cap | `summarize` cap | `modify` cap | `share_externally` cap | `execute` cap |
+|---|---|---|---|---|---|
+| `observe` | initiative | requires_approval | denied | denied | denied |
+| `explain` | initiative | initiative | denied | denied | denied |
+| `suggest` | initiative | initiative | requires_approval | denied | denied |
+| `prepare` | initiative | initiative | requires_approval | requires_approval | requires_approval |
+| `commit` | initiative | initiative | initiative | initiative | initiative |
+
+This table is normative: two independently-conformant bridges MUST agree on how a given
+`authority_level` caps a given §4.17 action for the audit guarantee above to hold. (The top
+scale value is named `commit`, not `execute`, specifically to avoid colliding with the
+unrelated §4.17 `execute` action.)
+
+**Conformance:**
+
+| Feature | Level | Notes |
+|---------|-------|-------|
+| `authority_level` on a unit, task-type, or agent | Level 2 | Single declared ceiling |
+| `grant_ceiling` with inline sources only | Level 2 | No cross-references, no cycle risk |
+| `grant_ceiling` with `unit_ref`/`task_type_ref`/`agent_ref` sources | Level 3 | Cross-entity resolution; cycle detection REQUIRED |
+| `grant_ceiling.mandatory_sources` | Level 3 | Enforcement of required source citation |
+| Named binding-source trace output | Level 3 | Required for audit/evidence use cases |
+| §4.17 capping table applied | Level 3 | Both blocks evaluated together, not just declared |
+
+Backward compatible: `authority_level_scale`, `authority_level`, `grant_ceiling`,
+`task_types`, and `agents` are new top-level or nested keys, silently ignored by pre-v0.27
+parsers per §2. No existing field is modified or deprecated. See RFC-0025 for full design
+rationale, worked examples, and open questions (scale extensibility, `grant_ceiling` scoping,
+tie-break ordering, relationship to `delegation.human_in_the_loop`).
+
+---
+
 ## 4. Knowledge Units
 
 Each entry in `units` describes a self-contained piece of knowledge.
@@ -1529,7 +1662,7 @@ declarative plane (knowledge that is loaded) and the procedural plane (procedure
 its **selection** is gated exactly like `knowledge` — the same intent-matching, `audience`,
 `scope`, temporal validity (§4.22), and negative-space (§4.20) signals decide whether the skill
 is offered to an agent — while its **enaction** is governed like an `executable`, constrained by
-an explicitly declared envelope of the tools, paths, capabilities, and spend it is permitted to touch.
+an explicitly declared envelope of the tools, paths, and capabilities it is permitted to touch.
 
 That envelope is the `action_scope` object (all sub-fields OPTIONAL):
 
@@ -1538,7 +1671,6 @@ That envelope is the `action_scope` object (all sub-fields OPTIONAL):
 | `tools` | array of string | Tool names the procedure may invoke. |
 | `paths` | array of string | File-system paths (globs permitted) the procedure may read or write. |
 | `capabilities` | array of string | Named capabilities the procedure requires or exercises. |
-| `spend` | object | Purchases the procedure may make: a per-purchase `max_spend` cap, an `allowed_vendors` allowlist, and the `currency` the cap is denominated in (all OPTIONAL). |
 
 ```yaml
 - id: rotate-signing-key
@@ -1551,23 +1683,7 @@ That envelope is the `action_scope` object (all sub-fields OPTIONAL):
     tools: [kcp-sign, git]
     paths: ["schema/**", ".well-known/kcp-signing-key"]
     capabilities: [key-management]
-    spend:
-      max_spend: 5.00
-      allowed_vendors: [github, cloudflare]
-      currency: USD
 ```
-
-The `spend` sub-object governs **purchases** a skill may make. Like `tools` and `paths`, it is
-adjudicated fail-closed by the conformance gate: a purchase whose payee is not in
-`allowed_vendors`, or whose price exceeds `max_spend` (denominated in `currency`), is *held* — a
-declared-but-unmatched buy is refused the same way a call to an undeclared tool or a write to an
-undeclared path is. `max_spend` bounds a **single** purchase; it composes with — and never
-overrides — the session-cumulative `money_budget` ceiling of §4.14: a buy proceeds only if it
-clears *both* the per-purchase `spend` envelope here and the cumulative budget there, and either
-gate can hold it. The purchase **price** itself is not declared here — it comes from the paid
-resource's own `payment` / `price_per_request` declaration (§4.14, x402): KCP governs the buy
-*decision* against the declared envelope, while a runtime wallet performs the settlement. KCP
-dereferences no wallet and moves no funds.
 
 `action_scope` is advisory metadata at the parser level — declaring it carries no cryptographic
 weight — but it is the input a trusted renderer (§16) and a conformance checker use to decide
@@ -2859,6 +2975,30 @@ effect on how the unit is evaluated — absence means "always valid" (backward-c
 
 ---
 
+### 4.23 `authority_level` (v0.27)
+
+Promoted from [RFC-0025](./RFC-0025-Authority-Level-and-Grant-Ceiling.md). A unit-level ceiling
+on the ordinal scale declared by root-level `authority_level_scale` (§3.13):
+
+```yaml
+units:
+  - id: gdpr-art-30-processing-log
+    path: compliance/gdpr-art30.md
+    intent: "What personal data processing activities are recorded for GDPR Article 30?"
+    authority_level: suggest   # a regulatory ceiling carried by this unit
+```
+
+A unit's `authority_level` is most commonly consumed as a `grant_ceiling` source via
+`unit_ref` (§3.13) — e.g., a unit describing a regulatory requirement that mandates human
+sign-off can carry its own ceiling, independent of and combinable with org policy, task-type,
+and agent ceilings. See §3.13 for the full multi-source minimum computation, the required
+cycle detection, and the normative capping interaction with §4.17 `authority`.
+
+**Conformance:** Level 2 — declaration and exposure. Level 3 when referenced from a
+`grant_ceiling` source (cross-entity resolution, see §3.13).
+
+---
+
 ## 5. Relationships
 
 The optional `relationships` section declares explicit directional relationships between units.
@@ -2941,6 +3081,8 @@ manifest:
 - A `content_structure.contains[]` value not in the modality vocabulary (§4.19) (pass through and warn — MUST NOT reject)
 - A `content_structure.density` value not in `{sparse, normal, dense}` (pass through and warn — MUST NOT reject)
 - `not_for_strict` present on a unit that declares no `not_for` (the strict flag has no effect without entries to match)
+- `authority_level_scale` declared at manifest root but a `task_types[]` entry declares neither `authority_level` nor `grant_ceiling` (`authority_ceiling_undeclared`, §3.13)
+- An `authority_level` value not in the declared `authority_level_scale` (unknown values MUST be silently ignored at runtime but SHOULD warn at validation time)
 
 The following conditions MUST cause the parser to reject the manifest:
 
@@ -2949,6 +3091,9 @@ The following conditions MUST cause the parser to reject the manifest:
 - The `project` field is absent or empty
 - The `units` field is absent or empty
 - A unit is missing its `id`, `path`, `intent`, `scope`, or `audience` field
+- A `grant_ceiling.sources[]` reference chain (`unit_ref`/`task_type_ref`/`agent_ref`) contains a cycle (§3.13)
+- A `grant_ceiling.sources[]` list omits a source `id` declared in `grant_ceiling.mandatory_sources` (§3.13)
+- Duplicate `id` values within `task_types[]` or within `agents[]` (§3.13)
 
 ---
 
@@ -2990,13 +3135,14 @@ Extends Level 1 with `validated`, `depends_on`, `kind`, `format`, `language`, th
 (§4.17) on units and at root level (manifest-wide action permission defaults), and the
 `discovery` block (§4.18) on units with `verification_status`, `source`, `confidence`, and
 `contradicted_by`, the `content_structure` block (§4.19) for modality and density routing, and
-the `not_for`/`not_for_strict` fields (§4.20) for negative-space scoping. A Level 2 manifest
-supports freshness-aware retrieval, dependency-ordered loading, artifact type classification,
-content format awareness, multilingual navigation, basic context-budget planning, access-tier
-routing, action governance (agents know which operations require human approval or are denied),
-discovery provenance (consuming agents can filter by confidence and verification state),
-structure-aware retrieval routing, and negative-space exclusion (agents can tell when a unit
-explicitly does not apply).
+the `not_for`/`not_for_strict` fields (§4.20) for negative-space scoping, and `authority_level`
+(§3.13/§4.23) declared inline (no cross-references) on units, task-types, or agents. A Level 2
+manifest supports freshness-aware retrieval, dependency-ordered loading, artifact type
+classification, content format awareness, multilingual navigation, basic context-budget
+planning, access-tier routing, action governance (agents know which operations require human
+approval or are denied), discovery provenance (consuming agents can filter by confidence and
+verification state), structure-aware retrieval routing, negative-space exclusion (agents can
+tell when a unit explicitly does not apply), and a coarse per-task authority ceiling.
 
 **Level 3 — Full**
 Extends Level 2 with `triggers`, `supersedes`, `license`, `update_frequency`, `indexing`,
@@ -3005,12 +3151,15 @@ advanced `hints` (`priority`, `density`, chunking fields), root-level `hints`, a
 descriptions, the `trust.audit` sub-block (§3.2) with access logging and trace context
 requirements, the `manifests` block (§3.6) with federation declarations, `external_depends_on`
 (unit-level cross-manifest dependencies), `external_relationships` (root-level cross-manifest
-relationship declarations), `local_mirror` for air-gapped federation, and the `visibility`
-block (§4.16) with environment and role-based conditional access. A Level 3 manifest
-supports task-based routing, knowledge graph navigation, drift detection, usage rights
-declaration, cache management, AI crawling permissions, context eviction ordering,
-large-document chunked access, authentication discovery, auditable knowledge access,
-federated multi-manifest knowledge graphs, and environment-aware conditional access control.
+relationship declarations), `local_mirror` for air-gapped federation, the `visibility`
+block (§4.16) with environment and role-based conditional access, and `grant_ceiling` (§3.13)
+with cross-entity `unit_ref`/`task_type_ref`/`agent_ref` resolution, `mandatory_sources`
+enforcement, and named binding-source audit output. A Level 3 manifest supports task-based
+routing, knowledge graph navigation, drift detection, usage rights declaration, cache
+management, AI crawling permissions, context eviction ordering, large-document chunked access,
+authentication discovery, auditable knowledge access, federated multi-manifest knowledge
+graphs, environment-aware conditional access control, and multi-source authority-ceiling
+resolution with a named, auditable binding constraint.
 
 All three levels are valid KCP. A tool MUST NOT reject a manifest for being below the
 level it was designed for — graceful degradation is required.
