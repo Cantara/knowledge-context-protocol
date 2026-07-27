@@ -3,7 +3,7 @@
 All three bridges (TypeScript, Java, Python) are required to stay at feature parity on **MCP tools and prompts**.
 Static generation CLI flags (Tier 2) are currently TS + Java only — Python support is planned.
 
-**Current version:** 0.26.0 (all three bridges). **Spec is at v0.28** — the bridges are three spec versions behind (v0.26.1 `kind: skill`, v0.27 authority/grant-ceiling, v0.28 escalation). See **Known gaps** below. Under the Rule stated next, no version may be cut until the Java and Python ports land.
+**Current version:** 0.26.0 (all three bridges). **Spec is at v0.28.** The gap is narrower than a version-number comparison suggests: v0.27 is modelled in all three parsers. What is missing is `action_scope` (v0.26.1) in the Java and Python models, and `grant_request_events` (v0.28) everywhere. See **Known gaps** below.
 
 > Scope note: the `kcp` developer CLI (`cli/` — init, validate, query, stats, and as of
 > spec v0.16 `render`) versions independently of the bridges and is outside this parity
@@ -90,24 +90,27 @@ When adding any MCP capability:
 
 ## Known gaps (all bridges) — v0.26.1 through v0.28
 
-Re-verified 2026-07-27 against `origin/main` @ 09bfbb1. The v0.26.1 gap recorded below was
-never closed, and two further spec versions were promoted on top of it.
+Re-verified 2026-07-27 against `origin/main` @ 09bfbb1, **measuring the parser models rather
+than the bridge directories**. An earlier revision of this section scanned `bridge/java/` and
+`bridge/python/` and reported v0.27 as unimplemented in both. That was wrong: the bridges
+consume the models through the `kcp-parser` artifact, and the models live in `parsers/java/`
+and `parsers/python/`. Recording the mistake because it made the remaining work look like a
+two-language port when it is one field in each.
 
-### Field coverage in the bridges
+### Field coverage in the parser models
 
-| bridge | `action_scope` (v0.26.1) | `"skill"` | `authority_level` (v0.27) | `grant_ceiling` (v0.27) |
+| model | `action_scope` | `authority_level` | `grant_ceiling` | task-type / agent ceilings |
 |---|---|---|---|---|
-| typescript | 0 | 0 | 1 | 1 |
-| java | 0 | 0 | 0 | 0 |
-| python | 0 | 0 | 0 | 0 |
+| `shared/src/model.ts` (TypeScript) | yes | yes | yes | yes |
+| `parsers/java` | **no** | yes (`authorityLevel`) | yes (`GrantCeiling`, `GrantCeilingSource`) | yes (`TaskType`, `Agent`) |
+| `parsers/python` | **no** | yes | yes | yes |
 
-TypeScript's `1`s are inherited, not implemented: `bridge/typescript/src/{model,parser,validator}.ts`
-are symlinks into `shared/src/`, which carries the fields (`shared/src/model.ts` lines 83, 115,
-341, 344). Java (`bridge/java/`, ~2 700 lines) and Python (`bridge/python/`, ~1 480 lines) are
-separate source trees and must mirror them by hand.
+**v0.27 (RFC-0025) is modelled in all three.** The outstanding item is `action_scope`
+(§4.3a, v0.26.1) in the Java and Python models — an `ActionScope` type and one unit field
+each, with parsing and tests.
 
-`mapper.ts`'s manifest-entry builder still does not surface `action_scope` — the one-line fix
-noted in the previous revision of this section remains undone.
+`bridge/typescript/src/mapper.ts` did not surface `action_scope` on the exposed unit entry:
+parsed, then dropped at the bridge boundary. Fixed in #146.
 
 ### §17 Observability — three of four tables were never built
 
@@ -118,29 +121,28 @@ noted in the previous revision of this section remains undone.
 | `quarantine_events` | v0.16 | **nowhere** |
 | `grant_request_events` | v0.28 | **nowhere** |
 
-Worth recording precisely, because it produced a false precedent: RFC-0026 justifies the new
-table as "mirroring its existing `render_events`/`quarantine_events` pattern". That pattern is
-specified but has never existed in code. This is the second RFC to cite an implementation
-precedent that is not there — the RFC-0025 draft cited `money_budget`/`max_units` filters that
-appear nowhere in SPEC.md (see CHANGELOG "Fixed"), and `action_scope.spend` shipped in the
-schema for two versions with no specification at all (#144).
+This gap produced a false precedent worth naming: RFC-0026 justifies the new table as
+"mirroring its existing `render_events`/`quarantine_events` pattern". That pattern is
+specified but has never existed in code. It is the third instance of the same shape — the
+RFC-0025 draft cited `money_budget`/`max_units` filters absent from SPEC.md (see "Fixed"),
+and `action_scope.spend` shipped in the schema for two versions with no specification at all
+(#144). Each was a claim about what already exists, believed rather than checked.
 
-Two of these tables belong to the render pipeline (§16), which the scope note above places
-outside the bridge parity contract — they are a `cli/` concern. `grant_request_events` is not:
-it is the audit trail for §3.14 escalation and belongs wherever grants are adjudicated.
+`render_events` and `quarantine_events` belong to the render pipeline (§16), which the scope
+note above places outside this parity contract — they are a `cli/` concern.
+`grant_request_events` is not: it is the audit trail for §3.14 escalation.
 
 ### Required before the next version bump
 
-1. **Java + Python: v0.26.1 `kind: skill`** — parse and surface `kind` and `action_scope`.
-2. **Java + Python: v0.27** — `authority_level`, `authority_level_scale`, `grant_ceiling`,
-   and the per-task-type and per-agent ceilings (`shared/src/model.ts` 341–364).
-3. **TypeScript: `mapper.ts`** — surface `action_scope` on the exposed unit entry, plus a test.
-4. **`grant_request_events`** — or an explicit decision to ship v0.28 with §17 Level 3
-   unimplemented, recorded here rather than left to be discovered.
+1. **`action_scope` in the Java and Python models** — `ActionScope` type, unit field, parsing,
+   tests. Treat the sub-object as an opaque passthrough (§4.3a): a field-by-field rebuild
+   drops `spend` and every sub-field a later version adds.
+2. **TypeScript `mapper.ts`** — surface `action_scope`. Done in #146.
+3. **`grant_request_events`** — implement, or record an explicit decision to ship v0.28 with
+   §17 Level 3 unimplemented. Not a new gap: two §17 tables have been unimplemented since
+   v0.16.
 
-Do not claim parity, and do not cut a release, until 1–3 are done. The Rule above is not
-advisory: three spec versions were promoted while this section already said a port was
-required, and nothing caught it because nothing checks.
+Item 1 is the only one that blocks a version bump under the Rule above.
 
 ## Version history
 
