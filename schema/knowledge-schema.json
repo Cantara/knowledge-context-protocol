@@ -215,7 +215,7 @@
             },
             "spend": {
               "type": "object",
-              "description": "Purchases the procedure may make (v0.26). Governs the buy decision fail-closed alongside the session-cumulative money_budget ceiling (§4.14). All sub-fields OPTIONAL.",
+              "description": "Purchases the procedure may make. Governs the buy decision fail-closed; where the caller maintains a cumulative session budget the effective limit is the lower of the two. That session budget is supplied at run time and is not a manifest field. All sub-fields OPTIONAL. See SPEC.md §4.3a.1.",
               "properties": {
                 "max_spend": {
                   "type": "number",

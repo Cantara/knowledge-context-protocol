@@ -1766,6 +1766,7 @@ That envelope is the `action_scope` object (all sub-fields OPTIONAL):
 | `tools` | array of string | Tool names the procedure may invoke. |
 | `paths` | array of string | File-system paths (globs permitted) the procedure may read or write. |
 | `capabilities` | array of string | Named capabilities the procedure requires or exercises. |
+| `spend` | object | Purchases the procedure may make. See §4.3a.1. |
 
 ```yaml
 - id: rotate-signing-key
@@ -1786,6 +1787,67 @@ whether the skill may be invoked and to bound what it may reach when it is. A sk
 by default like `executable`/`service`: absent an explicit eligibility grant it renders as a
 pointer with `invocation: explicit` (§16.3, C4). Skills are the manifest-declared counterpart of
 the runtime-depth lifecycle recorded in §17 (`skill_selected` … `verdict_emitted`).
+
+
+#### 4.3a.1 `action_scope.spend` — what a procedure may buy
+
+`tools` and `paths` bound what a skill may *touch*. `spend` bounds what it may *buy*.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `max_spend` | number | Per-purchase cap, denominated in `currency`. A purchase exceeding it is held. |
+| `allowed_vendors` | array of string | Allowlist of vendor/payee identifiers. A purchase to an unlisted vendor is held. |
+| `currency` | string | ISO 4217 code (`USD`, `EUR`) or asset ticker (`USDC`) that `max_spend` is denominated in. |
+
+All sub-fields are OPTIONAL, and `action_scope` remains an opaque passthrough object for
+parsers that do not implement conformance checking.
+
+```yaml
+- id: enrich-company-record
+  kind: skill
+  path: skills/enrich-company-record.md
+  intent: "How do I enrich a company record from a paid registry?"
+  scope: project
+  audience: [agent]
+  action_scope:
+    tools: [http]
+    spend:
+      max_spend: 2.00
+      currency: USD
+      allowed_vendors: ["registry.example.com"]
+```
+
+**Adjudication is fail-closed and per purchase.** A conformance checker adjudicates a
+purchase — vendor, amount, currency — exactly as it adjudicates `tools` and `paths`:
+
+- a vendor not present in `allowed_vendors` is **held**;
+- an amount exceeding `max_spend` is **held**;
+- a currency that does not match `currency` is **held** — implementations MUST NOT convert
+  between currencies to satisfy a cap, since the conversion rate is not part of the
+  declaration and a held purchase is the safe outcome;
+- a skill declaring no `spend` may make **no purchase at all**. Absence is not permission,
+  consistent with the fail-closed default the rest of `action_scope` uses.
+
+**KCP governs the decision, never the settlement.** As with `payment` (§4.14), the protocol
+declares what is permitted; a runtime wallet executes. A conformance checker adjudicates
+between a payment challenge and the retry that satisfies it. It does not hold funds, and an
+implementation MUST NOT treat a passing adjudication as evidence that a payment succeeded.
+
+**Composition with a session budget.** A per-purchase cap does not bound a sequence of
+purchases. Implementations that maintain a cumulative session budget MUST apply both, and
+the effective limit is the **lower** of the two — a skill declaring `max_spend: 2.00`
+cannot spend 2.00 forty times if the session budget is 10.00.
+
+That session budget is **not a manifest field**. It is supplied by the caller at plan or
+run time and is out of scope for this specification; the reference planner implements it as
+a gate alongside `max_units` and `context_budget`. This distinction matters: a manifest
+declares what a *procedure* may buy, and only the invoking party can know what the *session*
+may spend in total.
+
+**Over-threshold purchases route to review.** Where an implementation supports escalation
+(§3.14), a purchase held by any of the rules above SHOULD raise a grant request rather than
+fail silently, so that a human can authorise the specific purchase without widening the
+declared scope.
 
 ### 4.4 `intent`
 
