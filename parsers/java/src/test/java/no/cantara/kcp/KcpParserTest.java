@@ -423,7 +423,7 @@ class KcpParserTest {
 
     @Test
     void validKindsProduceNoWarning() {
-        for (String kind : List.of("knowledge", "schema", "service", "policy", "executable")) {
+        for (String kind : List.of("knowledge", "schema", "service", "policy", "executable", "skill")) {
             Map<String, Object> unitData = new HashMap<>(Map.of(
                     "id", "u1", "path", "f.md", "intent", "test", "scope", "global",
                     "audience", List.of("agent"), "kind", kind

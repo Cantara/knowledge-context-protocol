@@ -344,7 +344,7 @@ class TestValidator:
         assert any("kind" in w and "imaginary" in w for w in result.warnings)
 
     def test_valid_kind_no_warning(self):
-        for kind in ["knowledge", "schema", "service", "policy", "executable"]:
+        for kind in ["knowledge", "schema", "service", "policy", "executable", "skill"]:
             data = {
                 **MINIMAL,
                 "kcp_version": "0.3",
