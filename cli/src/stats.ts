@@ -99,6 +99,37 @@ export function runStats(options: StatsOptions): void {
     WHERE timestamp >= ?${projectClause} ORDER BY project
   `).all(...baseParams) as { project: string }[]).map((r) => r.project);
 
+  // §17 grant_request_events (v0.28, RFC-0026) — the escalation audit trail. Guarded
+  // rather than assumed: the table is created by whichever component adjudicates grants,
+  // and nothing in this repository does that yet (RFC-0026 deferred the request/response
+  // mechanism). A missing table means "no adjudicator has run", not an error.
+  const hasGrants = db.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='grant_request_events'"
+  ).get() !== undefined;
+
+  // One row per state transition, so a request is a group of rows sharing `id`, and
+  // "pending" means created with no resolution row — not a status column.
+  const grants = hasGrants
+    ? (db.prepare(`
+        SELECT
+          COUNT(DISTINCT id) AS requests,
+          COUNT(CASE WHEN event_type = 'granted' THEN 1 END) AS granted,
+          COUNT(CASE WHEN event_type = 'denied'  THEN 1 END) AS denied,
+          COUNT(CASE WHEN event_type = 'expired' THEN 1 END) AS expired
+        FROM grant_request_events
+        WHERE timestamp >= ?
+      `).get(since) as { requests: number; granted: number; denied: number; expired: number })
+    : { requests: 0, granted: 0, denied: 0, expired: 0 };
+
+  const grantTriggers = hasGrants
+    ? (db.prepare(`
+        SELECT trigger, COUNT(DISTINCT id) AS count
+        FROM grant_request_events
+        WHERE timestamp >= ? AND trigger IS NOT NULL
+        GROUP BY trigger ORDER BY count DESC
+      `).all(since) as { trigger: string; count: number }[])
+    : [];
+
   db.close();
 
   if (options.json) {
@@ -112,6 +143,11 @@ export function runStats(options: StatsOptions): void {
         top_units: topUnits,
         top_queries: topQueries,
         projects,
+        grant_requests: {
+          ...grants,
+          pending: grants.requests - grants.granted - grants.denied - grants.expired,
+          by_trigger: grantTriggers,
+        },
       }, null, 2) + "\n"
     );
     return;
@@ -120,7 +156,7 @@ export function runStats(options: StatsOptions): void {
   const label = `last ${options.days} day${options.days === 1 ? "" : "s"}`;
   process.stdout.write(`\n${bold("KCP Usage Statistics")} ${dim(`(${label})`)}\n\n`);
 
-  if (counts.total_events === 0) {
+  if (counts.total_events === 0 && grants.requests === 0) {
     process.stdout.write(dim("  No usage events in this period.\n\n"));
     return;
   }
