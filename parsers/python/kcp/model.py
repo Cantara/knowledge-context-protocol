@@ -128,6 +128,32 @@ class FreshnessPolicy:
 
 
 @dataclass
+class Spend:
+    """What a `kind: skill` procedure may buy. See SPEC.md §4.3a.1.
+
+    Governs the buy *decision*, fail-closed — an unlisted vendor, an over-cap amount or a
+    currency mismatch is held. KCP never settles a payment; a runtime wallet does.
+    """
+    max_spend: Optional[float] = None  # per-purchase cap, denominated in ``currency``
+    allowed_vendors: Optional[List[str]] = None  # allowlist of vendor/payee identifiers
+    currency: Optional[str] = None  # ISO 4217 code (USD, EUR) or asset ticker (USDC)
+
+
+@dataclass
+class ActionScope:
+    """The envelope bounding a ``kind: skill`` unit. See SPEC.md §4.3a.
+
+    Absent is not the same as empty: a unit with no ``action_scope`` authorizes nothing,
+    so the parser yields ``None`` rather than an empty object. Sub-fields mirror
+    ``shared/src/parser.ts`` ``parseActionScope``.
+    """
+    tools: Optional[List[str]] = None  # tool names the procedure may invoke
+    paths: Optional[List[str]] = None  # paths (globs permitted) it may read or write
+    capabilities: Optional[List[str]] = None  # named capabilities it requires or exercises
+    spend: Optional[Spend] = None  # purchases it may make (§4.3a.1)
+
+
+@dataclass
 class KnowledgeUnit:
     id: str
     path: str
@@ -167,6 +193,7 @@ class KnowledgeUnit:
     content_structure: Optional[ContentStructure] = None  # RFC-0016 (v0.17)
     content_hash: Optional[ContentHash] = None  # RFC-0019 (draft)
     temporal: Optional[Temporal] = None  # RFC-0010 / §4.22 (v0.19)
+    action_scope: Optional[ActionScope] = None  # §4.3a (v0.26.1) — what a kind: skill procedure may touch
     authority_level: Optional[str] = None  # RFC-0025 / §4.23 (v0.27) — ceiling on the root authority_level_scale
 
 

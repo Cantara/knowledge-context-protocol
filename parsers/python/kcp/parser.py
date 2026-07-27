@@ -11,6 +11,8 @@ from .model import (
     PaymentMethod, Serving, RateLimit, RateLimits, RateLimitHeaders, RateLimitTokens,
     RateLimitTokensTier, Relationship, TaskType,
     Trust, TrustAudit, TrustAgentRequirements, TrustProvenance, Visibility,
+    ActionScope,
+    Spend,
 )
 
 
@@ -101,6 +103,30 @@ def _parse_auth(data: Optional[dict]) -> Optional[Auth]:
         for m in data.get("methods", [])
     ]
     return Auth(methods=methods)
+
+
+def _parse_spend(data: Optional[dict]) -> Optional["Spend"]:
+    if not isinstance(data, dict):
+        return None
+    return Spend(
+        max_spend=data.get("max_spend"),
+        allowed_vendors=data.get("allowed_vendors"),
+        currency=data.get("currency"),
+    )
+
+
+def _parse_action_scope(data: Optional[dict]) -> Optional["ActionScope"]:
+    # A scalar or list where an object belongs yields None rather than raising: a
+    # malformed envelope must not take down the whole parse, and None correctly reads
+    # as "declares nothing", which authorizes nothing.
+    if not isinstance(data, dict):
+        return None
+    return ActionScope(
+        tools=data.get("tools"),
+        paths=data.get("paths"),
+        capabilities=data.get("capabilities"),
+        spend=_parse_spend(data.get("spend")),
+    )
 
 
 def _parse_delegation(data: Optional[dict]) -> Optional[Delegation]:
@@ -457,6 +483,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
             deprecated=u.get("deprecated"),
             payment=_parse_payment(u.get("payment")),
             rate_limits=_parse_rate_limits(u.get("rate_limits")),
+            action_scope=_parse_action_scope(u.get("action_scope")),
             delegation=_parse_delegation(u.get("delegation")),
             compliance=_parse_compliance(u.get("compliance")),
             auth=_parse_auth(u.get("auth")),
