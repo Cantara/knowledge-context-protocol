@@ -45,7 +45,8 @@ public record KnowledgeUnit(
         ContentStructure contentStructure,
         ContentHash contentHash,
         Temporal temporal,
-        String authorityLevel  // RFC-0025 / §4.23 (v0.27) — ceiling on the root authority_level_scale
+        String authorityLevel,  // RFC-0025 / §4.23 (v0.27) — ceiling on the root authority_level_scale
+        ActionScope actionScope  // §4.3a (v0.26.1) — what a kind: skill procedure may touch
 ) {
     public KnowledgeUnit {
         audience = audience != null ? List.copyOf(audience) : List.of();

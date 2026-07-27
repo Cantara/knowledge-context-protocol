@@ -7,6 +7,8 @@ import no.cantara.kcp.model.Authority;
 import no.cantara.kcp.model.Compliance;
 import no.cantara.kcp.model.ContentHash;
 import no.cantara.kcp.model.ContentStructure;
+import no.cantara.kcp.model.ActionScope;
+import no.cantara.kcp.model.Spend;
 import no.cantara.kcp.model.Delegation;
 import no.cantara.kcp.model.Discovery;
 import no.cantara.kcp.model.ExternalDependency;
@@ -223,7 +225,8 @@ public class KcpParser {
                 parseContentStructure(u.get("content_structure")),
                 parseContentHash(u.get("content_hash")),
                 parseTemporal((Map<String, Object>) u.get("temporal")),
-                (String) u.get("authority_level")
+                (String) u.get("authority_level"),
+                parseActionScope(u.get("action_scope"))
         );
     }
 
@@ -297,6 +300,31 @@ public class KcpParser {
                 (String) m.get("key_id"),
                 (String) m.get("algorithm")
         );
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Spend parseSpend(Object raw) {
+        if (!(raw instanceof Map<?, ?> m)) return null;
+        Map<String, Object> d = (Map<String, Object>) m;
+        Object cap = d.get("max_spend");
+        return new Spend(
+                cap instanceof Number n ? n.doubleValue() : null,
+                asStringList(d.get("allowed_vendors")),
+                (String) d.get("currency"));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static ActionScope parseActionScope(Object raw) {
+        // A scalar or list where an object belongs yields null rather than throwing: a
+        // malformed envelope must not fail the whole parse, and null correctly reads as
+        // "declares nothing", which authorizes nothing.
+        if (!(raw instanceof Map<?, ?> m)) return null;
+        Map<String, Object> d = (Map<String, Object>) m;
+        return new ActionScope(
+                asStringList(d.get("tools")),
+                asStringList(d.get("paths")),
+                asStringList(d.get("capabilities")),
+                parseSpend(d.get("spend")));
     }
 
     @SuppressWarnings("unchecked")
