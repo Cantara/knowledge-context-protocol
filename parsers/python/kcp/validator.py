@@ -84,7 +84,8 @@ def compute_content_digest(target: str, algorithm: str) -> Optional[str]:
 VALID_SCOPES = {"global", "project", "module"}
 VALID_AUDIENCES = {"human", "agent", "developer", "operator", "architect", "devops"}
 VALID_RELATIONSHIP_TYPES = {"enables", "context", "supersedes", "contradicts", "depends_on", "governs"}
-VALID_KINDS = {"knowledge", "schema", "service", "policy", "executable", "skill"}
+VALID_KINDS = {"knowledge", "schema", "service", "policy", "executable", "skill", "playbook"}
+VALID_ON_FAILURE = {"abort", "continue", "escalate"}
 VALID_FORMATS = {
     "markdown", "pdf", "openapi", "json-schema", "jupyter",
     "html", "asciidoc", "rst", "vtt", "yaml", "json", "csv", "text",
@@ -94,7 +95,7 @@ VALID_INDEXING_SHORTHANDS = {"open", "read-only", "no-train", "none"}
 VALID_ACCESS_VALUES = {"public", "authenticated", "restricted"}
 VALID_SENSITIVITY_VALUES = {"public", "internal", "confidential", "restricted"}
 # human_in_the_loop is an object per spec §3.4 — no HITL enum, validation done inline
-KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26", "0.27", "0.28"}
+KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26", "0.27", "0.28", "0.29"}
 # content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
 VALID_CONTENT_MODALITIES = {"prose", "table", "code", "list", "diagram", "reference", "mixed"}
 VALID_DENSITY = {"sparse", "normal", "dense"}
@@ -157,6 +158,49 @@ def _detect_cycles(units: list) -> set[tuple[str, str]]:
             dfs(uid, set())
 
     return cycle_edges
+
+
+def _find_step_cycle(steps) -> Optional[list]:
+    """§4.3b (v0.29): find a cycle in a playbook's explicit ``depends_on`` graph.
+
+    Returns the cycle path for the error message, or None if the graph is acyclic.
+
+    Only explicit edges are walked. The implicit "after the previous step in
+    declaration order" default cannot produce a cycle — declaration order is total —
+    so materialising it here would add edges that are never a defect and would obscure
+    which edges the author actually wrote.
+
+    Iterative rather than recursive: a manifest is untrusted input, and a deep chain
+    must report a cycle rather than exhaust the stack.
+    """
+    edges = {s.id: (s.depends_on or []) for s in steps}
+    WHITE, GREY, BLACK = 0, 1, 2
+    colour = {s.id: WHITE for s in steps}
+
+    for root in steps:
+        if colour[root.id] != WHITE:
+            continue
+        stack = [[root.id, 0]]
+        colour[root.id] = GREY
+        while stack:
+            frame = stack[-1]
+            deps = edges.get(frame[0], [])
+            if frame[1] >= len(deps):
+                colour[frame[0]] = BLACK
+                stack.pop()
+                continue
+            dep = deps[frame[1]]
+            frame[1] += 1
+            if dep not in edges:
+                continue  # dangling; reported separately
+            if colour[dep] == GREY:
+                # Grey means dep is on the current stack — slice from it for the path.
+                start = next(i for i, f in enumerate(stack) if f[0] == dep)
+                return [f[0] for f in stack[start:]] + [dep]
+            if colour[dep] == WHITE:
+                colour[dep] = GREY
+                stack.append([dep, 0])
+    return None
 
 
 def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) -> ValidationResult:
@@ -385,6 +429,143 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
                         )
 
     # Root-level delegation validation
+    # --- kind: playbook — §4.3b (v0.29, RFC-0027) ---
+    #
+    # Deliberately a second pass over the units. `uses` may name a unit declared later
+    # in the manifest, so resolving it inside the loop above would reject forward
+    # references the spec permits.
+    unit_kinds = {u.id: (u.kind or "knowledge") for u in manifest.units}
+    units_by_id = {u.id: u for u in manifest.units}
+    declared_levels = set(manifest.authority_level_scale or [])
+
+    for unit in manifest.units:
+        ctx = f"unit '{unit.id}'"
+
+        if (unit.kind or "knowledge") != "playbook":
+            # steps on a non-playbook is a category error, not a silent no-op: the
+            # author declared a composition the protocol will never enact.
+            if unit.steps is not None:
+                warnings.append(
+                    f"{ctx}: declares 'steps' but kind is "
+                    f"'{unit.kind or 'knowledge'}'; steps are only enacted for "
+                    f"kind: playbook (§4.3b)"
+                )
+            continue
+
+        # A playbook MUST declare steps, and the list MUST be non-empty. An empty
+        # composition is not a degenerate executable — it is a manifest error.
+        if not unit.steps:
+            errors.append(
+                f"{ctx}: kind 'playbook' MUST declare a non-empty 'steps' list (§4.3b)"
+            )
+            continue
+
+        step_ids: set[str] = set()
+        for step in unit.steps:
+            sctx = f"{ctx} step '{step.id}'"
+
+            if step.id in step_ids:
+                errors.append(f"{ctx}: duplicate step id '{step.id}' (§4.3b)")
+            step_ids.add(step.id)
+
+            if step.uses is None and step.action is None:
+                errors.append(f"{sctx}: MUST declare either 'uses' or 'action' (§4.3b)")
+
+            if step.uses is not None:
+                target = unit_kinds.get(step.uses)
+                if target is None:
+                    # An error, not a warning: a resolvable `uses` is the whole
+                    # justification for playbook being a distinct kind. A dangling
+                    # reference that lints clean reduces the playbook to an
+                    # executable with worse ergonomics.
+                    errors.append(
+                        f"{sctx}: 'uses' names unit '{step.uses}', which is not "
+                        f"declared in this manifest (§4.3b)"
+                    )
+                elif target == "playbook":
+                    # Nesting is forbidden pending RFC-0027 OQ1. As a warning it
+                    # would be no guard: nested playbooks form a combined depends_on
+                    # graph that the per-playbook cycle check never sees.
+                    errors.append(
+                        f"{sctx}: 'uses' names playbook '{step.uses}'; playbook "
+                        f"nesting is not permitted (§4.3b, RFC-0027 OQ1)"
+                    )
+                elif target != "skill":
+                    warnings.append(
+                        f"{sctx}: 'uses' names '{step.uses}' of kind '{target}'; "
+                        f"SHOULD name a kind: skill unit (§4.3b)"
+                    )
+
+            if step.on_failure is not None and step.on_failure not in VALID_ON_FAILURE:
+                errors.append(
+                    f"{sctx}: 'on_failure' must be one of "
+                    f"[abort, continue, escalate], got '{step.on_failure}'"
+                )
+
+            # Checked against the manifest's declared scale rather than a hardcoded
+            # vocabulary — §3.13 makes authority_level_scale a per-manifest
+            # declaration, and the v0.27 check below already works that way.
+            if (
+                step.authority_level is not None
+                and declared_levels
+                and step.authority_level not in declared_levels
+            ):
+                warnings.append(
+                    f"{sctx}: 'authority_level' value '{step.authority_level}' is "
+                    f"not in the declared 'authority_level_scale' (§3.13)"
+                )
+
+            # A step whose unit can mutate but which declares no ceiling is bounded
+            # only by the enacting agent's own grant — looser than intended (§4.3b).
+            if step.authority_level is None and step.uses is not None:
+                scope = getattr(units_by_id.get(step.uses), "action_scope", None)
+                if scope is not None and (scope.paths or scope.spend is not None):
+                    warnings.append(
+                        f"{sctx}: omits 'authority_level' while '{step.uses}' "
+                        f"declares a mutating action_scope; the step is bounded "
+                        f"only by the enacting agent (§4.3b)"
+                    )
+
+        for step in unit.steps:
+            for dep in step.depends_on or []:
+                if dep not in step_ids:
+                    errors.append(
+                        f"{ctx} step '{step.id}': depends_on names unknown step "
+                        f"'{dep}' (§4.3b)"
+                    )
+
+        cycle = _find_step_cycle(unit.steps)
+        if cycle:
+            errors.append(
+                f"{ctx}: 'depends_on' graph contains a cycle: "
+                f"{' -> '.join(cycle)} (§4.3b)"
+            )
+
+        # §4.3b: the step-scope union is computable only when every step uses a unit
+        # and every such unit declares an action_scope. Report a declared scope as
+        # unverified rather than passing it silently — a declaration that lints clean
+        # reads as checked.
+        inline = sum(1 for s in unit.steps if s.uses is None)
+        if inline:
+            warnings.append(
+                f"{ctx}: {inline} of {len(unit.steps)} step(s) are inline "
+                f"('action'); an inline step has no action_scope and is bounded "
+                f"only by its authority_level (§4.3b)"
+            )
+        if unit.action_scope is not None:
+            scopeless = sum(
+                1
+                for s in unit.steps
+                if s.uses is not None
+                and getattr(units_by_id.get(s.uses), "action_scope", None) is None
+            )
+            if inline or scopeless:
+                warnings.append(
+                    f"{ctx}: declared 'action_scope' is UNVERIFIED — the step-scope "
+                    f"union is not computable ({inline} inline step(s), {scopeless} "
+                    f"step(s) whose unit declares no action_scope) (§4.3b)"
+                )
+
     if manifest.delegation is not None:
         hitl = manifest.delegation.human_in_the_loop
         if hitl is not None and not isinstance(hitl, dict):

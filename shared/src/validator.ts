@@ -54,6 +54,55 @@ export function computeContentDigest(target: string, algorithm: string): string 
   }
 }
 
+/**
+ * §4.3b (v0.29): find a cycle in a playbook's explicit `depends_on` graph, returning
+ * the cycle path for the error message, or null if the graph is acyclic.
+ *
+ * Only explicit edges are walked. The implicit "after the previous step in declaration
+ * order" default cannot produce a cycle — declaration order is total — so materialising
+ * it here would add edges that are never a defect and would mask which edges the author
+ * actually wrote.
+ *
+ * Iterative rather than recursive: a manifest is untrusted input, and a deep chain
+ * should report a cycle, not overflow the stack.
+ */
+function findStepCycle(steps: { id: string; depends_on?: string[] }[]): string[] | null {
+  const edges = new Map<string, string[]>();
+  for (const s of steps) edges.set(s.id, s.depends_on ?? []);
+
+  const WHITE = 0, GREY = 1, BLACK = 2;
+  const colour = new Map<string, number>();
+  for (const s of steps) colour.set(s.id, WHITE);
+
+  for (const root of steps) {
+    if (colour.get(root.id) !== WHITE) continue;
+    const stack: { id: string; next: number }[] = [{ id: root.id, next: 0 }];
+    colour.set(root.id, GREY);
+    while (stack.length > 0) {
+      const frame = stack[stack.length - 1]!;
+      const deps = edges.get(frame.id) ?? [];
+      if (frame.next >= deps.length) {
+        colour.set(frame.id, BLACK);
+        stack.pop();
+        continue;
+      }
+      const dep = deps[frame.next++]!;
+      if (!edges.has(dep)) continue;  // dangling; reported separately
+      const c = colour.get(dep);
+      if (c === GREY) {
+        // Grey means dep is on the current stack — slice from it for the path.
+        const from = stack.findIndex((f) => f.id === dep);
+        return [...stack.slice(from).map((f) => f.id), dep];
+      }
+      if (c === WHITE) {
+        colour.set(dep, GREY);
+        stack.push({ id: dep, next: 0 });
+      }
+    }
+  }
+  return null;
+}
+
 const VALID_SCOPES = new Set(["global", "project", "module"]);
 // Alias character rule (§4.2a, v0.26): lowercase letters/digits, then dots/hyphens/underscores.
 const ALIAS_PATTERN = /^[a-z0-9][a-z0-9._-]*$/;
@@ -64,7 +113,9 @@ const VALID_KINDS = new Set([
   "policy",
   "executable",
   "skill",
+  "playbook",
 ]);
+const VALID_ON_FAILURE = new Set(["abort", "continue", "escalate"]);
 const VALID_REL_TYPES = new Set([
   "enables",
   "context",
@@ -109,6 +160,7 @@ const KNOWN_KCP_VERSIONS = new Set([
   "0.26",
   "0.27",
   "0.28",
+  "0.29",
 ]);
 // content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
 const VALID_CONTENT_MODALITIES = new Set([
@@ -419,6 +471,140 @@ export function validate(
         errors.push(`${ctx}: path traversal rejected: '${unit.path}'`);
       } else if (!existsSync(resolved)) {
         warnings.push(`${ctx}: file not found on disk: '${unit.path}'`);
+      }
+    }
+  }
+
+  // --- kind: playbook — §4.3b (v0.29, RFC-0027) ---
+  //
+  // Deliberately a second pass. `uses` may name a unit declared later in the manifest,
+  // and unitIds is only complete once the loop above has finished; checking inline
+  // would reject forward references that the spec permits.
+  const unitKinds = new Map<string, string>();
+  for (const u of manifest.units) unitKinds.set(u.id, u.kind ?? "knowledge");
+  const declaredLevels = new Set(manifest.authority_level_scale ?? []);
+
+  for (const unit of manifest.units) {
+    const ctx = `Unit '${unit.id}'`;
+
+    if (unit.kind !== "playbook") {
+      // steps on a non-playbook is a category error, not a silent no-op: the author
+      // declared a composition the protocol will never enact.
+      if (unit.steps !== undefined) {
+        warnings.push(
+          `${ctx}: declares 'steps' but kind is '${unit.kind ?? "knowledge"}'; steps are only enacted for kind: playbook (§4.3b)`
+        );
+      }
+      continue;
+    }
+
+    // A playbook MUST declare steps, and the list MUST be non-empty. An empty
+    // composition is not a degenerate executable — it is a manifest error.
+    if (unit.steps === undefined || unit.steps.length === 0) {
+      errors.push(`${ctx}: kind 'playbook' MUST declare a non-empty 'steps' list (§4.3b)`);
+      continue;
+    }
+
+    const stepIds = new Set<string>();
+    for (const step of unit.steps) {
+      const sctx = `${ctx} step '${step.id}'`;
+
+      if (stepIds.has(step.id)) {
+        errors.push(`${ctx}: duplicate step id '${step.id}' (§4.3b)`);
+      }
+      stepIds.add(step.id);
+
+      if (step.uses === undefined && step.action === undefined) {
+        errors.push(`${sctx}: MUST declare either 'uses' or 'action' (§4.3b)`);
+      }
+
+      if (step.uses !== undefined) {
+        const target = unitKinds.get(step.uses);
+        if (target === undefined) {
+          // An error, not a warning: a resolvable `uses` is the whole justification
+          // for playbook being a distinct kind. A dangling reference that lints clean
+          // reduces the playbook to an executable with worse ergonomics.
+          errors.push(
+            `${sctx}: 'uses' names unit '${step.uses}', which is not declared in this manifest (§4.3b)`
+          );
+        } else if (target === "playbook") {
+          // Nesting is forbidden pending RFC-0027 Open Question 1. Left as a warning
+          // it would be no guard at all: nested playbooks form a combined depends_on
+          // graph that the per-playbook cycle check below never sees.
+          errors.push(
+            `${sctx}: 'uses' names playbook '${step.uses}'; playbook nesting is not permitted (§4.3b, RFC-0027 OQ1)`
+          );
+        } else if (target !== "skill") {
+          warnings.push(
+            `${sctx}: 'uses' names '${step.uses}' of kind '${target}'; SHOULD name a kind: skill unit (§4.3b)`
+          );
+        }
+      }
+
+      if (step.on_failure !== undefined && !VALID_ON_FAILURE.has(step.on_failure)) {
+        errors.push(
+          `${sctx}: 'on_failure' must be one of [abort, continue, escalate], got '${step.on_failure}'`
+        );
+      }
+
+      // Checked against the manifest's declared scale, not a hardcoded vocabulary —
+      // §3.13 makes authority_level_scale a per-manifest declaration, and the v0.27
+      // check at the bottom of this function already works that way. A warning, for
+      // the same reason it is one there: a manifest that declares no scale has not
+      // made an error, it has declined to constrain.
+      if (step.authority_level !== undefined && declaredLevels.size > 0
+          && !declaredLevels.has(step.authority_level)) {
+        warnings.push(
+          `${sctx}: 'authority_level' value '${step.authority_level}' is not in the declared 'authority_level_scale' (§3.13)`
+        );
+      }
+
+      // A step whose unit can mutate but which declares no ceiling is bounded only by
+      // the agent's own grant — looser than the author probably intended (§4.3b).
+      if (step.authority_level === undefined && step.uses !== undefined) {
+        const target = manifest.units.find((u) => u.id === step.uses);
+        const scope = target?.action_scope;
+        if (scope && ((scope.paths?.length ?? 0) > 0 || (scope.spend !== undefined))) {
+          warnings.push(
+            `${sctx}: omits 'authority_level' while '${step.uses}' declares a mutating action_scope; the step is bounded only by the enacting agent (§4.3b)`
+          );
+        }
+      }
+    }
+
+    // depends_on must reference declared steps, and the graph must be acyclic.
+    for (const step of unit.steps) {
+      for (const dep of step.depends_on ?? []) {
+        if (!stepIds.has(dep)) {
+          errors.push(
+            `${ctx} step '${step.id}': depends_on names unknown step '${dep}' (§4.3b)`
+          );
+        }
+      }
+    }
+    const cycle = findStepCycle(unit.steps);
+    if (cycle) {
+      errors.push(`${ctx}: 'depends_on' graph contains a cycle: ${cycle.join(" -> ")} (§4.3b)`);
+    }
+
+    // §4.3b: the step-scope union is computable only when every step uses a unit and
+    // every such unit declares an action_scope. Report the declared scope as
+    // unverified rather than passing it silently — a declaration that lints clean
+    // reads as checked.
+    const inline = unit.steps.filter((s) => s.uses === undefined).length;
+    if (inline > 0) {
+      warnings.push(
+        `${ctx}: ${inline} of ${unit.steps.length} step(s) are inline ('action'); an inline step has no action_scope and is bounded only by its authority_level (§4.3b)`
+      );
+    }
+    if (unit.action_scope !== undefined) {
+      const scopeless = unit.steps.filter(
+        (s) => s.uses !== undefined && !manifest.units.find((u) => u.id === s.uses)?.action_scope
+      ).length;
+      if (inline > 0 || scopeless > 0) {
+        warnings.push(
+          `${ctx}: declared 'action_scope' is UNVERIFIED — the step-scope union is not computable (${inline} inline step(s), ${scopeless} step(s) whose unit declares no action_scope) (§4.3b)`
+        );
       }
     }
   }

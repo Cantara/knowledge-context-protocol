@@ -81,6 +81,7 @@ export interface KnowledgeUnit {
   audience: string[];
   kind?: string;           // "knowledge" | "schema" | "service" | "policy" | "executable" | "skill"
   action_scope?: ActionScope;  // §4.3a (v0.26) — tools/paths/capabilities a kind: skill procedure may touch
+  steps?: PlaybookStep[];      // §4.3b (v0.29) — ordered composition; REQUIRED and non-empty for kind: playbook
   format?: string;         // "markdown" | "pdf" | "openapi" | "json-schema" | etc.
   content_type?: string;
   language?: string;
@@ -128,6 +129,26 @@ export interface ActionScope {
   paths?: string[];         // file-system paths (globs permitted) the procedure may read/write
   capabilities?: string[];  // named capabilities the procedure requires or exercises
   spend?: Spend;            // purchases the procedure may make (per-purchase cap + vendor allowlist)
+}
+
+/**
+ * One step of a `kind: playbook` composition. See SPEC.md §4.3b (v0.29, RFC-0027).
+ *
+ * The step — not the playbook — is the unit of governance: `authority_level` is a
+ * ceiling on this step alone, and effective authority is the minimum across it, the
+ * playbook's, the task-type grant_ceiling, any tenant ceiling, and the agent's own
+ * grant. A playbook can therefore never raise authority.
+ */
+export interface PlaybookStep {
+  id: string;                  // unique within the playbook
+  uses?: string;               // id of the unit this step enacts; SHOULD name a kind: skill unit
+  action?: string;             // inline description, when no unit exists yet
+  depends_on?: string[];       // step ids that must complete successfully first
+  authority_level?: string;    // RFC-0025 scale; ceiling semantics — at most this level
+  escalation?: string[];       // RFC-0026 triggers; disjunctive, evaluated before enactment
+  success_condition?: string;  // prose assertion; the protocol never evaluates it
+  on_failure?: string;         // "abort" | "continue" | "escalate"; default "abort"
+  timeout?: string;            // ISO 8601 duration; elapsing constitutes failure
 }
 
 export interface Relationship {

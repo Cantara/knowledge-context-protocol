@@ -154,6 +154,28 @@ class ActionScope:
 
 
 @dataclass
+class PlaybookStep:
+    """One step of a ``kind: playbook`` composition. See SPEC.md §4.3b (v0.29, RFC-0027).
+
+    The step — not the playbook — is the unit of governance. ``authority_level`` is a
+    ceiling on this step alone; effective authority is the minimum across it, the
+    playbook's, the task-type grant_ceiling, any tenant ceiling, and the enacting
+    agent's own grant, so a playbook can never raise authority.
+
+    Mirrors ``shared/src/parser.ts`` ``parseSteps`` and the Java ``PlaybookStep`` record.
+    """
+    id: str
+    uses: Optional[str] = None  # unit id this step enacts; SHOULD name a kind: skill unit
+    action: Optional[str] = None  # inline description, when no unit exists yet
+    depends_on: Optional[List[str]] = None  # step ids that must succeed first
+    authority_level: Optional[str] = None  # RFC-0025 scale; ceiling semantics
+    escalation: Optional[List[str]] = None  # RFC-0026 triggers; disjunctive, pre-enactment
+    success_condition: Optional[str] = None  # prose assertion; never evaluated by the protocol
+    on_failure: Optional[str] = None  # abort | continue | escalate; default abort
+    timeout: Optional[str] = None  # ISO 8601 duration; elapsing constitutes failure
+
+
+@dataclass
 class KnowledgeUnit:
     id: str
     path: str
@@ -194,6 +216,7 @@ class KnowledgeUnit:
     content_hash: Optional[ContentHash] = None  # RFC-0019 (draft)
     temporal: Optional[Temporal] = None  # RFC-0010 / §4.22 (v0.19)
     action_scope: Optional[ActionScope] = None  # §4.3a (v0.26.1) — what a kind: skill procedure may touch
+    steps: Optional[List["PlaybookStep"]] = None  # §4.3b (v0.29) — ordered composition; required for kind: playbook
     authority_level: Optional[str] = None  # RFC-0025 / §4.23 (v0.27) — ceiling on the root authority_level_scale
 
 

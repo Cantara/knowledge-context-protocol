@@ -8,6 +8,7 @@ import no.cantara.kcp.model.Compliance;
 import no.cantara.kcp.model.ContentHash;
 import no.cantara.kcp.model.ContentStructure;
 import no.cantara.kcp.model.ActionScope;
+import no.cantara.kcp.model.PlaybookStep;
 import no.cantara.kcp.model.Spend;
 import no.cantara.kcp.model.Delegation;
 import no.cantara.kcp.model.Discovery;
@@ -47,6 +48,7 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -226,7 +228,8 @@ public class KcpParser {
                 parseContentHash(u.get("content_hash")),
                 parseTemporal((Map<String, Object>) u.get("temporal")),
                 (String) u.get("authority_level"),
-                parseActionScope(u.get("action_scope"))
+                parseActionScope(u.get("action_scope")),
+                parseSteps(u.get("steps"))
         );
     }
 
@@ -311,6 +314,51 @@ public class KcpParser {
                 cap instanceof Number n ? n.doubleValue() : null,
                 asStringList(d.get("allowed_vendors")),
                 (String) d.get("currency"));
+    }
+
+    /**
+     * §4.3b (v0.29, RFC-0027): the ordered composition a {@code kind: playbook} declares.
+     *
+     * <p>Anything that is not a list yields null, matching {@link #parseActionScope}: a
+     * malformed block must not fail the whole parse, and null reads as "declares no
+     * steps", which the validator then rejects for a playbook. Entries that are not maps,
+     * or carry no {@code id}, are dropped rather than half-parsed — a step with no
+     * identity cannot be named by {@code depends_on}, so it cannot join the graph at all.
+     */
+    @SuppressWarnings("unchecked")
+    private static List<PlaybookStep> parseSteps(Object raw) {
+        if (!(raw instanceof List<?> list)) return null;
+        List<PlaybookStep> steps = new ArrayList<>();
+        for (Object item : list) {
+            if (!(item instanceof Map<?, ?> m)) continue;
+            Map<String, Object> d = (Map<String, Object>) m;
+            if (d.get("id") == null) continue;
+            steps.add(new PlaybookStep(
+                    String.valueOf(d.get("id")),
+                    asString(d.get("uses")),
+                    asString(d.get("action")),
+                    asStringList(d.get("depends_on")),
+                    asString(d.get("authority_level")),
+                    parseEscalation(d.get("escalation")),
+                    asString(d.get("success_condition")),
+                    asString(d.get("on_failure")),
+                    asString(d.get("timeout"))));
+        }
+        return steps;
+    }
+
+    /**
+     * §4.3b: {@code escalation} accepts a single trigger or a list; both normalise to a
+     * list, since the triggers are disjunctive and a scalar means a list of one.
+     */
+    private static List<String> parseEscalation(Object raw) {
+        if (raw == null) return null;
+        if (raw instanceof String s) return List.of(s);
+        return asStringList(raw);
+    }
+
+    private static String asString(Object raw) {
+        return raw != null ? String.valueOf(raw) : null;
     }
 
     @SuppressWarnings("unchecked")

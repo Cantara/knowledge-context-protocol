@@ -9,8 +9,8 @@
   "properties": {
     "kcp_version": {
       "type": "string",
-      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.28\". Prior drafts \"0.1\" through \"0.14\", \"0.16\" through \"0.27\" are also accepted for backward compatibility (\"0.15\" was never a spec version).",
-      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26", "0.27", "0.28"]
+      "description": "Version of the KCP specification this manifest conforms to. RECOMMENDED. Current value: \"0.29\". Prior drafts \"0.1\" through \"0.14\", \"0.16\" through \"0.28\" are also accepted for backward compatibility (\"0.15\" was never a spec version).",
+      "enum": ["0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26", "0.27", "0.28", "0.29"]
     },
     "project": {
       "type": "string",
@@ -190,9 +190,29 @@
         },
         "kind": {
           "type": "string",
-          "description": "Type of artifact. Default: knowledge. Values: knowledge (documentation), schema (machine-readable definition), service (callable endpoint), policy (authoritative rules), executable (runnable artifact), skill (governed executable procedure/playbook whose selection is gated like knowledge; declares an action_scope). See SPEC.md §4.3a.",
-          "enum": ["knowledge", "schema", "service", "policy", "executable", "skill"],
+          "description": "Type of artifact. Default: knowledge. Values: knowledge (documentation), schema (machine-readable definition), service (callable endpoint), policy (authoritative rules), executable (runnable artifact), skill (governed executable procedure whose selection is gated like knowledge; declares an action_scope), playbook (ordered composition of units, governed per step).  See SPEC.md §4.3a.",
+          "enum": ["knowledge", "schema", "service", "policy", "executable", "skill", "playbook"],
           "default": "knowledge"
+        },
+        "steps": {
+          "type": "array",
+          "description": "Ordered composition a kind: playbook declares. REQUIRED and non-empty for kind: playbook. See SPEC.md §4.3b.",
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "anyOf": [{"required": ["uses"]}, {"required": ["action"]}],
+            "properties": {
+              "id": {"type": "string", "description": "Unique within the playbook."},
+              "uses": {"type": "string", "description": "Unit id this step enacts; SHOULD name a kind: skill unit. MUST resolve to a declared unit, and MUST NOT name another playbook."},
+              "action": {"type": "string", "description": "Inline description, when no unit exists yet. An inline step has no action_scope and is bounded only by its authority_level."},
+              "depends_on": {"type": "array", "items": {"type": "string"}, "description": "Step ids that must complete successfully first. The graph MUST be acyclic. Absent means the preceding step in declaration order."},
+              "authority_level": {"type": "string", "description": "§3.13 scale. Ceiling semantics: at most this level."},
+              "escalation": {"oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}], "description": "§3.14 trigger(s), evaluated before enactment. Disjunctive: any one firing suspends the step."},
+              "success_condition": {"type": "string", "description": "Prose assertion. The protocol defines no evaluation mechanism; outcomes are confirmed | not_confirmed | not_evaluated."},
+              "on_failure": {"enum": ["abort", "continue", "escalate"], "description": "Default abort. 'continue' continues the run but does NOT permit dependent steps to proceed."},
+              "timeout": {"type": "string", "description": "ISO 8601 duration. Elapsing constitutes failure; the clock pauses while a step is suspended awaiting a grant."}
+            }
+          }
         },
         "action_scope": {
           "type": "object",

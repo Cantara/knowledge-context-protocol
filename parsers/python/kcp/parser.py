@@ -1,18 +1,19 @@
 from datetime import date
 from pathlib import Path, PurePosixPath
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 import yaml
 
 from .model import (
+    ActionScope,
     Agent, AgentIdentity, Auth, AuthMethod, Authority, Compliance, ContentHash, ContentStructure,
     Delegation, Discovery, ExternalDependency, ExternalRelationship, FreshnessPolicy,
     GrantCeiling, GrantCeilingSource, KnowledgeManifest, KnowledgeUnit, ManifestRef, Payment,
     PaymentMethod, Serving, RateLimit, RateLimits, RateLimitHeaders, RateLimitTokens,
+    PlaybookStep,
     RateLimitTokensTier, Relationship, TaskType,
-    Trust, TrustAudit, TrustAgentRequirements, TrustProvenance, Visibility,
-    ActionScope,
     Spend,
+    Trust, TrustAudit, TrustAgentRequirements, TrustProvenance, Visibility,
 )
 
 
@@ -113,6 +114,52 @@ def _parse_spend(data: Optional[dict]) -> Optional["Spend"]:
         allowed_vendors=data.get("allowed_vendors"),
         currency=data.get("currency"),
     )
+
+
+def _parse_steps(data) -> Optional[List["PlaybookStep"]]:
+    """§4.3b (v0.29, RFC-0027): the ordered composition a ``kind: playbook`` declares.
+
+    Anything that is not a list yields None, matching ``_parse_action_scope``: a
+    malformed block must not take down the whole parse, and None reads as "declares no
+    steps", which the validator then rejects for a playbook. Entries that are not
+    mappings, or carry no ``id``, are dropped rather than half-parsed — a step with no
+    identity cannot be named by ``depends_on``, so it cannot join the graph at all.
+    """
+    if not isinstance(data, list):
+        return None
+    steps: List["PlaybookStep"] = []
+    for item in data:
+        if not isinstance(item, dict) or item.get("id") is None:
+            continue
+        steps.append(
+            PlaybookStep(
+                id=str(item["id"]),
+                uses=item.get("uses"),
+                action=item.get("action"),
+                depends_on=item.get("depends_on"),
+                authority_level=item.get("authority_level"),
+                escalation=_parse_escalation(item.get("escalation")),
+                success_condition=item.get("success_condition"),
+                on_failure=item.get("on_failure"),
+                timeout=item.get("timeout"),
+            )
+        )
+    return steps
+
+
+def _parse_escalation(raw) -> Optional[List[str]]:
+    """§4.3b: a bare string is shorthand for a single-element list.
+
+    The triggers are disjunctive, so a scalar and a one-element list mean the same
+    thing. Normalising here means no consumer has to handle both shapes.
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        return [raw]
+    if isinstance(raw, list):
+        return [str(x) for x in raw]
+    return None
 
 
 def _parse_action_scope(data: Optional[dict]) -> Optional["ActionScope"]:
@@ -484,6 +531,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
             payment=_parse_payment(u.get("payment")),
             rate_limits=_parse_rate_limits(u.get("rate_limits")),
             action_scope=_parse_action_scope(u.get("action_scope")),
+            steps=_parse_steps(u.get("steps")),
             delegation=_parse_delegation(u.get("delegation")),
             compliance=_parse_compliance(u.get("compliance")),
             auth=_parse_auth(u.get("auth")),
