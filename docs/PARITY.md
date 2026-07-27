@@ -3,7 +3,7 @@
 All three bridges (TypeScript, Java, Python) are required to stay at feature parity on **MCP tools and prompts**.
 Static generation CLI flags (Tier 2) are currently TS + Java only — Python support is planned.
 
-**Current version:** 0.26.0 (all three bridges — aligned with KCP spec version). Spec is at v0.26.1 (2026-07-22, `kind: skill` procedural plane) — see **Known gaps** below, this has not yet reached bridge parity.
+**Current version:** 0.26.0 (all three bridges). **Spec is at v0.28** — the bridges are three spec versions behind (v0.26.1 `kind: skill`, v0.27 authority/grant-ceiling, v0.28 escalation). See **Known gaps** below. Under the Rule stated next, no version may be cut until the Java and Python ports land.
 
 > Scope note: the `kcp` developer CLI (`cli/` — init, validate, query, stats, and as of
 > spec v0.16 `render`) versions independently of the bridges and is outside this parity
@@ -88,25 +88,59 @@ When adding any MCP capability:
 
 ---
 
-## Known gaps (all bridges) — v0.26.1 `kind: skill`
+## Known gaps (all bridges) — v0.26.1 through v0.28
 
-Spec v0.26.1 (2026-07-22, #134) added the procedural plane: `kind: skill` units and the
-`action_scope` field (§4.3a — the tools/paths/capabilities a skill procedure may touch).
-Verified 2026-07-22:
+Re-verified 2026-07-27 against `origin/main` @ 09bfbb1. The v0.26.1 gap recorded below was
+never closed, and two further spec versions were promoted on top of it.
 
-- **TypeScript** — `bridge/typescript/src/model.ts` and `parser.ts` are symlinks to
-  `shared/src/`, which was updated by #134, so parsing/validation of `kind: skill` and
-  `action_scope` is already current. However, `mapper.ts`'s manifest-entry builder
-  (~line 268) does not include `action_scope` in the fields it copies onto the exposed
-  unit entry — it is parsed but not surfaced. Needs a one-line fix + a mapper test.
-- **Java** (`bridge/java/`) and **Python** (`bridge/python/`) — not symlinked, real
-  separate source trees. Zero references to `action_scope` or `"skill"` found in either.
-  Full Tier 1 port required (see **Rule** above) before the next version bump.
+### Field coverage in the bridges
 
-This is a real parity gap, not yet closed — tracked here rather than silently left off
-this table. Do not claim "full parity" again until all three items above are done.
+| bridge | `action_scope` (v0.26.1) | `"skill"` | `authority_level` (v0.27) | `grant_ceiling` (v0.27) |
+|---|---|---|---|---|
+| typescript | 0 | 0 | 1 | 1 |
+| java | 0 | 0 | 0 | 0 |
+| python | 0 | 0 | 0 | 0 |
 
----
+TypeScript's `1`s are inherited, not implemented: `bridge/typescript/src/{model,parser,validator}.ts`
+are symlinks into `shared/src/`, which carries the fields (`shared/src/model.ts` lines 83, 115,
+341, 344). Java (`bridge/java/`, ~2 700 lines) and Python (`bridge/python/`, ~1 480 lines) are
+separate source trees and must mirror them by hand.
+
+`mapper.ts`'s manifest-entry builder still does not surface `action_scope` — the one-line fix
+noted in the previous revision of this section remains undone.
+
+### §17 Observability — three of four tables were never built
+
+| table | normative since | implemented in |
+|---|---|---|
+| `usage_events` | v0.16 | `cli/src/stats.ts`, `bridge/java/.../UsageLogger.java` |
+| `render_events` | v0.16 | **nowhere** |
+| `quarantine_events` | v0.16 | **nowhere** |
+| `grant_request_events` | v0.28 | **nowhere** |
+
+Worth recording precisely, because it produced a false precedent: RFC-0026 justifies the new
+table as "mirroring its existing `render_events`/`quarantine_events` pattern". That pattern is
+specified but has never existed in code. This is the second RFC to cite an implementation
+precedent that is not there — the RFC-0025 draft cited `money_budget`/`max_units` filters that
+appear nowhere in SPEC.md (see CHANGELOG "Fixed"), and `action_scope.spend` shipped in the
+schema for two versions with no specification at all (#144).
+
+Two of these tables belong to the render pipeline (§16), which the scope note above places
+outside the bridge parity contract — they are a `cli/` concern. `grant_request_events` is not:
+it is the audit trail for §3.14 escalation and belongs wherever grants are adjudicated.
+
+### Required before the next version bump
+
+1. **Java + Python: v0.26.1 `kind: skill`** — parse and surface `kind` and `action_scope`.
+2. **Java + Python: v0.27** — `authority_level`, `authority_level_scale`, `grant_ceiling`,
+   and the per-task-type and per-agent ceilings (`shared/src/model.ts` 341–364).
+3. **TypeScript: `mapper.ts`** — surface `action_scope` on the exposed unit entry, plus a test.
+4. **`grant_request_events`** — or an explicit decision to ship v0.28 with §17 Level 3
+   unimplemented, recorded here rather than left to be discovered.
+
+Do not claim parity, and do not cut a release, until 1–3 are done. The Rule above is not
+advisory: three spec versions were promoted while this section already said a port was
+required, and nothing caught it because nothing checks.
 
 ## Version history
 
