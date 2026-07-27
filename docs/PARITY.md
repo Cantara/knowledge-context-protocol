@@ -3,7 +3,7 @@
 All three bridges (TypeScript, Java, Python) are required to stay at feature parity on **MCP tools and prompts**.
 Static generation CLI flags (Tier 2) are currently TS + Java only — Python support is planned.
 
-**Current version:** 0.26.0 (all three bridges). **Spec is at v0.28.** The gap is narrower than a version-number comparison suggests: v0.27 is modelled in all three parsers. What is missing is `action_scope` (v0.26.1) in the Java and Python models, and `grant_request_events` (v0.28) everywhere. See **Known gaps** below.
+**Current version:** 0.28.0 (all three bridges, the CLI, and both parsers — aligned with the spec). The v0.26.1–v0.28 gap recorded here was closed in #146.
 
 > Scope note: the `kcp` developer CLI (`cli/` — init, validate, query, stats, and as of
 > spec v0.16 `render`) versions independently of the bridges and is outside this parity
@@ -88,61 +88,53 @@ When adding any MCP capability:
 
 ---
 
-## Known gaps (all bridges) — v0.26.1 through v0.28
+## Known gaps
 
-Re-verified 2026-07-27 against `origin/main` @ 09bfbb1, **measuring the parser models rather
-than the bridge directories**. An earlier revision of this section scanned `bridge/java/` and
-`bridge/python/` and reported v0.27 as unimplemented in both. That was wrong: the bridges
-consume the models through the `kcp-parser` artifact, and the models live in `parsers/java/`
-and `parsers/python/`. Recording the mistake because it made the remaining work look like a
-two-language port when it is one field in each.
+None outstanding for v0.28. The gaps previously recorded here were closed in #146; the
+history is kept below because how they went unnoticed is more useful than the fact of
+them.
 
-### Field coverage in the parser models
+### What was wrong, and how it was found
 
-| model | `action_scope` | `authority_level` | `grant_ceiling` | task-type / agent ceilings |
-|---|---|---|---|---|
-| `shared/src/model.ts` (TypeScript) | yes | yes | yes | yes |
-| `parsers/java` | **no** | yes (`authorityLevel`) | yes (`GrantCeiling`, `GrantCeilingSource`) | yes (`TaskType`, `Agent`) |
-| `parsers/python` | **no** | yes | yes | yes |
+`action_scope` (§4.3a, v0.26.1) was absent from the Java and Python models and was parsed
+but dropped by `bridge/typescript/src/mapper.ts`. A unit whose declared scope is lost is
+indistinguishable from one that declares none, which per §4.3a authorizes nothing.
 
-**v0.27 (RFC-0025) is modelled in all three.** The outstanding item is `action_scope`
-(§4.3a, v0.26.1) in the Java and Python models — an `ActionScope` type and one unit field
-each, with parsing and tests.
+`grant_request_events` (§17, v0.28) existed in no implementation. It is now written by
+`bridge/java/.../GrantRequestLogger.java` and read by `kcp stats`. Nothing raises grant
+requests yet — RFC-0026 deferred the request/response mechanism — so the writer is a
+library seam for an adjudicator that lives in the planner. That is stated in the class
+javadoc rather than left to be inferred.
 
-`bridge/typescript/src/mapper.ts` did not surface `action_scope` on the exposed unit entry:
-parsed, then dropped at the bridge boundary. Fixed in #146.
+**Two of four validators rejected v0.27 and v0.28 manifests.** `KNOWN_KCP_VERSIONS` in
+`parsers/python/kcp/validator.py` and `KcpValidator.java` stopped at 0.26. CHANGELOG
+"Fixed" records this enum gap being closed for the JSON Schema and `shared/src/validator.ts`
+— two of four; the others were missed. Releasing would have shipped a version no reference
+implementation accepts.
 
-### §17 Observability — three of four tables were never built
+`kcp init` was scaffolding new manifests declaring `kcp_version: 0.26`, so every project
+created after v0.27 began two versions behind.
 
-| table | normative since | implemented in |
-|---|---|---|
-| `usage_events` | v0.16 | `cli/src/stats.ts`, `bridge/java/.../UsageLogger.java` |
-| `render_events` | v0.16 | **nowhere** |
-| `quarantine_events` | v0.16 | **nowhere** |
-| `grant_request_events` | v0.28 | **nowhere** |
+### The check that already existed
 
-This gap produced a false precedent worth naming: RFC-0026 justifies the new table as
-"mirroring its existing `render_events`/`quarantine_events` pattern". That pattern is
-specified but has never existed in code. It is the third instance of the same shape — the
-RFC-0025 draft cited `money_budget`/`max_units` filters absent from SPEC.md (see "Fixed"),
-and `action_scope.spend` shipped in the schema for two versions with no specification at all
-(#144). Each was a claim about what already exists, believed rather than checked.
+`cli/src/consistency.test.ts` is a cross-language version-drift guard. It asserts that every
+validator knows the current SPEC.md version, that the four agree on the known-version set,
+and that the CLI, bridges and scaffold track it. **It had been failing.** It is precisely the
+check that would have caught this drift months earlier, and it went unread.
 
-`render_events` and `quarantine_events` belong to the render pipeline (§16), which the scope
-note above places outside this parity contract — they are a `cli/` concern.
-`grant_request_events` is not: it is the audit trail for §3.14 escalation.
+Two of the three RFC-level errors found alongside were of the same family — a claim about
+what exists, believed rather than checked. RFC-0026 justified `grant_request_events` as
+"mirroring its existing `render_events`/`quarantine_events` pattern"; that pattern is
+specified and has never been implemented. The RFC-0025 draft cited `money_budget`/`max_units`
+filters absent from SPEC.md (see "Fixed"). And `action_scope.spend` shipped in the schema for
+two versions with no specification at all (#144).
 
-### Required before the next version bump
+### Still specified but unimplemented
 
-1. **`action_scope` in the Java and Python models** — `ActionScope` type, unit field, parsing,
-   tests. Treat the sub-object as an opaque passthrough (§4.3a): a field-by-field rebuild
-   drops `spend` and every sub-field a later version adds.
-2. **TypeScript `mapper.ts`** — surface `action_scope`. Done in #146.
-3. **`grant_request_events`** — implement, or record an explicit decision to ship v0.28 with
-   §17 Level 3 unimplemented. Not a new gap: two §17 tables have been unimplemented since
-   v0.16.
-
-Item 1 is the only one that blocks a version bump under the Rule above.
+`render_events` and `quarantine_events` (§17, normative since v0.16) exist nowhere. Both
+belong to the render pipeline (§16), which the scope note above places outside this parity
+contract — a `cli/` concern, not a bridge one. Recorded so the next reader does not
+rediscover it as new.
 
 ## Version history
 
