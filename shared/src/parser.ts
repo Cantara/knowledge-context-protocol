@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import yaml from "js-yaml";
 import type {
   ActionScope,
+  PlaybookStep,
   Spend,
   Auth,
   AuthMethod,
@@ -111,6 +112,7 @@ function parseUnit(raw: RawMap): KnowledgeUnit {
     audience: asStringArray(raw["audience"]),
     kind: raw["kind"] !== undefined ? String(raw["kind"]) : undefined,
     action_scope: parseActionScope(raw["action_scope"]),
+    steps: parseSteps(raw["steps"]),
     format: raw["format"] !== undefined ? String(raw["format"]) : undefined,
     content_type:
       raw["content_type"] !== undefined
@@ -451,6 +453,50 @@ function parseActionScope(raw: unknown): ActionScope | undefined {
     capabilities: stringListOrUndefined(d["capabilities"]),
     spend: parseSpend(d["spend"]),
   };
+}
+
+/**
+ * §4.3b (v0.29, RFC-0027): the ordered composition a `kind: playbook` declares.
+ *
+ * Returns undefined for anything that is not a list, matching parseActionScope: a
+ * malformed block must not take down the whole parse, and undefined reads as
+ * "declares no steps" — which a validator then rejects for kind: playbook. Steps
+ * that are not objects, or carry no `id`, are dropped rather than half-parsed; a
+ * step without an identity cannot be referenced by depends_on and so cannot
+ * participate in the graph at all.
+ */
+function parseSteps(raw: unknown): PlaybookStep[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const steps: PlaybookStep[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+    const d = item as RawMap;
+    if (d["id"] === undefined) continue;
+    steps.push({
+      id: String(d["id"]),
+      uses: d["uses"] !== undefined ? String(d["uses"]) : undefined,
+      action: d["action"] !== undefined ? String(d["action"]) : undefined,
+      depends_on: stringListOrUndefined(d["depends_on"]),
+      authority_level:
+        d["authority_level"] !== undefined ? String(d["authority_level"]) : undefined,
+      // §4.3b: a bare string is shorthand for a single-element list. Normalising here
+      // means every consumer sees one shape; the triggers are disjunctive, so a list
+      // of one and a scalar mean the same thing.
+      escalation: parseEscalation(d["escalation"]),
+      success_condition:
+        d["success_condition"] !== undefined ? String(d["success_condition"]) : undefined,
+      on_failure: d["on_failure"] !== undefined ? String(d["on_failure"]) : undefined,
+      timeout: d["timeout"] !== undefined ? String(d["timeout"]) : undefined,
+    });
+  }
+  return steps;
+}
+
+/** §4.3b: `escalation` accepts a single trigger or a list; both normalise to a list. */
+function parseEscalation(raw: unknown): string[] | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw === "string") return [raw];
+  return stringListOrUndefined(raw);
 }
 
 /** §4.3a (v0.26): purchases a `kind: skill` procedure may make. */

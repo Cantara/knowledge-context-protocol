@@ -12,7 +12,9 @@ import no.cantara.kcp.model.GrantCeiling;
 import no.cantara.kcp.model.GrantCeilingSource;
 import no.cantara.kcp.model.HumanInTheLoop;
 import no.cantara.kcp.model.KnowledgeManifest;
+import no.cantara.kcp.model.ActionScope;
 import no.cantara.kcp.model.KnowledgeUnit;
+import no.cantara.kcp.model.PlaybookStep;
 import no.cantara.kcp.model.AgentIdentity;
 import no.cantara.kcp.model.ManifestRef;
 import no.cantara.kcp.model.Payment;
@@ -36,6 +38,9 @@ import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -53,7 +58,8 @@ public class KcpValidator {
     private static final Set<String> VALID_SCOPES = Set.of("global", "project", "module");
     private static final Set<String> VALID_AUDIENCES = Set.of("human", "agent", "developer", "operator", "architect", "devops");
     private static final Set<String> VALID_RELATIONSHIP_TYPES = Set.of("enables", "context", "supersedes", "contradicts", "depends_on", "governs");
-    private static final Set<String> VALID_KINDS = Set.of("knowledge", "schema", "service", "policy", "executable", "skill");
+    private static final Set<String> VALID_KINDS = Set.of("knowledge", "schema", "service", "policy", "executable", "skill", "playbook");
+    private static final Set<String> VALID_ON_FAILURE = Set.of("abort", "continue", "escalate");
     private static final Set<String> VALID_FORMATS = Set.of(
             "markdown", "pdf", "openapi", "json-schema", "jupyter",
             "html", "asciidoc", "rst", "vtt", "yaml", "json", "csv", "text");
@@ -281,6 +287,146 @@ public class KcpValidator {
             // validate recomputes and compares"). A stale hash is an error, not a
             // warning: signing over it would brick the unit for every consumer.
             validateContentHash(unit.contentHash(), unit.path(), manifestDir, p, errors);
+        }
+
+        // --- kind: playbook — §4.3b (v0.29, RFC-0027) ---
+        //
+        // Deliberately a second pass over the units. `uses` may name a unit declared
+        // later in the manifest, so resolving it inside the loop above would reject
+        // forward references the spec permits.
+        Map<String, String> unitKinds = new LinkedHashMap<>();
+        Map<String, KnowledgeUnit> unitsById = new LinkedHashMap<>();
+        for (KnowledgeUnit u : manifest.units()) {
+            unitKinds.put(u.id(), u.kind() != null ? u.kind() : "knowledge");
+            unitsById.put(u.id(), u);
+        }
+        Set<String> declaredLevels = manifest.authorityLevelScale() != null
+                ? new HashSet<>(manifest.authorityLevelScale()) : Set.of();
+
+        for (KnowledgeUnit unit : manifest.units()) {
+            String ctx = "unit '" + unit.id() + "'";
+            String kind = unit.kind() != null ? unit.kind() : "knowledge";
+
+            if (!"playbook".equals(kind)) {
+                // steps on a non-playbook is a category error, not a silent no-op: the
+                // author declared a composition the protocol will never enact.
+                if (unit.steps() != null) {
+                    warnings.add(ctx + ": declares 'steps' but kind is '" + kind
+                            + "'; steps are only enacted for kind: playbook (§4.3b)");
+                }
+                continue;
+            }
+
+            // A playbook MUST declare steps, and the list MUST be non-empty. An empty
+            // composition is not a degenerate executable — it is a manifest error.
+            if (unit.steps() == null || unit.steps().isEmpty()) {
+                errors.add(ctx + ": kind 'playbook' MUST declare a non-empty 'steps' list (§4.3b)");
+                continue;
+            }
+
+            Set<String> stepIds = new HashSet<>();
+            for (PlaybookStep step : unit.steps()) {
+                String sctx = ctx + " step '" + step.id() + "'";
+
+                if (!stepIds.add(step.id())) {
+                    errors.add(ctx + ": duplicate step id '" + step.id() + "' (§4.3b)");
+                }
+
+                if (step.uses() == null && step.action() == null) {
+                    errors.add(sctx + ": MUST declare either 'uses' or 'action' (§4.3b)");
+                }
+
+                if (step.uses() != null) {
+                    String target = unitKinds.get(step.uses());
+                    if (target == null) {
+                        // An error, not a warning: a resolvable `uses` is the whole
+                        // justification for playbook being a distinct kind. A dangling
+                        // reference that lints clean reduces the playbook to an
+                        // executable with worse ergonomics.
+                        errors.add(sctx + ": 'uses' names unit '" + step.uses()
+                                + "', which is not declared in this manifest (§4.3b)");
+                    } else if ("playbook".equals(target)) {
+                        // Nesting is forbidden pending RFC-0027 OQ1. As a warning it
+                        // would be no guard: nested playbooks form a combined
+                        // depends_on graph the per-playbook cycle check never sees.
+                        errors.add(sctx + ": 'uses' names playbook '" + step.uses()
+                                + "'; playbook nesting is not permitted (§4.3b, RFC-0027 OQ1)");
+                    } else if (!"skill".equals(target)) {
+                        warnings.add(sctx + ": 'uses' names '" + step.uses() + "' of kind '"
+                                + target + "'; SHOULD name a kind: skill unit (§4.3b)");
+                    }
+                }
+
+                if (step.onFailure() != null && !VALID_ON_FAILURE.contains(step.onFailure())) {
+                    errors.add(sctx + ": 'on_failure' must be one of [abort, continue, escalate], got '"
+                            + step.onFailure() + "'");
+                }
+
+                // Checked against the manifest's declared scale rather than a hardcoded
+                // vocabulary — §3.13 makes authority_level_scale a per-manifest
+                // declaration, and the v0.27 check already works that way.
+                if (step.authorityLevel() != null && !declaredLevels.isEmpty()
+                        && !declaredLevels.contains(step.authorityLevel())) {
+                    warnings.add(sctx + ": 'authority_level' value '" + step.authorityLevel()
+                            + "' is not in the declared 'authority_level_scale' (§3.13)");
+                }
+
+                // A step whose unit can mutate but which declares no ceiling is bounded
+                // only by the enacting agent's own grant — looser than intended (§4.3b).
+                if (step.authorityLevel() == null && step.uses() != null) {
+                    KnowledgeUnit target = unitsById.get(step.uses());
+                    ActionScope scope = target != null ? target.actionScope() : null;
+                    boolean mutating = scope != null
+                            && ((scope.paths() != null && !scope.paths().isEmpty())
+                                || scope.spend() != null);
+                    if (mutating) {
+                        warnings.add(sctx + ": omits 'authority_level' while '" + step.uses()
+                                + "' declares a mutating action_scope; the step is bounded"
+                                + " only by the enacting agent (§4.3b)");
+                    }
+                }
+            }
+
+            for (PlaybookStep step : unit.steps()) {
+                if (step.dependsOn() == null) continue;
+                for (String dep : step.dependsOn()) {
+                    if (!stepIds.contains(dep)) {
+                        errors.add(ctx + " step '" + step.id()
+                                + "': depends_on names unknown step '" + dep + "' (§4.3b)");
+                    }
+                }
+            }
+
+            List<String> cycle = findStepCycle(unit.steps());
+            if (cycle != null) {
+                errors.add(ctx + ": 'depends_on' graph contains a cycle: "
+                        + String.join(" -> ", cycle) + " (§4.3b)");
+            }
+
+            // §4.3b: the step-scope union is computable only when every step uses a unit
+            // and every such unit declares an action_scope. Report a declared scope as
+            // unverified rather than passing it silently — a declaration that lints
+            // clean reads as checked.
+            long inline = unit.steps().stream().filter(s -> s.uses() == null).count();
+            if (inline > 0) {
+                warnings.add(ctx + ": " + inline + " of " + unit.steps().size()
+                        + " step(s) are inline ('action'); an inline step has no action_scope"
+                        + " and is bounded only by its authority_level (§4.3b)");
+            }
+            if (unit.actionScope() != null) {
+                long scopeless = unit.steps().stream()
+                        .filter(s -> s.uses() != null)
+                        .filter(s -> {
+                            KnowledgeUnit t2 = unitsById.get(s.uses());
+                            return t2 == null || t2.actionScope() == null;
+                        }).count();
+                if (inline > 0 || scopeless > 0) {
+                    warnings.add(ctx + ": declared 'action_scope' is UNVERIFIED — the"
+                            + " step-scope union is not computable (" + inline
+                            + " inline step(s), " + scopeless
+                            + " step(s) whose unit declares no action_scope) (§4.3b)");
+                }
+            }
         }
 
         // Root-level delegation validation
@@ -1092,5 +1238,63 @@ public class KcpValidator {
 
     private static List<String> sorted(Set<String> set) {
         return set.stream().sorted().toList();
+    }
+
+    /**
+     * §4.3b (v0.29): find a cycle in a playbook's explicit {@code depends_on} graph,
+     * returning the cycle path for the error message, or null if the graph is acyclic.
+     *
+     * <p>Only explicit edges are walked. The implicit "after the previous step in
+     * declaration order" default cannot produce a cycle — declaration order is total —
+     * so materialising it would add edges that are never a defect and would obscure
+     * which edges the author actually wrote.
+     *
+     * <p>Iterative rather than recursive: a manifest is untrusted input, and a deep
+     * chain must report a cycle rather than exhaust the stack.
+     */
+    private static List<String> findStepCycle(List<PlaybookStep> steps) {
+        Map<String, List<String>> edges = new LinkedHashMap<>();
+        for (PlaybookStep s : steps) {
+            edges.put(s.id(), s.dependsOn() != null ? s.dependsOn() : List.of());
+        }
+        final int WHITE = 0, GREY = 1, BLACK = 2;
+        Map<String, Integer> colour = new HashMap<>();
+        for (PlaybookStep s : steps) colour.put(s.id(), WHITE);
+
+        for (PlaybookStep root : steps) {
+            if (colour.get(root.id()) != WHITE) continue;
+            Deque<String> path = new ArrayDeque<>();
+            Deque<int[]> cursor = new ArrayDeque<>();
+            path.addLast(root.id());
+            cursor.addLast(new int[]{0});
+            colour.put(root.id(), GREY);
+            while (!path.isEmpty()) {
+                String current = path.peekLast();
+                int[] idx = cursor.peekLast();
+                List<String> deps = edges.getOrDefault(current, List.of());
+                if (idx[0] >= deps.size()) {
+                    colour.put(current, BLACK);
+                    path.removeLast();
+                    cursor.removeLast();
+                    continue;
+                }
+                String dep = deps.get(idx[0]++);
+                if (!edges.containsKey(dep)) continue;  // dangling; reported separately
+                int c = colour.get(dep);
+                if (c == GREY) {
+                    // Grey means dep is on the current path — slice from it.
+                    List<String> asList = new ArrayList<>(path);
+                    List<String> out = new ArrayList<>(asList.subList(asList.indexOf(dep), asList.size()));
+                    out.add(dep);
+                    return out;
+                }
+                if (c == WHITE) {
+                    colour.put(dep, GREY);
+                    path.addLast(dep);
+                    cursor.addLast(new int[]{0});
+                }
+            }
+        }
+        return null;
     }
 }
