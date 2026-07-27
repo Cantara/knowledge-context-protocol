@@ -66,12 +66,16 @@ public final class GrantRequestLogger {
      * @param resolvedBy            populated on granted/denied rows only
      * @param correlationId         W3C traceparent stitching one run's events together
      */
-    public static void log(String id, EventType eventType, Trigger trigger,
+    public static CompletableFuture<Void> log(String id, EventType eventType, Trigger trigger,
                            String taskTypeRef, String agentRef,
                            List<String> bindingSourceRefs,
                            String currentEffectiveLevel, String requestedLevel,
                            String grantorRole, String resolvedBy, String correlationId) {
-        CompletableFuture.runAsync(() -> {
+        // Returns the future rather than discarding it. Still fire-and-forget — callers
+        // may ignore it — but writes run on a pool, so two calls can land out of order.
+        // An adjudicator recording a created->granted sequence needs them ordered, and
+        // so does any test that asserts the sequence. Awaiting is how you get that.
+        return CompletableFuture.runAsync(() -> {
             try {
                 ensureSchema();
                 insert(id, eventType, trigger, taskTypeRef, agentRef, bindingSourceRefs,

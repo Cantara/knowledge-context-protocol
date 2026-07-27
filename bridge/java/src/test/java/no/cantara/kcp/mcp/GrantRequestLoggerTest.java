@@ -36,6 +36,21 @@ class GrantRequestLoggerTest {
         return DriverManager.getConnection("jdbc:sqlite:" + UsageLogger.dbPath);
     }
 
+    /** Wait for an async writer to create its table. A fixed sleep loses this race on a
+     *  slow runner — CI reported "usage_events lost" from exactly that. */
+    private void awaitTable(String name) throws Exception {
+        long deadline = System.currentTimeMillis() + 10_000;
+        while (System.currentTimeMillis() < deadline) {
+            try (Connection c = open(); Statement st = c.createStatement();
+                 ResultSet rs = st.executeQuery(
+                     "SELECT name FROM sqlite_master WHERE type='table' AND name='" + name + "'")) {
+                if (rs.next()) return;
+            }
+            Thread.sleep(50);
+        }
+        fail("table " + name + " never appeared within 10s");
+    }
+
     @Test
     void createsTheTableWithEverySpecifiedColumn() throws Exception {
         GrantRequestLogger.ensureSchema();
@@ -58,7 +73,7 @@ class GrantRequestLoggerTest {
         // §17 puts all four tables in one store. Creating this one must not disturb
         // usage_events, which the bridge writes on every search.
         UsageLogger.logSearch("proj", "q", 1, 10);
-        Thread.sleep(300);
+        awaitTable("usage_events");   // UsageLogger has no awaitable seam; poll instead
         GrantRequestLogger.ensureSchema();
         try (Connection c = open(); Statement st = c.createStatement();
              ResultSet rs = st.executeQuery(
@@ -75,14 +90,17 @@ class GrantRequestLoggerTest {
         // The shape §17 requires: a request's history is rows sharing an id, not one row
         // mutated in place. An overwriting log cannot answer "how long was this pending"
         // or "was it denied before it was granted".
+        // Await each write. Writes run on a thread pool, so firing both and sleeping
+        // races: CI observed `granted` landing first. The audit trail's whole point is
+        // ordered history, so the ordering must be established by the caller, not hoped
+        // for — which is why log() returns its future.
         GrantRequestLogger.log("req-1", GrantRequestLogger.EventType.CREATED,
                 GrantRequestLogger.Trigger.INSUFFICIENT_AUTHORITY_LEVEL,
                 "deploy", "agent-a", List.of("policy.yaml", "tenant.yaml"),
-                "suggest", "commit", "release-manager", null, "trace-1");
+                "suggest", "commit", "release-manager", null, "trace-1").join();
         GrantRequestLogger.log("req-1", GrantRequestLogger.EventType.GRANTED,
                 null, "deploy", "agent-a", null,
-                "suggest", "commit", "release-manager", "totto", "trace-1");
-        Thread.sleep(600);
+                "suggest", "commit", "release-manager", "totto", "trace-1").join();
 
         try (Connection c = open(); Statement st = c.createStatement();
              ResultSet rs = st.executeQuery(
