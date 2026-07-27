@@ -36,21 +36,6 @@ class GrantRequestLoggerTest {
         return DriverManager.getConnection("jdbc:sqlite:" + UsageLogger.dbPath);
     }
 
-    /** Wait for an async writer to create its table. A fixed sleep loses this race on a
-     *  slow runner — CI reported "usage_events lost" from exactly that. */
-    private void awaitTable(String name) throws Exception {
-        long deadline = System.currentTimeMillis() + 10_000;
-        while (System.currentTimeMillis() < deadline) {
-            try (Connection c = open(); Statement st = c.createStatement();
-                 ResultSet rs = st.executeQuery(
-                     "SELECT name FROM sqlite_master WHERE type='table' AND name='" + name + "'")) {
-                if (rs.next()) return;
-            }
-            Thread.sleep(50);
-        }
-        fail("table " + name + " never appeared within 10s");
-    }
-
     @Test
     void createsTheTableWithEverySpecifiedColumn() throws Exception {
         GrantRequestLogger.ensureSchema();
@@ -72,8 +57,19 @@ class GrantRequestLoggerTest {
     void coexistsWithUsageEvents() throws Exception {
         // §17 puts all four tables in one store. Creating this one must not disturb
         // usage_events, which the bridge writes on every search.
-        UsageLogger.logSearch("proj", "q", 1, 10);
-        awaitTable("usage_events");   // UsageLogger has no awaitable seam; poll instead
+        //
+        // The pre-existing table is created directly rather than by calling
+        // UsageLogger.logSearch. That coupling made this test order-dependent:
+        // UsageLogger.initialized is a static one-shot, so if any earlier test in the
+        // JVM initialised it against a different dbPath, ensureSchema short-circuits and
+        // never creates the table under our @TempDir. It passed locally and failed in CI
+        // purely on test order. The property under test is about schema coexistence, not
+        // about UsageLogger's write path, so the dependency was never needed.
+        try (Connection c = open(); Statement st = c.createStatement()) {
+            st.executeUpdate("CREATE TABLE IF NOT EXISTS usage_events ("
+                    + "id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL, "
+                    + "event_type TEXT NOT NULL, project TEXT NOT NULL)");
+        }
         GrantRequestLogger.ensureSchema();
         try (Connection c = open(); Statement st = c.createStatement();
              ResultSet rs = st.executeQuery(
