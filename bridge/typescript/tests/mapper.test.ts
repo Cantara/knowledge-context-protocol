@@ -457,3 +457,61 @@ describe("manifestToJson — authority, discovery, visibility in unit output", (
     expect(json.discovery).toBeUndefined();
   });
 });
+
+describe("manifestToJson — action_scope (§4.3a)", () => {
+  // The bridge parsed action_scope but never surfaced it: mapper's entry builder
+  // copied `kind` and skipped the envelope that gives `kind: skill` its meaning.
+  // A consumer reading the manifest over MCP saw a skill with no declared scope —
+  // indistinguishable from one that declares none, which per §4.3a authorizes
+  // nothing. Built through parseDict so this covers parse -> map, not just map.
+  function skillManifest(actionScope: unknown) {
+    return parseDict({
+      project: "example",
+      version: "1.0.0",
+      kcp_version: "0.28",
+      units: [
+        {
+          id: "rotate-key",
+          path: "skills/rotate-key.md",
+          intent: "How do I rotate the signing key?",
+          scope: "project",
+          audience: ["agent"],
+          kind: "skill",
+          ...(actionScope === undefined ? {} : { action_scope: actionScope }),
+        },
+      ],
+      relationships: [],
+    });
+  }
+
+  const FULL = {
+    tools: ["kcp-sign", "git"],
+    paths: ["schema/**"],
+    capabilities: ["key-management"],
+    spend: { max_spend: 2, currency: "USD", allowed_vendors: ["registry.example.com"] },
+  };
+
+  it("surfaces action_scope on the unit entry", () => {
+    const out = JSON.parse(manifestToJson(skillManifest(FULL), "example"));
+    expect(out.units[0].action_scope).toBeDefined();
+    expect(out.units[0].action_scope.tools).toEqual(["kcp-sign", "git"]);
+    expect(out.units[0].action_scope.paths).toEqual(["schema/**"]);
+  });
+
+  it("passes action_scope through opaquely, keeping sub-fields it does not model", () => {
+    // §4.3a: action_scope is an opaque passthrough object. Rebuilding it field by
+    // field — as `delegation` and `compliance` are handled — would silently drop
+    // `spend`, and every future sub-field, at the bridge boundary.
+    const out = JSON.parse(manifestToJson(skillManifest(FULL), "example"));
+    expect(out.units[0].action_scope.spend).toEqual({
+      max_spend: 2,
+      currency: "USD",
+      allowed_vendors: ["registry.example.com"],
+    });
+  });
+
+  it("omits action_scope entirely when the unit declares none", () => {
+    const out = JSON.parse(manifestToJson(skillManifest(undefined), "example"));
+    expect("action_scope" in out.units[0]).toBe(false);
+  });
+});

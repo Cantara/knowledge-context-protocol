@@ -1,7 +1,7 @@
 {
   "name": "@cantara.no/kcp",
-  "version": "0.26.1",
-  "description": "Developer CLI for the Knowledge Context Protocol — init, validate, query, render, sign, and usage stats for knowledge.yaml manifests",
+  "version": "0.28.0",
+  "description": "Developer CLI for the Knowledge Context Protocol \u2014 init, validate, query, render, sign, and usage stats for knowledge.yaml manifests",
   "license": "Apache-2.0",
   "type": "module",
   "engines": {
