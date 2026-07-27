@@ -147,12 +147,45 @@ A step's effective authority is the **lowest** of:
 1. the step's own `authority_level`,
 2. the playbook's `authority_level`, if declared,
 3. the `grant_ceiling` in force for the task type (RFC-0025),
-4. the authority granted to the enacting agent.
+4. any tenant- or customer-scoped ceiling, where the deployment is multi-tenant,
+5. the authority granted to the enacting agent.
 
 This is RFC-0025's "lowest-of" rule applied within a composition. **A playbook can never
 raise authority** — composing units cannot grant what neither the units nor the grants
 allow. That property is what makes a playbook safe to select automatically: selecting one
 cannot escalate privilege.
+
+An existing implementation of this model computes precisely
+`min(policy_ceiling, tenant_ceiling, step_cap, playbook_max)` over a five-level ladder
+(`observe → explain → suggest → prepare → commit`) — independently arriving at both the
+ordinal scale RFC-0025 specifies and the playbook-level ceiling this RFC proposes. The
+tenant ceiling in that implementation is the reason source 4 is listed here: a governance
+model that binds per customer cannot express itself through task-type grants alone.
+
+### The orchestrator steers; it does not execute
+
+Where a playbook is enacted by an orchestrator coordinating other agents, the orchestrator
+**SHOULD NOT** perform step work itself. It routes, applies the lowest-of rule, and enforces
+stop conditions; each step is enacted by an agent bound by that step's scope.
+
+This separation is what keeps `action_scope` meaningful in a composition. An orchestrator
+that both steers and executes accumulates the union of every step's scope, and the
+per-step bounds become advisory. The same deployment referenced above states the invariant
+directly: the orchestrator owns the steering — routing, lowest-of, stop-triggers — and
+never the execution.
+
+### Stop conditions are not only failures
+
+`on_failure` covers a step that failed. Deployments also stop on conditions that are not
+failures: a proposal whose confidence falls below a threshold, a repeated pattern
+suggesting weak input data, a cascade guard on correlated runs. RFC-0026 already names
+`confidence_below_threshold` as an escalation trigger; a step MAY declare it via
+`escalation` without having failed.
+
+Implementations SHOULD distinguish the two in the audit trail. "Stopped because the step
+failed" and "stopped because the evidence was too thin to proceed at this authority" are
+different events, and conflating them makes the second invisible — which is precisely the
+case a governance model exists to surface.
 
 ### Relationship to `action_scope`
 
@@ -239,6 +272,15 @@ units:
 4. **Should a playbook be selectable by an agent at all**, or only by an orchestrator? The
    fail-closed reading is that a playbook renders as a pointer with `invocation: explicit`
    unless the manifest grants otherwise — matching `kind: skill` in §4.3a.
+5. **Should budget be a ceiling alongside authority?** One observed implementation meters
+   operations in units against a session ceiling. A playbook that exhausts budget mid-run
+   is neither a failure nor an authority violation, and the protocol currently has no
+   vocabulary for it.
+6. **How should temporal drift across steps be handled?** The same implementation pins
+   inputs to a data timestamp and checks for drift. A playbook spanning hours may reach a
+   later step whose inputs changed after an earlier step read them. Re-verifying every
+   precondition at every step is expensive; ignoring the problem is how a run produces a
+   confidently wrong result from stale inputs.
 
 ## Relationship to Other RFCs
 
