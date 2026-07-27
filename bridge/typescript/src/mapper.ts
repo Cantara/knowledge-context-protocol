@@ -268,6 +268,13 @@ export function manifestToJson(
         audience: u.audience,
       };
       if (u.kind) entry["kind"] = u.kind;
+      // §4.3a: action_scope is an OPAQUE passthrough object — copied wholesale, not
+      // rebuilt field by field the way `delegation` and `compliance` are below. A
+      // rebuild silently drops sub-fields this bridge does not model (`spend` today,
+      // whatever v0.29 adds tomorrow), and a skill whose declared scope is truncated
+      // at the bridge boundary is indistinguishable from one that declares none —
+      // which authorizes nothing. Passing it through keeps the declaration intact.
+      if (u.action_scope) entry["action_scope"] = u.action_scope;
       if (u.format) entry["format"] = u.format;
       if (u.content_type) entry["content_type"] = u.content_type;
       if (u.language) entry["language"] = u.language;
