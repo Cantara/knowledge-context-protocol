@@ -1593,7 +1593,7 @@ Each entry in `units` describes a self-contained piece of knowledge.
 | `id` | REQUIRED | string | Unique identifier within this manifest. See §4.2. |
 | `aliases` | OPTIONAL | list of strings | Additional identifiers that resolve to this unit. See §4.2a (v0.26). |
 | `path` | REQUIRED | string | Relative path to the content file. See §4.3. |
-| `kind` | OPTIONAL | string | Type of artifact. One of: `knowledge`, `schema`, `service`, `policy`, `executable`. See §4.3a. Default: `knowledge`. |
+| `kind` | OPTIONAL | string | Type of artifact. One of: `knowledge`, `schema`, `service`, `policy`, `executable`, `skill`. See §4.3a. Default: `knowledge`. |
 | `intent` | REQUIRED | string | One sentence: what question does this unit answer? See §4.4. |
 | `format` | OPTIONAL | string | Content format of the referenced file. See §4.4a. |
 | `content_type` | OPTIONAL | string | MIME type for precise format identification. See §4.4b. |
