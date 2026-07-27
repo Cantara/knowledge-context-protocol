@@ -8,6 +8,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+---
+
+## [0.28.0] — 2026-07-27 — Implementation Parity
+
+First release since 0.26.0 (14 July). Ships v0.27 (Authority Level and Grant Ceiling,
+RFC-0025) and v0.28 (Escalation and Grant Requests, RFC-0026), both promoted into SPEC.md
+on 24 July but never tagged — and brings every implementation up to the spec they claim.
+
 ### Added
 
 - **`action_scope.spend` — the spend dimension of a `kind: skill` envelope (§4.3a).** A skill may
@@ -20,6 +28,57 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   time and is deliberately not a manifest field (§4.3a.1). The purchase **price** comes from the paid
   resource's own `payment`/`price_per_request` declaration (§4.14, x402): KCP governs the buy
   *decision*, a runtime wallet settles. Additive and backward-compatible. (#139)
+
+---
+
+- **`grant_request_events` (§17, v0.28)** — the escalation audit trail is now implemented.
+  Written by `bridge/java/.../GrantRequestLogger.java`, read by `kcp stats`. One row per
+  state transition, not one per request: a request's history is reconstructed by grouping
+  on `id`, so the log can answer "how long was this pending" and "was it denied before it
+  was granted". Nothing raises grant requests yet — RFC-0026 deferred the request/response
+  mechanism to a future RFC — so the writer is a library seam for an adjudicator that lives
+  in the planner. Stated in the class javadoc rather than left to be inferred. (#146)
+
+- **`action_scope` in the Java and Python models.** `ActionScope` and `Spend` types, unit
+  field, parsing and tests in both, mirroring `shared/src/parser.ts` rather than each
+  inventing a shape. All three agree on the semantic that matters: absent yields
+  `null`/`None`, never an empty object — "declares no scope" and "declares a scope
+  permitting nothing" are different statements, and §4.3a makes the first authorize
+  nothing. (#146)
+
+### Fixed
+
+- **Two of four validators rejected v0.27 and v0.28 manifests.** `KNOWN_KCP_VERSIONS` in
+  `parsers/python/kcp/validator.py` and `KcpValidator.java` stopped at 0.26. The v0.27
+  entry below records this same enum gap being closed for the JSON Schema and
+  `shared/src/validator.ts` — two of four; the others were missed. Releasing without this
+  would have shipped a version no reference implementation accepts. (#146)
+
+- **`kcp init` scaffolded stale manifests.** `SCAFFOLD_KCP_VERSION` was `0.26`, so every
+  project created after v0.27 began life two versions behind. (#146)
+
+- **`bridge/typescript/src/mapper.ts` dropped `action_scope`.** Parsed, then discarded at
+  the bridge boundary, so a consumer reading a manifest over MCP saw a `kind: skill` unit
+  with no declared scope. Copied wholesale rather than rebuilt field by field, since §4.3a
+  defines the object as an opaque passthrough. (#146)
+
+- **`action_scope.spend` had no specification.** The field shipped in the JSON Schema in
+  v0.26 and was described in no section of SPEC.md, while both the schema and this
+  changelog justified it by citing a `money_budget` ceiling in "§4.14" — §4.14 is
+  `payment` and defines no such thing. `money_budget` exists only as a planner gate. Now
+  specified in §4.3a.1, with the dangling citation removed. (#144)
+
+- **Version alignment across the repository.** CLI, both bridges, both parsers, the help
+  banner, `RENDERER_VERSION` and the init scaffold all moved to 0.28.0. Each was required
+  by an assertion in `cli/src/consistency.test.ts` — a cross-language version-drift guard
+  that had been failing, and which is exactly the check that would have caught this drift
+  months earlier. (#146)
+
+### Known gaps
+
+- `render_events` and `quarantine_events` (§17, normative since v0.16) remain unimplemented.
+  Both belong to the render pipeline (§16), which `docs/PARITY.md` places outside the bridge
+  parity contract. Recorded rather than left to be rediscovered.
 
 ---
 
