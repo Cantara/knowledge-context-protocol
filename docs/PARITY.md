@@ -3,7 +3,7 @@
 All three bridges (TypeScript, Java, Python) are required to stay at feature parity on **MCP tools and prompts**.
 Static generation CLI flags (Tier 2) are currently TS + Java only — Python support is planned.
 
-**Current version:** 0.26.0 (all three bridges — aligned with KCP spec version). Spec is at v0.26.1 (2026-07-22, `kind: skill` procedural plane) — see **Known gaps** below, this has not yet reached bridge parity.
+**Current version:** 0.28.0 (all three bridges, the CLI, and both parsers — aligned with the spec). The v0.26.1–v0.28 gap recorded here was closed in #146.
 
 > Scope note: the `kcp` developer CLI (`cli/` — init, validate, query, stats, and as of
 > spec v0.16 `render`) versions independently of the bridges and is outside this parity
@@ -88,25 +88,53 @@ When adding any MCP capability:
 
 ---
 
-## Known gaps (all bridges) — v0.26.1 `kind: skill`
+## Known gaps
 
-Spec v0.26.1 (2026-07-22, #134) added the procedural plane: `kind: skill` units and the
-`action_scope` field (§4.3a — the tools/paths/capabilities a skill procedure may touch).
-Verified 2026-07-22:
+None outstanding for v0.28. The gaps previously recorded here were closed in #146; the
+history is kept below because how they went unnoticed is more useful than the fact of
+them.
 
-- **TypeScript** — `bridge/typescript/src/model.ts` and `parser.ts` are symlinks to
-  `shared/src/`, which was updated by #134, so parsing/validation of `kind: skill` and
-  `action_scope` is already current. However, `mapper.ts`'s manifest-entry builder
-  (~line 268) does not include `action_scope` in the fields it copies onto the exposed
-  unit entry — it is parsed but not surfaced. Needs a one-line fix + a mapper test.
-- **Java** (`bridge/java/`) and **Python** (`bridge/python/`) — not symlinked, real
-  separate source trees. Zero references to `action_scope` or `"skill"` found in either.
-  Full Tier 1 port required (see **Rule** above) before the next version bump.
+### What was wrong, and how it was found
 
-This is a real parity gap, not yet closed — tracked here rather than silently left off
-this table. Do not claim "full parity" again until all three items above are done.
+`action_scope` (§4.3a, v0.26.1) was absent from the Java and Python models and was parsed
+but dropped by `bridge/typescript/src/mapper.ts`. A unit whose declared scope is lost is
+indistinguishable from one that declares none, which per §4.3a authorizes nothing.
 
----
+`grant_request_events` (§17, v0.28) existed in no implementation. It is now written by
+`bridge/java/.../GrantRequestLogger.java` and read by `kcp stats`. Nothing raises grant
+requests yet — RFC-0026 deferred the request/response mechanism — so the writer is a
+library seam for an adjudicator that lives in the planner. That is stated in the class
+javadoc rather than left to be inferred.
+
+**Two of four validators rejected v0.27 and v0.28 manifests.** `KNOWN_KCP_VERSIONS` in
+`parsers/python/kcp/validator.py` and `KcpValidator.java` stopped at 0.26. CHANGELOG
+"Fixed" records this enum gap being closed for the JSON Schema and `shared/src/validator.ts`
+— two of four; the others were missed. Releasing would have shipped a version no reference
+implementation accepts.
+
+`kcp init` was scaffolding new manifests declaring `kcp_version: 0.26`, so every project
+created after v0.27 began two versions behind.
+
+### The check that already existed
+
+`cli/src/consistency.test.ts` is a cross-language version-drift guard. It asserts that every
+validator knows the current SPEC.md version, that the four agree on the known-version set,
+and that the CLI, bridges and scaffold track it. **It had been failing.** It is precisely the
+check that would have caught this drift months earlier, and it went unread.
+
+Two of the three RFC-level errors found alongside were of the same family — a claim about
+what exists, believed rather than checked. RFC-0026 justified `grant_request_events` as
+"mirroring its existing `render_events`/`quarantine_events` pattern"; that pattern is
+specified and has never been implemented. The RFC-0025 draft cited `money_budget`/`max_units`
+filters absent from SPEC.md (see "Fixed"). And `action_scope.spend` shipped in the schema for
+two versions with no specification at all (#144).
+
+### Still specified but unimplemented
+
+`render_events` and `quarantine_events` (§17, normative since v0.16) exist nowhere. Both
+belong to the render pipeline (§16), which the scope note above places outside this parity
+contract — a `cli/` concern, not a bridge one. Recorded so the next reader does not
+rediscover it as new.
 
 ## Version history
 
