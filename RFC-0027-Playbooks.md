@@ -186,6 +186,23 @@ lowest-of rule is applied **per step**, so concurrency cannot widen authority; b
 implementation that enacts concurrently SHOULD record it in the audit trail, because "these
 two steps overlapped" changes how a reader interprets a failure.
 
+#### The scope of `abort`
+
+`on_failure: abort` halts **the whole run**, not just the failing step's dependency branch.
+Under concurrency this means independent in-flight steps are affected even though no
+`depends_on` edge connects them to the failure.
+
+The narrower reading — abort only the dependent branch — was rejected because it makes the
+blast radius of a failure depend on a graph the author drew for ordering reasons, not for
+safety reasons. An author writing `on_failure: abort` on a verification step means "stop"; they
+should not have to reason about which sibling branches happen to be independent.
+
+An implementation MUST NOT begin enacting any step after an abort. For steps already in flight
+it MUST do one of: cancel them, or allow them to complete and record the result as
+**superseded by abort**. Which one is an implementation choice — cancellation is not always
+possible — but the choice MUST be recorded, because "this step ran after the run aborted" is
+otherwise indistinguishable from "this step ran normally" in the audit trail.
+
 #### What "failure" means
 
 `on_failure` is meaningless without saying what triggers it. A step has **failed** when any
@@ -215,6 +232,20 @@ step — `confirmed`, `not_confirmed`, `not_evaluated` — and MUST NOT treat `n
 evaluator actually knows, and collapsing it into success is how a run reports green having
 verified nothing.
 
+#### What "completed successfully" means for a dependency
+
+`not_evaluated` creates a third state that the failure definition above does not cover: the
+step did not fail (trigger 2 requires the condition to have been *evaluated* and not
+confirmed), but nothing confirmed it succeeded either. A step is **completed successfully**,
+and therefore satisfies a `depends_on` edge, only when it terminated normally, did not time
+out, and its `success_condition` is either `confirmed` or absent.
+
+**`not_evaluated` therefore does not satisfy a dependency.** A downstream step MUST NOT be
+enacted on an unevaluated predecessor; the run suspends as if the predecessor had escalated.
+Treating it as satisfied would let an implementation without an evaluator run an entire
+playbook to `commit` while having verified nothing at any step — the same collapse the
+three-state rule exists to prevent, arriving through the dependency graph instead.
+
 ### Effective authority is the minimum, not the maximum
 
 A step's effective authority is the **lowest** of:
@@ -227,8 +258,17 @@ A step's effective authority is the **lowest** of:
 
 Sources 3–5 are RFC-0025's existing multi-source minimum, restated here for completeness;
 sources 1–2 are what this RFC adds. For source 3, the task type is the one declared by the
-step's `uses` unit; if the unit declares none, the playbook's; if neither, no task-type
-ceiling applies and the minimum is taken over the remaining sources.
+step's `uses` unit; if the unit declares none, the playbook's; if neither — including for an
+inline step, which has no unit to declare one — no task-type ceiling applies and the minimum
+is taken over the remaining sources.
+
+Dropping an undeclared source rather than defaulting it to the most restrictive value is a
+deliberate choice, and it is safe for one specific reason: **source 5, the enacting agent's own
+granted authority, is never absent.** Every minimum therefore has at least one real bound, and
+the cannot-raise property holds regardless of which optional sources are declared. The same
+reasoning covers an omitted step-level `authority_level`. What the omission costs is precision,
+not safety: a step with no task type is bounded by the agent rather than by the task, which is
+looser than intended but never looser than the agent already is.
 
 **Omitting `authority_level` on a step means "no step-level ceiling", not "the lowest level".**
 The step remains bounded by sources 2–5, so the *cannot-raise* property below still holds.
@@ -270,17 +310,30 @@ neutralise a gate.
 
 ### What `escalate` does
 
-`on_failure: escalate`, and an `escalation` trigger firing, both suspend the step and raise a
-grant request per RFC-0026. Three outcomes follow:
+The two paths into escalation differ in **when** they fire, and the difference is the whole
+point of the `escalation` field:
+
+- an **`escalation` trigger is evaluated before the step is enacted**. `requires_approval` on
+  a `commit` step gates the promotion; it does not report it afterwards. A trigger that fired
+  only post-enactment would be an audit record, not a control.
+- **`on_failure: escalate`** fires after enactment, on failure.
+
+Both suspend the step and raise a grant request per RFC-0026. Where a step declares several
+`escalation` triggers, **any one firing suspends the step** — they are disjunctive, since each
+names an independent reason the step should not proceed unreviewed.
+
+Three outcomes follow:
 
 - **granted** — the step is enacted at the granted level; the run proceeds normally;
 - **denied** — the step is treated as having failed with `on_failure: abort`;
 - **expired** — likewise treated as `abort`.
 
-The run does not proceed past a suspended step, nor past any step depending on it. The
-request/response coordination mechanism itself is out of scope: RFC-0026 accepted the
-semantics and the audit trail while explicitly deferring coordination to a successor RFC, and
-this RFC does not pre-empt that decision.
+The run does not proceed past a suspended step, nor past any step depending on it. A suspended
+step's `timeout` clock **pauses for the duration of the suspension** and resumes on a grant:
+`timeout` bounds how long the work may take, and a human deliberating for an hour is not the
+step running slowly. The request/response coordination mechanism itself is out of scope:
+RFC-0026 accepted the semantics and the audit trail while explicitly deferring coordination to
+a successor RFC, and this RFC does not pre-empt that decision.
 
 An `escalation` trigger and an `on_failure: escalate` MUST be distinguishable in the audit
 trail. "Stopped because the step failed" and "stopped before acting because approval was
@@ -324,11 +377,18 @@ inherits that scope; it does not widen it. Where a playbook declares its own `ac
 it is a **declaration for review, not a grant**, and it is expected to be the union of its
 steps' scopes.
 
-That union is computable **only when every step declares `uses`.** An inline (`action`) step
-references no unit and therefore contributes no scope, so a playbook containing even one
-inline step has no computable union. In that case a validator MUST report the declared scope
-as *unverified* rather than passing it silently — an unverifiable declaration that lints clean
-is worse than none, because it reads as checked.
+That union is computable **only when every step declares `uses` and every referenced unit
+declares an `action_scope`.** Either gap breaks it: an inline (`action`) step references no
+unit, and a referenced unit that declares no scope contributes nothing to distinguish from
+contributing an empty one. In either case a validator MUST report the declared scope as
+*unverified* rather than passing it silently — an unverifiable declaration that lints clean is
+worse than none, because it reads as checked.
+
+**An inline step is unbounded in scope, not merely widely scoped.** `action_scope` enforcement
+attaches to the `uses` unit; with no unit there is nothing to enforce, and only the step's
+`authority_level` ceiling applies. That ceiling constrains how far the step may go but not what
+it may touch. This is the strongest argument for keeping `action` a transitional affordance:
+a playbook of inline steps is governed on one axis out of two.
 
 Where the union *is* computable, a validator SHOULD flag a playbook whose declared scope
 exceeds it, because that is the shape of an over-broad request.
@@ -446,23 +506,38 @@ conformance checker enforces, and which an earlier draft of this RFC violated by
 1. **Should `steps` permit nesting** — a step whose `uses` names another playbook? It is
    natural and it introduces cycles. A depth limit and a cross-playbook cycle check would be
    required, and the cascade-guard problem is the same one delegation chains already face
-   (§3.4). Until this is resolved, `uses` naming a non-`skill` unit is a validator warning
-   (see Conformance) rather than permitted nesting.
-2. **Where does per-step evidence live?** RFC-0026 added `grant_request_events`. A signed
+   (§3.4). **Until it is resolved, nesting is forbidden rather than merely unspecified**: a
+   validator MUST error when `uses` names a `kind: playbook` unit (see Conformance). An earlier
+   draft left this as a SHOULD-warning, which is not a guard — a lenient implementation could
+   have nested playbooks whose combined `depends_on` graph the per-playbook cycle check never
+   sees, defeating both the acyclicity rule and, through it, the lowest-of computation.
+2. **Should `uses` pin a version?** A step inherits its unit's `action_scope` by id, not by
+   signed hash. If the unit is later superseded with a broader scope, an already-approved
+   playbook silently widens without re-review — a lifecycle path around the approval gate, and
+   the more serious for being invisible. Candidate answers: resolve `uses` against the unit
+   version current at signing time; or re-verify at enaction and escalate on widening. Both
+   have costs and neither belongs in this RFC without an implementation behind it.
+3. **Where does per-step evidence live?** RFC-0026 added `grant_request_events`. A signed
    decision per step is the natural companion, but whether it belongs in this RFC or a
    successor is unresolved.
-3. **Should a playbook be selectable by an agent at all**, or only by an orchestrator? The
-   fail-closed reading is that a playbook renders as a pointer with `invocation: explicit`
-   unless the manifest grants otherwise — matching `kind: skill` in §4.3a.
-4. **Should budget be a ceiling alongside authority?** §4.3a.1 specifies `action_scope.spend`
+4. **Should a playbook be selectable by an agent at all**, or only by an orchestrator? This RFC
+   states that playbooks are gated exactly as `knowledge` and `skill` are, which permits
+   intent-driven selection. The fail-closed alternative is `invocation: explicit` by default
+   unless the manifest grants otherwise. The two readings are not reconciled here; the RFC
+   currently takes the permissive one, and it is genuinely open whether it should.
+5. **Where does a confidence threshold live?** RFC-0026 names `confidence_below_threshold` as a
+   trigger, and this RFC lets a step declare it — but no field carries the threshold value, so
+   each implementation would supply its own. Either a step-level field or a task-type binding
+   is needed before the trigger is portable.
+6. **Should budget be a ceiling alongside authority?** §4.3a.1 specifies `action_scope.spend`
    for a single unit; a playbook spanning many steps needs a run-level ceiling, and exhausting
    it mid-run is neither a failure nor an authority violation. The protocol has no vocabulary
    for that state.
-5. **How should temporal drift across steps be handled?** A playbook spanning hours may reach
+7. **How should temporal drift across steps be handled?** A playbook spanning hours may reach
    a later step whose inputs changed after an earlier step read them. Re-verifying every
    precondition at every step is expensive; ignoring the problem is how a run produces a
    confidently wrong result from stale inputs.
-6. **Should `authority_level` be re-evaluated mid-run?** This RFC computes effective authority
+8. **Should `authority_level` be re-evaluated mid-run?** This RFC computes effective authority
    per step at enactment time, which handles a ceiling that changes between steps. It does not
    handle a ceiling revoked *during* a long-running step.
 
@@ -474,8 +549,16 @@ conformance checker enforces, and which an earlier draft of this RFC violated by
 - **RFC-0026** supplies escalation triggers and the audit table. A step's `escalation` field is
   that vocabulary, positioned.
 - **RFC-0014/0020/0022** compose *manifests*. This composes *units*. They are orthogonal: a
-  playbook may draw on units from a composed manifest, and the composition-integrity invariant
-  (signature covers the territory, not the map) applies unchanged.
+  playbook may draw on units from a composed manifest, and manifest-composition integrity
+  applies to it unchanged.
+- **RFC-0018 §2.1** draws the map/territory boundary: the render pipeline sanitises manifest
+  metadata (the map) and cannot lint the content of referenced files (the territory). That
+  boundary applies to playbooks with more force than to other kinds, because a step's `uses`
+  reference is map-level and checkable while the referenced procedure's *content* is not. A
+  conformance checker can confirm that `promote` uses a declared `kind: skill` unit; it cannot
+  confirm the unit's prose does what its `intent` claims. An earlier draft of this RFC cited
+  this invariant to the composition RFCs and paraphrased it as "signature covers the territory,
+  not the map" — wrong source, and inverted.
 - **A2A.** SPEC.md §related-work already positions KCP against agent-to-agent transport. This
   RFC deliberately does not specify how agents communicate — only what the governed artifact
   *is*. A playbook can be executed by one agent or by five over A2A; the protocol should not
@@ -501,8 +584,14 @@ a MUST, conformance does not weaken it to a SHOULD.
   does not exist.
 - A validator MUST report the number of inline (`action`) steps.
 - A validator MUST report a playbook's declared `action_scope` as *unverified* when any step is
-  inline, rather than reporting it as checked.
-- A validator SHOULD warn when `uses` names a unit that does not exist or is not `kind: skill`.
+  inline, or when any referenced unit declares no `action_scope`, rather than reporting it as
+  checked.
+- A validator MUST error when `uses` names a unit that does not resolve within the manifest or
+  its composed manifests. This is an error rather than a warning because a resolvable `uses` is
+  the entire justification for a distinct kind (see *Alternatives Considered*): a dangling
+  reference that lints clean reduces the playbook to `executable` with worse ergonomics.
+- A validator MUST error when `uses` names a `kind: playbook` unit, pending Open Question 1.
+- A validator SHOULD warn when `uses` names a unit that resolves but is not `kind: skill`.
 - A validator SHOULD warn when a step omits `authority_level` while its `uses` unit declares an
   `action_scope` capable of mutation.
 - A validator SHOULD warn when a computable step-scope union is narrower than the playbook's
@@ -519,9 +608,23 @@ a MUST, conformance does not weaken it to a SHOULD.
 - An enacting implementation MUST record, per step, which failure condition occurred
   (abnormal termination, unconfirmed `success_condition`, or timeout) and MUST record
   `success_condition` outcome as one of `confirmed`, `not_confirmed`, `not_evaluated`.
-- An enacting implementation MUST NOT treat `not_evaluated` as `confirmed`.
-- An orchestrator MUST NOT enact step work itself; a co-located enacting agent with its own
-  declared scope satisfies this.
+- An enacting implementation MUST NOT treat `not_evaluated` as `confirmed`, and MUST NOT treat
+  a `not_evaluated` predecessor as satisfying a `depends_on` edge.
+- An enacting implementation MUST evaluate a step's `escalation` triggers before enacting it,
+  and MUST suspend the step when any one of them fires.
+- On abort, an enacting implementation MUST NOT begin any further step, and MUST record
+  in-flight steps as either cancelled or superseded by the abort.
+- Where a playbook is enacted by an orchestrator, the orchestrator MUST NOT enact step work
+  itself; a co-located enacting agent with its own declared scope satisfies this.
+
+  Unlike every other requirement here, this one binds an actor rather than a field: nothing in
+  the manifest declares "orchestrator", so a validator cannot check it and only a deployment
+  can honour it. It is stated as a MUST anyway because the property it protects — per-step
+  `action_scope` remaining meaningful under composition — is not recoverable once violated, and
+  because an implementation reading this RFC is the only party positioned to observe the
+  violation. A future RFC that gives the enacting role a declared identity would make it
+  checkable; that is a gap, and naming it is better than downgrading the rule to match the
+  tooling.
 - An implementation MUST NOT treat an unsigned successor playbook as selectable.
 
 ## Backward Compatibility
@@ -547,3 +650,13 @@ runnable artifacts.
   case where this RFC would not be justified. Declared `complete-promotion` in the Complete
   Example, which the draft referenced but never defined. Removed unverifiable statistics and
   the unnamed-implementation citation, replacing them with an explicit provenance note.
+- 2026-07-27 — second review round against the revised text (26 findings; none of round one's
+  recurred). Defined the scope of `abort` and in-flight step handling under concurrency; ruled
+  that `not_evaluated` does not satisfy a `depends_on` edge, closing a hole the three-state
+  outcome rule had opened; specified `escalation` triggers as pre-enactment and disjunctive;
+  paused the `timeout` clock during suspension. Upgraded unresolvable `uses` to a MUST error
+  and forbade playbook-nesting outright rather than leaving it unspecified. Stated why an
+  undeclared ceiling source is dropped rather than defaulted (source 5 is never absent) and why
+  an inline step is scope-*unbounded*, not merely wide. Added open questions on version-pinning
+  `uses` and on where a confidence threshold lives. Corrected the map/territory citation: the
+  invariant is RFC-0018 §2.1, not the composition RFCs, and the draft had it inverted.
