@@ -10,6 +10,65 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.29.0] — 2026-07-27 — Playbooks
+
+Adds `kind: playbook` (RFC-0027): an ordered composition of units, governed **per step**.
+
+The gap it closes: `kind: executable` is governed at invocation and opaque thereafter, so a
+procedure that reads state, proposes a change, waits for a human, and then commits must
+declare one authority level for all four phases — either over-granting the reading steps or
+blocking the committing one. RFC-0025 supplied the authority scale and RFC-0026 the
+escalation vocabulary, but neither had a step to attach to.
+
+### Added
+
+- **SPEC.md §4.3b** — `steps`, and the semantics around them: effective authority as a
+  five-source minimum, execution order and the `depends_on` default, what constitutes
+  failure, what `success_condition` is (a prose assertion the protocol never evaluates),
+  stop conditions, scope verifiability, and the orchestration boundary.
+- **`kind: playbook`** in both SPEC.md kind tables, the JSON schema `enum`, and all three
+  validators.
+- **`steps` parsing** in TypeScript, Python and Java, with `escalation` accepting a bare
+  string as shorthand for a single-element list.
+- **Conformance rules** in all three validators: non-empty `steps`, `uses`-or-`action`,
+  unique step ids, acyclic `depends_on`, resolvable `uses`, no nesting, inline-step
+  reporting, and unverifiable-`action_scope` reporting.
+- 28 tests per language, mirroring each other case for case.
+
+### Notes
+
+Two rules are **errors, not warnings**, and both were warnings in the RFC draft until
+adversarial review showed they were load-bearing. An unresolvable `uses` is an error because
+a resolvable `uses` is the entire justification for a distinct kind — without it,
+`executable` plus a metadata block would do. Nesting is an error pending RFC-0027 Open
+Question 1, because as a warning it was no guard: nested playbooks form a combined
+`depends_on` graph that the per-playbook cycle check never sees.
+
+`not_evaluated` is a first-class `success_condition` outcome and does **not** satisfy a
+`depends_on` edge. Without that, an implementation with no evaluator could run a whole
+playbook to `commit` having verified nothing.
+
+### Known gaps
+
+- `uses` resolves by unit id, not by signed hash. Superseding a referenced unit with a
+  broader `action_scope` silently widens an already-approved playbook (RFC-0027 OQ2).
+- The orchestrator-MUST-NOT-execute rule binds an actor with no schema representation, so
+  no validator can check it.
+- Playbook nesting, per-step evidence, run-level budget and cross-step temporal drift remain
+  open (RFC-0027 OQ1, 3, 6, 7).
+
+---
+
+## [0.28.1] — 2026-07-27
+
+### Fixed
+
+- **SPEC.md §4 field table** omitted `skill` from the valid `kind` values while §4.3a listed
+  it. Documentation drift only — all three validators already accepted it — but both parser
+  suites iterated the original five kinds, so nothing failed when the sixth arrived (#148).
+
+---
+
 ## [0.28.0] — 2026-07-27 — Implementation Parity
 
 First release since 0.26.0 (14 July). Ships v0.27 (Authority Level and Grant Ceiling,

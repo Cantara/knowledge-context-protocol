@@ -1,6 +1,6 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.28
+**Version:** 0.29
 **Status:** Draft
 **Date:** 2026-07-24
 **Repository:** github.com/cantara/knowledge-context-protocol
@@ -1593,7 +1593,7 @@ Each entry in `units` describes a self-contained piece of knowledge.
 | `id` | REQUIRED | string | Unique identifier within this manifest. See §4.2. |
 | `aliases` | OPTIONAL | list of strings | Additional identifiers that resolve to this unit. See §4.2a (v0.26). |
 | `path` | REQUIRED | string | Relative path to the content file. See §4.3. |
-| `kind` | OPTIONAL | string | Type of artifact. One of: `knowledge`, `schema`, `service`, `policy`, `executable`, `skill`. See §4.3a. Default: `knowledge`. |
+| `kind` | OPTIONAL | string | Type of artifact. One of: `knowledge`, `schema`, `service`, `policy`, `executable`, `skill`, `playbook`. See §4.3a. Default: `knowledge`. |
 | `intent` | REQUIRED | string | One sentence: what question does this unit answer? See §4.4. |
 | `format` | OPTIONAL | string | Content format of the referenced file. See §4.4a. |
 | `content_type` | OPTIONAL | string | MIME type for precise format identification. See §4.4b. |
@@ -1739,6 +1739,7 @@ procedure (skill).
 | `policy` | Rules, constraints, compliance documents | Evaluate as authoritative gate |
 | `executable` | Runnable artifacts: scripts, notebooks, workflow definitions | Invoke on demand |
 | `skill` | A governed, executable procedure or playbook | Select like knowledge; enact within a declared `action_scope` |
+| `playbook` | An ordered composition of units, governed per step | Select like knowledge; enact step by step, each within its own ceiling (§4.3b) |
 
 If `kind` is omitted, parsers MUST treat the unit as `kind: knowledge`. This ensures full
 backward compatibility with v0.2 manifests.
@@ -1848,6 +1849,138 @@ may spend in total.
 (§3.14), a purchase held by any of the rules above SHOULD raise a grant request rather than
 fail silently, so that a human can authorise the specific purchase without widening the
 declared scope.
+
+### 4.3b `steps` — the composition a `kind: playbook` declares (v0.29)
+
+A `kind: playbook` unit declares an ordered composition of other units, governed **per
+step**. It MUST declare a non-empty `steps` list; a playbook with no steps is a manifest
+error, not a degenerate `executable`.
+
+The distinction from `executable` is that a playbook's steps are *references to other
+units*. `executable` is opaque by construction — an agent may invoke it or not, and
+everything it does thereafter is outside the protocol. A playbook's `uses` is resolvable,
+so a conformance checker can confirm the target exists, is `kind: skill`, and declares an
+`action_scope`. That checkability is the whole benefit of the kind.
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `id` | REQUIRED | string | Unique within the playbook. |
+| `uses` | OPTIONAL | string | Unit id this step enacts. SHOULD name a `kind: skill` unit. |
+| `action` | OPTIONAL | string | Inline description, when no unit exists yet. |
+| `depends_on` | OPTIONAL | list of strings | Step ids that must complete successfully first. |
+| `authority_level` | OPTIONAL | string | §3.13 scale. Ceiling semantics: at most this level. |
+| `escalation` | OPTIONAL | string or list | §3.14 trigger(s). A bare string means a single-element list. |
+| `success_condition` | RECOMMENDED | string | Observable result confirming the step succeeded. |
+| `on_failure` | OPTIONAL | string | `abort` \| `continue` \| `escalate`. Default `abort`. |
+| `timeout` | OPTIONAL | string | ISO 8601 duration. Elapsing constitutes failure. |
+
+Either `uses` or `action` MUST be present.
+
+A playbook unit MAY also declare `authority_level` (a ceiling over every step) and
+`action_scope` (declarative only — see *Scope verifiability* below).
+
+#### Effective authority
+
+A step's effective authority is the **lowest** of: the step's `authority_level`, the
+playbook's `authority_level`, the `grant_ceiling` in force for the task type (§3.13), any
+tenant-scoped ceiling, and the authority granted to the enacting agent. This is §3.13's
+lowest-of rule applied within a composition. **A playbook can never raise authority** —
+composing units cannot grant what neither the units nor the grants allow, which is what
+makes a playbook safe to select automatically.
+
+An omitted source is dropped from the minimum rather than defaulted to the most
+restrictive value. This is safe because the enacting agent's own granted authority is
+never absent, so every minimum has at least one real bound. What omission costs is
+precision, not safety.
+
+`authority_level` and `action_scope` are **independent bounds and both apply**. The
+declared level caps how far a step may go; the `uses` unit's `action_scope` bounds what it
+may touch. Neither substitutes for the other, and the declared level is a cap, not a
+description of what the step does.
+
+#### Execution order
+
+Absent `depends_on` means the step depends on the step immediately preceding it in
+declaration order. Declaration order is total, so this default is always well-defined,
+including where explicit edges form a branching graph.
+
+The resulting graph MUST be acyclic. Steps with no dependency path between them MAY be
+enacted concurrently; an implementation that does not support concurrency MUST enact steps
+in declaration order.
+
+#### Failure, and what `success_condition` is
+
+A step has **failed** when its enactment terminated abnormally, its `success_condition` was
+evaluated and not confirmed, or its `timeout` elapsed. An implementation MUST record which.
+
+`success_condition` is a **prose assertion, not an expression in an evaluation language**.
+This specification deliberately defines no evaluation mechanism: the assertions that matter
+are checked by the enacting agent against the world, not by a parser against a string. A
+conformance checker therefore lints its presence and shape, never its truth.
+
+Implementations MUST record one of `confirmed`, `not_confirmed`, `not_evaluated` per step,
+and MUST NOT treat `not_evaluated` as `confirmed`. A step **completed successfully** — and
+so satisfies a `depends_on` edge — only when it terminated normally, did not time out, and
+its `success_condition` is `confirmed` or absent. `not_evaluated` does not satisfy a
+dependency: treating it as satisfied would let an implementation without an evaluator run a
+whole playbook to `commit` having verified nothing.
+
+#### Stop conditions
+
+`on_failure: continue` means **the run continues past this step**, not that steps depending
+on it may proceed. A step MUST NOT be enacted unless every step it transitively depends on
+completed successfully. Without that rule, `continue` on a verification step removes the
+abort gate while the downstream `commit` step still runs.
+
+`on_failure: abort` halts the whole run, not only the failing step's branch. An
+implementation MUST NOT begin any further step after an abort, and MUST record in-flight
+steps as either cancelled or superseded.
+
+An `escalation` trigger is evaluated **before** the step is enacted — `requires_approval`
+on a `commit` step gates the promotion rather than reporting it. Multiple triggers are
+disjunctive: any one firing suspends the step. `on_failure: escalate` fires after
+enactment, on failure. Both raise a grant request per §3.14; a granted request enacts the
+step, a denied or expired one is treated as `abort`. A suspended step's `timeout` clock
+pauses for the duration of the suspension.
+
+#### Scope verifiability
+
+A playbook's declared `action_scope` is a declaration for review, not a grant, and is
+expected to be the union of its steps' scopes. That union is computable **only when every
+step declares `uses` and every referenced unit declares an `action_scope`.** An inline
+(`action`) step references no unit and so is bounded only by its `authority_level` — it is
+scope-*unbounded*, not merely widely scoped.
+
+Where the union is not computable, a validator MUST report the declared scope as
+*unverified* rather than passing it silently: an unverifiable declaration that lints clean
+is worse than none, because it reads as checked.
+
+#### Orchestration
+
+Where a playbook is enacted by an orchestrator coordinating other agents, the orchestrator
+MUST NOT perform step work itself; it routes, applies the lowest-of rule, and enforces stop
+conditions. An orchestrator that both steers and executes accumulates the union of every
+step's scope, and the per-step bounds become advisory. An implementation that must execute
+locally does so as an orchestrator plus a co-located enacting agent with its own declared
+scope — the requirement is a distinct bound subject, not a distinct machine.
+
+This requirement binds an actor rather than a field, so no validator can check it.
+
+#### Conformance
+
+- A validator MUST error when a `kind: playbook` unit declares no `steps` or an empty list.
+- A validator MUST error when a step declares neither `uses` nor `action`.
+- A validator MUST error when step ids are not unique within the playbook.
+- A validator MUST error when the `depends_on` graph contains a cycle or names an unknown step.
+- A validator MUST error when `uses` does not resolve to a declared unit.
+- A validator MUST error when `uses` names a `kind: playbook` unit — nesting is not yet
+  specified (RFC-0027 Open Question 1), and permitting it would let a combined `depends_on`
+  graph escape the per-playbook cycle check.
+- A validator MUST report the number of inline (`action`) steps.
+- A validator MUST report a declared `action_scope` as unverified where the union is not computable.
+- A validator SHOULD warn when `uses` resolves to a unit that is not `kind: skill`.
+- A validator SHOULD warn when a step omits `authority_level` while its `uses` unit declares
+  a mutating `action_scope`.
 
 ### 4.4 `intent`
 
