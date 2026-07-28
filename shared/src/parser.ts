@@ -86,6 +86,42 @@ function toDateString(value: unknown): string | undefined {
 
 type RawMap = Record<string, unknown>;
 
+/**
+ * Coerce a YAML scalar to a boolean, agreeing with the Python and Java parsers (#151).
+ *
+ * `Boolean()` was used here, and `Boolean()` on any non-empty string is `true`. js-yaml
+ * implements YAML 1.2, which leaves `yes`/`no`/`on`/`off` as strings, while PyYAML and
+ * SnakeYAML implement YAML 1.1 and parse them as booleans. So `deprecated: no` read as
+ * **deprecated** in TypeScript and **not deprecated** in the other two — the same
+ * manifest saying opposite things, with no diagnostic anywhere.
+ *
+ * The failure was asymmetric in the dangerous direction: every negative became a
+ * positive, and so did every typo (`deprecated: flase` was `true`).
+ *
+ * Three rules:
+ *  - a real boolean passes through;
+ *  - the YAML 1.1 words resolve to their intended value, so this parser agrees with the
+ *    other two rather than disagreeing in a third way;
+ *  - anything else yields undefined — the field reads as *undeclared*, so the unit falls
+ *    back to its documented default instead of silently switching a flag on.
+ *
+ * Quoted `"true"` is deliberately not accepted. Quoting means the author wrote text, and
+ * accepting it would make the strictness pointless: every rejected value could be quoted
+ * back in.
+ */
+const YAML_TRUE = new Set(["true", "yes", "on"]);
+const YAML_FALSE = new Set(["false", "no", "off"]);
+
+function asBool(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const v = value.toLowerCase();
+    if (YAML_TRUE.has(v)) return true;
+    if (YAML_FALSE.has(v)) return false;
+  }
+  return undefined;
+}
+
 function asStringArray(value: unknown): string[] {
   if (!value) return [];
   if (Array.isArray(value)) return value.map(String);
@@ -142,7 +178,7 @@ function parseUnit(raw: RawMap): KnowledgeUnit {
     sensitivity:
       raw["sensitivity"] !== undefined ? String(raw["sensitivity"]) : undefined,
     deprecated:
-      raw["deprecated"] !== undefined ? Boolean(raw["deprecated"]) : undefined,
+      asBool(raw["deprecated"]),
     payment: parsePayment(raw["payment"]),
     rate_limits: parseRateLimits(raw["rate_limits"]),
     delegation: parseDelegation(raw["delegation"]),
@@ -160,7 +196,7 @@ function parseUnit(raw: RawMap): KnowledgeUnit {
     discovery: parseDiscovery(raw["discovery"]),
     not_for: raw["not_for"] !== undefined ? asStringArray(raw["not_for"]) : undefined,
     not_for_strict:
-      raw["not_for_strict"] !== undefined ? Boolean(raw["not_for_strict"]) : undefined,
+      asBool(raw["not_for_strict"]),
     content_structure: parseContentStructure(raw["content_structure"]),
     content_hash: parseContentHash(raw["content_hash"]),
     temporal: parseTemporal(raw["temporal"]),
@@ -200,9 +236,9 @@ function parseTrust(raw: unknown): Trust | undefined {
   const auditData = data["audit"] as RawMap | undefined;
   if (auditData && typeof auditData === "object") {
     audit = {
-      agent_must_log: auditData["agent_must_log"] !== undefined ? Boolean(auditData["agent_must_log"]) : undefined,
-      require_trace_context: auditData["require_trace_context"] !== undefined ? Boolean(auditData["require_trace_context"]) : undefined,
-      provides_access_receipts: auditData["provides_access_receipts"] !== undefined ? Boolean(auditData["provides_access_receipts"]) : undefined,
+      agent_must_log: asBool(auditData["agent_must_log"]),
+      require_trace_context: asBool(auditData["require_trace_context"]),
+      provides_access_receipts: asBool(auditData["provides_access_receipts"]),
       receipt_format: auditData["receipt_format"] !== undefined ? String(auditData["receipt_format"]) : undefined,
     };
   }
@@ -211,11 +247,11 @@ function parseTrust(raw: unknown): Trust | undefined {
   const arData = data["agent_requirements"] as RawMap | undefined;
   if (arData && typeof arData === "object") {
     agent_requirements = {
-      require_attestation: arData["require_attestation"] !== undefined ? Boolean(arData["require_attestation"]) : undefined,
+      require_attestation: asBool(arData["require_attestation"]),
       trusted_providers: asStringArray(arData["trusted_providers"]),
       attestation_url: arData["attestation_url"] !== undefined ? String(arData["attestation_url"]) : undefined,
       attestation_jwks: arData["attestation_jwks"] !== undefined ? String(arData["attestation_jwks"]) : undefined,
-      propagate_to_governed: arData["propagate_to_governed"] !== undefined ? Boolean(arData["propagate_to_governed"]) : undefined,
+      propagate_to_governed: asBool(arData["propagate_to_governed"]),
     };
   }
 
@@ -246,22 +282,18 @@ function parseDelegation(raw: unknown): Delegation | undefined {
   return {
     max_depth: data["max_depth"] !== undefined ? Number(data["max_depth"]) : undefined,
     require_capability_attenuation:
-      data["require_capability_attenuation"] !== undefined
-        ? Boolean(data["require_capability_attenuation"])
-        : undefined,
+      asBool(data["require_capability_attenuation"]),
     require_delegation_proof:
-      data["require_delegation_proof"] !== undefined
-        ? Boolean(data["require_delegation_proof"])
-        : undefined,
+      asBool(data["require_delegation_proof"]),
     audit_chain:
-      data["audit_chain"] !== undefined ? Boolean(data["audit_chain"]) : undefined,
+      asBool(data["audit_chain"]),
     human_in_the_loop: (() => {
       const raw = data["human_in_the_loop"];
       if (raw === undefined || raw === null) return undefined;
       if (typeof raw === "object" && !Array.isArray(raw)) {
         const h = raw as Record<string, unknown>;
         return {
-          required: h["required"] !== undefined ? Boolean(h["required"]) : undefined,
+          required: asBool(h["required"]),
           approval_mechanism: h["approval_mechanism"] !== undefined ? String(h["approval_mechanism"]) : undefined,
           docs_url: h["docs_url"] !== undefined ? String(h["docs_url"]) : undefined,
         };
@@ -360,7 +392,7 @@ function parsePaymentMethod(raw: unknown): PaymentMethod {
     wallet: d["wallet"] !== undefined ? String(d["wallet"]) : undefined,
     provider: d["provider"] !== undefined ? String(d["provider"]) : undefined,
     plans_url: d["plans_url"] !== undefined ? String(d["plans_url"]) : undefined,
-    free_tier: d["free_tier"] !== undefined ? Boolean(d["free_tier"]) : undefined,
+    free_tier: asBool(d["free_tier"]),
     free_requests_per_day: d["free_requests_per_day"] !== undefined ? Number(d["free_requests_per_day"]) : undefined,
     upgrade_url: d["upgrade_url"] !== undefined ? String(d["upgrade_url"]) : undefined,
   };
@@ -554,7 +586,7 @@ function parseVisibility(raw: unknown): Visibility | undefined {
         },
         then: {
           sensitivity: then["sensitivity"] !== undefined ? String(then["sensitivity"]) : undefined,
-          requires_auth: then["requires_auth"] !== undefined ? Boolean(then["requires_auth"]) : undefined,
+          requires_auth: asBool(then["requires_auth"]),
           authority: parseAuthority(then["authority"]),
         },
       };
@@ -652,7 +684,7 @@ function parseAgentIdentity(raw: unknown): AgentIdentity | undefined {
   if (raw === null || typeof raw !== "object") return undefined;
   const r = raw as RawMap;
   return {
-    required: r["required"] !== undefined ? Boolean(r["required"]) : undefined,
+    required: asBool(r["required"]),
     credential_hint: r["credential_hint"] !== undefined ? String(r["credential_hint"]) : undefined,
     issuer_hint: r["issuer_hint"] !== undefined ? String(r["issuer_hint"]) : undefined,
     docs_url: r["docs_url"] !== undefined ? String(r["docs_url"]) : undefined,
