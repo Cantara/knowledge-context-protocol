@@ -32,7 +32,7 @@ signing:
   signature: https://cantara.github.io/knowledge-context-protocol/knowledge.yaml.sig
 
 # Legacy header fields (preserved for consumers that read them directly)
-kcp_version: "0.26"
+kcp_version: "0.30"
 project: knowledge-context-protocol
 spec_version: 0.21.0
 updated: "2026-06-13"
@@ -59,7 +59,7 @@ units:
     triggers: [ spec, specification, fields, validation, conformance, yaml, format ]
     content_hash:
       algorithm: sha256
-      value: 25a6cf98687ee4fca5c11ab9e495d893308c33208f851cc8adb4deb727f39837
+      value: c85b51b6daa37918ab074c14cda74e3f5b053e274650189e059c486a9a78e2ea
 
   - id: proposal
     path: PROPOSAL.md
@@ -369,7 +369,7 @@ units:
       ]
     content_hash:
       algorithm: sha256
-      value: b8008e278fd33f1bc5fc03567329e1eced6464bcab6413e7dd61e11fe777185d
+      value: 9dbc939eacdacbfeed46c671c823287354bd0b00ae782a0bc03752bca082ab76
 
   - id: rfc-0015
     path: RFC-0015-Negative-Space-Declarations.md
