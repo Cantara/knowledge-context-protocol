@@ -10,6 +10,54 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.29.1] — 2026-07-28 — Boolean value parity
+
+A patch release, not a minor: no new spec surface. It fixes the three reference parsers
+disagreeing about what a manifest says.
+
+### Fixed
+
+- **`deprecated: no` was `true` in TypeScript** (#151, #152). `shared/src/parser.ts` coerced
+  with `Boolean()`, and `Boolean()` on any non-empty string is `true`. js-yaml implements
+  YAML 1.2 and leaves `yes`/`no`/`on`/`off` as strings, so every **negative became a
+  positive** — and so did every typo: `deprecated: flase` was `true`. 14 call sites shared it.
+- **The Java parser crashed on a malformed boolean** (#153, #154). Twelve `(Boolean)` casts
+  threw `ClassCastException` on any non-Boolean value. A manifest is untrusted input and can
+  arrive over federation (§3.6), so a misspelled boolean was a denial-of-service surface.
+- **The Python parser returned a `str` in a field typed `Optional[bool]`** (#153, #154). Two
+  variants were in use: one with no coercion at all, one using `bool()`, where `bool("flase")`
+  is `True`.
+
+All three now share one rule: a real boolean passes through, the YAML 1.1 words resolve to
+their intended value, and anything else reads as **undeclared** so the unit falls back to its
+documented default rather than silently switching a flag on.
+
+### Added
+
+- **A `values` assertion in the conformance suite** (#154), with a fixture covering boolean
+  semantics. The runners compared `valid`, `errors`, `unit_count`, `relationship_count` and
+  `warnings` — never *what a field parsed to*. A boolean read as `true` in one language and
+  `false` in another leaves the manifest equally valid with identical counts, so no fixture
+  could have caught this. It was not a missing test; it was a missing kind of assertion.
+- **[guides/start-here-the-kcp-universe.md](./guides/start-here-the-kcp-universe.md)** (#155)
+  — an entry point for newcomers: the `knowledge` → `skill` → `playbook` progression, the
+  tooling around the spec, and how the RFC process works.
+- **RFC-0028: Eligibility Grants and Their Composition** — merged as a **Draft**. It targets
+  v0.30 and nothing here implements it. It specifies the eligibility grant §16.3 C4 requires
+  but never names, and rules that eligibility does not compose from a playbook to its steps.
+
+### Known issue
+
+The coercion rule above resolves the YAML 1.1 words (`yes`/`no`/`on`/`off`) as booleans, while
+§2 mandates YAML 1.2, where those are **strings**. js-yaml is the conformant loader; PyYAML and
+SnakeYAML are not, and resolve them before any KCP code runs — so this cannot be fixed by
+coercion alone. Whether the spec should permit them or the implementations should move to 1.2
+loaders is **#156**, and the rule belongs in SPEC.md either way. This release makes the three
+parsers agree; it does not settle which answer they should agree on.
+
+
+---
+
 ## [0.29.0] — 2026-07-27 — Playbooks
 
 Adds `kind: playbook` (RFC-0027): an ordered composition of units, governed **per step**.
