@@ -1,0 +1,18 @@
+{
+  "_note": "Value-semantics fixture (#153). `values` pins what fields parse TO, which validity and counts cannot see. A boolean read as true in one parser and false in another leaves both equally valid with identical counts.",
+  "valid": true,
+  "errors": [],
+  "unit_count": 5,
+  "relationship_count": 0,
+  "values": {
+    "units.0.deprecated": false,
+    "units.0.not_for_strict": false,
+    "units.1.deprecated": true,
+    "units.1.not_for_strict": true,
+    "units.2.deprecated": false,
+    "units.2.not_for_strict": true,
+    "units.3.deprecated": null,
+    "units.4.deprecated": false,
+    "units.4.not_for_strict": true
+  }
+}

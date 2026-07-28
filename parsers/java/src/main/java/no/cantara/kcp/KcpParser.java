@@ -210,7 +210,7 @@ public class KcpParser {
                 (String) u.get("access"),
                 (String) u.get("auth_scope"),
                 (String) u.get("sensitivity"),
-                (Boolean) u.get("deprecated"),
+                asBoolean(u.get("deprecated")),
                 parsePayment(u.get("payment")),
                 parseRateLimits((Map<String, Object>) u.get("rate_limits")),
                 parseDelegation((Map<String, Object>) u.get("delegation")),
@@ -260,9 +260,9 @@ public class KcpParser {
         Map<String, Object> auditMap = (Map<String, Object>) t.get("audit");
         if (auditMap != null) {
             audit = new TrustAudit(
-                    (Boolean) auditMap.get("agent_must_log"),
-                    (Boolean) auditMap.get("require_trace_context"),
-                    (Boolean) auditMap.get("provides_access_receipts"),
+                    asBoolean(auditMap.get("agent_must_log")),
+                    asBoolean(auditMap.get("require_trace_context")),
+                    asBoolean(auditMap.get("provides_access_receipts")),
                     (String) auditMap.get("receipt_format")
             );
         }
@@ -271,11 +271,11 @@ public class KcpParser {
         Map<String, Object> arMap = (Map<String, Object>) t.get("agent_requirements");
         if (arMap != null) {
             agentRequirements = new TrustAgentRequirements(
-                    (Boolean) arMap.get("require_attestation"),
+                    asBoolean(arMap.get("require_attestation")),
                     (List<String>) arMap.getOrDefault("trusted_providers", List.of()),
                     (String) arMap.get("attestation_url"),
                     (String) arMap.get("attestation_jwks"),
-                    (Boolean) arMap.get("propagate_to_governed")
+                    asBoolean(arMap.get("propagate_to_governed"))
             );
         }
 
@@ -384,16 +384,16 @@ public class KcpParser {
         if (hitlRaw instanceof Map<?,?> m) {
             Map<String, Object> hm = (Map<String, Object>) m;
             hitl = new HumanInTheLoop(
-                    (Boolean) hm.get("required"),
+                    asBoolean(hm.get("required")),
                     (String) hm.get("approval_mechanism"),
                     (String) hm.get("docs_url")
             );
         }
         return new Delegation(
                 (Integer) d.get("max_depth"),
-                (Boolean) d.get("require_capability_attenuation"),
-                (Boolean) d.get("require_delegation_proof"),
-                (Boolean) d.get("audit_chain"),
+                asBoolean(d.get("require_capability_attenuation")),
+                asBoolean(d.get("require_delegation_proof")),
+                asBoolean(d.get("audit_chain")),
                 hitl
         );
     }
@@ -491,7 +491,7 @@ public class KcpParser {
                 (String) d.get("wallet"),
                 (String) d.get("provider"),
                 (String) d.get("plans_url"),
-                (Boolean) d.get("free_tier"),
+                asBoolean(d.get("free_tier")),
                 d.get("free_requests_per_day") instanceof Number n ? n.intValue() : null,
                 (String) d.get("upgrade_url")
         );
@@ -540,7 +540,7 @@ public class KcpParser {
     private static AgentIdentity parseAgentIdentity(Map<String, Object> a) {
         if (a == null) return null;
         return new AgentIdentity(
-                (Boolean) a.get("required"),
+                asBoolean(a.get("required")),
                 (String) a.get("credential_hint"),
                 (String) a.get("issuer_hint"),
                 (String) a.get("docs_url")
@@ -682,15 +682,37 @@ public class KcpParser {
     }
 
     /**
-     * Coerce a YAML value to a boolean, mirroring TypeScript Boolean()
-     * truthiness exactly (any non-empty string is true — YAML itself already
-     * resolves unquoted true/false before this code sees them).
+     * Coerce a YAML scalar to a Boolean, agreeing with the TypeScript and Python parsers.
+     *
+     * <p>This previously mirrored JavaScript truthiness — any non-empty string was true —
+     * on the reasoning that YAML resolves unquoted booleans before this code sees them.
+     * That reasoning held only for SnakeYAML: it implements YAML 1.1 and resolves
+     * {@code yes}/{@code no}/{@code on}/{@code off}, while js-yaml implements YAML 1.2 and
+     * leaves them as strings. The three parsers therefore disagreed about the same
+     * manifest (#151, #153).
+     *
+     * <p>Worse, twelve call sites did not use this method at all: they cast with
+     * {@code (Boolean)}, which threw {@link ClassCastException} on any non-Boolean. A
+     * misspelled value in an untrusted manifest — and a manifest can arrive over
+     * federation — crashed the parser rather than degrading.
+     *
+     * <p>Now: a real Boolean passes through; the YAML 1.1 words resolve to their intended
+     * value whichever parser produced them; anything else yields {@code null}, so the
+     * field reads as undeclared and the unit falls back to its documented default rather
+     * than silently switching a flag on.
      */
+    private static final java.util.Set<String> YAML_TRUE = java.util.Set.of("true", "yes", "on");
+    private static final java.util.Set<String> YAML_FALSE = java.util.Set.of("false", "no", "off");
+
     private static Boolean asBoolean(Object raw) {
         if (raw == null) return null;
         if (raw instanceof Boolean b) return b;
-        if (raw instanceof Number n) return n.doubleValue() != 0;
-        return !raw.toString().isEmpty();
+        if (raw instanceof String s) {
+            String v = s.toLowerCase(java.util.Locale.ROOT);
+            if (YAML_TRUE.contains(v)) return Boolean.TRUE;
+            if (YAML_FALSE.contains(v)) return Boolean.FALSE;
+        }
+        return null;
     }
 
     private static LocalDate parseDate(Object value) {

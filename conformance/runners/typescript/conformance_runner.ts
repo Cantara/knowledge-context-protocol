@@ -11,6 +11,7 @@
  *   - parse_error:        if true, parsing must throw an exception
  *   - unit_count:         exact integer match
  *   - relationship_count: exact integer match
+ *   - values:             dotted paths compared by value AND type (#153)
  *   - warnings:           if present and non-empty, actual warnings must be non-empty
  *
  * Usage: npx tsx conformance_runner.ts [fixtures-dir]
@@ -32,7 +33,36 @@ interface Expected {
   parse_error?: boolean;
   unit_count?: number;
   relationship_count?: number;
+  values?: Record<string, unknown>;
   _note?: string;
+}
+
+const MISSING = Symbol("missing");
+
+/**
+ * Resolve a dotted path like `units.0.deprecated` against the parsed manifest.
+ *
+ * Returns MISSING when any hop is absent, which the caller distinguishes from a field
+ * that is present and undefined. That distinction is the point: "parsed to null" and
+ * "the path does not exist" are different failures, and conflating them would let a
+ * typo in a fixture pass as a successful check.
+ */
+function resolvePath(root: unknown, path: string): unknown {
+  let current: unknown = root;
+  for (const hop of path.split(".")) {
+    if (current === null || current === undefined) return MISSING;
+    if (/^\d+$/.test(hop)) {
+      if (!Array.isArray(current)) return MISSING;
+      const i = Number(hop);
+      if (i >= current.length) return MISSING;
+      current = current[i];
+    } else {
+      if (typeof current !== "object") return MISSING;
+      if (!(hop in (current as Record<string, unknown>))) return MISSING;
+      current = (current as Record<string, unknown>)[hop];
+    }
+  }
+  return current;
 }
 
 function findYamlFiles(dir: string): string[] {
@@ -130,6 +160,30 @@ function runFixture(yamlPath: string): void {
       const isEmptyUnitsCase = yamlPath.includes("empty-units");
       if (!note.includes("cross-impl") && !isEmptyUnitsCase) {
         failures.push("expected errors to be non-empty");
+      }
+    }
+  }
+
+  // Check values — what fields actually parsed TO (#153).
+  //
+  // validity and counts are blind to value semantics: a boolean read as true in one
+  // language and false in another leaves the manifest equally valid with the same unit
+  // count. This is the only assertion in the suite that can see that.
+  if (expected.values !== undefined) {
+    for (const [path, want] of Object.entries(expected.values)) {
+      const got = resolvePath(manifest, path);
+      if (got === MISSING) {
+        failures.push(`values[${path}]: path does not resolve`);
+        continue;
+      }
+      // JSON `null` in the fixture means "reads as undeclared". TypeScript spells that
+      // undefined, Python None, Java null — one fixture, three spellings of absence.
+      const normalised = got === undefined ? null : got;
+      if (normalised !== want || typeof normalised !== typeof want) {
+        failures.push(
+          `values[${path}]: expected ${JSON.stringify(want)} (${typeof want}), ` +
+          `got ${JSON.stringify(normalised)} (${typeof normalised})`,
+        );
       }
     }
   }

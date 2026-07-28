@@ -1,0 +1,58 @@
+# Boolean value semantics across the three reference parsers (#153).
+#
+# The conformance suite compares validity and counts, which cannot see a boolean
+# read as `true` in one language and `false` in another — the manifest is equally
+# valid either way, with the same unit count. This fixture uses the `values`
+# assertion to pin what each field actually parses TO.
+#
+# The YAML 1.1 / 1.2 split is the cause: PyYAML and SnakeYAML (1.1) read yes/no/on/off
+# as booleans, js-yaml (1.2) leaves them as strings. All three parsers must reach the
+# same value regardless.
+kcp_version: "0.29"
+project: boolean-coercion
+version: "1.0.0"
+
+units:
+  # YAML 1.1 words, in both directions.
+  - id: words-false
+    path: docs/a.md
+    intent: "Fields declared with YAML 1.1 falsey words"
+    scope: project
+    audience: [agent]
+    deprecated: no
+    not_for_strict: off
+
+  - id: words-true
+    path: docs/b.md
+    intent: "Fields declared with YAML 1.1 truthy words"
+    scope: project
+    audience: [agent]
+    deprecated: yes
+    not_for_strict: on
+
+  # Canonical booleans — the control. If these ever diverge, something is very wrong.
+  - id: canonical
+    path: docs/c.md
+    intent: "Fields declared with canonical booleans"
+    scope: project
+    audience: [agent]
+    deprecated: false
+    not_for_strict: true
+
+  # A typo. This is the case that crashed Java and produced a str in Python.
+  # It must read as UNDECLARED — not as true, and not as an exception.
+  - id: typo
+    path: docs/d.md
+    intent: "A misspelled boolean must read as undeclared"
+    scope: project
+    audience: [agent]
+    deprecated: flase
+
+  # Case-insensitivity: YAML 1.1 accepts these spellings.
+  - id: mixed-case
+    path: docs/e.md
+    intent: "Boolean words are case-insensitive"
+    scope: project
+    audience: [agent]
+    deprecated: NO
+    not_for_strict: Yes
