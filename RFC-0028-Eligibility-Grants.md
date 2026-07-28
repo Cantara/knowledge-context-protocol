@@ -172,18 +172,31 @@ Normative statements appear here only; the Design section above is explanatory.
 
 **Validation**
 
-- A validator MUST error when `load_eligible` is present and is not a boolean after parsing.
-- Authors MUST write `true` or `false`. The scalars `yes`, `no`, `on`, `off` are **not**
-  interchangeable: measured against this project's own parsers, PyYAML (YAML 1.1) reads `yes` as
-  boolean `true` while js-yaml (YAML 1.2) reads it as the string `"yes"`. The same manifest
-  therefore grants eligibility in Python and fails to in TypeScript.
+- **Boolean coercion is a parser concern and is already settled.** An earlier draft made this an
+  authoring requirement, because PyYAML (YAML 1.1) read `yes` as boolean `true` while js-yaml
+  (YAML 1.2) read it as the string `"yes"` — so the same manifest granted eligibility in Python
+  and not in TypeScript. #151 and #153 fixed that: all three parsers now resolve the YAML 1.1
+  words identically and read anything else as undeclared, checked by a `values` assertion in the
+  conformance suite. `load_eligible` inherits that behaviour and needs no rule of its own.
 
-  This cannot be fixed by a validator rule, which is why it is stated as an authoring
-  requirement. By the time a validator sees the value, a 1.1 parser has already turned `yes` into
-  `true` and it is indistinguishable from an intended grant. The schema rejects it in the 1.2
-  case and cannot in the 1.1 case. A linter that reads the *raw bytes* could catch it; that is a
-  tooling matter, not a conformance rule, and the hazard applies to every boolean field in KCP
-  rather than only this one.
+- **A misspelled grant is now silent, and that is a real remaining gap.** The coercion turns
+  `load_eligible: ture` into *absent*, which fails closed — but validators operate on the parsed
+  manifest, so by the time one runs, the field is indistinguishable from a field that was never
+  written. Measured: a manifest with a misspelled boolean produces zero errors and zero warnings.
+
+  Demonstrated on `deprecated`, which the parser already models — `load_eligible` would prove
+  nothing here, since it is absent from the model either way, which is this RFC's other finding:
+
+  ```
+  deprecated: ture   →  parsed: undefined
+  kcp validate       →  ✓ Valid — no errors or warnings
+  ```
+
+  So a conformance rule of the form "MUST error when `load_eligible` is present and is not a
+  boolean" cannot be written against the current model: nothing downstream can tell *present and
+  malformed* from *absent*. The fix is a diagnostics channel on the parse result, which does not
+  exist — `warnings` today belongs to validation, not parsing — and adding one is a model change
+  across three languages rather than a clause in this RFC. Open Question 4.
 - A validator MUST error when `load_eligible` is declared on a unit whose `kind` is not `skill` or
   `playbook`.
 - A validator MUST error when a **`kind: skill`** unit declares `load_eligible: true` and no
@@ -255,7 +268,13 @@ Normative statements appear here only; the Design section above is explanatory.
 3. **Cross-manifest `uses`.** Composed manifests (§3.11) can supply units a playbook names. Whose
    grant governs, and whose signature attests it, is undefined. Conformance above fails closed by
    reporting such references as unverified.
-4. **Multi-hop composition.** The rule checks the playbook and its step's target — two parties.
+4. **Should the parse result carry diagnostics?** A value that fails boolean coercion is dropped
+   silently, so an author who writes `load_eligible: ture` gets a unit that fails closed with no
+   indication why. That is safe and unhelpful, and it applies to every boolean field in KCP rather
+   than only this one. A `warnings` channel on the parse result would let a validator report it;
+   `warnings` currently belongs to validation, which runs too late to see it. Sized as a
+   three-language model change, so it is named here rather than specified.
+5. **Multi-hop composition.** The rule checks the playbook and its step's target — two parties.
    If nested playbooks are ever permitted, the check must become transitive, and "eligible" will
    need to mean "eligible along the whole chain."
 
@@ -293,6 +312,12 @@ inspection.
 ## Changelog
 
 - 2026-07-28 — initial draft.
+- 2026-07-28 — fifth revision, after #151/#153 landed. The boolean-coercion section is now a
+  note rather than an authoring requirement: all three parsers agree, verified by a `values`
+  assertion added to the conformance suite. Replaced the unimplementable "MUST error when
+  present and not a boolean" — measured, a misspelled boolean now produces zero errors and zero
+  warnings, because coercion drops it before any validator runs and nothing downstream can tell
+  malformed from absent. Added OQ4 for the parse-diagnostics channel that would close it.
 - 2026-07-28 — fourth revision. Round three found that exempting playbooks from the
   `action_scope` requirement left a granted playbook with inline steps unbounded — three of four
   lenses independently. Granting an inline-step playbook is now an error; inline steps stay legal
