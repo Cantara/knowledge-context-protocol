@@ -343,6 +343,21 @@ export interface Payment {
 }
 
 export interface KnowledgeManifest {
+  /**
+   * Problems noticed while parsing, which no later stage can reconstruct (#166).
+   *
+   * The parse layer makes decisions it used to be unable to report. A value that fails
+   * scalar resolution (§2.1) is dropped, and an unknown field is discarded per §2 — so
+   * by the time a validator runs, `load_eligible: ture` and `laod_eligible: true` are
+   * both indistinguishable from a field that was never written. Three manifests, one
+   * mistake each, all reported "✓ Valid — no errors or warnings", and only one of them
+   * granted anything.
+   *
+   * Diagnostics report; they never rescue. A malformed value still reads as undeclared
+   * and an unknown field is still ignored, because §2's forward-compatibility rule
+   * requires it — ignoring a field is not the same as being unable to mention it.
+   */
+  parse_diagnostics?: string[];
   project: string;
   version: string;
   units: KnowledgeUnit[];

@@ -54,6 +54,7 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 
 /**
@@ -160,7 +161,90 @@ public class KcpParser {
         List<Agent> agents = agentMaps.stream().map(KcpParser::parseAgent).toList();
         GrantCeiling grantCeiling = parseGrantCeiling(data.get("grant_ceiling"));
 
-        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, rateLimits, serving, units, relationships, manifests, externalRelationships, freshnessPolicy, visibility, authority, discovery, notFor, temporal, authorityLevelScale, taskTypes, agents, grantCeiling);
+        // #166: problems the parse layer notices and no later stage can reconstruct.
+        List<String> diagnostics = new ArrayList<>();
+        for (Object ru : (List<?>) data.getOrDefault("units", List.of())) {
+            if (ru instanceof Map<?, ?> m) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> um = (Map<String, Object>) m;
+                unitDiagnostics(um, diagnostics);
+            }
+        }
+
+        return new KnowledgeManifest(kcpVersion, project, version, updated, language, license, indexing, hints, trust, auth, delegation, compliance, payment, rateLimits, serving, units, relationships, manifests, externalRelationships, freshnessPolicy, visibility, authority, discovery, notFor, temporal, authorityLevelScale, taskTypes, agents, grantCeiling, diagnostics);
+    }
+
+    /** Fields a unit may declare. Used only to spot near misses — see nearMiss. */
+    private static final Set<String> KNOWN_UNIT_FIELDS = Set.of(
+            "id", "aliases", "path", "intent", "scope", "audience", "kind", "action_scope",
+            "steps", "load_eligible", "format", "content_type", "language", "license",
+            "validated", "update_frequency", "indexing", "depends_on", "supersedes",
+            "triggers", "hints", "access", "auth_scope", "sensitivity", "deprecated",
+            "payment", "rate_limits", "delegation", "compliance", "auth",
+            "external_depends_on", "requires_capabilities", "freshness_policy",
+            "visibility", "authority", "discovery", "not_for", "not_for_strict",
+            "content_structure", "content_hash", "temporal", "authority_level",
+            "size_tokens", "bytes");
+
+    private static final List<String> BOOL_FIELDS =
+            List.of("deprecated", "not_for_strict", "load_eligible");
+
+    /** Levenshtein distance, capped — only whether it is 1 or 2 matters here. */
+    private static int editDistance(String a, String b) {
+        if (Math.abs(a.length() - b.length()) > 2) return 99;
+        int[] prev = new int[b.length() + 1];
+        int[] cur = new int[b.length() + 1];
+        for (int j = 0; j <= b.length(); j++) prev[j] = j;
+        for (int i = 1; i <= a.length(); i++) {
+            cur[0] = i;
+            for (int j = 1; j <= b.length(); j++) {
+                cur[j] = Math.min(Math.min(prev[j] + 1, cur[j - 1] + 1),
+                        prev[j - 1] + (a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1));
+            }
+            System.arraycopy(cur, 0, prev, 0, cur.length);
+        }
+        return prev[b.length()];
+    }
+
+    /**
+     * The known field an unrecognised key is probably a typo of, or null.
+     *
+     * <p>§2 requires parsers to silently <em>ignore</em> unknown fields, which is what
+     * lets a v0.31 manifest be read by a v0.30 parser. That rule is kept — nothing here
+     * changes what is parsed. But a key one or two edits from a known field is far
+     * likelier a typo than a field from the future, and saying so costs nothing. A key
+     * resembling nothing stays unmentioned, which is the forward-compatibility case.
+     */
+    private static String nearMiss(String key) {
+        if (KNOWN_UNIT_FIELDS.contains(key)) return null;
+        String best = null;
+        int bestD = 3;
+        for (String known : KNOWN_UNIT_FIELDS) {
+            int d = editDistance(key, known);
+            if (d < bestD) { bestD = d; best = known; }
+        }
+        return bestD <= 2 ? best : null;
+    }
+
+    /** Record what the parse layer notices and no later stage can reconstruct (#166). */
+    private static void unitDiagnostics(Map<String, Object> u, List<String> out) {
+        Object rawId = u.get("id");
+        String uid = rawId != null ? String.valueOf(rawId) : "(no id)";
+        for (String key : u.keySet()) {
+            String suggestion = nearMiss(key);
+            if (suggestion != null) {
+                out.add("unit '" + uid + "': unknown field '" + key + "' — did you mean '"
+                        + suggestion + "'? (ignored per §2)");
+            }
+        }
+        for (String f : BOOL_FIELDS) {
+            Object v = u.get(f);
+            if (v != null && !(v instanceof Boolean)) {
+                out.add("unit '" + uid + "': '" + f + "' is " + v + ", which is not a"
+                        + " boolean — YAML 1.2 requires true/false (§2.1); the field reads"
+                        + " as undeclared");
+            }
+        }
     }
 
     /** §3.13 (RFC-0025, v0.27): a task-type declaration. */

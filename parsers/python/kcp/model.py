@@ -468,3 +468,8 @@ class KnowledgeManifest:
     task_types: list[TaskType] = field(default_factory=list)  # RFC-0025 / §3.13 (v0.27)
     agents: list[Agent] = field(default_factory=list)  # RFC-0025 / §3.13 (v0.27)
     grant_ceiling: Optional[GrantCeiling] = None  # RFC-0025 / §3.13 (v0.27)
+    # #166: problems noticed while parsing that no later stage can reconstruct. A value
+    # failing scalar resolution (§2.1) is dropped and an unknown field is discarded per
+    # §2, so by the time a validator runs both look like a field never written.
+    # Diagnostics report; they never rescue.
+    parse_diagnostics: list[str] = field(default_factory=list)

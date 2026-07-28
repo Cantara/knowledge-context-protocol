@@ -216,6 +216,11 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
     """
     errors: list[str] = []
     warnings: list[str] = []
+
+    # #166: problems the parser noticed and no later stage can reconstruct. Warnings
+    # rather than errors — a malformed value or an unknown field leaves a valid manifest
+    # that simply does not say what its author thought it said.
+    warnings.extend(manifest.parse_diagnostics or [])
     unit_ids = {u.id for u in manifest.units}
 
     # Cycle detection (§4.7) — detect and silently ignore cycle-closing edges.

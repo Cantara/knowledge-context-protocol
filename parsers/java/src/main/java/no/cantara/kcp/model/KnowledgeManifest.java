@@ -35,7 +35,12 @@ public record KnowledgeManifest(
         List<String> authorityLevelScale,  // RFC-0025 / §3.13 (v0.27) — fixed ordinal scale; null = not declared
         List<TaskType> taskTypes,          // RFC-0025 / §3.13 (v0.27) — defaults to []
         List<Agent> agents,                // RFC-0025 / §3.13 (v0.27) — defaults to []
-        GrantCeiling grantCeiling          // RFC-0025 / §3.13 (v0.27)
+        GrantCeiling grantCeiling,         // RFC-0025 / §3.13 (v0.27)
+        // #166: problems noticed while parsing that no later stage can reconstruct. A
+        // value failing scalar resolution (§2.1) is dropped and an unknown field is
+        // discarded per §2, so by the time a validator runs both are indistinguishable
+        // from a field never written. Diagnostics report; they never rescue.
+        List<String> parseDiagnostics
 ) {
     public KnowledgeManifest {
         units = units != null ? List.copyOf(units) : List.of();

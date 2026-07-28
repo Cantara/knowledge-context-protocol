@@ -1,0 +1,41 @@
+# Parse diagnostics (#166, RFC-0028 OQ4).
+#
+# Three units, one mistake each, all of which validated clean before this fixture:
+#   - a correct grant, as the control
+#   - a MALFORMED VALUE: `ture` fails scalar resolution (§2.1) and is dropped
+#   - a MISSPELLED FIELD: §2 requires parsers to ignore unknown fields, which is what
+#     makes forward compatibility work — but ignoring is not the same as unmentionable
+kcp_version: "0.30"
+project: diagnostics
+version: "1.0.0"
+
+units:
+  - id: correct
+    path: skills/a.md
+    intent: "A correctly granted skill"
+    scope: project
+    audience: [agent]
+    kind: skill
+    load_eligible: true
+    action_scope:
+      tools: [bash]
+
+  - id: malformed-value
+    path: skills/b.md
+    intent: "A grant whose value fails scalar resolution"
+    scope: project
+    audience: [agent]
+    kind: skill
+    load_eligible: ture
+    action_scope:
+      tools: [bash]
+
+  - id: misspelled-field
+    path: skills/c.md
+    intent: "A grant whose field name is one edit away"
+    scope: project
+    audience: [agent]
+    kind: skill
+    laod_eligible: true
+    action_scope:
+      tools: [bash]
