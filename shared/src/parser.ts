@@ -87,39 +87,25 @@ function toDateString(value: unknown): string | undefined {
 type RawMap = Record<string, unknown>;
 
 /**
- * Coerce a YAML scalar to a boolean, agreeing with the Python and Java parsers (#151).
+ * Coerce a YAML scalar to a boolean. Only a real boolean is one.
  *
- * `Boolean()` was used here, and `Boolean()` on any non-empty string is `true`. js-yaml
- * implements YAML 1.2, which leaves `yes`/`no`/`on`/`off` as strings, while PyYAML and
- * SnakeYAML implement YAML 1.1 and parse them as booleans. So `deprecated: no` read as
- * **deprecated** in TypeScript and **not deprecated** in the other two — the same
- * manifest saying opposite things, with no diagnostic anywhere.
+ * js-yaml implements YAML 1.2, which SPEC.md §2 mandates, so `yes`/`no`/`on`/`off`
+ * arrive here as strings. They are rejected exactly as a typo is: the JSON schema types
+ * these fields as `boolean`, so a string is a schema violation rather than a shorthand
+ * to be rescued.
  *
- * The failure was asymmetric in the dangerous direction: every negative became a
- * positive, and so did every typo (`deprecated: flase` was `true`).
+ * Two earlier revisions got this wrong in opposite directions. `Boolean()` accepted every
+ * non-empty string, so every negative and every typo read as `true` (#151). The fix then
+ * mapped the YAML 1.1 words to booleans, which made the three parsers agree — on an
+ * answer the schema rejects (#156). The Python and Java parsers now resolve booleans per
+ * YAML 1.2 at the loader, so all three see the same strings and reject them alike.
  *
- * Three rules:
- *  - a real boolean passes through;
- *  - the YAML 1.1 words resolve to their intended value, so this parser agrees with the
- *    other two rather than disagreeing in a third way;
- *  - anything else yields undefined — the field reads as *undeclared*, so the unit falls
- *    back to its documented default instead of silently switching a flag on.
- *
- * Quoted `"true"` is deliberately not accepted. Quoting means the author wrote text, and
- * accepting it would make the strictness pointless: every rejected value could be quoted
- * back in.
+ * `undefined` means the field reads as *undeclared*, so the unit falls back to its
+ * documented default rather than silently switching a flag on. That a rejected value is
+ * silent rather than reported is a known gap: the parse layer has no diagnostics channel.
  */
-const YAML_TRUE = new Set(["true", "yes", "on"]);
-const YAML_FALSE = new Set(["false", "no", "off"]);
-
 function asBool(value: unknown): boolean | undefined {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "string") {
-    const v = value.toLowerCase();
-    if (YAML_TRUE.has(v)) return true;
-    if (YAML_FALSE.has(v)) return false;
-  }
-  return undefined;
+  return typeof value === "boolean" ? value : undefined;
 }
 
 function asStringArray(value: unknown): string[] {

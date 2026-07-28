@@ -3,19 +3,26 @@ import { parseDict } from "../../shared/src/parser.js";
 import yaml from "js-yaml";
 
 /**
- * Boolean coercion — the three reference parsers must agree (#151).
+ * Boolean coercion — YAML 1.2, per SPEC.md §2 (#151, #153, #156).
  *
- * `Boolean()` on any non-empty string is `true`, and js-yaml implements YAML 1.2, which
- * leaves `yes`/`no`/`on`/`off` as strings. PyYAML and SnakeYAML implement YAML 1.1 and
- * parse them as booleans. So `deprecated: no` was read as **deprecated** in TypeScript
- * and **not deprecated** in Python and Java — the same manifest saying opposite things.
+ * §2 mandates YAML 1.2. In 1.2 only `true`/`false` — and their capitalised and all-caps
+ * spellings — are booleans; `yes`/`no`/`on`/`off` are plain **strings**. The JSON schema
+ * types these fields as `boolean`, so such a string is a schema violation, not a
+ * shorthand to be rescued.
  *
- * The failure is asymmetric in the dangerous direction: every negative became a
- * positive, and so did every typo. `deprecated: flase` was `true`.
+ * This landed in three attempts, and the middle one is the instructive failure:
  *
- * These tests go through the YAML loader rather than constructing objects directly,
- * because the bug lives in the seam between what js-yaml produces and what the parser
- * does with it. Handing the parser a JavaScript `false` would test nothing.
+ *  1. `Boolean()` accepted every non-empty string, so every negative and every typo read
+ *     as `true` — `deprecated: no` meant deprecated.
+ *  2. The fix mapped the YAML 1.1 words to booleans. That made all three parsers agree —
+ *     on an answer the schema rejects. Agreement is not correctness.
+ *  3. Python and Java now resolve booleans per YAML 1.2 at the *loader*, which is the
+ *     only place it can be fixed for them: PyYAML converts `yes` to `True` before any
+ *     KCP code runs, so no downstream helper can tell it from `true`.
+ *
+ * These tests go through the YAML loader rather than constructing objects, because the
+ * behaviour under test lives in the seam between what the loader produces and what the
+ * parser does with it. Handing the parser a JavaScript `false` would test nothing.
  */
 
 function unit(fields: string): Record<string, unknown> {
@@ -34,52 +41,50 @@ ${fields}
   return parseDict(doc).units[0] as unknown as Record<string, unknown>;
 }
 
-describe("YAML 1.1 boolean words agree with the Python and Java parsers (#151)", () => {
-  // PyYAML and SnakeYAML both read these as booleans. TypeScript must reach the same
-  // value, or a manifest reviewed in one language behaves differently in another.
-  const falsey = ["no", "No", "NO", "off", "Off", "OFF", "false", "False"];
-  const truthy = ["yes", "Yes", "YES", "on", "On", "ON", "true", "True"];
-
-  for (const v of falsey) {
-    it(`deprecated: ${v} → false`, () => {
-      expect(unit(`    deprecated: ${v}`).deprecated).toBe(false);
-    });
-  }
-
-  for (const v of truthy) {
+describe("YAML 1.2 core-schema booleans are the only booleans (#156)", () => {
+  for (const v of ["true", "True", "TRUE"]) {
     it(`deprecated: ${v} → true`, () => {
       expect(unit(`    deprecated: ${v}`).deprecated).toBe(true);
     });
   }
+  for (const v of ["false", "False", "FALSE"]) {
+    it(`deprecated: ${v} → false`, () => {
+      expect(unit(`    deprecated: ${v}`).deprecated).toBe(false);
+    });
+  }
+});
 
-  it("the regression this was filed for: `deprecated: no` is not deprecated", () => {
-    // Before the fix this was `true`, so a live unit was dropped from every plan as
-    // deprecated — in TypeScript only.
-    expect(unit("    deprecated: no").deprecated).toBe(false);
+describe("YAML 1.1 boolean words are strings, and read as undeclared (#156)", () => {
+  // The heart of the fix. These are valid YAML 1.2 — they are simply strings — and a
+  // string in a field the schema types `boolean` is a schema violation. Verified
+  // directly against the JSON schema: `'yes' is not of type 'boolean'`.
+  for (const v of ["yes", "Yes", "YES", "no", "No", "NO", "on", "On", "off", "Off"]) {
+    it(`deprecated: ${v} → undefined`, () => {
+      expect(unit(`    deprecated: ${v}`).deprecated).toBeUndefined();
+    });
+  }
+
+  it("the regression this began with: `deprecated: no` is not deprecated", () => {
+    // Originally `true` — a live unit dropped from every plan, in TypeScript only.
+    // Then `false` — agreeing with the other parsers, on a value the schema rejects.
+    // Now undeclared, which is what the schema says it is.
+    expect(unit("    deprecated: no").deprecated).toBeUndefined();
   });
 });
 
-describe("a value that is not a boolean reads as undeclared, not as true (#151)", () => {
-  // The safe direction. An unparseable value must leave the field absent so the unit
-  // falls back to its declared default, rather than silently switching a flag on.
+describe("anything else reads as undeclared, never as true (#151)", () => {
   for (const v of ["flase", "nope", "1", "0", "maybe", "[]", "{}"]) {
     it(`deprecated: ${v} → undefined`, () => {
       expect(unit(`    deprecated: ${v}`).deprecated).toBeUndefined();
     });
   }
 
-  it("a QUOTED boolean word is indistinguishable from a bare one, and resolves", () => {
-    // An earlier version of this test asserted `"yes"` → undefined, on the reasoning
-    // that quoting means the author wrote text. That is unachievable: js-yaml is a YAML
-    // 1.2 parser, so bare `yes` and quoted `"yes"` both arrive as the string "yes" —
-    // the quoting is gone before the parser sees the value. Distinguishing them would
-    // require reading raw bytes, which a manifest parser does not do.
-    //
-    // The consequence is accepted rather than hidden: quoted boolean words resolve.
-    // It is a far narrower surface than `Boolean()`, which accepted every non-empty
-    // string including typos.
-    expect(unit('    deprecated: "yes"').deprecated).toBe(true);
-    expect(unit('    deprecated: "no"').deprecated).toBe(false);
+  it("a quoted boolean is a string, and now genuinely rejected", () => {
+    // Under the 1.1-word mapping this could not be distinguished from a bare `yes`,
+    // because the quoting is gone before the parser sees the value. Rejecting the words
+    // outright makes the question moot: `"true"` is a string either way.
+    expect(unit('    deprecated: "true"').deprecated).toBeUndefined();
+    expect(unit('    deprecated: "yes"').deprecated).toBeUndefined();
   });
 
   it("an absent field stays absent", () => {
@@ -87,18 +92,15 @@ describe("a value that is not a boolean reads as undeclared, not as true (#151)"
   });
 });
 
-describe("every boolean field on a unit uses the same coercion (#151)", () => {
-  // The bug was 14 separate `Boolean()` calls. Fixing one is not fixing the class, so
-  // this asserts the shared helper actually reached the fields that carry risk.
-  it("not_for_strict: off → false", () => {
-    expect(unit("    not_for_strict: off").not_for_strict).toBe(false);
+describe("every boolean field shares the coercion (#151)", () => {
+  // The original bug was 14 separate `Boolean()` calls. Fixing one is not fixing the
+  // class, so this checks the shared helper reached the fields that carry risk.
+  it("not_for_strict: off is undeclared; true is true", () => {
+    expect(unit("    not_for_strict: off").not_for_strict).toBeUndefined();
+    expect(unit("    not_for_strict: true").not_for_strict).toBe(true);
   });
 
-  it("not_for_strict: flase → undefined", () => {
-    expect(unit("    not_for_strict: flase").not_for_strict).toBeUndefined();
-  });
-
-  it("trust.agent_requirements.require_attestation: no → false", () => {
+  it("trust.agent_requirements booleans follow the same rule", () => {
     const m = parseDict(
       yaml.load(`
 project: t
@@ -106,19 +108,18 @@ version: 1.0.0
 kcp_version: "0.29"
 trust:
   agent_requirements:
-    require_attestation: no
+    require_attestation: false
     propagate_to_governed: off
 units: []
 `) as Record<string, unknown>,
     );
     expect(m.trust?.agent_requirements?.require_attestation).toBe(false);
-    expect(m.trust?.agent_requirements?.propagate_to_governed).toBe(false);
+    expect(m.trust?.agent_requirements?.propagate_to_governed).toBeUndefined();
   });
 
-  it("payment method free_tier: no → false", () => {
-    // free_tier sits on a payment *method*, not on payment. An earlier version of this
-    // test put it one level too high and passed trivially against undefined — which is
-    // its own small lesson about asserting on a field you have not located.
+  it("payment method free_tier follows the same rule", () => {
+    // free_tier sits on a payment *method*, not on payment — an earlier version of this
+    // test asserted one level too high and passed trivially against undefined.
     const m = parseDict(
       yaml.load(`
 project: t
@@ -128,7 +129,7 @@ payment:
   default_tier: subscription
   methods:
     - type: subscription
-      free_tier: no
+      free_tier: false
 units: []
 `) as Record<string, unknown>,
     );

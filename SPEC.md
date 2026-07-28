@@ -134,6 +134,32 @@ Well-known catalog locations, in order of preference:
 
 KCP manifests MUST be valid YAML 1.2. The file MUST be UTF-8 encoded without a BOM.
 
+### 2.1 Scalar resolution
+
+YAML 1.2 is not a cosmetic requirement, and the boolean case is where it bites. This
+section clarifies behaviour the JSON schema has always required; it does not change what
+a conformant manifest may say, so `kcp_version` is unaffected.
+
+Under the **YAML 1.2 core schema**, only `true` / `True` / `TRUE` / `false` / `False` /
+`FALSE` resolve to booleans. The YAML **1.1** words `yes`, `no`, `on`, `off` are plain
+**strings**. Since every boolean field in this specification is typed `boolean` in the
+JSON schema, a manifest writing `deprecated: yes` declares a string where a boolean
+belongs — a schema violation, not a shorthand.
+
+- A parser MUST resolve booleans per the YAML 1.2 core schema.
+- A parser MUST treat a non-boolean value in a boolean field as **undeclared**, so the
+  unit falls back to that field's documented default. It MUST NOT coerce it.
+
+**This is a loader-level requirement, not a coercion-level one**, and implementers should
+expect to act on it. PyYAML and SnakeYAML both implement YAML 1.1 and resolve `yes` to a
+boolean *before any consuming code runs* — at which point it is indistinguishable from a
+manifest that wrote `true`. Both can be corrected by narrowing their implicit boolean
+resolver to the 1.2 core pattern; neither requires a different library.
+
+> **Authors:** write `true` and `false`. A `yes` will not be rejected loudly — it reads as
+> a field you did not write, and takes that field's default. The parse layer has no
+> diagnostics channel through which to tell you (RFC-0028, OQ4).
+
 Parsers MUST silently ignore fields they do not recognise. This ensures forward compatibility:
 a manifest valid for a future version of the spec remains parseable by implementations of this
 version.

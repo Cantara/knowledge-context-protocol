@@ -41,6 +41,10 @@ import no.cantara.kcp.model.Visibility;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.nodes.Tag;
+import org.yaml.snakeyaml.representer.Representer;
+import org.yaml.snakeyaml.resolver.Resolver;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -60,7 +64,45 @@ public class KcpParser {
     // SafeConstructor disables arbitrary Java type instantiation via YAML tags
     // (e.g. !!javax.script.ScriptEngineManager). SnakeYAML 2.x defaults to safe,
     // but we declare it explicitly so the intent survives refactoring.
-    private static final Yaml YAML = new Yaml(new SafeConstructor(new LoaderOptions()));
+    /**
+     * Resolves scalars per the YAML 1.2 core schema, as SPEC.md §2 requires.
+     *
+     * <p>SnakeYAML implements YAML 1.1, in which {@code yes}/{@code no}/{@code on}/
+     * {@code off} resolve to booleans. §2 mandates YAML 1.2, in which they are plain
+     * strings — and the JSON schema types these fields as {@code boolean}, so such a
+     * value is a schema violation rather than a shorthand to be rescued.
+     *
+     * <p>Left alone the divergence is invisible from inside this class: SnakeYAML
+     * converts {@code yes} to {@code Boolean.TRUE} before any KCP code runs, so no
+     * coercion helper downstream can tell it from a manifest that wrote {@code true}.
+     * It has to be fixed at the resolver (#156).
+     *
+     * <p>Only the boolean resolver is narrowed. Ints, floats, null, merge keys and
+     * timestamps keep SnakeYAML's behaviour, because §2's requirement bites here and
+     * nowhere this parser has been shown to diverge.
+     */
+    private static final class Yaml12Resolver extends Resolver {
+        @Override
+        protected void addImplicitResolvers() {
+            addImplicitResolver(Tag.BOOL,
+                    java.util.regex.Pattern.compile("^(?:true|True|TRUE|false|False|FALSE)$"), "tTfF");
+            addImplicitResolver(Tag.INT,
+                    java.util.regex.Pattern.compile("^[-+]?[0-9]+$"), "-+0123456789");
+            addImplicitResolver(Tag.FLOAT,
+                    java.util.regex.Pattern.compile("^[-+]?(\\.[0-9]+|[0-9]+(\\.[0-9]*)?)([eE][-+]?[0-9]+)?$"),
+                    "-+0123456789.");
+            addImplicitResolver(Tag.NULL,
+                    java.util.regex.Pattern.compile("^(?:~|null|Null|NULL| )$"), "~nN\0");
+            addImplicitResolver(Tag.NULL, java.util.regex.Pattern.compile("^$"), null);
+            addImplicitResolver(Tag.MERGE, java.util.regex.Pattern.compile("^(?:<<)$"), "<");
+        }
+    }
+
+    private static final Yaml YAML = new Yaml(
+            new SafeConstructor(new LoaderOptions()),
+            new Representer(new DumperOptions()),
+            new DumperOptions(),
+            new Yaml12Resolver());
 
     public static KnowledgeManifest parse(Path path) throws IOException {
         try (InputStream is = Files.newInputStream(path)) {
@@ -701,18 +743,8 @@ public class KcpParser {
      * field reads as undeclared and the unit falls back to its documented default rather
      * than silently switching a flag on.
      */
-    private static final java.util.Set<String> YAML_TRUE = java.util.Set.of("true", "yes", "on");
-    private static final java.util.Set<String> YAML_FALSE = java.util.Set.of("false", "no", "off");
-
     private static Boolean asBoolean(Object raw) {
-        if (raw == null) return null;
-        if (raw instanceof Boolean b) return b;
-        if (raw instanceof String s) {
-            String v = s.toLowerCase(java.util.Locale.ROOT);
-            if (YAML_TRUE.contains(v)) return Boolean.TRUE;
-            if (YAML_FALSE.contains(v)) return Boolean.FALSE;
-        }
-        return null;
+        return raw instanceof Boolean b ? b : null;
     }
 
     private static LocalDate parseDate(Object value) {
