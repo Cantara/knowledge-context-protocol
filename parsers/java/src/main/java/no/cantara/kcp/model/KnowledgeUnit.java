@@ -47,7 +47,11 @@ public record KnowledgeUnit(
         Temporal temporal,
         String authorityLevel,  // RFC-0025 / §4.23 (v0.27) — ceiling on the root authority_level_scale
         ActionScope actionScope,  // §4.3a (v0.26.1) — what a kind: skill procedure may touch
-        List<PlaybookStep> steps  // §4.3b (v0.29) — ordered composition; required for kind: playbook
+        List<PlaybookStep> steps,  // §4.3b (v0.29) — ordered composition; required for kind: playbook
+        // §4.3c (v0.30, RFC-0028) — the explicit eligibility grant §16.3 C4 requires.
+        // Governed kinds only (skill, playbook). Absent means NOT eligible: the
+        // procedure fails closed. A grant, not a capability claim — it widens nothing.
+        Boolean loadEligible
 ) {
     public KnowledgeUnit {
         audience = audience != null ? List.copyOf(audience) : List.of();

@@ -217,6 +217,10 @@ class KnowledgeUnit:
     temporal: Optional[Temporal] = None  # RFC-0010 / §4.22 (v0.19)
     action_scope: Optional[ActionScope] = None  # §4.3a (v0.26.1) — what a kind: skill procedure may touch
     steps: Optional[List["PlaybookStep"]] = None  # §4.3b (v0.29) — ordered composition; required for kind: playbook
+    # §4.3c (v0.30, RFC-0028) — the explicit eligibility grant §16.3 C4 requires.
+    # Governed kinds only (skill, playbook). Absent means NOT eligible: the procedure
+    # fails closed. A grant, not a capability claim — it widens nothing.
+    load_eligible: Optional[bool] = None
     authority_level: Optional[str] = None  # RFC-0025 / §4.23 (v0.27) — ceiling on the root authority_level_scale
 
 

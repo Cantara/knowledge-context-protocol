@@ -10,6 +10,47 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.30.0] — 2026-07-28 — Eligibility grants
+
+Implements **RFC-0028**, promoted to SPEC.md §4.3c. Playbooks were shipped in 0.29 with
+the field that decides whether a procedure may act existing nowhere in this repository.
+
+### Added
+
+- **`load_eligible`** (§4.3c) — the explicit eligibility grant §16.3 C4 has required since
+  v0.18 and never specified. It was implemented only in kcp-agent, undeclared in the JSON
+  schema, and unknown to all three parsers and validators — so a conformance requirement
+  had no input surface, and a misspelling validated clean while failing closed forever.
+
+  Now modelled in TypeScript, Python and Java, declared in the schema, and enforced.
+
+- **Eligibility does not compose.** A grant on a playbook does not reach the units its
+  steps name. A *granted* playbook whose step `uses` an *ungranted* skill was offered by
+  the planner — handing an agent a composition while withholding the part it invokes,
+  which is a laundering path for the withheld unit if a downstream enforcer does not
+  check per step. It is now a manifest error.
+
+- Six conformance rules in all three validators: the grant is defined only for governed
+  kinds; a granted skill must declare an `action_scope`; an eligible playbook may not name
+  an ineligible unit, declare inline steps, or `uses` a kind that can never be eligible;
+  and an *ineligible* playbook naming an ineligible unit is a warning, because the missing
+  grant on the playbook itself is the defect worth reporting.
+
+### Note
+
+The cost is stated rather than hidden: a skill cannot be "enactable only within an
+approved playbook" — granting it for playbook use also makes it independently invocable.
+Scoped grants would remove that and are deliberately not specified (RFC-0028 OQ1). A
+restrictive rule can be relaxed compatibly later; a permissive one cannot be narrowed
+without breaking manifests that relied on it.
+
+A misspelled grant still fails closed **silently** — scalar resolution (§2.1) drops a
+non-boolean, leaving it indistinguishable from an absent field. Closing that needs
+diagnostics the parse layer does not have (RFC-0028 OQ4).
+
+
+---
+
 ## [0.29.2] — 2026-07-28 — YAML 1.2 boolean conformance
 
 Corrects 0.29.1, which fixed a real bug and settled on the wrong answer.

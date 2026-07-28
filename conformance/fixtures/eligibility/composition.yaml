@@ -1,0 +1,47 @@
+# RFC-0028 — eligibility grants and their composition (#160).
+#
+# A grant on a composition does not reach the parts. `cut-release` is granted and its
+# `publish` step names `publish-package`, which is NOT — so the playbook cannot be
+# enacted as written, and that is an error rather than something discovered at step 2.
+kcp_version: "0.30"
+project: eligibility
+version: "1.0.0"
+
+units:
+  - id: run-tests
+    path: skills/run-tests.md
+    intent: "How do I run the suite?"
+    scope: project
+    audience: [agent]
+    kind: skill
+    load_eligible: true
+    action_scope:
+      tools: [bash]
+      paths: ["test/**"]
+
+  # No grant. Eligible playbooks may not name it.
+  - id: publish-package
+    path: skills/publish-package.md
+    intent: "How do I publish the package?"
+    scope: project
+    audience: [agent]
+    kind: skill
+    action_scope:
+      tools: [bash]
+      paths: ["dist/**"]
+
+  - id: cut-release
+    path: playbooks/cut-release.md
+    intent: "How do we cut a release?"
+    scope: project
+    audience: [agent]
+    kind: playbook
+    load_eligible: true
+    steps:
+      - id: verify
+        uses: run-tests
+        authority_level: observe
+      - id: publish
+        uses: publish-package
+        depends_on: [verify]
+        authority_level: commit

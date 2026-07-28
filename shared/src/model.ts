@@ -82,6 +82,15 @@ export interface KnowledgeUnit {
   kind?: string;           // "knowledge" | "schema" | "service" | "policy" | "executable" | "skill"
   action_scope?: ActionScope;  // §4.3a (v0.26) — tools/paths/capabilities a kind: skill procedure may touch
   steps?: PlaybookStep[];      // §4.3b (v0.29) — ordered composition; REQUIRED and non-empty for kind: playbook
+  /**
+   * §4.3c (v0.30, RFC-0028) — the explicit eligibility grant §16.3 C4 requires.
+   *
+   * Defined only for the governed kinds, `skill` and `playbook`. Absent means NOT
+   * eligible: a governed procedure fails closed and renders as a pointer an agent may
+   * read but not enact. It is a grant, not a capability claim — it does not widen
+   * `action_scope` and does not raise `authority_level`.
+   */
+  load_eligible?: boolean;
   format?: string;         // "markdown" | "pdf" | "openapi" | "json-schema" | etc.
   content_type?: string;
   language?: string;

@@ -586,6 +586,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
             rate_limits=_parse_rate_limits(u.get("rate_limits")),
             action_scope=_parse_action_scope(u.get("action_scope")),
             steps=_parse_steps(u.get("steps")),
+            load_eligible=_as_bool(u.get("load_eligible")),
             delegation=_parse_delegation(u.get("delegation")),
             compliance=_parse_compliance(u.get("compliance")),
             auth=_parse_auth(u.get("auth")),
