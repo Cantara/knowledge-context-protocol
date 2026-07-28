@@ -280,3 +280,52 @@ describe("composition + temporal spec invariants (RFC-0022)", () => {
     expect(spec).toContain("`valid_until` is earlier than `valid_from`");
   });
 });
+
+/**
+ * The parser artifacts a bridge depends on (#163).
+ *
+ * These went unguarded and drifted furthest of anything in the repository: two sat at
+ * `0.1.0` since the modules were created and one at `0.21.0`, while the spec reached
+ * 0.30. The cost is not cosmetic — `bridge/java` depends on `kcp-parser:0.1.0`, which is
+ * the only version that has ever existed, so a bridge could not express "I need a parser
+ * that knows action_scope". It resolves whatever was last installed locally, which is how
+ * correct mapper code came to fail with `cannot find symbol: actionScope()`.
+ */
+describe("parser artifact versions track the spec (#163)", () => {
+  const specMinor = (() => {
+    const m = readFileSync(r("SPEC.md"), "utf8").match(/\*\*Version:\*\*\s*([\d.]+)/);
+    return m![1];
+  })();
+
+  const artifacts: Array<[string, string, RegExp]> = [
+    ["parsers/java", "parsers/java/pom.xml", /<version>([\d.]+)<\/version>/],
+    ["parsers/python", "parsers/python/pyproject.toml", /^version\s*=\s*"([\d.]+)"/m],
+    ["shared", "shared/package.json", /"version":\s*"([\d.]+)"/],
+  ];
+
+  for (const [name, file, pattern] of artifacts) {
+    it(`${name} is on the current spec minor`, () => {
+      const m = readFileSync(r(file), "utf8").match(pattern);
+      expect(m, `no version found in ${file}`).toBeTruthy();
+      // Compared on the minor only: the artifact may carry a patch the spec does not.
+      const minor = m![1].split(".").slice(0, 2).join(".");
+      expect(minor, `${file} is ${m![1]}, spec is ${specMinor}`).toBe(specMinor);
+    });
+  }
+
+  it("the Java bridge requires a parser that can satisfy it", () => {
+    // The dependency must name a version that actually knows the fields the mapper
+    // reads. Pinning 0.1.0 forever means the requirement is unstatable.
+    const pom = readFileSync(r("bridge/java/pom.xml"), "utf8");
+    const dep = pom.match(/<artifactId>kcp-parser<\/artifactId>\s*<version>([\d.]+)<\/version>/);
+    expect(dep, "kcp-parser dependency not found in bridge/java/pom.xml").toBeTruthy();
+    expect(dep![1].split(".").slice(0, 2).join(".")).toBe(specMinor);
+  });
+
+  it("the Python bridge requires a parser that can satisfy it", () => {
+    const toml = readFileSync(r("bridge/python/pyproject.toml"), "utf8");
+    const dep = toml.match(/"kcp>=([\d.]+)"/);
+    expect(dep, "kcp dependency not found in bridge/python/pyproject.toml").toBeTruthy();
+    expect(dep![1].split(".").slice(0, 2).join(".")).toBe(specMinor);
+  });
+});

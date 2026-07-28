@@ -43,7 +43,7 @@
         <dependency>
             <groupId>no.cantara.kcp</groupId>
             <artifactId>kcp-parser</artifactId>
-            <version>0.1.0</version>
+            <version>0.30.0</version>
         </dependency>
 
         <!-- MCP Java SDK: core + Jackson 3 bundle -->
