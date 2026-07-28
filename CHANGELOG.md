@@ -10,6 +10,47 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.29.2] — 2026-07-28 — YAML 1.2 boolean conformance
+
+Corrects 0.29.1, which fixed a real bug and settled on the wrong answer.
+
+### Fixed
+
+- **Booleans now resolve per YAML 1.2, as §2 has always required** (#156). In YAML 1.2
+  only `true`/`false` and their capitalised spellings are booleans; `yes`/`no`/`on`/`off`
+  are plain strings — and every boolean field is typed `boolean` in the JSON schema,
+  which rejects the string outright (`'yes' is not of type 'boolean'`).
+
+  0.29.1 made all three parsers *accept* what the schema rejects. Two places in the
+  specification already agreed on the answer; there was no ambiguity to resolve, only a
+  failure to read §2 before choosing. Agreement is not correctness.
+
+  Fixed at the **loader**, which is the only place it can be fixed: PyYAML and SnakeYAML
+  both implement YAML 1.1 and convert `yes` to a boolean before any KCP code runs, at
+  which point nothing downstream can tell it from a manifest that wrote `true`. Both are
+  narrowed to the YAML 1.2 core boolean pattern by customising their implicit resolvers —
+  **no new dependency in either language**. js-yaml is already 1.2.
+
+  Measured before changing: **0 of 230** `knowledge.yaml` files under `/src/cantara` and
+  `/src/aegis` use the 1.1 words for a boolean field, so nothing in the fleet changes
+  meaning.
+
+### Added
+
+- **SPEC.md §2.1 Scalar resolution** — the rule was implemented in three parsers and
+  documented nowhere, which is the same defect RFC-0028 exists to fix for
+  `load_eligible`. Framed as a clarification: the schema always required this, so no
+  conformant manifest changes meaning and `kcp_version` is unaffected. SPEC stays at 0.29.
+
+### Note for authors
+
+Write `true` and `false`. A `yes` is not rejected loudly — it reads as a field you did
+not write, and takes that field's default. The parse layer has no diagnostics channel
+through which to say so (RFC-0028, OQ4).
+
+
+---
+
 ## [0.29.1] — 2026-07-28 — Boolean value parity
 
 A patch release, not a minor: no new spec surface. It fixes the three reference parsers
