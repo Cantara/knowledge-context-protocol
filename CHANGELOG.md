@@ -10,6 +10,51 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.30.1] — 2026-07-28 — Diagnostics and parity
+
+No spec surface changes; `SPEC.md` stays at 0.30 and no manifest changes meaning.
+
+### Added
+
+- **`parse_diagnostics` on the manifest** (#166, resolves RFC-0028 OQ4). Three manifests
+  — a correct grant, a malformed value, and a misspelled field name — were
+  indistinguishable to their author:
+
+  ```
+  load_eligible: true    → ✓ Valid — no errors or warnings
+  load_eligible: ture    → ✓ Valid — no errors or warnings
+  laod_eligible: true    → ✓ Valid — no errors or warnings
+  ```
+
+  Only the first granted anything; the other two produced a unit that failed closed
+  forever, silently. Both causes live at the parse boundary — §2.1 drops a non-boolean
+  and §2 discards an unknown field — so neither was visible to a validator. Now recorded
+  where the information still exists and surfaced as warnings.
+
+  **Forward compatibility is preserved.** §2 requires unknown fields to be ignored, which
+  is what lets a v0.31 manifest be read by a v0.30 parser; ignoring a field is not the
+  same as being unable to mention it. Only keys within two edits of a known field are
+  reported, so a genuinely future field stays silent. Diagnostics never rescue: a
+  malformed value still reads as undeclared, pinned by a conformance fixture.
+
+### Fixed
+
+- **Bridge parity** (#161). The three MCP bridges exposed different unit metadata — the
+  Java bridge emitted neither `kind` nor `action_scope`, so a client could not tell a
+  governed procedure from a document. Not an enaction path (bridges expose a fixed tool
+  set and units as readable resources), but it handed back a manifest with the governance
+  filed off. All four of `kind`, `action_scope`, `load_eligible` and `steps` now cross all
+  three.
+
+- **Parser artifact versions** (#163). Three artifacts sat at `0.1.0`, `0.1.0` and
+  `0.21.0` while the spec reached 0.30, and `bridge/java` depended on `kcp-parser:0.1.0` —
+  the only version that had ever existed — so a bridge could not express "I need a parser
+  that knows `action_scope`". All three now track the spec, and the consistency guard
+  gained five assertions so they cannot drift again.
+
+
+---
+
 ## [0.30.0] — 2026-07-28 — Eligibility grants
 
 Implements **RFC-0028**, promoted to SPEC.md §4.3c. Playbooks were shipped in 0.29 with
