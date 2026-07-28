@@ -50,6 +50,40 @@ def parse(path: Union[str, Path]) -> KnowledgeManifest:
     return parse_dict(data)
 
 
+_YAML_TRUE = {"true", "yes", "on"}
+_YAML_FALSE = {"false", "no", "off"}
+
+
+def _as_bool(value):
+    """Coerce a YAML scalar to a bool, agreeing with the TypeScript and Java parsers.
+
+    Three variants were in use here and all three were wrong (#153):
+
+      - ``u.get("deprecated")`` — no coercion at all, so a misspelled value became a
+        ``str`` sitting in a field typed ``Optional[bool]``;
+      - ``bool(u.get(...))`` — ``bool("flase")`` is ``True``, so every typo read as a
+        deliberate ``true``;
+      - and in Java, a cast, which threw ``ClassCastException`` on the same input.
+
+    PyYAML implements YAML 1.1 and already resolves ``yes``/``no``/``on``/``off`` to
+    booleans, so those arrive here correct. js-yaml implements YAML 1.2 and leaves them
+    as strings, which is why the words are handled explicitly: this function must give
+    the same answer whichever parser produced the value.
+
+    Anything else returns ``None`` — the field reads as *undeclared*, so the unit falls
+    back to its documented default rather than silently switching a flag on.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        v = value.lower()
+        if v in _YAML_TRUE:
+            return True
+        if v in _YAML_FALSE:
+            return False
+    return None
+
+
 def _parse_trust(data: Optional[dict]) -> Optional[Trust]:
     """Parse the root-level trust block."""
     if data is None:
@@ -67,20 +101,20 @@ def _parse_trust(data: Optional[dict]) -> Optional[Trust]:
     audit_data = data.get("audit")
     if audit_data is not None:
         audit = TrustAudit(
-            agent_must_log=audit_data.get("agent_must_log"),
-            require_trace_context=audit_data.get("require_trace_context"),
-            provides_access_receipts=audit_data.get("provides_access_receipts"),
+            agent_must_log=_as_bool(audit_data.get("agent_must_log")),
+            require_trace_context=_as_bool(audit_data.get("require_trace_context")),
+            provides_access_receipts=_as_bool(audit_data.get("provides_access_receipts")),
             receipt_format=audit_data.get("receipt_format"),
         )
     agent_requirements = None
     ar_data = data.get("agent_requirements")
     if ar_data is not None:
         agent_requirements = TrustAgentRequirements(
-            require_attestation=ar_data.get("require_attestation"),
+            require_attestation=_as_bool(ar_data.get("require_attestation")),
             trusted_providers=ar_data.get("trusted_providers", []),
             attestation_url=ar_data.get("attestation_url"),
             attestation_jwks=ar_data.get("attestation_jwks"),
-            propagate_to_governed=ar_data.get("propagate_to_governed"),
+            propagate_to_governed=_as_bool(ar_data.get("propagate_to_governed")),
         )
     return Trust(provenance=provenance, audit=audit, agent_requirements=agent_requirements)
 
@@ -184,7 +218,7 @@ def _parse_delegation(data: Optional[dict]) -> Optional[Delegation]:
         max_depth=data.get("max_depth"),
         require_capability_attenuation=data.get("require_capability_attenuation"),
         require_delegation_proof=data.get("require_delegation_proof"),
-        audit_chain=data.get("audit_chain"),
+        audit_chain=_as_bool(data.get("audit_chain")),
         human_in_the_loop=data.get("human_in_the_loop"),
     )
 
@@ -262,7 +296,7 @@ def _parse_payment_method(data: dict) -> PaymentMethod:
         wallet=data.get("wallet"),
         provider=data.get("provider"),
         plans_url=data.get("plans_url"),
-        free_tier=data.get("free_tier"),
+        free_tier=_as_bool(data.get("free_tier")),
         free_requests_per_day=data.get("free_requests_per_day"),
         upgrade_url=data.get("upgrade_url"),
     )
@@ -444,7 +478,7 @@ def _parse_agent_identity(data: Optional[dict]) -> Optional[AgentIdentity]:
     if not isinstance(data, dict):
         return None
     return AgentIdentity(
-        required=data.get("required"),
+        required=_as_bool(data.get("required")),
         credential_hint=data.get("credential_hint"),
         issuer_hint=data.get("issuer_hint"),
         docs_url=data.get("docs_url"),
@@ -527,7 +561,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
             access=u.get("access"),
             auth_scope=u.get("auth_scope"),
             sensitivity=u.get("sensitivity"),
-            deprecated=u.get("deprecated"),
+            deprecated=_as_bool(u.get("deprecated")),
             payment=_parse_payment(u.get("payment")),
             rate_limits=_parse_rate_limits(u.get("rate_limits")),
             action_scope=_parse_action_scope(u.get("action_scope")),
@@ -545,7 +579,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
             authority=_parse_authority(u.get("authority")),
             discovery=_parse_discovery(u.get("discovery")),
             not_for=_as_string_list(u.get("not_for"), default=[]),
-            not_for_strict=None if u.get("not_for_strict") is None else bool(u.get("not_for_strict")),
+            not_for_strict=_as_bool(u.get("not_for_strict")),
             content_structure=_parse_content_structure(u.get("content_structure")),
             content_hash=_parse_content_hash(u.get("content_hash")),
             temporal=_parse_temporal(u.get("temporal")),

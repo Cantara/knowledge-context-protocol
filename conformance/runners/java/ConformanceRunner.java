@@ -27,6 +27,7 @@ import java.util.stream.Stream;
  *   <li><b>parse_error</b>: if true, parsing must throw an exception</li>
  *   <li><b>unit_count</b>: exact integer match</li>
  *   <li><b>relationship_count</b>: exact integer match</li>
+ *   <li><b>values</b>: dotted paths compared by value AND type (#153)</li>
  *   <li><b>warnings</b>: if present and non-empty, actual warnings must be non-empty</li>
  * </ul>
  *
@@ -138,6 +139,35 @@ public class ConformanceRunner {
                     String note = (String) expected.get("_note");
                     if (note == null || !note.contains("cross-impl")) {
                         failures.add("expected errors to be non-empty");
+                    }
+                }
+            }
+
+            // Check values — what fields actually parsed TO (#153).
+            //
+            // validity and counts are blind to value semantics: a boolean read as true
+            // in one language and false in another leaves the manifest equally valid
+            // with the same unit count. This is the only assertion in the suite that
+            // can see that.
+            if (expected.containsKey("values")) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> values = (Map<String, Object>) expected.get("values");
+                for (Map.Entry<String, Object> e : values.entrySet()) {
+                    Object got;
+                    try {
+                        got = resolvePath(manifest, e.getKey());
+                    } catch (PathMissing pm) {
+                        failures.add("values[" + e.getKey() + "]: path does not resolve");
+                        continue;
+                    }
+                    Object want = e.getValue();
+                    // JSON null in the fixture means "reads as undeclared" — Java spells
+                    // that null, Python None, TypeScript undefined. One fixture, three
+                    // spellings of absence.
+                    if (!java.util.Objects.equals(got, want)) {
+                        failures.add(String.format("values[%s]: expected %s (%s), got %s (%s)",
+                                e.getKey(), want, want == null ? "null" : want.getClass().getSimpleName(),
+                                got, got == null ? "null" : got.getClass().getSimpleName()));
                     }
                 }
             }
@@ -289,5 +319,67 @@ public class ConformanceRunner {
 
     private static void skipWhitespace(String json, int[] pos) {
         while (pos[0] < json.length() && Character.isWhitespace(json.charAt(pos[0]))) pos[0]++;
+    }
+
+    /** Signals that a dotted path did not resolve, as distinct from resolving to null. */
+    private static final class PathMissing extends RuntimeException {
+        PathMissing() { super(null, null, false, false); }
+    }
+
+    /**
+     * Resolve a dotted path like {@code units.0.deprecated} against the parsed manifest.
+     *
+     * <p>Fixture paths use the manifest's own snake_case field names; the Java model uses
+     * camelCase record accessors. Rather than maintain a mapping table that would drift,
+     * the hop is converted to camelCase and matched against the record's components —
+     * so a field added to the model is reachable from a fixture without touching this.
+     *
+     * <p>Throws {@link PathMissing} rather than returning null when a hop is absent,
+     * because "parsed to null" and "the path does not exist" are different failures and
+     * conflating them would let a typo in a fixture pass as a successful check.
+     */
+    private static Object resolvePath(Object root, String path) {
+        Object current = root;
+        for (String hop : path.split("\\.")) {
+            if (current == null) throw new PathMissing();
+            if (hop.matches("\\d+")) {
+                if (!(current instanceof java.util.List<?> list)) throw new PathMissing();
+                int i = Integer.parseInt(hop);
+                if (i >= list.size()) throw new PathMissing();
+                current = list.get(i);
+            } else if (current instanceof Map<?, ?> map) {
+                if (!map.containsKey(hop)) throw new PathMissing();
+                current = map.get(hop);
+            } else {
+                current = readComponent(current, hop);
+            }
+        }
+        return current;
+    }
+
+    /** Read a record component by its snake_case manifest name. */
+    private static Object readComponent(Object target, String snakeName) {
+        String camel = toCamel(snakeName);
+        for (var rc : target.getClass().getRecordComponents()) {
+            if (rc.getName().equals(camel)) {
+                try {
+                    return rc.getAccessor().invoke(target);
+                } catch (ReflectiveOperationException ex) {
+                    throw new PathMissing();
+                }
+            }
+        }
+        throw new PathMissing();
+    }
+
+    private static String toCamel(String snake) {
+        StringBuilder sb = new StringBuilder();
+        boolean up = false;
+        for (char c : snake.toCharArray()) {
+            if (c == '_') { up = true; continue; }
+            sb.append(up ? Character.toUpperCase(c) : c);
+            up = false;
+        }
+        return sb.toString();
     }
 }
