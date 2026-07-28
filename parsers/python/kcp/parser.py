@@ -2,6 +2,7 @@ from datetime import date
 from pathlib import Path, PurePosixPath
 from typing import List, Optional, Union
 
+import re
 import yaml
 
 from .model import (
@@ -46,42 +47,61 @@ def _validate_unit_path(raw: str) -> str:
 def parse(path: Union[str, Path]) -> KnowledgeManifest:
     """Parse a knowledge.yaml file from disk."""
     with Path(path).open(encoding="utf-8") as f:
-        data = yaml.safe_load(f)
+        data = yaml.load(f, Loader=Yaml12SafeLoader)
     return parse_dict(data)
 
 
-_YAML_TRUE = {"true", "yes", "on"}
-_YAML_FALSE = {"false", "no", "off"}
+_YAML_12_BOOL = re.compile(r"^(?:true|True|TRUE|false|False|FALSE)$")
+
+
+class Yaml12SafeLoader(yaml.SafeLoader):
+    """A SafeLoader that resolves booleans per YAML 1.2, as SPEC.md §2 requires.
+
+    PyYAML implements YAML 1.1, in which ``yes``/``no``/``on``/``off`` resolve to
+    booleans. §2 mandates YAML 1.2, in which they are plain strings — and the JSON
+    schema types these fields as ``boolean``, so such a value is a schema violation
+    rather than a shorthand to be rescued.
+
+    Left alone, the divergence is invisible from inside this package: PyYAML converts
+    ``yes`` to ``True`` before any KCP code runs, so no coercion helper downstream can
+    tell it from a manifest that wrote ``true``. The fix has to happen at the loader
+    (#156).
+
+    Only the boolean resolver is narrowed. Everything else — ints, floats, null, merge
+    keys, timestamps — keeps PyYAML's behaviour, because §2's requirement bites here
+    and nowhere this parser has been shown to diverge.
+    """
+
+
+def _install_yaml_12_bool_resolver() -> None:
+    """Replace the 1.1 bool resolvers on Yaml12SafeLoader with the 1.2 core schema."""
+    # yaml_implicit_resolvers is inherited by reference; copy before mutating or this
+    # narrows SafeLoader for every other consumer in the process.
+    Yaml12SafeLoader.yaml_implicit_resolvers = {
+        ch: [(tag, rx) for (tag, rx) in resolvers if tag != "tag:yaml.org,2002:bool"]
+        for ch, resolvers in yaml.SafeLoader.yaml_implicit_resolvers.items()
+    }
+    Yaml12SafeLoader.add_implicit_resolver(
+        "tag:yaml.org,2002:bool", _YAML_12_BOOL, list("tTfF")
+    )
+
+
+_install_yaml_12_bool_resolver()
 
 
 def _as_bool(value):
-    """Coerce a YAML scalar to a bool, agreeing with the TypeScript and Java parsers.
+    """Return a bool, or None when the value is not one.
 
-    Three variants were in use here and all three were wrong (#153):
+    The loader resolves booleans per YAML 1.2 (§2), so ``yes``/``no``/``on``/``off``
+    arrive here as strings and are rejected exactly as a typo is. An earlier revision
+    mapped those words to booleans, which made the three parsers agree — on an answer
+    the schema rejects (#156).
 
-      - ``u.get("deprecated")`` — no coercion at all, so a misspelled value became a
-        ``str`` sitting in a field typed ``Optional[bool]``;
-      - ``bool(u.get(...))`` — ``bool("flase")`` is ``True``, so every typo read as a
-        deliberate ``true``;
-      - and in Java, a cast, which threw ``ClassCastException`` on the same input.
-
-    PyYAML implements YAML 1.1 and already resolves ``yes``/``no``/``on``/``off`` to
-    booleans, so those arrive here correct. js-yaml implements YAML 1.2 and leaves them
-    as strings, which is why the words are handled explicitly: this function must give
-    the same answer whichever parser produced the value.
-
-    Anything else returns ``None`` — the field reads as *undeclared*, so the unit falls
-    back to its documented default rather than silently switching a flag on.
+    None means the field reads as *undeclared*, so the unit falls back to its documented
+    default rather than silently switching a flag on. That a rejected value is silent
+    rather than reported is a known gap: the parse layer has no diagnostics channel.
     """
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        v = value.lower()
-        if v in _YAML_TRUE:
-            return True
-        if v in _YAML_FALSE:
-            return False
-    return None
+    return value if isinstance(value, bool) else None
 
 
 def _parse_trust(data: Optional[dict]) -> Optional[Trust]:
