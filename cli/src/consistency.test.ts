@@ -8,6 +8,8 @@ import { describe, expect, it } from "vitest";
 import { lstatSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { SCAFFOLD_KCP_VERSION } from "./init.js";
+import { load as parseYaml } from "js-yaml";
+import { computeContentDigest } from "./validator.js";
 
 const REPO = resolve(process.cwd(), "..");
 const r = (p: string) => resolve(REPO, p);
@@ -81,6 +83,35 @@ describe("version-drift guard", () => {
 
   it("cli/package.json version matches the SPEC.md minor", () => {
     expect(cliPkgVersion.startsWith(specMinor + "."), `cli ${cliPkgVersion} vs SPEC ${specMinor}`).toBe(true);
+  });
+
+  // This repository publishes a manifest describing its own spec and RFCs, and it is the
+  // one manifest nobody thinks to re-run the fleet bump against. It sat at 0.26 through
+  // four releases while every consumer repo tracked 0.30 — the spec was the least current
+  // artifact in its own ecosystem, and nothing failed to say so.
+  const ownManifest = (() => {
+    const text = readFileSync(r("knowledge.yaml"), "utf8");
+    return { text, doc: parseYaml(text) as any };
+  })();
+
+  it("the repo's own knowledge.yaml declares the current SPEC minor", () => {
+    expect(
+      String(ownManifest.doc.kcp_version),
+      `knowledge.yaml declares ${ownManifest.doc.kcp_version}, SPEC.md is ${specMinor}`,
+    ).toBe(specMinor);
+  });
+
+  // Editing SPEC.md without refreshing its digest leaves a manifest that fails its own
+  // `kcp validate`. Both digests here were stale for exactly that reason.
+  it("every declared content_hash matches the content on disk", () => {
+    const stale: string[] = [];
+    for (const unit of ownManifest.doc.units ?? []) {
+      const declared = unit?.content_hash?.value;
+      if (!declared) continue;
+      const actual = computeContentDigest(r(unit.path), unit.content_hash.algorithm ?? "sha256");
+      if (actual && actual !== declared) stale.push(`${unit.id} (${unit.path})`);
+    }
+    expect(stale, `stale digests — run kcp sign --update-hashes: ${stale.join(", ")}`).toEqual([]);
   });
 
   it("RENDERER_VERSION matches the cli package version", () => {
