@@ -37,6 +37,8 @@ units:
 
 **Five minutes to Level 1.** See [adopting KCP in existing projects](./guides/adopting-kcp-in-existing-projects.md).
 
+**Current version: 0.30** — adds `load_eligible` (§4.3c), the eligibility grant, and the rule that eligibility does not compose. See the [changelog](./CHANGELOG.md).
+
 **New here?** Start with [the KCP universe](./guides/start-here-the-kcp-universe.md) — the
 three kinds of unit, the tooling around the spec, and how the RFC process works.
 

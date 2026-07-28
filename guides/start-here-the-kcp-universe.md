@@ -5,7 +5,7 @@ matter, the tools around it, and how the RFC process actually works.
 
 **Time:** ~15 minutes reading, ~10 running the example. **Prerequisites:** Node 20+.
 
-Every command below was run against `@cantara.no/kcp@0.29` and shows its real output.
+Every command below was run against `@cantara.no/kcp@0.30` and shows its real output.
 
 ---
 
@@ -33,6 +33,9 @@ and three carry the weight for most authors. They form a progression.
 | `knowledge` | *What is true?* | reads it |
 | `skill` | *How do I do this one thing?* | enacts it, bounded by an `action_scope` |
 | `playbook` | *How do we do this whole thing?* | enacts it **step by step**, each with its own ceiling |
+
+Both `skill` and `playbook` also need an explicit **grant** — `load_eligible: true` — before
+anything may enact them. Absent means no.
 
 The default is `knowledge`, and most units are that. The other two are newer — `skill`
 arrived in v0.26, `playbook` in v0.29 — and they are where the governance lives.
@@ -63,8 +66,8 @@ Nothing here can act. An agent selects it by intent and reads it.
 ```
 
 Two things changed. `action_scope` bounds what the procedure may touch — a firewall rule,
-not a description. And **a skill fails closed**: absent an explicit eligibility grant it
-renders as a pointer an agent may read but not run.
+not a description. And **a skill fails closed**: `load_eligible` is the grant (§4.3c), and
+absent means *not* eligible — the unit renders as a pointer an agent may read but not run.
 
 That default is the point. A procedure that acts should require someone to have said yes.
 
@@ -111,6 +114,31 @@ Three rules worth knowing before you write one ([§4.3b]):
 - **`on_failure: continue` continues the run, not the dependents.** A step is never
   enacted unless everything it depends on succeeded.
 
+### Eligibility does not compose
+
+One rule catches people out, and it is worth knowing before you write a playbook.
+
+**A grant on a playbook does not reach the units its steps name.** Both the playbook and
+every unit its steps `uses` must carry their own `load_eligible: true`:
+
+```yaml
+- id: cut-release
+  kind: playbook
+  load_eligible: true        # grants the composition...
+  steps:
+    - id: verify
+      uses: run-tests        # ...but run-tests needs its own grant too
+```
+
+Without that, `load_eligible: true` on a playbook would be a **universal grant** — any
+unit in the manifest becomes reachable by naming it in a step, including one someone
+deliberately withheld. `kcp validate` reports it, and the planner refuses to offer such a
+playbook at all.
+
+The cost is real and worth knowing: a skill cannot currently be "enactable only within an
+approved playbook". Granting it for playbook use also makes it independently invocable.
+Scoped grants are an open question (RFC-0028 OQ1).
+
 ### Which one am I writing?
 
 > If your steps all sit inside one procedure's `action_scope`, they are prose, and you
@@ -133,7 +161,7 @@ echo "# Cut release"     > playbooks/cut-release.md
 Write `knowledge.yaml` with the three units from §2 plus a `publish-package` skill, then:
 
 ```bash
-npx @cantara.no/kcp@0.29 validate knowledge.yaml
+npx @cantara.no/kcp@0.30 validate knowledge.yaml
 ```
 
 ```
@@ -180,7 +208,7 @@ that consumes it.
 
 | | What it is | Install |
 |---|---|---|
-| [`kcp`][cli] | The CLI: `init`, `validate`, `sign`, `render`, `query` | `npx @cantara.no/kcp@0.29` |
+| [`kcp`][cli] | The CLI: `init`, `validate`, `sign`, `render`, `query` | `npx @cantara.no/kcp@0.30` |
 | [kcp-agent] | A deterministic planner — given a task, decides which units an agent may load, through a 14-gate cascade. No LLM. | `npm i kcp-agent` |
 | [kcp-harness] | An MCP compliance proxy between an agent and its tools. Fail-closed: what it cannot verify, the agent does not get. | `npm i kcp-harness` |
 
