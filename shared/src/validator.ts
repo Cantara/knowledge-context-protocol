@@ -161,6 +161,7 @@ const KNOWN_KCP_VERSIONS = new Set([
   "0.27",
   "0.28",
   "0.29",
+  "0.30",
 ]);
 // content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
 const VALID_CONTENT_MODALITIES = new Set([
@@ -482,10 +483,37 @@ export function validate(
   // would reject forward references that the spec permits.
   const unitKinds = new Map<string, string>();
   for (const u of manifest.units) unitKinds.set(u.id, u.kind ?? "knowledge");
+
+  // §4.3c (RFC-0028): eligibility is a property of the unit that declares it, and it
+  // does NOT compose — a grant on a playbook does not reach the units its steps name.
+  // Absent means not eligible: a governed procedure fails closed.
+  const GOVERNED = new Set(["skill", "playbook"]);
+  const isEligible = (id: string): boolean =>
+    manifest.units.find((u) => u.id === id)?.load_eligible === true;
   const declaredLevels = new Set(manifest.authority_level_scale ?? []);
 
   for (const unit of manifest.units) {
     const ctx = `Unit '${unit.id}'`;
+
+    // §4.3c: the grant is defined only for the kinds that act. Declaring it elsewhere
+    // is a category error — no renderer may ever mark those kinds eligible (C4), so the
+    // author has written something that cannot mean what they intended.
+    if (unit.load_eligible !== undefined && !GOVERNED.has(unit.kind ?? "knowledge")) {
+      errors.push(
+        `${ctx}: 'load_eligible' is only defined for kind: skill and kind: playbook, not '${unit.kind ?? "knowledge"}' (§4.3c)`
+      );
+    }
+
+    // §4.3c: a granted skill with no action_scope is authorised to act and bounded in
+    // nothing it may touch. Deliberately restricted to kind: skill — §4.3b makes a
+    // playbook's action_scope declarative rather than a grant, and not computable at
+    // all when a step is inline, so demanding one here would require a field that
+    // bounds nothing. A playbook is bounded by the units its steps use.
+    if (unit.kind === "skill" && unit.load_eligible === true && !unit.action_scope) {
+      errors.push(
+        `${ctx}: kind 'skill' with 'load_eligible: true' MUST declare an 'action_scope' — it is authorised to act and bounded in nothing (§4.3c)`
+      );
+    }
 
     if (unit.kind !== "playbook") {
       // steps on a non-playbook is a category error, not a silent no-op: the author
@@ -534,10 +562,31 @@ export function validate(
           errors.push(
             `${sctx}: 'uses' names playbook '${step.uses}'; playbook nesting is not permitted (§4.3b, RFC-0027 OQ1)`
           );
+        } else if (target === "executable" || target === "service" || !["skill", "knowledge", "policy", "schema"].includes(target)) {
+          // These kinds can never be eligible (C4), so such a step can never be
+          // enacted — a stronger statement than "should have been a skill".
+          errors.push(
+            `${sctx}: 'uses' names '${step.uses}' of kind '${target}', which can never be invoke-eligible (§4.3c, C4)`
+          );
         } else if (target !== "skill") {
           warnings.push(
             `${sctx}: 'uses' names '${step.uses}' of kind '${target}'; SHOULD name a kind: skill unit (§4.3b)`
           );
+        }
+
+        // §4.3c — the rule this RFC exists for. Eligibility does not compose.
+        if (unitKinds.has(step.uses) && !isEligible(step.uses)) {
+          if (unit.load_eligible === true) {
+            errors.push(
+              `${sctx}: 'uses' names '${step.uses}', which is not invoke-eligible — a grant on a playbook does not reach the units its steps name, so this playbook cannot be enacted as written (§4.3c)`
+            );
+          } else {
+            // The playbook cannot be enacted at all, so the inner defect is not yet
+            // reachable; reporting it as an error would bury the real problem.
+            warnings.push(
+              `${sctx}: 'uses' names '${step.uses}', which is not invoke-eligible; this playbook is itself ungranted, so fix that first (§4.3c)`
+            );
+          }
         }
       }
 
@@ -592,6 +641,18 @@ export function validate(
     // unverified rather than passing it silently — a declaration that lints clean
     // reads as checked.
     const inline = unit.steps.filter((s) => s.uses === undefined).length;
+
+    // §4.3c: an inline step names no unit, so nothing bounds what it may touch, and a
+    // playbook has no computable action_scope of its own. Granting one would make it
+    // the only construct in KCP that acts with no scope at all. Inline steps stay legal
+    // on an ungranted playbook — §4.3b introduced them for authoring before every step
+    // has a unit, and that use is unaffected.
+    if (inline > 0 && unit.load_eligible === true) {
+      errors.push(
+        `${ctx}: an invoke-eligible playbook MUST NOT declare inline ('action') steps — ${inline} found, and an inline step is bounded by nothing (§4.3c)`
+      );
+    }
+
     if (inline > 0) {
       warnings.push(
         `${ctx}: ${inline} of ${unit.steps.length} step(s) are inline ('action'); an inline step has no action_scope and is bounded only by its authority_level (§4.3b)`

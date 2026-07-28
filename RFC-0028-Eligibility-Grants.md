@@ -1,12 +1,12 @@
 # RFC-0028: Eligibility Grants and Their Composition
 
-**Status:** Draft
+**Status:** Accepted — promoted to SPEC.md §4.3c in v0.30
 **Authors:** eXOReaction AS (Thor Henning Hetland)
 **Date:** 2026-07-28
 **Related:** RFC-0018 (Trusted Render Pipeline) — §16.3 C4 requires the grant this RFC specifies.
 RFC-0027 (Playbooks) — the composition case. SPEC.md §4.3a (`kind: skill`, added directly in
 v0.26 with no RFC of its own), §4.3b, §16.3.
-**Spec:** [SPEC.md](./SPEC.md) (current: v0.29) — targets **v0.30**.
+**Spec:** [SPEC.md](./SPEC.md) — promoted to §4.3c in **v0.30**.
 
 ---
 

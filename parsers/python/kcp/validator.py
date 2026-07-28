@@ -95,7 +95,7 @@ VALID_INDEXING_SHORTHANDS = {"open", "read-only", "no-train", "none"}
 VALID_ACCESS_VALUES = {"public", "authenticated", "restricted"}
 VALID_SENSITIVITY_VALUES = {"public", "internal", "confidential", "restricted"}
 # human_in_the_loop is an object per spec §3.4 — no HITL enum, validation done inline
-KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26", "0.27", "0.28", "0.29"}
+KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26", "0.27", "0.28", "0.29", "0.30"}
 # content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
 VALID_CONTENT_MODALITIES = {"prose", "table", "code", "list", "diagram", "reference", "mixed"}
 VALID_DENSITY = {"sparse", "normal", "dense"}
@@ -436,10 +436,37 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
     # references the spec permits.
     unit_kinds = {u.id: (u.kind or "knowledge") for u in manifest.units}
     units_by_id = {u.id: u for u in manifest.units}
+    # §4.3c (RFC-0028): eligibility is a property of the unit that declares it and does
+    # NOT compose — a grant on a playbook does not reach the units its steps name.
+    # Absent means not eligible: a governed procedure fails closed.
+    GOVERNED = {"skill", "playbook"}
+
+    def _eligible(uid: str) -> bool:
+        u = units_by_id.get(uid)
+        return bool(u is not None and u.load_eligible is True)
     declared_levels = set(manifest.authority_level_scale or [])
 
     for unit in manifest.units:
         ctx = f"unit '{unit.id}'"
+
+        # §4.3c: the grant is defined only for the kinds that act. Declaring it
+        # elsewhere is a category error — no renderer may ever mark those kinds
+        # eligible (C4), so it cannot mean what the author intended.
+        if unit.load_eligible is not None and (unit.kind or "knowledge") not in GOVERNED:
+            errors.append(
+                f"{ctx}: 'load_eligible' is only defined for kind: skill and "
+                f"kind: playbook, not '{unit.kind or 'knowledge'}' (§4.3c)"
+            )
+
+        # §4.3c: a granted skill with no action_scope is authorised to act and bounded
+        # in nothing. Restricted to kind: skill — §4.3b makes a playbook's action_scope
+        # declarative rather than a grant, so demanding one would require a field that
+        # bounds nothing; a playbook is bounded by the units its steps use.
+        if unit.kind == "skill" and unit.load_eligible is True and unit.action_scope is None:
+            errors.append(
+                f"{ctx}: kind 'skill' with 'load_eligible: true' MUST declare an "
+                f"'action_scope' — it is authorised to act and bounded in nothing (§4.3c)"
+            )
 
         if (unit.kind or "knowledge") != "playbook":
             # steps on a non-playbook is a category error, not a silent no-op: the
@@ -490,11 +517,38 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
                         f"{sctx}: 'uses' names playbook '{step.uses}'; playbook "
                         f"nesting is not permitted (§4.3b, RFC-0027 OQ1)"
                     )
+                elif target in ("executable", "service") or target not in (
+                    "skill", "knowledge", "policy", "schema"
+                ):
+                    # These kinds can never be eligible (C4), so such a step can never
+                    # be enacted — stronger than "should have been a skill".
+                    errors.append(
+                        f"{sctx}: 'uses' names '{step.uses}' of kind '{target}', which "
+                        f"can never be invoke-eligible (§4.3c, C4)"
+                    )
                 elif target != "skill":
                     warnings.append(
                         f"{sctx}: 'uses' names '{step.uses}' of kind '{target}'; "
                         f"SHOULD name a kind: skill unit (§4.3b)"
                     )
+
+                # §4.3c — the rule this RFC exists for. Eligibility does not compose.
+                if step.uses in unit_kinds and not _eligible(step.uses):
+                    if unit.load_eligible is True:
+                        errors.append(
+                            f"{sctx}: 'uses' names '{step.uses}', which is not "
+                            f"invoke-eligible — a grant on a playbook does not reach the "
+                            f"units its steps name, so this playbook cannot be enacted "
+                            f"as written (§4.3c)"
+                        )
+                    else:
+                        # The playbook cannot be enacted at all, so the inner defect is
+                        # not yet reachable; an error here would bury the real problem.
+                        warnings.append(
+                            f"{sctx}: 'uses' names '{step.uses}', which is not "
+                            f"invoke-eligible; this playbook is itself ungranted, so fix "
+                            f"that first (§4.3c)"
+                        )
 
             if step.on_failure is not None and step.on_failure not in VALID_ON_FAILURE:
                 errors.append(
@@ -546,6 +600,17 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
         # unverified rather than passing it silently — a declaration that lints clean
         # reads as checked.
         inline = sum(1 for s in unit.steps if s.uses is None)
+
+        # §4.3c: an inline step names no unit, so nothing bounds what it may touch, and
+        # a playbook has no computable action_scope of its own. Granting one would make
+        # it the only construct in KCP that acts with no scope at all. Inline steps stay
+        # legal on an ungranted playbook, which is what §4.3b introduced them for.
+        if inline and unit.load_eligible is True:
+            errors.append(
+                f"{ctx}: an invoke-eligible playbook MUST NOT declare inline ('action') "
+                f"steps — {inline} found, and an inline step is bounded by nothing (§4.3c)"
+            )
+
         if inline:
             warnings.append(
                 f"{ctx}: {inline} of {len(unit.steps)} step(s) are inline "

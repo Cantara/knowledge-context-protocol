@@ -68,7 +68,7 @@ public class KcpValidator {
     private static final Set<String> VALID_ACCESS_VALUES = Set.of("public", "authenticated", "restricted");
     private static final Set<String> VALID_SENSITIVITY_VALUES = Set.of("public", "internal", "confidential", "restricted");
     private static final Set<String> VALID_HITL_MECHANISMS = Set.of("oauth_consent", "uma", "custom");
-    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26", "0.27", "0.28", "0.29");
+    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26", "0.27", "0.28", "0.29", "0.30");
     // content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
     private static final Set<String> VALID_CONTENT_MODALITIES = Set.of("prose", "table", "code", "list", "diagram", "reference", "mixed");
     private static final Set<String> VALID_DENSITY = Set.of("sparse", "normal", "dense");
@@ -303,9 +303,37 @@ public class KcpValidator {
         Set<String> declaredLevels = manifest.authorityLevelScale() != null
                 ? new HashSet<>(manifest.authorityLevelScale()) : Set.of();
 
+        // §4.3c (RFC-0028): eligibility is a property of the unit that declares it and
+        // does NOT compose — a grant on a playbook does not reach the units its steps
+        // name. Absent means not eligible: a governed procedure fails closed.
+        Set<String> GOVERNED = Set.of("skill", "playbook");
+        java.util.function.Predicate<String> isEligible = id -> {
+            KnowledgeUnit u = unitsById.get(id);
+            return u != null && Boolean.TRUE.equals(u.loadEligible());
+        };
+
         for (KnowledgeUnit unit : manifest.units()) {
             String ctx = "unit '" + unit.id() + "'";
             String kind = unit.kind() != null ? unit.kind() : "knowledge";
+
+            // §4.3c: the grant is defined only for the kinds that act. Declaring it
+            // elsewhere is a category error — no renderer may ever mark those kinds
+            // eligible (C4), so it cannot mean what the author intended.
+            if (unit.loadEligible() != null && !GOVERNED.contains(kind)) {
+                errors.add(ctx + ": 'load_eligible' is only defined for kind: skill and"
+                        + " kind: playbook, not '" + kind + "' (§4.3c)");
+            }
+
+            // §4.3c: a granted skill with no action_scope is authorised to act and
+            // bounded in nothing. Restricted to kind: skill — §4.3b makes a playbook's
+            // action_scope declarative rather than a grant, so demanding one would
+            // require a field that bounds nothing.
+            if ("skill".equals(kind) && Boolean.TRUE.equals(unit.loadEligible())
+                    && unit.actionScope() == null) {
+                errors.add(ctx + ": kind 'skill' with 'load_eligible: true' MUST declare"
+                        + " an 'action_scope' — it is authorised to act and bounded in"
+                        + " nothing (§4.3c)");
+            }
 
             if (!"playbook".equals(kind)) {
                 // steps on a non-playbook is a category error, not a silent no-op: the
@@ -351,9 +379,31 @@ public class KcpValidator {
                         // depends_on graph the per-playbook cycle check never sees.
                         errors.add(sctx + ": 'uses' names playbook '" + step.uses()
                                 + "'; playbook nesting is not permitted (§4.3b, RFC-0027 OQ1)");
+                    } else if ("executable".equals(target) || "service".equals(target)
+                            || !Set.of("skill", "knowledge", "policy", "schema").contains(target)) {
+                        // These kinds can never be eligible (C4), so such a step can
+                        // never be enacted — stronger than "should have been a skill".
+                        errors.add(sctx + ": 'uses' names '" + step.uses() + "' of kind '"
+                                + target + "', which can never be invoke-eligible (§4.3c, C4)");
                     } else if (!"skill".equals(target)) {
                         warnings.add(sctx + ": 'uses' names '" + step.uses() + "' of kind '"
                                 + target + "'; SHOULD name a kind: skill unit (§4.3b)");
+                    }
+
+                    // §4.3c — the rule this RFC exists for. Eligibility does not compose.
+                    if (unitKinds.containsKey(step.uses()) && !isEligible.test(step.uses())) {
+                        if (Boolean.TRUE.equals(unit.loadEligible())) {
+                            errors.add(sctx + ": 'uses' names '" + step.uses() + "', which is"
+                                    + " not invoke-eligible — a grant on a playbook does not"
+                                    + " reach the units its steps name, so this playbook"
+                                    + " cannot be enacted as written (§4.3c)");
+                        } else {
+                            // The playbook cannot be enacted at all, so the inner defect
+                            // is not reachable; an error would bury the real problem.
+                            warnings.add(sctx + ": 'uses' names '" + step.uses() + "', which"
+                                    + " is not invoke-eligible; this playbook is itself"
+                                    + " ungranted, so fix that first (§4.3c)");
+                        }
                     }
                 }
 
@@ -408,6 +458,16 @@ public class KcpValidator {
             // unverified rather than passing it silently — a declaration that lints
             // clean reads as checked.
             long inline = unit.steps().stream().filter(s -> s.uses() == null).count();
+
+            // §4.3c: an inline step names no unit, so nothing bounds what it may touch,
+            // and a playbook has no computable action_scope of its own. Granting one
+            // would make it the only construct in KCP that acts with no scope at all.
+            if (inline > 0 && Boolean.TRUE.equals(unit.loadEligible())) {
+                errors.add(ctx + ": an invoke-eligible playbook MUST NOT declare inline"
+                        + " ('action') steps — " + inline + " found, and an inline step is"
+                        + " bounded by nothing (§4.3c)");
+            }
+
             if (inline > 0) {
                 warnings.add(ctx + ": " + inline + " of " + unit.steps().size()
                         + " step(s) are inline ('action'); an inline step has no action_scope"

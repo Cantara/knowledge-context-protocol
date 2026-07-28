@@ -135,6 +135,7 @@ function parseUnit(raw: RawMap): KnowledgeUnit {
     kind: raw["kind"] !== undefined ? String(raw["kind"]) : undefined,
     action_scope: parseActionScope(raw["action_scope"]),
     steps: parseSteps(raw["steps"]),
+    load_eligible: asBool(raw["load_eligible"]),
     format: raw["format"] !== undefined ? String(raw["format"]) : undefined,
     content_type:
       raw["content_type"] !== undefined

@@ -1,6 +1,6 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.29
+**Version:** 0.30
 **Status:** Draft
 **Date:** 2026-07-24
 **Repository:** github.com/cantara/knowledge-context-protocol
@@ -1620,6 +1620,7 @@ Each entry in `units` describes a self-contained piece of knowledge.
 | `aliases` | OPTIONAL | list of strings | Additional identifiers that resolve to this unit. See §4.2a (v0.26). |
 | `path` | REQUIRED | string | Relative path to the content file. See §4.3. |
 | `kind` | OPTIONAL | string | Type of artifact. One of: `knowledge`, `schema`, `service`, `policy`, `executable`, `skill`, `playbook`. See §4.3a. Default: `knowledge`. |
+| `load_eligible` | OPTIONAL | boolean | Eligibility grant for a governed procedure. See §4.3c. Default: `false` for `skill`/`playbook`. |
 | `intent` | REQUIRED | string | One sentence: what question does this unit answer? See §4.4. |
 | `format` | OPTIONAL | string | Content format of the referenced file. See §4.4a. |
 | `content_type` | OPTIONAL | string | MIME type for precise format identification. See §4.4b. |
@@ -2007,6 +2008,74 @@ This requirement binds an actor rather than a field, so no validator can check i
 - A validator SHOULD warn when `uses` resolves to a unit that is not `kind: skill`.
 - A validator SHOULD warn when a step omits `authority_level` while its `uses` unit declares
   a mutating `action_scope`.
+
+### 4.3c `load_eligible` — the eligibility grant (v0.30)
+
+§16.3 C4 requires that a governed procedure "becomes load/invoke-eligible only when the
+manifest carries an explicit eligibility grant for it". This is that grant.
+
+| Field | Required | Type | Applies to | Absent means |
+|---|---|---|---|---|
+| `load_eligible` | OPTIONAL | boolean | `kind: skill`, `kind: playbook` | **not eligible** |
+
+```yaml
+- id: complete-promotion
+  kind: skill
+  load_eligible: true
+  action_scope: { tools: [git], paths: ["deploy/**"] }
+```
+
+It is **a grant, not a capability claim.** It asserts that this unit is authorised to be
+enacted. It does not widen `action_scope`, does not raise `authority_level`, and carries
+no meaning for a unit that declares neither.
+
+It is defined only for the kinds that *act*. `executable`, `service` and unknown kinds are
+never eligible whatever a manifest declares (C4), so declaring the field on them is a
+manifest error rather than a no-op.
+
+#### Eligibility does not compose
+
+**A playbook step MUST NOT be enacted unless both the playbook and the unit named by its
+`uses` are themselves eligible.** A grant on the composition does not reach the parts.
+
+The alternative — treating a playbook's grant as blessing everything it names — would make
+`load_eligible: true` on a playbook a universal grant: any unit in the manifest becomes
+reachable by naming it in a step, including one deliberately withheld. That is also the
+only place in this specification where assembling parts would yield more than the parts
+had; authority is a minimum across sources (§3.13) and a playbook can never raise it
+(§4.3b).
+
+The cost is real and is not hidden: a skill cannot be "enactable only within an approved
+playbook". Granting it for playbook use also makes it independently invocable. Scoped
+grants would remove that limitation and are deliberately not specified here (RFC-0028,
+Open Question 1) — a restrictive rule can be relaxed compatibly later, whereas a
+permissive one cannot be narrowed without breaking manifests that relied on it.
+
+#### Conformance
+
+- A validator MUST error when `load_eligible` is declared on a unit whose `kind` is
+  neither `skill` nor `playbook`.
+- A validator MUST error when a `kind: skill` unit declares `load_eligible: true` and no
+  `action_scope` — it is authorised to act and bounded in nothing it may touch. This does
+  **not** apply to `kind: playbook`, whose `action_scope` is declarative (§4.3b) and often
+  not computable; a playbook is bounded by the units its steps `uses`.
+- A validator MUST error when an **eligible** playbook has a step whose `uses` target is
+  not eligible.
+- A validator SHOULD warn, rather than error, when an **ineligible** playbook has such a
+  step: the playbook cannot be enacted at all, so the missing grant on the playbook itself
+  is the defect worth reporting.
+- A validator MUST error when an **eligible** playbook declares any inline (`action`)
+  step. An inline step names no unit, so nothing bounds what it may touch. Inline steps
+  remain legal on an ineligible playbook, which is what §4.3b introduced them for.
+- A validator MUST error when a step's `uses` names a kind that can never be eligible.
+- An implementation MUST NOT treat a grant on a composition as a grant on the units it
+  names, and MUST apply these rules even when enacting directly from a manifest without a
+  renderer.
+
+> **Note.** A value that is not a boolean is dropped by scalar resolution (§2.1) and
+> becomes indistinguishable from an absent field, so a misspelled grant fails closed
+> silently. Closing that requires diagnostics the parse layer does not have
+> (RFC-0028, Open Question 4).
 
 ### 4.4 `intent`
 

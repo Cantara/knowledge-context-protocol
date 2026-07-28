@@ -1,0 +1,12 @@
+{
+  "_note": "RFC-0028 (#160): eligibility does not compose. A granted playbook naming an ungranted skill cannot be enacted as written, so it is a manifest error rather than a surprise at step 2.",
+  "valid": false,
+  "errors": ["non-empty"],
+  "unit_count": 3,
+  "relationship_count": 0,
+  "values": {
+    "units.0.load_eligible": true,
+    "units.1.load_eligible": null,
+    "units.2.load_eligible": true
+  }
+}

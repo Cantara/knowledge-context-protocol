@@ -271,7 +271,8 @@ public class KcpParser {
                 parseTemporal((Map<String, Object>) u.get("temporal")),
                 (String) u.get("authority_level"),
                 parseActionScope(u.get("action_scope")),
-                parseSteps(u.get("steps"))
+                parseSteps(u.get("steps")),
+                asBoolean(u.get("load_eligible"))
         );
     }
 
