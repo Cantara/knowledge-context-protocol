@@ -10,6 +10,53 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.30.2] — 2026-07-28 — Documentation current at v0.30
+
+A documentation release. No spec surface changes: `SPEC.md` stays at 0.30, the schema and
+all three parsers are untouched, and no manifest changes meaning.
+
+The code reached 0.30 across the fleet before the documentation did — this closes that.
+
+### Changed
+
+- **[The newcomer guide](./guides/start-here-the-kcp-universe.md)** was the worst of it,
+  being the designated entry point. It told readers to run `@cantara.no/kcp@0.29`, and it
+  showed `load_eligible: true` in its skill example **without explaining what the field
+  is** — it was written the morning before §4.3c specified it.
+
+  It now names the grant, states that absent means *not* eligible, and carries the rule
+  most likely to catch a playbook author out: **eligibility does not compose.** A grant on
+  a playbook does not reach the units its steps name, so both need their own; otherwise
+  one grant on a composition would make any unit in the manifest reachable by naming it in
+  a step, including one someone deliberately withheld. The cost is stated too — a skill
+  cannot currently be "enactable only within an approved playbook" (RFC-0028 OQ1).
+
+  Every command and error message was re-run against the built CLI at 0.30, including both
+  deliberate breakages.
+
+- **The public site** mentioned `playbook` zero times and its roadmap read
+  "v0.25 — Current" while the spec was at 0.30. It gains cards for v0.26 (governed
+  procedures), v0.27/0.28 (authority and escalation), v0.29 (playbooks) and v0.30
+  (eligibility grants).
+
+- **README** gains a version banner, which it had none of.
+
+### Elsewhere in the ecosystem
+
+Not part of this package, but shipped alongside it:
+
+- **[kcp-playground](https://github.com/Cantara/kcp-playground)** gains **station 12, The
+  Composition Escape** — the in-browser demonstration of §4.3c. It demonstrated nothing
+  from the last two spec releases before this. All three of its presets were checked
+  against kcp-agent 0.21.0's real planner rather than assumed faithful.
+- **kcp-agent 0.21.0** stopped the planner offering compositions the v0.30 validator
+  rejects.
+- All eight `kcp-*` and `pi-kcp` manifests now declare `kcp_version: "0.30"` and validate
+  clean.
+
+
+---
+
 ## [0.30.1] — 2026-07-28 — Diagnostics and parity
 
 No spec surface changes; `SPEC.md` stays at 0.30 and no manifest changes meaning.
