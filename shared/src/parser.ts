@@ -124,7 +124,75 @@ function asLicenseOrIndexing(value: unknown): LicenseValue | undefined {
 
 // --- Parse a raw YAML map into a KnowledgeUnit ---
 
-function parseUnit(raw: RawMap): KnowledgeUnit {
+/** Fields a unit may declare. Used only to spot near misses — see nearMiss below. */
+const KNOWN_UNIT_FIELDS = new Set([
+  "id", "aliases", "path", "intent", "scope", "audience", "kind", "action_scope",
+  "steps", "load_eligible", "format", "content_type", "language", "license",
+  "validated", "update_frequency", "indexing", "depends_on", "supersedes", "triggers",
+  "hints", "access", "auth_scope", "sensitivity", "deprecated", "payment",
+  "rate_limits", "delegation", "compliance", "auth", "external_depends_on",
+  "requires_capabilities", "freshness_policy", "visibility", "authority", "discovery",
+  "not_for", "not_for_strict", "content_structure", "content_hash", "temporal",
+  "authority_level", "size_tokens", "bytes",
+]);
+
+/** Levenshtein distance, capped — we only care whether it is 1 or 2. */
+function editDistance(a: string, b: string): number {
+  if (Math.abs(a.length - b.length) > 2) return 99;
+  const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  const cur = new Array<number>(b.length + 1);
+  for (let i = 1; i <= a.length; i++) {
+    cur[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(
+        prev[j]! + 1,
+        cur[j - 1]! + 1,
+        prev[j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    for (let j = 0; j <= b.length; j++) prev[j] = cur[j]!;
+  }
+  return prev[b.length]!;
+}
+
+/**
+ * The known field an unrecognised key is probably a typo of, or undefined.
+ *
+ * §2 requires parsers to silently *ignore* unknown fields, which is what lets a v0.31
+ * manifest be read by a v0.30 parser. That rule is kept: nothing here changes what is
+ * parsed. But a key one or two edits from a known field is far more likely a typo than
+ * a field from the future, and saying so costs nothing. A key that resembles nothing
+ * stays unmentioned — that is the forward-compatibility case.
+ */
+function nearMiss(key: string): string | undefined {
+  if (KNOWN_UNIT_FIELDS.has(key)) return undefined;
+  let best: string | undefined;
+  let bestD = 3;
+  for (const known of KNOWN_UNIT_FIELDS) {
+    const d = editDistance(key, known);
+    if (d < bestD) { bestD = d; best = known; }
+  }
+  return bestD <= 2 ? best : undefined;
+}
+
+function parseUnit(raw: RawMap, diagnostics?: string[]): KnowledgeUnit {
+  if (diagnostics) {
+    const id = raw["id"] !== undefined ? String(raw["id"]) : "(no id)";
+    for (const key of Object.keys(raw)) {
+      const suggestion = nearMiss(key);
+      if (suggestion) {
+        diagnostics.push(`unit '${id}': unknown field '${key}' — did you mean '${suggestion}'? (ignored per §2)`);
+      }
+    }
+    // §2.1: a value that is not a boolean is dropped, so the author sees a field
+    // that reads as never-written. Report it where the information still exists.
+    for (const f of ["deprecated", "not_for_strict", "load_eligible"]) {
+      const v = raw[f];
+      if (v !== undefined && typeof v !== "boolean") {
+        diagnostics.push(`unit '${id}': '${f}' is ${JSON.stringify(v)}, which is not a boolean — YAML 1.2 requires true/false (§2.1); the field reads as undeclared`);
+      }
+    }
+  }
   return {
     id: String(raw["id"] ?? ""),
     aliases: stringListOrUndefined(raw["aliases"]),
@@ -695,6 +763,8 @@ function parseExternalRelationship(raw: RawMap): ExternalRelationship {
  * Mirrors Python's parse_dict() and Java's KcpParser.fromMap().
  */
 export function parseDict(data: RawMap): KnowledgeManifest {
+  // #166: problems the parse layer notices and no later stage can reconstruct.
+  const diagnostics: string[] = [];
   const rawUnits = (data["units"] as RawMap[]) ?? [];
   const rawRels = (data["relationships"] as RawMap[]) ?? [];
   const rawManifests = (data["manifests"] as RawMap[]) ?? [];
@@ -725,7 +795,8 @@ export function parseDict(data: RawMap): KnowledgeManifest {
     payment: parsePayment(data["payment"]),
     rate_limits: parseRateLimits(data["rate_limits"]),
     serving: parseServing(data["serving"]),
-    units: rawUnits.map(parseUnit),
+    units: rawUnits.map((u) => parseUnit(u, diagnostics)),
+    parse_diagnostics: diagnostics,
     relationships: rawRels.map(parseRelationship),
     manifests: rawManifests.map(parseManifestRef),
     external_relationships: rawExtRels.map(parseExternalRelationship),

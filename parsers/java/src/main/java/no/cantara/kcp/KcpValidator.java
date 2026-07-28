@@ -122,6 +122,11 @@ public class KcpValidator {
     public static ValidationResult validate(KnowledgeManifest manifest, Path manifestDir) {
         List<String> errors = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
+
+        // #166: problems the parser noticed and no later stage can reconstruct.
+        // Warnings rather than errors — a malformed value or an unknown field leaves a
+        // valid manifest that simply does not say what its author thought it said.
+        if (manifest.parseDiagnostics() != null) warnings.addAll(manifest.parseDiagnostics());
         Set<String> unitIds = manifest.units().stream().map(KnowledgeUnit::id).collect(Collectors.toSet());
 
         // Cycle detection (§4.7) — detect and silently ignore cycle-closing edges.

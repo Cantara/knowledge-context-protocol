@@ -228,6 +228,11 @@ export function validate(
   const errors: string[] = [];
   const warnings: string[] = [];
 
+  // #166: problems the parser noticed and no later stage can reconstruct. Surfaced as
+  // warnings rather than errors — a malformed value or an unknown field leaves a valid
+  // manifest that simply does not say what its author thought it said.
+  for (const d of manifest.parse_diagnostics ?? []) warnings.push(d);
+
   // Root fields
   if (!manifest.project) errors.push("Root field 'project' is required");
   if (!manifest.version) warnings.push("manifest: 'version' not declared; RECOMMENDED per §6.2");

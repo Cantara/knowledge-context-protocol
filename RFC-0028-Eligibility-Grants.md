@@ -268,7 +268,7 @@ Normative statements appear here only; the Design section above is explanatory.
 3. **Cross-manifest `uses`.** Composed manifests (§3.11) can supply units a playbook names. Whose
    grant governs, and whose signature attests it, is undefined. Conformance above fails closed by
    reporting such references as unverified.
-4. **Should the parse result carry diagnostics?** A value that fails boolean coercion is dropped
+4. **~~Should the parse result carry diagnostics?~~ RESOLVED (#166).** `parse_diagnostics` on the manifest, populated by all three parsers and surfaced by all three validators. The original question follows for the record. A value that fails boolean coercion is dropped
    silently, so an author who writes `load_eligible: ture` gets a unit that fails closed with no
    indication why. That is safe and unhelpful, and it applies to every boolean field in KCP rather
    than only this one. A `warnings` channel on the parse result would let a validator report it;

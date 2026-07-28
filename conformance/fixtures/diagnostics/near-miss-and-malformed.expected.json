@@ -1,0 +1,13 @@
+{
+  "_note": "#166 / RFC-0028 OQ4. Before parse diagnostics all three units validated clean and only the first granted anything. The other two produce a unit that fails closed forever, silently. `warnings` non-empty is the assertion; the values below pin that both mistakes still read as UNDECLARED — diagnostics report, they do not rescue.",
+  "valid": true,
+  "errors": [],
+  "warnings": ["non-empty"],
+  "unit_count": 3,
+  "relationship_count": 0,
+  "values": {
+    "units.0.load_eligible": true,
+    "units.1.load_eligible": null,
+    "units.2.load_eligible": null
+  }
+}

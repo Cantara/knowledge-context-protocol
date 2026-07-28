@@ -2,6 +2,7 @@ from datetime import date
 from pathlib import Path, PurePosixPath
 from typing import List, Optional, Union
 
+import difflib
 import re
 import yaml
 
@@ -168,6 +169,54 @@ def _parse_spend(data: Optional[dict]) -> Optional["Spend"]:
         allowed_vendors=data.get("allowed_vendors"),
         currency=data.get("currency"),
     )
+
+
+KNOWN_UNIT_FIELDS = {
+    "id", "aliases", "path", "intent", "scope", "audience", "kind", "action_scope",
+    "steps", "load_eligible", "format", "content_type", "language", "license",
+    "validated", "update_frequency", "indexing", "depends_on", "supersedes", "triggers",
+    "hints", "access", "auth_scope", "sensitivity", "deprecated", "payment",
+    "rate_limits", "delegation", "compliance", "auth", "external_depends_on",
+    "requires_capabilities", "freshness_policy", "visibility", "authority", "discovery",
+    "not_for", "not_for_strict", "content_structure", "content_hash", "temporal",
+    "authority_level", "size_tokens", "bytes",
+}
+
+_BOOL_FIELDS = ("deprecated", "not_for_strict", "load_eligible")
+
+
+def _near_miss(key):
+    """The known field an unrecognised key is probably a typo of, or None.
+
+    §2 requires parsers to silently *ignore* unknown fields, which is what lets a v0.31
+    manifest be read by a v0.30 parser. That rule is kept — nothing here changes what is
+    parsed. But a key one or two edits from a known field is far likelier a typo than a
+    field from the future, and saying so costs nothing. A key resembling nothing stays
+    unmentioned, which is exactly the forward-compatibility case.
+    """
+    if key in KNOWN_UNIT_FIELDS:
+        return None
+    matches = difflib.get_close_matches(key, KNOWN_UNIT_FIELDS, n=1, cutoff=0.8)
+    return matches[0] if matches else None
+
+
+def _unit_diagnostics(u, out):
+    """Record what the parse layer notices and no later stage can reconstruct (#166)."""
+    uid = u.get("id", "(no id)")
+    for key in u:
+        suggestion = _near_miss(key)
+        if suggestion:
+            out.append(
+                f"unit '{uid}': unknown field '{key}' — did you mean "
+                f"'{suggestion}'? (ignored per §2)"
+            )
+    for f in _BOOL_FIELDS:
+        v = u.get(f)
+        if v is not None and not isinstance(v, bool):
+            out.append(
+                f"unit '{uid}': '{f}' is {v!r}, which is not a boolean — YAML 1.2 "
+                f"requires true/false (§2.1); the field reads as undeclared"
+            )
 
 
 def _parse_steps(data) -> Optional[List["PlaybookStep"]]:
@@ -558,6 +607,10 @@ def _parse_grant_ceiling(data: Optional[dict]) -> Optional[GrantCeiling]:
 
 def parse_dict(data: dict) -> KnowledgeManifest:
     """Parse a knowledge manifest from a pre-loaded dict."""
+    # #166: problems the parse layer notices and no later stage can reconstruct.
+    diagnostics: list[str] = []
+    for _u in data.get("units", []):
+        _unit_diagnostics(_u, diagnostics)
     units = [
         KnowledgeUnit(
             id=u["id"],
@@ -621,6 +674,7 @@ def parse_dict(data: dict) -> KnowledgeManifest:
         for er in data.get("external_relationships", [])
     ]
     return KnowledgeManifest(
+        parse_diagnostics=diagnostics,
         project=data["project"],
         version=data.get("version", ""),
         kcp_version=data.get("kcp_version"),
