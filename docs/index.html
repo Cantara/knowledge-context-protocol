@@ -2175,7 +2175,7 @@ relationships:
       <div class="section-header reveal">
         <span class="section-label">Roadmap</span>
         <h2>Where KCP is headed</h2>
-        <p>v0.25 is the current release. Fields are promoted from RFC proposals to core as they accumulate real-world validation. Remaining RFCs are open for community feedback through 2026.</p>
+        <p>v0.30 is the current release. Fields are promoted from RFC proposals to core as they accumulate real-world validation. Remaining RFCs are open for community feedback through 2026.</p>
       </div>
 
       <div class="roadmap-core reveal">
@@ -2468,7 +2468,7 @@ relationships:
 
       <div class="roadmap-core reveal">
         <div class="roadmap-core__info">
-          <span class="roadmap-core__badge">v0.25 — Current</span>
+          <span class="roadmap-core__badge">v0.25 — Shipped</span>
           <h3>Economic Metadata</h3>
           <p>An agent should know what access costs and how much it can consume <em>before</em> it issues a request. <code>payment.methods[]</code> declares accepted mechanisms in publisher-preference order — <code>free</code>, <code>x402</code> stablecoin micropayments (currency, per-request price, settlement networks, wallet), <code>meter</code>, and <code>subscription</code> — and <code>rate_limits</code> discloses per-tier budgets (<code>default</code>/<code>authenticated</code>/<code>premium</code>), token limits, and a backoff strategy. The agent picks a method it supports and budgets up front. Advisory — KCP declares the economics and settles nothing. Promoted from RFC-0005.</p>
         </div>
@@ -2477,6 +2477,62 @@ relationships:
           <span class="roadmap-field-pill">x402</span>
           <span class="roadmap-field-pill">rate_limits tiers</span>
           <span class="roadmap-field-pill">RFC-0005</span>
+        </div>
+
+        <div class="roadmap-core reveal">
+          <div class="roadmap-core__info">
+            <span class="roadmap-core__badge">v0.26 &mdash; Shipped</span>
+            <h3>Governed Procedures</h3>
+            <p>The first kind that <em>acts</em>. A <code>kind: skill</code> unit is a procedure an agent may enact, not prose it may read &mdash; and it carries an <code>action_scope</code> bounding the tools, paths and capabilities it may touch. Skills <strong>fail closed</strong>: absent an explicit grant, a skill renders as a pointer an agent may read but not run. Also ships <code>serving</code> (&sect;3.12) and unit aliases. Promoted from RFC-0024 and RFC-0023.</p>
+          </div>
+          <div class="roadmap-core__fields">
+            <span class="roadmap-field-pill">kind: skill</span>
+            <span class="roadmap-field-pill">action_scope</span>
+            <span class="roadmap-field-pill">serving</span>
+            <span class="roadmap-field-pill">RFC-0024</span>
+          </div>
+        </div>
+
+        <div class="roadmap-core reveal">
+          <div class="roadmap-core__info">
+            <span class="roadmap-core__badge">v0.27 / v0.28 &mdash; Shipped</span>
+            <h3>Authority and Escalation</h3>
+            <p>An ordinal ladder &mdash; <code>observe &rarr; explain &rarr; suggest &rarr; prepare &rarr; commit</code> &mdash; with <code>grant_ceiling</code> resolved as a <strong>minimum across sources</strong>, never a maximum. v0.28 adds escalation: an agent needing authority it does not hold raises a grant request rather than proceeding, and <code>grant_request_events</code> records every transition, so &ldquo;how long was this pending&rdquo; and &ldquo;was it denied before it was granted&rdquo; are answerable. Promoted from RFC-0025 and RFC-0026.</p>
+          </div>
+          <div class="roadmap-core__fields">
+            <span class="roadmap-field-pill">authority_level</span>
+            <span class="roadmap-field-pill">grant_ceiling</span>
+            <span class="roadmap-field-pill">escalation</span>
+            <span class="roadmap-field-pill">RFC-0025/0026</span>
+          </div>
+        </div>
+
+        <div class="roadmap-core reveal">
+          <div class="roadmap-core__info">
+            <span class="roadmap-core__badge">v0.29 &mdash; Shipped</span>
+            <h3>Playbooks</h3>
+            <p>A promotion procedure reads state, proposes a change, waits for a human, then commits &mdash; four phases, four different risks. A single skill declares <em>one</em> authority level for all of them, so an author either over-grants the reading steps or blocks the committing one. <code>kind: playbook</code> makes the <strong>step</strong> the unit of governance. A step's <code>uses</code> names another unit rather than describing it in prose, so a checker can resolve the reference &mdash; and effective authority is the minimum across five sources, so a playbook can never <em>raise</em> authority. Promoted from RFC-0027.</p>
+          </div>
+          <div class="roadmap-core__fields">
+            <span class="roadmap-field-pill">kind: playbook</span>
+            <span class="roadmap-field-pill">steps[].uses</span>
+            <span class="roadmap-field-pill">per-step ceilings</span>
+            <span class="roadmap-field-pill">RFC-0027</span>
+          </div>
+        </div>
+
+        <div class="roadmap-core reveal">
+          <div class="roadmap-core__info">
+            <span class="roadmap-core__badge">v0.30 &mdash; Current</span>
+            <h3>Eligibility Grants</h3>
+            <p>The grant that decides whether a governed procedure may act at all. &sect;16.3 C4 had required &ldquo;an explicit eligibility grant&rdquo; since v0.18 without ever saying what an author writes; <code>load_eligible</code> now specifies it, and absent means <strong>not</strong> eligible. Critically, <strong>eligibility does not compose</strong>: a grant on a playbook does not reach the units its steps name. Otherwise one grant on a composition would make any skill in the manifest reachable by naming it in a step &mdash; including one deliberately withheld. Promoted from RFC-0028.</p>
+          </div>
+          <div class="roadmap-core__fields">
+            <span class="roadmap-field-pill">load_eligible</span>
+            <span class="roadmap-field-pill">does not compose</span>
+            <span class="roadmap-field-pill">&sect;4.3c</span>
+            <span class="roadmap-field-pill">RFC-0028</span>
+          </div>
         </div>
       </div>
 
