@@ -182,6 +182,44 @@ def build_manifest_json(manifest: KnowledgeManifest, slug: str) -> str:
             "audience": u.audience,
             "kind":     u.kind or "knowledge",
         }
+        # §4.3a: action_scope is an OPAQUE passthrough — copied wholesale rather than
+        # rebuilt field by field, because a rebuild silently drops sub-fields this
+        # bridge does not model (spend today, whatever the next version adds), and a
+        # skill whose declared scope is truncated at the bridge boundary is
+        # indistinguishable from one declaring none — which authorises nothing.
+        if u.action_scope is not None:
+            scope: dict = {}
+            for f in ("tools", "paths", "capabilities"):
+                v = getattr(u.action_scope, f, None)
+                if v:
+                    scope[f] = v
+            sp = getattr(u.action_scope, "spend", None)
+            if sp is not None:
+                scope["spend"] = {
+                    k: v for k, v in (
+                        ("max_spend", getattr(sp, "max_spend", None)),
+                        ("currency", getattr(sp, "currency", None)),
+                        ("allowed_vendors", getattr(sp, "allowed_vendors", None)),
+                    ) if v is not None
+                }
+            if scope:
+                entry["action_scope"] = scope
+        # §4.3c (v0.30): the grant deciding whether a governed procedure may act.
+        # Absent means NOT eligible, so a consumer that cannot see it would have to
+        # assume the more permissive reading.
+        if u.load_eligible is not None:
+            entry["load_eligible"] = u.load_eligible
+        # §4.3b (v0.29): the composition, so a consumer can see the per-step ceilings.
+        if u.steps:
+            entry["steps"] = [
+                {k: v for k, v in (
+                    ("id", s.id), ("uses", s.uses), ("action", s.action),
+                    ("depends_on", s.depends_on), ("authority_level", s.authority_level),
+                    ("escalation", s.escalation), ("success_condition", s.success_condition),
+                    ("on_failure", s.on_failure), ("timeout", s.timeout),
+                ) if v is not None}
+                for s in u.steps
+            ]
         if u.depends_on:
             entry["depends_on"] = u.depends_on
         if u.triggers:

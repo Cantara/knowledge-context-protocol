@@ -275,6 +275,15 @@ export function manifestToJson(
       // at the bridge boundary is indistinguishable from one that declares none —
       // which authorizes nothing. Passing it through keeps the declaration intact.
       if (u.action_scope) entry["action_scope"] = u.action_scope;
+      // §4.3c (v0.30): the grant that decides whether a governed procedure may act.
+      // Emitted explicitly when declared, because absent means NOT eligible — a
+      // consumer that cannot see the field cannot tell an enactable skill from an
+      // inert one, and would have to assume the more permissive reading.
+      if (u.load_eligible !== undefined) entry["load_eligible"] = u.load_eligible;
+      // §4.3b (v0.29): the composition. Opaque passthrough for the same reason as
+      // action_scope — rebuilding it field by field would silently drop whatever the
+      // next spec version adds to a step.
+      if (u.steps) entry["steps"] = u.steps;
       if (u.format) entry["format"] = u.format;
       if (u.content_type) entry["content_type"] = u.content_type;
       if (u.language) entry["language"] = u.language;

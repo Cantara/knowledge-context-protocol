@@ -246,6 +246,72 @@ public final class KcpMapper {
             if (u.deprecated() != null && u.deprecated()) {
                 sb.append(",\"deprecated\":true");
             }
+            // §4.3a: the kind is what separates a document from something that acts.
+            // This bridge omitted it entirely, so an MCP client could not tell a
+            // governed procedure from prose (#161).
+            if (u.kind() != null) {
+                sb.append(",\"kind\":").append(quoted(u.kind()));
+            }
+            // §4.3a: action_scope, emitted sub-field by sub-field because this builder
+            // writes JSON by hand. Anything the model gains later must be added here
+            // too — a scope truncated at the bridge boundary is indistinguishable from
+            // one that declares none, which authorises nothing.
+            if (u.actionScope() != null) {
+                StringBuilder scope = new StringBuilder();
+                appendArrayIfPresent(scope, "tools", u.actionScope().tools());
+                appendArrayIfPresent(scope, "paths", u.actionScope().paths());
+                appendArrayIfPresent(scope, "capabilities", u.actionScope().capabilities());
+                if (u.actionScope().spend() != null) {
+                    var sp = u.actionScope().spend();
+                    StringBuilder spend = new StringBuilder();
+                    if (sp.maxSpend() != null) spend.append("\"max_spend\":").append(sp.maxSpend());
+                    if (sp.currency() != null) {
+                        if (spend.length() > 0) spend.append(",");
+                        spend.append("\"currency\":").append(quoted(sp.currency()));
+                    }
+                    if (sp.allowedVendors() != null && !sp.allowedVendors().isEmpty()) {
+                        if (spend.length() > 0) spend.append(",");
+                        spend.append("\"allowed_vendors\":").append(jsonArray(sp.allowedVendors()));
+                    }
+                    if (spend.length() > 0) {
+                        if (scope.length() > 0) scope.append(",");
+                        scope.append("\"spend\":{").append(spend).append("}");
+                    }
+                }
+                if (scope.length() > 0) {
+                    sb.append(",\"action_scope\":{").append(scope).append("}");
+                }
+            }
+            // §4.3c (v0.30): the grant deciding whether a governed procedure may act.
+            // Absent means NOT eligible, so a consumer that cannot see the field would
+            // have to assume the more permissive reading.
+            if (u.loadEligible() != null) {
+                sb.append(",\"load_eligible\":").append(u.loadEligible());
+            }
+            // §4.3b (v0.29): the composition, so a consumer can see per-step ceilings.
+            if (u.steps() != null && !u.steps().isEmpty()) {
+                sb.append(",\"steps\":[");
+                for (int s = 0; s < u.steps().size(); s++) {
+                    if (s > 0) sb.append(",");
+                    var st = u.steps().get(s);
+                    sb.append("{\"id\":").append(quoted(st.id()));
+                    if (st.uses() != null) sb.append(",\"uses\":").append(quoted(st.uses()));
+                    if (st.action() != null) sb.append(",\"action\":").append(quoted(st.action()));
+                    if (st.dependsOn() != null && !st.dependsOn().isEmpty())
+                        sb.append(",\"depends_on\":").append(jsonArray(st.dependsOn()));
+                    if (st.authorityLevel() != null)
+                        sb.append(",\"authority_level\":").append(quoted(st.authorityLevel()));
+                    if (st.escalation() != null && !st.escalation().isEmpty())
+                        sb.append(",\"escalation\":").append(jsonArray(st.escalation()));
+                    if (st.successCondition() != null)
+                        sb.append(",\"success_condition\":").append(quoted(st.successCondition()));
+                    if (st.onFailure() != null)
+                        sb.append(",\"on_failure\":").append(quoted(st.onFailure()));
+                    if (st.timeout() != null) sb.append(",\"timeout\":").append(quoted(st.timeout()));
+                    sb.append("}");
+                }
+                sb.append("]");
+            }
             if (u.delegation() != null) {
                 sb.append(",\"delegation\":{");
                 boolean first = true;
@@ -328,5 +394,12 @@ public final class KcpMapper {
     private static String jsonArray(List<String> list) {
         if (list == null || list.isEmpty()) return "[]";
         return "[" + list.stream().map(KcpMapper::quoted).collect(Collectors.joining(",")) + "]";
+    }
+
+    /** Append `,"name":[...]` when the list is present and non-empty. */
+    private static void appendArrayIfPresent(StringBuilder sb, String name, List<String> values) {
+        if (values == null || values.isEmpty()) return;
+        if (sb.length() > 0) sb.append(",");
+        sb.append(quoted(name)).append(":").append(jsonArray(values));
     }
 }
