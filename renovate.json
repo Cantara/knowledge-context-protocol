@@ -6,8 +6,17 @@
   "packageRules": [
     {
       "description": "SDK >=1.26 (hono transport rewrite) breaks kcp-mcp's reused stateless StreamableHTTPServerTransport: every HTTP request after initialize returns an empty 500. Pinned in PR #128. Lift once cli.ts adopts the per-request transport pattern (issue #131).",
-      "matchPackageNames": ["@modelcontextprotocol/sdk"],
+      "matchPackageNames": [
+        "@modelcontextprotocol/sdk"
+      ],
       "allowedVersions": "<1.26.0"
+    },
+    {
+      "description": "mcp 2.0.0 replaced the Server handler-registration API the Python bridge is built on: 103 of its 170 tests fail on it, 102 with AttributeError on Server.list_resources. Pinned in PR #175 after the unbounded '>=1.0.0' let the major in and broke every python-bridge-tests job. Lift once the bridge is migrated (issue #176).",
+      "matchPackageNames": [
+        "mcp"
+      ],
+      "allowedVersions": "<2.0.0"
     }
   ]
 }
