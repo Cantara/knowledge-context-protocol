@@ -12,7 +12,11 @@ license = {text = "Apache-2.0"}
 keywords = ["kcp", "mcp", "knowledge", "ai-agents"]
 dependencies = [
     "kcp>=0.30.0",
-    "mcp>=1.0.0",
+    # Bounded below 2.0: mcp 2.0.0 replaced the Server handler-registration API
+    # (Server.list_resources and friends), which fails 103 of this bridge's 170 tests.
+    # The unbounded ">=1.0.0" let that major in silently and broke CI. Lifting the bound
+    # is a migration, tracked separately.
+    "mcp>=1.0.0,<2",
 ]
 
 [project.optional-dependencies]

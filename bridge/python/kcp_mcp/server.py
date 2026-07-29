@@ -10,7 +10,10 @@ from datetime import timezone as _timezone
 from pathlib import Path
 
 from mcp.server import Server
-from mcp.server.lowlevel.server import ReadResourceContents
+# helper_types, not server: mcp 2.0.0 dropped the re-export from
+# mcp.server.lowlevel.server. helper_types has carried the class in both 1.x and 2.x,
+# so this import works across the major.
+from mcp.server.lowlevel.helper_types import ReadResourceContents
 from mcp.types import (
     Annotations,
     GetPromptResult,
