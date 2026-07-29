@@ -6,7 +6,7 @@ import { parseArgs } from "node:util";
 
 function printUsage(): void {
   process.stderr.write(
-    `\nKCP Developer CLI — v0.30.2
+    `\nKCP Developer CLI — v0.30.3
 
 Usage: kcp <command> [options]
 
