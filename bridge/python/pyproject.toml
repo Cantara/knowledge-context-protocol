@@ -16,7 +16,7 @@ dependencies = [
     # (Server.list_resources and friends), which fails 103 of this bridge's 170 tests.
     # The unbounded ">=1.0.0" let that major in silently and broke CI. Lifting the bound
     # is a migration, tracked separately.
-    "mcp>=1.0.0,<2",
+    "mcp>=2,<3",
 ]
 
 [project.optional-dependencies]
