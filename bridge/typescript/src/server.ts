@@ -13,7 +13,7 @@ import {
   GetPromptRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { parseFile } from "./parser.js";
-import { validate } from "./validator.js";
+import { validate, computeGrantCeiling, applyAuthorityCap } from "./validator.js";
 import {
   toProjectSlug,
   buildUnitResource,
@@ -565,6 +565,31 @@ export function createKcpServer(
         required: [],
       },
     },
+    {
+      name: "resolve_grant_ceiling",
+      description:
+        "Resolve this manifest's effective authority ceiling (§3.13, RFC-0025): the MINIMUM " +
+        "authority_level across all grant_ceiling sources on the declared authority_level_scale, " +
+        "plus the source id(s) that bind it. Optionally supply an action (read | summarize | " +
+        "modify | share_externally | execute) and optionally a unit_id to also return that unit's " +
+        "declared permission capped by the effective level (the stricter of the two, never widened).",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          action: {
+            type: "string",
+            description:
+              "Action to cap: read | summarize | modify | share_externally | execute. When given, the response includes the declared and capped permission.",
+          },
+          unit_id: {
+            type: "string",
+            description:
+              "Unit id whose declared authority permission the action is capped against. Defaults to the manifest-root authority when omitted.",
+          },
+        },
+        required: [],
+      },
+    },
   ];
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
@@ -886,6 +911,52 @@ export function createKcpServer(
               type: "text" as const,
               text: formatSyntaxBlock(found),
             },
+          ],
+        };
+      }
+
+      case "resolve_grant_ceiling": {
+        // §3.13 (RFC-0025): wire the pure computeGrantCeiling / applyAuthorityCap
+        // functions to the loaded manifest. The MIN across grant_ceiling sources on
+        // the declared scale is the effective ceiling; naming the binding source(s)
+        // gives the audit trail. Fail-closed: a source that resolves outside the
+        // scale, or an entity with no declared ceiling, is non-binding (absence is
+        // not a grant) — that is enforced inside computeGrantCeiling, not here.
+        const { effectiveLevel, bindingSourceIds } = computeGrantCeiling(manifest);
+        const response: Record<string, unknown> = {
+          effective_level: effectiveLevel ?? null,
+          binding_source_ids: bindingSourceIds,
+          authority_level_scale: manifest.authority_level_scale ?? [],
+        };
+
+        const action = args?.["action"] as string | undefined;
+        if (action !== undefined) {
+          const unitId = args?.["unit_id"] as string | undefined;
+          const source =
+            unitId !== undefined
+              ? manifest.units.find((u) => u.id === unitId)?.authority
+              : manifest.authority;
+          if (unitId !== undefined && !manifest.units.some((u) => u.id === unitId)) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({ error: "unknown_unit", message: `No unit with id '${unitId}'` }),
+                },
+              ],
+              isError: true,
+            };
+          }
+          const declared = source?.[action];
+          response["action"] = action;
+          response["unit_id"] = unitId ?? null;
+          response["declared"] = declared ?? null;
+          response["capped"] = applyAuthorityCap(declared, action, effectiveLevel) ?? null;
+        }
+
+        return {
+          content: [
+            { type: "text" as const, text: JSON.stringify(response, null, 2) },
           ],
         };
       }
