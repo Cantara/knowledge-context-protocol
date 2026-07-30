@@ -278,6 +278,20 @@ public final class KcpMapper {
                         scope.append("\"spend\":{").append(spend).append("}");
                     }
                 }
+                // §4.3a (v0.31, RFC-0029): the explicit negative scope. Surfaced so a
+                // consumer sees the prohibitions, not just the allowlist — a deny dropped
+                // at the bridge boundary reads as "no prohibition", the more permissive lie.
+                if (u.actionScope().deny() != null) {
+                    var dn = u.actionScope().deny();
+                    StringBuilder deny = new StringBuilder();
+                    appendArrayIfPresent(deny, "tools", dn.tools());
+                    appendArrayIfPresent(deny, "paths", dn.paths());
+                    appendArrayIfPresent(deny, "capabilities", dn.capabilities());
+                    if (deny.length() > 0) {
+                        if (scope.length() > 0) scope.append(",");
+                        scope.append("\"deny\":{").append(deny).append("}");
+                    }
+                }
                 if (scope.length() > 0) {
                     sb.append(",\"action_scope\":{").append(scope).append("}");
                 }

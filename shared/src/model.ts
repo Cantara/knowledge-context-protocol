@@ -133,7 +133,7 @@ export interface Spend {
 }
 
 /**
- * Explicit negative scope on a `kind: skill` action_scope. See SPEC.md §4.3a (PROPOSED, v0.31).
+ * Explicit negative scope on a `kind: skill` action_scope. See SPEC.md §4.3a (v0.31, RFC-0029).
  *
  * Same {tools, paths, capabilities} shape as the allowlist, but every entry is a
  * PROHIBITION: a token listed here is denied even when the allowlist grants it.
@@ -151,7 +151,7 @@ export interface ActionScope {
   paths?: string[];         // file-system paths (globs permitted) the procedure may read/write
   capabilities?: string[];  // named capabilities the procedure requires or exercises
   spend?: Spend;            // purchases the procedure may make (per-purchase cap + vendor allowlist)
-  deny?: DenyScope;     // §4.3a (PROPOSED, v0.31) — explicit prohibitions; override the allowlist, fail-closed
+  deny?: DenyScope;     // §4.3a (v0.31, RFC-0029) — explicit prohibitions; override the allowlist, fail-closed
 }
 
 /**

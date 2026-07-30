@@ -202,6 +202,21 @@ def build_manifest_json(manifest: KnowledgeManifest, slug: str) -> str:
                         ("allowed_vendors", getattr(sp, "allowed_vendors", None)),
                     ) if v is not None
                 }
+            # §4.3a (v0.31, RFC-0029): the explicit negative scope. Surfaced so a
+            # consumer sees the prohibitions, not just the allowlist — a deny that is
+            # dropped at the bridge boundary reads as "no prohibition", the more
+            # permissive falsehood.
+            dn = getattr(u.action_scope, "deny", None)
+            if dn is not None:
+                deny_obj = {
+                    k: v for k, v in (
+                        ("tools", getattr(dn, "tools", None)),
+                        ("paths", getattr(dn, "paths", None)),
+                        ("capabilities", getattr(dn, "capabilities", None)),
+                    ) if v
+                }
+                if deny_obj:
+                    scope["deny"] = deny_obj
             if scope:
                 entry["action_scope"] = scope
         # §4.3c (v0.30): the grant deciding whether a governed procedure may act.

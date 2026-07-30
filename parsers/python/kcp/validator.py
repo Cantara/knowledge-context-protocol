@@ -95,7 +95,7 @@ VALID_INDEXING_SHORTHANDS = {"open", "read-only", "no-train", "none"}
 VALID_ACCESS_VALUES = {"public", "authenticated", "restricted"}
 VALID_SENSITIVITY_VALUES = {"public", "internal", "confidential", "restricted"}
 # human_in_the_loop is an object per spec §3.4 — no HITL enum, validation done inline
-KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26", "0.27", "0.28", "0.29", "0.30"}
+KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26", "0.27", "0.28", "0.29", "0.30", "0.31"}
 # content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
 VALID_CONTENT_MODALITIES = {"prose", "table", "code", "list", "diagram", "reference", "mixed"}
 VALID_DENSITY = {"sparse", "normal", "dense"}
@@ -201,6 +201,18 @@ def _find_step_cycle(steps) -> Optional[list]:
                 colour[dep] = GREY
                 stack.append([dep, 0])
     return None
+
+
+def denies_token(scope, dimension: str, token: str) -> bool:
+    """§4.3a (v0.31, RFC-0029): does a skill's ``action_scope.deny`` deny ``token`` on
+    ``dimension``? Fail-closed override — a deny entry denies the token even when the
+    allowlist grants it. Exact-string match. Mirrors ``deniesToken`` in the TypeScript
+    validator, so a runtime enforcer and the validator's overlap lint share one rule.
+    """
+    if scope is None or getattr(scope, "deny", None) is None:
+        return False
+    values = getattr(scope.deny, dimension, None)
+    return bool(values) and token in values
 
 
 def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) -> ValidationResult:
@@ -472,6 +484,32 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
                 f"{ctx}: kind 'skill' with 'load_eligible: true' MUST declare an "
                 f"'action_scope' — it is authorised to act and bounded in nothing (§4.3c)"
             )
+
+        # §4.3a (v0.31, RFC-0029): the explicit negative scope. Two lints, both warnings —
+        # a deny never widens anything, so a slip here fails safe, but a slip is still
+        # worth naming:
+        #  - an empty ``deny`` prohibits nothing (an authoring slip: the author reached
+        #    for a prohibition and declared none);
+        #  - a token that is BOTH allowed and forbidden. Deny overrides allow, fail-closed,
+        #    so the allow entry is dead — the scope reads wider than it enforces. A deny
+        #    that is a narrower glob of an allow (schema/** allowed, schema/secrets/**
+        #    forbidden) is the intended carve-out and is NOT flagged; only an exact-token
+        #    collision is.
+        deny = unit.action_scope.deny if unit.action_scope is not None else None
+        if deny is not None:
+            forbids_anything = bool(deny.tools or deny.paths or deny.capabilities)
+            if not forbids_anything:
+                warnings.append(
+                    f"{ctx}: 'action_scope.deny' is declared but empty — it prohibits nothing (§4.3a)"
+                )
+            for dim in ("tools", "paths", "capabilities"):
+                allowed = set(getattr(unit.action_scope, dim) or [])
+                for token in getattr(deny, dim) or []:
+                    if token in allowed:
+                        warnings.append(
+                            f"{ctx}: 'action_scope.{dim}' allows '{token}' while 'deny.{dim}' denies it "
+                            f"— the allow entry is neutralized; deny overrides allow, fail-closed (§4.3a)"
+                        )
 
         if (unit.kind or "knowledge") != "playbook":
             # steps on a non-playbook is a category error, not a silent no-op: the

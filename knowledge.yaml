@@ -32,7 +32,7 @@ signing:
   signature: https://cantara.github.io/knowledge-context-protocol/knowledge.yaml.sig
 
 # Legacy header fields (preserved for consumers that read them directly)
-kcp_version: "0.30"
+kcp_version: "0.31"
 
 # §3.13 (v0.27): the fixed ordinal authority scale. Declaring it makes every
 # authority_level below a ceiling on this total order — and leaves the planner
@@ -69,7 +69,7 @@ units:
     triggers: [ spec, specification, fields, validation, conformance, yaml, format ]
     content_hash:
       algorithm: sha256
-      value: 4a75536a45d9d56b54714f7605c297f6edcb44f4a4b7fd97eed794b247b15f52
+      value: 57435b1a4bf49705f1ef3f2cc0870c5a1d393a29903088e32f225a06ad2b9e0b
 
   - id: proposal
     path: PROPOSAL.md

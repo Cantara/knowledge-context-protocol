@@ -8,6 +8,7 @@ import no.cantara.kcp.model.Compliance;
 import no.cantara.kcp.model.ContentHash;
 import no.cantara.kcp.model.ContentStructure;
 import no.cantara.kcp.model.ActionScope;
+import no.cantara.kcp.model.DenyScope;
 import no.cantara.kcp.model.PlaybookStep;
 import no.cantara.kcp.model.Spend;
 import no.cantara.kcp.model.Delegation;
@@ -499,7 +500,25 @@ public class KcpParser {
                 asStringList(d.get("tools")),
                 asStringList(d.get("paths")),
                 asStringList(d.get("capabilities")),
-                parseSpend(d.get("spend")));
+                parseSpend(d.get("spend")),
+                parseDenyScope(d.get("deny")));
+    }
+
+    /**
+     * §4.3a (v0.31, RFC-0029): the explicit negative scope a {@code kind: skill} declares.
+     *
+     * <p>Same {@code {tools, paths, capabilities}} shape as the allowlist; every entry is a
+     * prohibition. Mirrors {@link #parseActionScope}'s leniency — anything that is not a map
+     * yields null ("declares no prohibition") rather than failing the whole parse.
+     */
+    @SuppressWarnings("unchecked")
+    private static DenyScope parseDenyScope(Object raw) {
+        if (!(raw instanceof Map<?, ?> m)) return null;
+        Map<String, Object> d = (Map<String, Object>) m;
+        return new DenyScope(
+                asStringList(d.get("tools")),
+                asStringList(d.get("paths")),
+                asStringList(d.get("capabilities")));
     }
 
     @SuppressWarnings("unchecked")

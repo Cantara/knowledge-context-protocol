@@ -140,6 +140,20 @@ class Spend:
 
 
 @dataclass
+class DenyScope:
+    """Explicit negative scope on a ``kind: skill`` action_scope. See SPEC.md §4.3a (v0.31, RFC-0029).
+
+    Same ``{tools, paths, capabilities}`` shape as the allowlist, but every entry is a
+    PROHIBITION: a token listed here is denied even when the allowlist grants it. ``deny``
+    is checked in addition to — and overrides — the allowlist, fail-closed. Mirrors
+    ``shared/src/parser.ts`` ``parseDenyScope``.
+    """
+    tools: Optional[List[str]] = None  # tool names the procedure MUST NOT invoke, even if allowlisted
+    paths: Optional[List[str]] = None  # paths (globs permitted) it MUST NOT touch, even if allowlisted
+    capabilities: Optional[List[str]] = None  # named capabilities it MUST NOT exercise, even if allowlisted
+
+
+@dataclass
 class ActionScope:
     """The envelope bounding a ``kind: skill`` unit. See SPEC.md §4.3a.
 
@@ -151,6 +165,7 @@ class ActionScope:
     paths: Optional[List[str]] = None  # paths (globs permitted) it may read or write
     capabilities: Optional[List[str]] = None  # named capabilities it requires or exercises
     spend: Optional[Spend] = None  # purchases it may make (§4.3a.1)
+    deny: Optional[DenyScope] = None  # §4.3a (v0.31, RFC-0029) — explicit prohibitions; override the allowlist, fail-closed
 
 
 @dataclass

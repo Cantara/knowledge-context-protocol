@@ -13,6 +13,7 @@ import no.cantara.kcp.model.GrantCeilingSource;
 import no.cantara.kcp.model.HumanInTheLoop;
 import no.cantara.kcp.model.KnowledgeManifest;
 import no.cantara.kcp.model.ActionScope;
+import no.cantara.kcp.model.DenyScope;
 import no.cantara.kcp.model.KnowledgeUnit;
 import no.cantara.kcp.model.PlaybookStep;
 import no.cantara.kcp.model.AgentIdentity;
@@ -68,7 +69,7 @@ public class KcpValidator {
     private static final Set<String> VALID_ACCESS_VALUES = Set.of("public", "authenticated", "restricted");
     private static final Set<String> VALID_SENSITIVITY_VALUES = Set.of("public", "internal", "confidential", "restricted");
     private static final Set<String> VALID_HITL_MECHANISMS = Set.of("oauth_consent", "uma", "custom");
-    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26", "0.27", "0.28", "0.29", "0.30");
+    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26", "0.27", "0.28", "0.29", "0.30", "0.31");
     // content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
     private static final Set<String> VALID_CONTENT_MODALITIES = Set.of("prose", "table", "code", "list", "diagram", "reference", "mixed");
     private static final Set<String> VALID_DENSITY = Set.of("sparse", "normal", "dense");
@@ -338,6 +339,27 @@ public class KcpValidator {
                 errors.add(ctx + ": kind 'skill' with 'load_eligible: true' MUST declare"
                         + " an 'action_scope' — it is authorised to act and bounded in"
                         + " nothing (§4.3c)");
+            }
+
+            // §4.3a (v0.31, RFC-0029): the explicit negative scope. Two lints, both
+            // warnings — a deny never widens anything, so a slip here fails safe, but a
+            // slip is still worth naming: an empty deny prohibits nothing; a token BOTH
+            // allowed and forbidden leaves a dead allow (deny overrides allow,
+            // fail-closed). A deny that is a narrower glob of an allow is the intended
+            // carve-out and is NOT flagged; only an exact-token collision is.
+            ActionScope ownScope = unit.actionScope();
+            DenyScope ownDeny = ownScope != null ? ownScope.deny() : null;
+            if (ownDeny != null) {
+                boolean forbidsAnything =
+                        (ownDeny.tools() != null && !ownDeny.tools().isEmpty())
+                        || (ownDeny.paths() != null && !ownDeny.paths().isEmpty())
+                        || (ownDeny.capabilities() != null && !ownDeny.capabilities().isEmpty());
+                if (!forbidsAnything) {
+                    warnings.add(ctx + ": 'action_scope.deny' is declared but empty — it prohibits nothing (§4.3a)");
+                }
+                checkDenyOverlap(ctx, "tools", ownScope.tools(), ownDeny.tools(), warnings);
+                checkDenyOverlap(ctx, "paths", ownScope.paths(), ownDeny.paths(), warnings);
+                checkDenyOverlap(ctx, "capabilities", ownScope.capabilities(), ownDeny.capabilities(), warnings);
             }
 
             if (!"playbook".equals(kind)) {
@@ -881,6 +903,40 @@ public class KcpValidator {
         if (level != null && !knownAuthorityLevels.isEmpty() && !knownAuthorityLevels.contains(level)) {
             warnings.add(ctx + ": 'authority_level' value '" + level + "' is not in the declared 'authority_level_scale'");
         }
+    }
+
+    /**
+     * §4.3a (v0.31, RFC-0029): warn when a token is both allowlisted and forbidden on the same
+     * dimension. Deny overrides allow, fail-closed, so the allow entry is dead — the scope reads
+     * wider than it enforces. Only exact-token collisions are flagged; a narrower deny glob of a
+     * broader allow (schema/** allowed, schema/secrets/** forbidden) is the intended carve-out.
+     */
+    private static void checkDenyOverlap(String ctx, String dim, List<String> allow, List<String> deny, List<String> warnings) {
+        if (deny == null || deny.isEmpty()) return;
+        Set<String> allowed = allow != null ? new HashSet<>(allow) : Set.of();
+        for (String token : deny) {
+            if (allowed.contains(token)) {
+                warnings.add(ctx + ": 'action_scope." + dim + "' allows '" + token + "' while 'deny." + dim
+                        + "' denies it — the allow entry is neutralized; deny overrides allow, fail-closed (§4.3a)");
+            }
+        }
+    }
+
+    /**
+     * §4.3a (v0.31, RFC-0029): does a skill's {@code action_scope.deny} deny {@code token} on
+     * {@code dimension}? Fail-closed override — a deny entry denies the token even when the
+     * allowlist grants it. Exact-string match. Mirrors {@code deniesToken} in the TypeScript
+     * validator, so a runtime enforcer and the validator's overlap lint share one rule.
+     */
+    public static boolean deniesToken(ActionScope scope, String dimension, String token) {
+        if (scope == null || scope.deny() == null) return false;
+        List<String> values = switch (dimension) {
+            case "tools" -> scope.deny().tools();
+            case "paths" -> scope.deny().paths();
+            case "capabilities" -> scope.deny().capabilities();
+            default -> null;
+        };
+        return values != null && values.contains(token);
     }
 
     /**

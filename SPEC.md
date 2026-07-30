@@ -1,6 +1,6 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.30
+**Version:** 0.31
 **Status:** Draft
 **Date:** 2026-07-24
 **Repository:** github.com/cantara/knowledge-context-protocol
@@ -1816,9 +1816,9 @@ by default like `executable`/`service`: absent an explicit eligibility grant it 
 pointer with `invocation: explicit` (§16.3, C4). Skills are the manifest-declared counterpart of
 the runtime-depth lifecycle recorded in §17 (`skill_selected` … `verdict_emitted`).
 
-#### 4.3a — skill authority ceiling and negative scope (PROPOSED, v0.31)
+#### 4.3a — skill authority ceiling and negative scope (v0.31)
 
-> **Status: PROPOSED for design review.** This subsection extends the `kind: skill`
+> **Added in v0.31 (RFC-0029).** This subsection extends the `kind: skill`
 > envelope with two capabilities a downstream KCP consumer needs to enforce a skill's
 > own limits at run time. It reuses the existing `authority_level` field and the existing
 > `action_scope` shape; no existing gate is weakened. It is fail-closed by construction.

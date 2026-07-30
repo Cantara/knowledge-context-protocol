@@ -16,7 +16,8 @@ public record ActionScope(
         List<String> tools,        // tool names the procedure may invoke
         List<String> paths,        // paths (globs permitted) it may read or write
         List<String> capabilities, // named capabilities it requires or exercises
-        Spend spend                // purchases it may make (§4.3a.1)
+        Spend spend,               // purchases it may make (§4.3a.1)
+        DenyScope deny             // §4.3a (v0.31, RFC-0029) — explicit prohibitions; override the allowlist, fail-closed
 ) {
     public ActionScope {
         tools = tools != null ? List.copyOf(tools) : null;
