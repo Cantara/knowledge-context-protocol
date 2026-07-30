@@ -1833,31 +1833,31 @@ skill's declared `authority_level` to the MIN, and the effective level can never
 elsewhere in §3.13, a skill with no declared `authority_level` makes such a source non-binding
 (absence is not a grant), and the minimum can never be raised by any single input.
 
-**`action_scope.forbid` — an explicit negative scope.** `tools`/`paths`/`capabilities` are an
-*allowlist*: what the skill may touch. `forbid` is the complementary *denylist*, carrying the
+**`action_scope.deny` — an explicit negative scope.** `tools`/`paths`/`capabilities` are an
+*allowlist*: what the skill may touch. `deny` is the complementary *denylist*, carrying the
 same `{tools, paths, capabilities}` shape, and every entry is a prohibition:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `forbid.tools` | array of string | Tool names the skill MUST NOT invoke, even if allowlisted. |
-| `forbid.paths` | array of string | Paths (globs permitted) the skill MUST NOT read or write, even if allowlisted. |
-| `forbid.capabilities` | array of string | Capabilities the skill MUST NOT exercise, even if allowlisted. |
+| `deny.tools` | array of string | Tool names the skill MUST NOT invoke, even if allowlisted. |
+| `deny.paths` | array of string | Paths (globs permitted) the skill MUST NOT read or write, even if allowlisted. |
+| `deny.capabilities` | array of string | Capabilities the skill MUST NOT exercise, even if allowlisted. |
 
 All sub-fields are OPTIONAL and `action_scope` remains an opaque passthrough for parsers that do
 not implement conformance checking.
 
-**`forbid` overrides the allowlist, fail-closed.** A conformance checker adjudicates each
-tool/path/capability against **both** lists, and `forbid` wins: a token present in the relevant
-`forbid` list is **denied** even when the allowlist grants it. This lets an author allow a broad
+**`deny` overrides the allowlist, fail-closed.** A conformance checker adjudicates each
+tool/path/capability against **both** lists, and `deny` wins: a token present in the relevant
+`deny` list is **denied** even when the allowlist grants it. This lets an author allow a broad
 region and carve a prohibited hole inside it — allow `schema/**` while forbidding
 `schema/secrets/**` — without having to enumerate the complement. The override is the safe
 direction by construction: a denylist can only *narrow* what the allowlist already bounded, so it
 can never widen a skill's reach, and a checker that cannot resolve a match denies rather than
-permits. Where an implementation supports escalation (§3.14), an action a `forbid` holds SHOULD
+permits. Where an implementation supports escalation (§3.14), an action a `deny` holds SHOULD
 raise a grant request rather than fail silently, exactly as an over-threshold `spend` does
-(§4.3a.1). Two validator lints surface authoring slips without weakening the gate: a `forbid`
+(§4.3a.1). Two validator lints surface authoring slips without weakening the gate: a `deny`
 that lists nothing prohibits nothing, and a token that is **both** allowlisted and forbidden
-leaves an allow entry the `forbid` neutralizes — the declaration reads wider than it enforces.
+leaves an allow entry the `deny` neutralizes — the declaration reads wider than it enforces.
 
 ```yaml
 - id: rotate-signing-key
@@ -1871,7 +1871,7 @@ leaves an allow entry the `forbid` neutralizes — the declaration reads wider t
     tools: [kcp-sign, git]
     paths: ["schema/**", ".well-known/kcp-signing-key"]
     capabilities: [key-management]
-    forbid:
+    deny:
       paths: ["schema/secrets/**"]   # carve a prohibited hole inside an allowed region
       tools: [shell]                 # denied even if a broader grant would allow it
       capabilities: [network]

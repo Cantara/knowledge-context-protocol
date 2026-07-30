@@ -3,11 +3,11 @@
 # Demonstrates the two §4.3a additions under design review:
 #   1. a kind: skill unit carries its OWN authority_level (its capability ceiling),
 #      which a grant_ceiling source pulls into the multi-source MIN via unit_ref;
-#   2. action_scope.forbid — an explicit denylist that overrides the allowlist,
+#   2. action_scope.deny — an explicit denylist that overrides the allowlist,
 #      fail-closed. Here the skill is allowed all of schema/**, but forbidden the
 #      schema/secrets/** subtree and the `shell` tool.
 #
-# kcp_version stays "0.30" (the current spec minor); `forbid` is an additive field a
+# kcp_version stays "0.30" (the current spec minor); `deny` is an additive field a
 # pre-proposal parser silently ignores per §2, so the manifest stays backward compatible.
 
 kcp_version: "0.30"
@@ -40,7 +40,7 @@ units:
       tools: [kcp-sign, git]
       paths: ["schema/**", ".well-known/kcp-signing-key"]
       capabilities: [key-management]
-      forbid:                          # PROPOSED v0.31 — overrides the allowlist, fail-closed
+      deny:                          # PROPOSED v0.31 — overrides the allowlist, fail-closed
         paths: ["schema/secrets/**"]   # a prohibited hole inside the allowed schema/** region
         tools: [shell]                 # denied even though a broader grant might allow it
         capabilities: [network]

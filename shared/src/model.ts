@@ -137,9 +137,9 @@ export interface Spend {
  *
  * Same {tools, paths, capabilities} shape as the allowlist, but every entry is a
  * PROHIBITION: a token listed here is denied even when the allowlist grants it.
- * `forbid` is checked in addition to — and overrides — the allowlist, fail-closed.
+ * `deny` is checked in addition to — and overrides — the allowlist, fail-closed.
  */
-export interface ForbidScope {
+export interface DenyScope {
   tools?: string[];         // tool names the procedure MUST NOT invoke, even if allowlisted
   paths?: string[];         // file-system paths (globs permitted) the procedure MUST NOT touch
   capabilities?: string[];  // named capabilities the procedure MUST NOT exercise
@@ -151,7 +151,7 @@ export interface ActionScope {
   paths?: string[];         // file-system paths (globs permitted) the procedure may read/write
   capabilities?: string[];  // named capabilities the procedure requires or exercises
   spend?: Spend;            // purchases the procedure may make (per-purchase cap + vendor allowlist)
-  forbid?: ForbidScope;     // §4.3a (PROPOSED, v0.31) — explicit prohibitions; override the allowlist, fail-closed
+  deny?: DenyScope;     // §4.3a (PROPOSED, v0.31) — explicit prohibitions; override the allowlist, fail-closed
 }
 
 /**

@@ -256,9 +256,9 @@
                 }
               }
             },
-            "forbid": {
+            "deny": {
               "type": "object",
-              "description": "PROPOSED (v0.31): explicit negative scope. Same {tools, paths, capabilities} shape as the allowlist, but every entry is a PROHIBITION — a token listed here is denied even when the allowlist grants it. Checked in addition to and overriding the allowlist, fail-closed. A forbid that is a narrower glob of an allow is the intended carve-out; an exact-token collision with the allowlist neutralizes that allow. See SPEC.md §4.3a.",
+              "description": "PROPOSED (v0.31): explicit negative scope. Same {tools, paths, capabilities} shape as the allowlist, but every entry is a PROHIBITION — a token listed here is denied even when the allowlist grants it. Checked in addition to and overriding the allowlist, fail-closed. A deny that is a narrower glob of an allow is the intended carve-out; an exact-token collision with the allowlist neutralizes that allow. See SPEC.md §4.3a.",
               "properties": {
                 "tools": {
                   "type": "array",

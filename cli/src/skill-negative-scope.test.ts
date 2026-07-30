@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseDict } from "../../shared/src/parser.js";
-import { validate, forbidsToken } from "../../shared/src/validator.js";
+import { validate, deniesToken } from "../../shared/src/validator.js";
 
 /**
  * §4.3a skill negative scope + own authority ceiling (SPEC PROPOSAL, design review).
@@ -12,9 +12,9 @@ import { validate, forbidsToken } from "../../shared/src/validator.js";
  *     (`authority_level` on a unit already parses and is scale-checked; these tests
  *     pin that it holds for a skill and feeds a grant_ceiling `unit_ref`.)
  *
- *  2. `action_scope.forbid` — an explicit negative scope with the same
- *     {tools, paths, capabilities} shape as the allowlist. A forbid entry is DENIED
- *     even when the allowlist would grant it: forbid overrides allow, fail-closed.
+ *  2. `action_scope.deny` — an explicit negative scope with the same
+ *     {tools, paths, capabilities} shape as the allowlist. A deny entry is DENIED
+ *     even when the allowlist would grant it: deny overrides allow, fail-closed.
  */
 
 function manifest(units: unknown[], extra: Record<string, unknown> = {}) {
@@ -38,8 +38,8 @@ const BASE_SKILL = {
   load_eligible: true,
 };
 
-describe("§4.3a — action_scope.forbid negative scope", () => {
-  it("round-trips forbid alongside the allowlist", () => {
+describe("§4.3a — action_scope.deny negative scope", () => {
+  it("round-trips deny alongside the allowlist", () => {
     const m = manifest([
       {
         ...BASE_SKILL,
@@ -47,7 +47,7 @@ describe("§4.3a — action_scope.forbid negative scope", () => {
           tools: ["kcp-sign", "git"],
           paths: ["schema/**"],
           capabilities: ["key-management"],
-          forbid: {
+          deny: {
             tools: ["shell"],
             paths: ["schema/secrets/**"],
             capabilities: ["network"],
@@ -57,52 +57,52 @@ describe("§4.3a — action_scope.forbid negative scope", () => {
     ]);
     const scope = m.units[0]!.action_scope!;
     expect(scope.tools).toEqual(["kcp-sign", "git"]);
-    expect(scope.forbid).toBeDefined();
-    expect(scope.forbid!.tools).toEqual(["shell"]);
-    expect(scope.forbid!.paths).toEqual(["schema/secrets/**"]);
-    expect(scope.forbid!.capabilities).toEqual(["network"]);
-    // a well-formed forbid + allow validates clean
+    expect(scope.deny).toBeDefined();
+    expect(scope.deny!.tools).toEqual(["shell"]);
+    expect(scope.deny!.paths).toEqual(["schema/secrets/**"]);
+    expect(scope.deny!.capabilities).toEqual(["network"]);
+    // a well-formed deny + allow validates clean
     const r = validate(m);
     expect(r.isValid).toBe(true);
   });
 
-  it("forbidsToken adjudicates fail-closed: forbid denies even when allow grants", () => {
+  it("deniesToken adjudicates fail-closed: deny denies even when allow grants", () => {
     const m = manifest([
       {
         ...BASE_SKILL,
-        action_scope: { tools: ["git", "shell"], forbid: { tools: ["shell"] } },
+        action_scope: { tools: ["git", "shell"], deny: { tools: ["shell"] } },
       },
     ]);
     const scope = m.units[0]!.action_scope;
-    expect(forbidsToken(scope, "tools", "shell")).toBe(true);
-    expect(forbidsToken(scope, "tools", "git")).toBe(false);
+    expect(deniesToken(scope, "tools", "shell")).toBe(true);
+    expect(deniesToken(scope, "tools", "git")).toBe(false);
   });
 
-  it("catches an over-broad allow entry that a forbid denies (forbid overrides allow)", () => {
+  it("catches an over-broad allow entry that a deny denies (deny overrides allow)", () => {
     const m = manifest([
       {
         ...BASE_SKILL,
-        // 'shell' is both granted and forbidden — the allow is dead, forbid wins.
-        action_scope: { tools: ["git", "shell"], forbid: { tools: ["shell"] } },
+        // 'shell' is both granted and forbidden — the allow is dead, deny wins.
+        action_scope: { tools: ["git", "shell"], deny: { tools: ["shell"] } },
       },
     ]);
     const r = validate(m);
     const hit = r.warnings.find(
-      (w) => /forbid/.test(w) && /shell/.test(w) && /§4\.3a/.test(w)
+      (w) => /deny/.test(w) && /shell/.test(w) && /§4\.3a/.test(w)
     );
-    expect(hit, `expected a forbid-overrides-allow warning, got: ${r.warnings.join(" | ")}`).toBeDefined();
+    expect(hit, `expected a deny-overrides-allow warning, got: ${r.warnings.join(" | ")}`).toBeDefined();
   });
 
-  it("warns on an empty forbid — it prohibits nothing (shape lint)", () => {
+  it("warns on an empty deny — it prohibits nothing (shape lint)", () => {
     const m = manifest([
       {
         ...BASE_SKILL,
-        action_scope: { tools: ["git"], forbid: {} },
+        action_scope: { tools: ["git"], deny: {} },
       },
     ]);
     const r = validate(m);
-    const hit = r.warnings.find((w) => /forbid/.test(w) && /prohibits nothing/.test(w));
-    expect(hit, `expected an empty-forbid warning, got: ${r.warnings.join(" | ")}`).toBeDefined();
+    const hit = r.warnings.find((w) => /deny/.test(w) && /prohibits nothing/.test(w));
+    expect(hit, `expected an empty-deny warning, got: ${r.warnings.join(" | ")}`).toBeDefined();
   });
 });
 

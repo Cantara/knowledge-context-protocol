@@ -222,18 +222,18 @@ function supersededCycleIds(successor: Map<string, string>): string[] {
 }
 
 /**
- * §4.3a (PROPOSED, v0.31): does a skill's `action_scope.forbid` deny `token` on
- * `dimension`? Fail-closed override — a forbid entry denies the token even when the
+ * §4.3a (PROPOSED, v0.31): does a skill's `action_scope.deny` deny `token` on
+ * `dimension`? Fail-closed override — a deny entry denies the token even when the
  * allowlist grants it. Exact-string match. Exported so a runtime enforcer and the
  * validator's overlap lint share one adjudication rule, the way §4.3a.1 `spend` and
  * the allowlist share one fail-closed default.
  */
-export function forbidsToken(
+export function deniesToken(
   scope: ActionScope | undefined,
   dimension: "tools" | "paths" | "capabilities",
   token: string
 ): boolean {
-  return scope?.forbid?.[dimension]?.includes(token) ?? false;
+  return scope?.deny?.[dimension]?.includes(token) ?? false;
 }
 
 export function validate(
@@ -536,32 +536,32 @@ export function validate(
     }
 
     // §4.3a (PROPOSED, v0.31): the explicit negative scope. Two lints, both warnings —
-    // a forbid never widens anything, so a slip here fails safe, but a slip is still
+    // a deny never widens anything, so a slip here fails safe, but a slip is still
     // worth naming:
-    //  - an empty `forbid` prohibits nothing (an authoring slip: the author reached for
+    //  - an empty `deny` prohibits nothing (an authoring slip: the author reached for
     //    a prohibition and declared none);
-    //  - a token that is BOTH allowed and forbidden. Forbid overrides allow, fail-closed,
+    //  - a token that is BOTH allowed and forbidden. Deny overrides allow, fail-closed,
     //    so the allow entry is dead — the scope reads wider than it enforces. Naming the
-    //    exact contradiction lets the author drop the allow (or the forbid). A forbid that
+    //    exact contradiction lets the author drop the allow (or the deny). A deny that
     //    is a narrower glob of an allow (schema/** allowed, schema/secrets/** forbidden)
     //    is the intended carve-out and is NOT flagged; only an exact-token collision is.
-    const forbid = unit.action_scope?.forbid;
-    if (forbid !== undefined) {
+    const deny = unit.action_scope?.deny;
+    if (deny !== undefined) {
       const forbidsAnything =
-        (forbid.tools?.length ?? 0) > 0 ||
-        (forbid.paths?.length ?? 0) > 0 ||
-        (forbid.capabilities?.length ?? 0) > 0;
+        (deny.tools?.length ?? 0) > 0 ||
+        (deny.paths?.length ?? 0) > 0 ||
+        (deny.capabilities?.length ?? 0) > 0;
       if (!forbidsAnything) {
         warnings.push(
-          `${ctx}: 'action_scope.forbid' is declared but empty — it prohibits nothing (§4.3a)`
+          `${ctx}: 'action_scope.deny' is declared but empty — it prohibits nothing (§4.3a)`
         );
       }
       for (const dim of ["tools", "paths", "capabilities"] as const) {
         const allowed = new Set(unit.action_scope?.[dim] ?? []);
-        for (const token of forbid[dim] ?? []) {
+        for (const token of deny[dim] ?? []) {
           if (allowed.has(token)) {
             warnings.push(
-              `${ctx}: 'action_scope.${dim}' allows '${token}' while 'forbid.${dim}' denies it — the allow entry is neutralized; forbid overrides allow, fail-closed (§4.3a)`
+              `${ctx}: 'action_scope.${dim}' allows '${token}' while 'deny.${dim}' denies it — the allow entry is neutralized; deny overrides allow, fail-closed (§4.3a)`
             );
           }
         }

@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import yaml from "js-yaml";
 import type {
   ActionScope,
-  ForbidScope,
+  DenyScope,
   PlaybookStep,
   Spend,
   Auth,
@@ -540,7 +540,7 @@ function parseActionScope(raw: unknown): ActionScope | undefined {
     paths: stringListOrUndefined(d["paths"]),
     capabilities: stringListOrUndefined(d["capabilities"]),
     spend: parseSpend(d["spend"]),
-    forbid: parseForbidScope(d["forbid"]),
+    deny: parseDenyScope(d["deny"]),
   };
 }
 
@@ -551,7 +551,7 @@ function parseActionScope(raw: unknown): ActionScope | undefined {
  * prohibition. Mirrors parseActionScope's leniency — anything that is not an object
  * yields undefined ("declares no prohibition") rather than failing the whole parse.
  */
-function parseForbidScope(raw: unknown): ForbidScope | undefined {
+function parseDenyScope(raw: unknown): DenyScope | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
   const d = raw as RawMap;
   return {
