@@ -1,7 +1,7 @@
 {
   "name": "@kcp/shared",
   "private": true,
-  "version": "0.30.0",
+  "version": "0.31.0",
   "type": "module",
   "dependencies": {
     "js-yaml": "^4.1.0"

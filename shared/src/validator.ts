@@ -162,6 +162,7 @@ const KNOWN_KCP_VERSIONS = new Set([
   "0.28",
   "0.29",
   "0.30",
+  "0.31",
 ]);
 // content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
 const VALID_CONTENT_MODALITIES = new Set([
@@ -222,7 +223,7 @@ function supersededCycleIds(successor: Map<string, string>): string[] {
 }
 
 /**
- * §4.3a (PROPOSED, v0.31): does a skill's `action_scope.deny` deny `token` on
+ * §4.3a (v0.31, RFC-0029): does a skill's `action_scope.deny` deny `token` on
  * `dimension`? Fail-closed override — a deny entry denies the token even when the
  * allowlist grants it. Exact-string match. Exported so a runtime enforcer and the
  * validator's overlap lint share one adjudication rule, the way §4.3a.1 `spend` and
@@ -535,7 +536,7 @@ export function validate(
       );
     }
 
-    // §4.3a (PROPOSED, v0.31): the explicit negative scope. Two lints, both warnings —
+    // §4.3a (v0.31, RFC-0029): the explicit negative scope. Two lints, both warnings —
     // a deny never widens anything, so a slip here fails safe, but a slip is still
     // worth naming:
     //  - an empty `deny` prohibits nothing (an authoring slip: the author reached for

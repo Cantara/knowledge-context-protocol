@@ -4,14 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kcp-mcp"
-version = "0.30.3"
+version = "0.31.0"
 description = "KCP MCP bridge — expose knowledge.yaml units as MCP resources"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
 keywords = ["kcp", "mcp", "knowledge", "ai-agents"]
 dependencies = [
-    "kcp>=0.30.0",
+    "kcp>=0.31.0",
     # Bounded below 2.0: mcp 2.0.0 replaced the Server handler-registration API
     # (Server.list_resources and friends), which fails 103 of this bridge's 170 tests.
     # The unbounded ">=1.0.0" let that major in silently and broke CI. Lifting the bound

@@ -7,7 +7,7 @@ import re
 import yaml
 
 from .model import (
-    ActionScope,
+    ActionScope, DenyScope,
     Agent, AgentIdentity, Auth, AuthMethod, Authority, Compliance, ContentHash, ContentStructure,
     Delegation, Discovery, ExternalDependency, ExternalRelationship, FreshnessPolicy,
     GrantCeiling, GrantCeilingSource, KnowledgeManifest, KnowledgeUnit, ManifestRef, Payment,
@@ -265,6 +265,20 @@ def _parse_escalation(raw) -> Optional[List[str]]:
     return None
 
 
+def _parse_deny_scope(data: Optional[dict]) -> Optional["DenyScope"]:
+    # §4.3a (v0.31, RFC-0029): the explicit negative scope a kind: skill declares.
+    # Same {tools, paths, capabilities} shape as the allowlist; every entry is a
+    # prohibition. Mirrors _parse_action_scope's leniency — anything that is not an
+    # object yields None ("declares no prohibition") rather than failing the whole parse.
+    if not isinstance(data, dict):
+        return None
+    return DenyScope(
+        tools=data.get("tools"),
+        paths=data.get("paths"),
+        capabilities=data.get("capabilities"),
+    )
+
+
 def _parse_action_scope(data: Optional[dict]) -> Optional["ActionScope"]:
     # A scalar or list where an object belongs yields None rather than raising: a
     # malformed envelope must not take down the whole parse, and None correctly reads
@@ -276,6 +290,7 @@ def _parse_action_scope(data: Optional[dict]) -> Optional["ActionScope"]:
         paths=data.get("paths"),
         capabilities=data.get("capabilities"),
         spend=_parse_spend(data.get("spend")),
+        deny=_parse_deny_scope(data.get("deny")),
     )
 
 

@@ -545,7 +545,7 @@ function parseActionScope(raw: unknown): ActionScope | undefined {
 }
 
 /**
- * §4.3a (PROPOSED, v0.31): the explicit negative scope a `kind: skill` declares.
+ * §4.3a (v0.31, RFC-0029): the explicit negative scope a `kind: skill` declares.
  *
  * Same {tools, paths, capabilities} shape as the allowlist; every entry is a
  * prohibition. Mirrors parseActionScope's leniency — anything that is not an object
