@@ -983,6 +983,87 @@ units:
     validated: "2026-02-25"
     triggers: [ license, apache, open source, terms ]
 
+  # The procedural plane (§4.3a, RFC-0028). The repository that defines governed
+  # procedures shipped four of them undeclared, so the planner called each one "not a
+  # governed procedure" — and any repo federating this manifest received none.
+  #
+  # These four are the portable core: adopt a manifest, author units, navigate by intent,
+  # and render untrusted input safely. They are the ones worth carrying into every
+  # consuming repo.
+  #
+  # Tool names are Claude Code's, the runtime that adjudicates these skills. A tool
+  # vocabulary only means anything to whoever enforces it.
+
+  - id: skill-kcp-adopt
+    path: skills/kcp-adopt/SKILL.md
+    kind: skill
+    intent: "How does an agent add a knowledge.yaml to a codebase or docs set so agents navigate by intent instead of exploring blindly?"
+    scope: global
+    audience: [ agent ]
+    validated: "2026-07-30"
+    triggers: [ adopt, add kcp, knowledge.yaml, onboard, init, greenfield ]
+    load_eligible: true
+    action_scope:
+      tools: [ Bash, Read, Write ]
+      paths: [ "knowledge.yaml" ]
+      capabilities: [ "kcp.adopt", "kcp.validate" ]
+    content_hash:
+      algorithm: sha256
+      value: 0b2b1554de7525323c52958e9ab6d32c085352f4d2cf585c91ec018a7afce5cb
+
+  - id: skill-kcp-author
+    path: skills/kcp-author/SKILL.md
+    kind: skill
+    intent: "How does an agent write or improve manifest units — intents, triggers, relationships, audience, not_for, temporal validity — and validate the result?"
+    scope: global
+    audience: [ agent ]
+    validated: "2026-07-30"
+    triggers: [ author, improve, intent, triggers, not_for, temporal, unit ]
+    load_eligible: true
+    action_scope:
+      tools: [ Bash, Read, Edit, Write ]
+      paths: [ "knowledge.yaml" ]
+      capabilities: [ "kcp.author", "kcp.validate" ]
+    content_hash:
+      algorithm: sha256
+      value: b6ec6b67f5aa515395d435ddc6b9d4628d48998a980c26bdd5229d4ec23b466a
+
+  - id: skill-kcp-navigate
+    path: skills/kcp-navigate/SKILL.md
+    kind: skill
+    intent: "How does an agent use an existing knowledge.yaml to load only what a task needs, instead of exploring a repository blind?"
+    scope: global
+    audience: [ agent ]
+    validated: "2026-07-30"
+    triggers: [ navigate, plan, load, relevant, find knowledge, explore ]
+    load_eligible: true
+    action_scope:
+      # Navigation reads and plans. It never edits the manifest it is navigating.
+      tools: [ Bash, Read ]
+      capabilities: [ "kcp.navigate" ]
+    content_hash:
+      algorithm: sha256
+      value: bcf766c00ed27596d95abdd3c1c0336cffe14b8c4bee993c8287f1b18288a957
+
+  - id: skill-kcp-render
+    path: skills/kcp-render/SKILL.md
+    kind: skill
+    intent: "How does an agent safely ingest a third-party or untrusted knowledge.yaml, running the trusted render pipeline before any of its content reaches the model?"
+    scope: global
+    audience: [ agent ]
+    validated: "2026-07-30"
+    triggers: [ render, untrusted, third-party, ingest, sanitize, foreign manifest ]
+    load_eligible: true
+    action_scope:
+      # The trust boundary: this skill exists precisely because the input is untrusted.
+      # It renders through the trusted pipeline and never grants write access — a
+      # sanitiser that can edit is not a sanitiser.
+      tools: [ Bash, Read ]
+      capabilities: [ "kcp.render", "kcp.ingest-untrusted" ]
+    content_hash:
+      algorithm: sha256
+      value: bbf038b09f2ce04d54376fc7d72cdc9961ff21bd400e9ae0f2b379e128d39a21
+
 relationships:
   # The spec is the foundation everything builds on
   - from: spec
