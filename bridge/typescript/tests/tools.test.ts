@@ -11,6 +11,7 @@ const FULL_DIR = join(import.meta.dirname, "fixtures/full");
 const MINIMAL_DIR = join(import.meta.dirname, "fixtures/minimal");
 const COMMANDS_DIR = join(import.meta.dirname, "fixtures/commands");
 const FEDERATION_DIR = join(import.meta.dirname, "fixtures/federation");
+const AUTHORITY_DIR = join(import.meta.dirname, "fixtures/authority");
 
 async function connectClient(
   manifestPath: string,
@@ -39,16 +40,17 @@ async function connectClient(
 }
 
 describe("tools/list", () => {
-  it("lists all four tools", async () => {
+  it("lists all five tools", async () => {
     const client = await connectClient(join(FULL_DIR, "knowledge.yaml"));
     const { tools } = await client.listTools();
 
-    expect(tools).toHaveLength(4);
+    expect(tools).toHaveLength(5);
     const names = tools.map((t) => t.name);
     expect(names).toContain("search_knowledge");
     expect(names).toContain("get_unit");
     expect(names).toContain("get_command_syntax");
     expect(names).toContain("list_manifests");
+    expect(names).toContain("resolve_grant_ceiling");
     await client.close();
   });
 
@@ -836,5 +838,58 @@ describe("attestation gating (C20)", () => {
     const rowB = (JSON.parse(txt(withAttest)) as Array<{ id: string; requires_attestation?: boolean }>).find((x) => x.id === "secret")!;
     expect(rowA.requires_attestation).toBe(true);
     expect(rowB.requires_attestation).toBeUndefined();
+  });
+});
+
+describe("resolve_grant_ceiling tool (§3.13, RFC-0025)", () => {
+  const txt = (r: unknown) => ((r as { content: Array<{ text: string }> }).content[0].text);
+
+  it("returns the effective authority MIN across grant_ceiling sources and names the binding source", async () => {
+    const client = await connectClient(join(AUTHORITY_DIR, "knowledge.yaml"));
+    const result = await client.callTool({
+      name: "resolve_grant_ceiling",
+      arguments: {},
+    });
+    const out = JSON.parse(txt(result));
+    // Sources resolve to: org-risk=prepare, org-data=suggest,
+    // task-ceiling->change-status=explain, agent-ceiling->lara=prepare.
+    // The minimum on the declared scale is `explain`, bound by `task-ceiling`.
+    expect(out.effective_level).toBe("explain");
+    expect(out.binding_source_ids).toEqual(["task-ceiling"]);
+    expect(out.authority_level_scale).toEqual([
+      "observe",
+      "explain",
+      "suggest",
+      "prepare",
+      "commit",
+    ]);
+    await client.close();
+  });
+
+  it("caps a unit's declared action permission by the effective level when an action is given", async () => {
+    const client = await connectClient(join(AUTHORITY_DIR, "knowledge.yaml"));
+    const result = await client.callTool({
+      name: "resolve_grant_ceiling",
+      arguments: { unit_id: "status-writer", action: "modify" },
+    });
+    const out = JSON.parse(txt(result));
+    // status-writer declares modify: initiative, but the effective level `explain`
+    // caps modify to `denied` — the tool must return the stricter value.
+    expect(out.effective_level).toBe("explain");
+    expect(out.declared).toBe("initiative");
+    expect(out.capped).toBe("denied");
+    await client.close();
+  });
+
+  it("reports no ceiling when the manifest declares no grant_ceiling", async () => {
+    const client = await connectClient(join(FULL_DIR, "knowledge.yaml"));
+    const result = await client.callTool({
+      name: "resolve_grant_ceiling",
+      arguments: {},
+    });
+    const out = JSON.parse(txt(result));
+    expect(out.effective_level).toBeNull();
+    expect(out.binding_source_ids).toEqual([]);
+    await client.close();
   });
 });

@@ -1,0 +1,47 @@
+kcp_version: "0.27"
+project: authority-example
+version: 1.0.0
+updated: "2026-07-30"
+language: en
+
+# RFC-0025 / §3.13 root authority model.
+authority_level_scale: [observe, explain, suggest, prepare, commit]
+
+task_types:
+  - id: change-status
+    intent: "Flip a compliance status flag"
+    authority_level: explain
+  - id: draft-report
+    intent: "Prepare a report for human review"
+    authority_level: prepare
+
+agents:
+  - id: lara
+    name: LARA
+    authority_level: prepare
+
+grant_ceiling:
+  mandatory_sources: [org-risk]
+  sources:
+    - id: org-risk
+      authority_level: prepare
+    - id: org-data
+      authority_level: suggest
+    - id: task-ceiling
+      task_type_ref: change-status
+    - id: agent-ceiling
+      agent_ref: lara
+
+units:
+  - id: status-writer
+    path: status-writer.md
+    intent: "How does the status writer procedure operate?"
+    scope: project
+    audience: [agent]
+    triggers: [status, writer]
+    authority:
+      read: initiative
+      summarize: initiative
+      modify: initiative
+      share_externally: initiative
+      execute: initiative

@@ -458,6 +458,86 @@ describe("manifestToJson — authority, discovery, visibility in unit output", (
   });
 });
 
+describe("manifestToJson — root authority model (§3.13, RFC-0025 v0.27)", () => {
+  // The bridge PARSED authority_level_scale / task_types / agents / grant_ceiling
+  // (parser.ts §765, model.ts §386-389) but the mapper root projection omitted all
+  // four — so the entire root authority model was invisible over MCP. A consumer
+  // could not see the ordinal scale, the declared ceilings, or the multi-source
+  // minimum computation that governs whether a procedure may act. Built through
+  // parseDict so this covers parse -> map, not just map.
+  function authorityManifest() {
+    return parseDict({
+      project: "example",
+      version: "1.0.0",
+      kcp_version: "0.27",
+      authority_level_scale: ["observe", "explain", "suggest", "prepare", "commit"],
+      task_types: [
+        { id: "change-status", intent: "flip a status flag", authority_level: "explain" },
+      ],
+      agents: [{ id: "lara", name: "LARA", authority_level: "prepare" }],
+      grant_ceiling: {
+        sources: [
+          { id: "org-risk", authority_level: "prepare" },
+          { id: "task-ceiling", task_type_ref: "change-status" },
+          { id: "agent-ceiling", agent_ref: "lara" },
+        ],
+        mandatory_sources: ["org-risk"],
+      },
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+  }
+
+  it("includes authority_level_scale at manifest root", () => {
+    const json = JSON.parse(manifestToJson(authorityManifest(), "example"));
+    expect(json.authority_level_scale).toEqual([
+      "observe",
+      "explain",
+      "suggest",
+      "prepare",
+      "commit",
+    ]);
+  });
+
+  it("includes task_types at manifest root", () => {
+    const json = JSON.parse(manifestToJson(authorityManifest(), "example"));
+    expect(json.task_types).toHaveLength(1);
+    expect(json.task_types[0].id).toBe("change-status");
+    expect(json.task_types[0].authority_level).toBe("explain");
+  });
+
+  it("includes agents at manifest root", () => {
+    const json = JSON.parse(manifestToJson(authorityManifest(), "example"));
+    expect(json.agents).toHaveLength(1);
+    expect(json.agents[0].id).toBe("lara");
+    expect(json.agents[0].authority_level).toBe("prepare");
+  });
+
+  it("includes grant_ceiling (sources + mandatory_sources) at manifest root", () => {
+    const json = JSON.parse(manifestToJson(authorityManifest(), "example"));
+    expect(json.grant_ceiling).toBeDefined();
+    expect(json.grant_ceiling.sources).toHaveLength(3);
+    expect(json.grant_ceiling.sources.map((s: { id: string }) => s.id)).toEqual([
+      "org-risk",
+      "task-ceiling",
+      "agent-ceiling",
+    ]);
+    expect(json.grant_ceiling.mandatory_sources).toEqual(["org-risk"]);
+  });
+
+  it("omits root authority fields when the manifest declares none", () => {
+    const manifest = parseDict({
+      project: "example",
+      version: "1.0.0",
+      units: [{ id: "u", path: "f.md", intent: "i", scope: "global", audience: ["agent"] }],
+    });
+    const json = JSON.parse(manifestToJson(manifest, "example"));
+    expect(json.authority_level_scale).toBeUndefined();
+    expect(json.task_types).toBeUndefined();
+    expect(json.agents).toBeUndefined();
+    expect(json.grant_ceiling).toBeUndefined();
+  });
+});
+
 describe("manifestToJson — action_scope (§4.3a)", () => {
   // The bridge parsed action_scope but never surfaced it: mapper's entry builder
   // copied `kind` and skipped the envelope that gives `kind: skill` its meaning.

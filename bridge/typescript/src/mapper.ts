@@ -356,6 +356,19 @@ export function manifestToJson(
     ...(manifest.authority ? { authority: mapAuthority(manifest.authority) } : {}),
     ...(manifest.discovery ? { discovery: mapDiscovery(manifest.discovery) } : {}),
     ...(manifest.visibility ? { visibility: mapVisibility(manifest.visibility) } : {}),
+    // §3.13 (RFC-0025, v0.27): the root authority model. Parsed by parser.ts but
+    // previously dropped here, leaving the whole model invisible over MCP. Without
+    // the ordinal scale a consumer cannot even order two authority levels, and
+    // without grant_ceiling it cannot see the multi-source minimum that decides
+    // whether a governed procedure may act — so it would have to assume the more
+    // permissive reading. Emitted explicitly when declared; task_types/agents
+    // default to [] and are omitted when empty to keep the "declared none" signal.
+    ...(manifest.authority_level_scale
+      ? { authority_level_scale: manifest.authority_level_scale }
+      : {}),
+    ...(manifest.task_types.length > 0 ? { task_types: manifest.task_types } : {}),
+    ...(manifest.agents.length > 0 ? { agents: manifest.agents } : {}),
+    ...(manifest.grant_ceiling ? { grant_ceiling: manifest.grant_ceiling } : {}),
   };
   return JSON.stringify(payload, null, 2);
 }
