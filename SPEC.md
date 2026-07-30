@@ -1816,6 +1816,67 @@ by default like `executable`/`service`: absent an explicit eligibility grant it 
 pointer with `invocation: explicit` (§16.3, C4). Skills are the manifest-declared counterpart of
 the runtime-depth lifecycle recorded in §17 (`skill_selected` … `verdict_emitted`).
 
+#### 4.3a — skill authority ceiling and negative scope (PROPOSED, v0.31)
+
+> **Status: PROPOSED for design review.** This subsection extends the `kind: skill`
+> envelope with two capabilities a downstream KCP consumer needs to enforce a skill's
+> own limits at run time. It reuses the existing `authority_level` field and the existing
+> `action_scope` shape; no existing gate is weakened. It is fail-closed by construction.
+
+**A skill's own `authority_level` is a `grant_ceiling` source.** A `kind: skill` unit MAY
+declare `authority_level` (the §3.13 scale, ceiling semantics — "at most this level"), just as
+any unit may (§4.23). On a skill it names the skill's *own capability ceiling*: the most
+discretion the procedure was written to hold, independent of who invokes it. Because a
+`grant_ceiling` source (§3.13) may resolve a level via `unit_ref`, that ceiling **participates
+directly in the multi-source minimum** — a source citing the skill by `unit_ref` contributes the
+skill's declared `authority_level` to the MIN, and the effective level can never exceed it. As
+elsewhere in §3.13, a skill with no declared `authority_level` makes such a source non-binding
+(absence is not a grant), and the minimum can never be raised by any single input.
+
+**`action_scope.deny` — an explicit negative scope.** `tools`/`paths`/`capabilities` are an
+*allowlist*: what the skill may touch. `deny` is the complementary *denylist*, carrying the
+same `{tools, paths, capabilities}` shape, and every entry is a prohibition:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `deny.tools` | array of string | Tool names the skill MUST NOT invoke, even if allowlisted. |
+| `deny.paths` | array of string | Paths (globs permitted) the skill MUST NOT read or write, even if allowlisted. |
+| `deny.capabilities` | array of string | Capabilities the skill MUST NOT exercise, even if allowlisted. |
+
+All sub-fields are OPTIONAL and `action_scope` remains an opaque passthrough for parsers that do
+not implement conformance checking.
+
+**`deny` overrides the allowlist, fail-closed.** A conformance checker adjudicates each
+tool/path/capability against **both** lists, and `deny` wins: a token present in the relevant
+`deny` list is **denied** even when the allowlist grants it. This lets an author allow a broad
+region and carve a prohibited hole inside it — allow `schema/**` while forbidding
+`schema/secrets/**` — without having to enumerate the complement. The override is the safe
+direction by construction: a denylist can only *narrow* what the allowlist already bounded, so it
+can never widen a skill's reach, and a checker that cannot resolve a match denies rather than
+permits. Where an implementation supports escalation (§3.14), an action a `deny` holds SHOULD
+raise a grant request rather than fail silently, exactly as an over-threshold `spend` does
+(§4.3a.1). Two validator lints surface authoring slips without weakening the gate: a `deny`
+that lists nothing prohibits nothing, and a token that is **both** allowlisted and forbidden
+leaves an allow entry the `deny` neutralizes — the declaration reads wider than it enforces.
+
+```yaml
+- id: rotate-signing-key
+  path: skills/rotate-signing-key.md
+  kind: skill
+  intent: "How do I rotate the manifest signing key safely?"
+  scope: project
+  audience: [agent, operator]
+  authority_level: prepare        # the skill's own ceiling; a grant_ceiling unit_ref caps to it
+  action_scope:
+    tools: [kcp-sign, git]
+    paths: ["schema/**", ".well-known/kcp-signing-key"]
+    capabilities: [key-management]
+    deny:
+      paths: ["schema/secrets/**"]   # carve a prohibited hole inside an allowed region
+      tools: [shell]                 # denied even if a broader grant would allow it
+      capabilities: [network]
+```
+
 
 #### 4.3a.1 `action_scope.spend` — what a procedure may buy
 

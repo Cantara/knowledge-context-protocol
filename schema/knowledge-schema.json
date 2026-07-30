@@ -255,6 +255,27 @@
                   "description": "ISO 4217 code (USD, EUR) or crypto ticker (USDC, ETH) that 'max_spend' is denominated in."
                 }
               }
+            },
+            "deny": {
+              "type": "object",
+              "description": "PROPOSED (v0.31): explicit negative scope. Same {tools, paths, capabilities} shape as the allowlist, but every entry is a PROHIBITION — a token listed here is denied even when the allowlist grants it. Checked in addition to and overriding the allowlist, fail-closed. A deny that is a narrower glob of an allow is the intended carve-out; an exact-token collision with the allowlist neutralizes that allow. See SPEC.md §4.3a.",
+              "properties": {
+                "tools": {
+                  "type": "array",
+                  "description": "Tool names the procedure MUST NOT invoke, even if allowlisted.",
+                  "items": { "type": "string" }
+                },
+                "paths": {
+                  "type": "array",
+                  "description": "File-system paths (globs permitted) the procedure MUST NOT read or write, even if allowlisted.",
+                  "items": { "type": "string" }
+                },
+                "capabilities": {
+                  "type": "array",
+                  "description": "Named capabilities the procedure MUST NOT exercise, even if allowlisted.",
+                  "items": { "type": "string" }
+                }
+              }
             }
           }
         },
