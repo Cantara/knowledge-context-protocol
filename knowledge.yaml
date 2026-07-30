@@ -33,6 +33,16 @@ signing:
 
 # Legacy header fields (preserved for consumers that read them directly)
 kcp_version: "0.30"
+
+# §3.13 (v0.27): the fixed ordinal authority scale. Declaring it makes every
+# authority_level below a ceiling on this total order — and leaves the planner
+# something to adjudicate rather than a vocabulary nobody populated.
+authority_level_scale:
+  - observe
+  - explain
+  - suggest
+  - prepare
+  - commit
 project: knowledge-context-protocol
 spec_version: 0.21.0
 updated: "2026-06-13"
@@ -1003,6 +1013,8 @@ units:
     validated: "2026-07-30"
     triggers: [ adopt, add kcp, knowledge.yaml, onboard, init, greenfield ]
     load_eligible: true
+    # creates a manifest for a human (or PR gate) to commit
+    authority_level: prepare
     action_scope:
       tools: [ Bash, Read, Write ]
       paths: [ "knowledge.yaml" ]
@@ -1020,6 +1032,8 @@ units:
     validated: "2026-07-30"
     triggers: [ author, improve, intent, triggers, not_for, temporal, unit ]
     load_eligible: true
+    # improves units in place; the commit belongs to review
+    authority_level: prepare
     action_scope:
       tools: [ Bash, Read, Edit, Write ]
       paths: [ "knowledge.yaml" ]
@@ -1037,6 +1051,8 @@ units:
     validated: "2026-07-30"
     triggers: [ navigate, plan, load, relevant, find knowledge, explore ]
     load_eligible: true
+    # navigation reads and plans; it never edits what it reads
+    authority_level: explain
     action_scope:
       # Navigation reads and plans. It never edits the manifest it is navigating.
       tools: [ Bash, Read ]
@@ -1054,6 +1070,8 @@ units:
     validated: "2026-07-30"
     triggers: [ render, untrusted, third-party, ingest, sanitize, foreign manifest ]
     load_eligible: true
+    # the untrusted-input boundary analyzes; a sanitiser that could act on its input would not be a sanitiser
+    authority_level: explain
     action_scope:
       # The trust boundary: this skill exists precisely because the input is untrusted.
       # It renders through the trusted pipeline and never grants write access — a
