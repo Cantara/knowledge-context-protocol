@@ -1,0 +1,46 @@
+# Skill authority ceiling + negative scope — worked example (PROPOSED, v0.31).
+#
+# Demonstrates the two §4.3a additions under design review:
+#   1. a kind: skill unit carries its OWN authority_level (its capability ceiling),
+#      which a grant_ceiling source pulls into the multi-source MIN via unit_ref;
+#   2. action_scope.forbid — an explicit denylist that overrides the allowlist,
+#      fail-closed. Here the skill is allowed all of schema/**, but forbidden the
+#      schema/secrets/** subtree and the `shell` tool.
+#
+# kcp_version stays "0.30" (the current spec minor); `forbid` is an additive field a
+# pre-proposal parser silently ignores per §2, so the manifest stays backward compatible.
+
+kcp_version: "0.30"
+project: skill-negative-scope-demo
+version: 1.0.0
+
+authority_level_scale: [observe, explain, suggest, prepare, commit]
+
+grant_ceiling:
+  sources:
+    # An org-wide ceiling and the skill's own ceiling both apply; the effective
+    # level is their MINIMUM. The skill declares `prepare`, so it can never lift
+    # the effective level above what it was written to hold.
+    - id: org-risk-policy
+      authority_level: prepare
+    - id: skill-capability-ceiling
+      unit_ref: rotate-signing-key
+  mandatory_sources: [org-risk-policy]
+
+units:
+  - id: rotate-signing-key
+    path: skills/rotate-signing-key.md
+    kind: skill
+    intent: "How do I rotate the manifest signing key safely?"
+    scope: project
+    audience: [agent, operator]
+    load_eligible: true
+    authority_level: prepare          # the skill's own capability ceiling (§3.13 / §4.23)
+    action_scope:
+      tools: [kcp-sign, git]
+      paths: ["schema/**", ".well-known/kcp-signing-key"]
+      capabilities: [key-management]
+      forbid:                          # PROPOSED v0.31 — overrides the allowlist, fail-closed
+        paths: ["schema/secrets/**"]   # a prohibited hole inside the allowed schema/** region
+        tools: [shell]                 # denied even though a broader grant might allow it
+        capabilities: [network]

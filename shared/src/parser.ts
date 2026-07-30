@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import yaml from "js-yaml";
 import type {
   ActionScope,
+  ForbidScope,
   PlaybookStep,
   Spend,
   Auth,
@@ -539,6 +540,24 @@ function parseActionScope(raw: unknown): ActionScope | undefined {
     paths: stringListOrUndefined(d["paths"]),
     capabilities: stringListOrUndefined(d["capabilities"]),
     spend: parseSpend(d["spend"]),
+    forbid: parseForbidScope(d["forbid"]),
+  };
+}
+
+/**
+ * §4.3a (PROPOSED, v0.31): the explicit negative scope a `kind: skill` declares.
+ *
+ * Same {tools, paths, capabilities} shape as the allowlist; every entry is a
+ * prohibition. Mirrors parseActionScope's leniency — anything that is not an object
+ * yields undefined ("declares no prohibition") rather than failing the whole parse.
+ */
+function parseForbidScope(raw: unknown): ForbidScope | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const d = raw as RawMap;
+  return {
+    tools: stringListOrUndefined(d["tools"]),
+    paths: stringListOrUndefined(d["paths"]),
+    capabilities: stringListOrUndefined(d["capabilities"]),
   };
 }
 
