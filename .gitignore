@@ -36,3 +36,5 @@ __pycache__/
 
 # Generated media
 docs/media/
+docs/knowledge.yaml
+docs/knowledge.yaml.sig

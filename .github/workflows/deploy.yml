@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
+      # The published manifest is the root manifest — a change to it must redeploy.
+      - 'knowledge.yaml'
+      - 'knowledge.yaml.sig'
   workflow_dispatch:
 
 permissions:
@@ -25,6 +28,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      # The published copy IS the root manifest, copied at deploy time. It used to be a
+      # hand-maintained duplicate in docs/, which drifted to nine minor versions stale
+      # (kcp_version 0.21 served while the repo was at 0.30) without anything noticing —
+      # #180. A copy nobody regenerates will drift again, so the duplicate is gone and
+      # the class with it.
+      - name: Publish the root manifest, not a copy
+        run: |
+          cp knowledge.yaml docs/knowledge.yaml
+          cp knowledge.yaml.sig docs/knowledge.yaml.sig
 
       - name: Setup Pages
         uses: actions/configure-pages@v6

@@ -5,7 +5,7 @@
 // cli/ package (cwd = cli) and read sibling files directly.
 
 import { describe, expect, it } from "vitest";
-import { lstatSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { SCAFFOLD_KCP_VERSION } from "./init.js";
 import { load as parseYaml } from "js-yaml";
@@ -103,6 +103,16 @@ describe("version-drift guard", () => {
 
   // Editing SPEC.md without refreshing its digest leaves a manifest that fails its own
   // `kcp validate`. Both digests here were stale for exactly that reason.
+  it("docs/ carries no committed manifest copy — deploy publishes the root", () => {
+    // #180: docs/knowledge.yaml was a hand-maintained duplicate served by Pages. It
+    // drifted to nine minor versions stale (0.21 served, 0.30 in the repo) and every
+    // federation consumer read the stale copy — while its signature verified, because
+    // signing proves provenance, not freshness. deploy.yml now copies the root manifest
+    // at publish time; a committed copy would resurrect the drift class.
+    const docsCopy = r("docs/knowledge.yaml");
+    expect(existsSync(docsCopy), "docs/knowledge.yaml is committed again — deploy.yml owns publishing the root manifest").toBe(false);
+  });
+
   it("every declared content_hash matches the content on disk", () => {
     const stale: string[] = [];
     for (const unit of ownManifest.doc.units ?? []) {
