@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kcp"
-version = "0.32.0"
+version = "0.32.1"
 description = "Knowledge Context Protocol — reference parser and validator"
 readme = "README.md"
 requires-python = ">=3.10"

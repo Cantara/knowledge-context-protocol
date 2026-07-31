@@ -35,7 +35,7 @@ const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
 const dim = (s: string) => `\x1b[2m${s}\x1b[0m`;
 
-export const RENDERER_VERSION = "kcp-cli 0.32.0";
+export const RENDERER_VERSION = "kcp-cli 0.32.1";
 export const RENDER_SCHEMA = "kcp-render-schema-0.2";
 export const DEFAULT_KEYS_PATH = join(homedir(), ".kcp", "trusted-keys.yaml");
 

@@ -962,7 +962,39 @@ public class KcpValidator {
             case "capabilities" -> scope.deny().capabilities();
             default -> null;
         };
-        return values != null && values.contains(token);
+        if (values == null) return false;
+        // §4.3a (v0.32.1): paths are PATTERNS matched structurally — exact comparison
+        // would never fire the schema/secrets/** carve-out. tools/capabilities exact.
+        if ("paths".equals(dimension)) {
+            for (String p : values) {
+                if (p.equals(token) || pathGlobMatches(p, token)) return true;
+            }
+            return false;
+        }
+        return values.contains(token);
+    }
+
+    /**
+     * §4.3a (v0.32.1): glob matching for path patterns. {@code **} matches across
+     * segment boundaries, {@code *} within a single segment, every other character
+     * literally. Mirrors {@code pathGlobMatches} in the TypeScript validator.
+     */
+    public static boolean pathGlobMatches(String pattern, String path) {
+        StringBuilder re = new StringBuilder();
+        int i = 0;
+        while (i < pattern.length()) {
+            if (pattern.startsWith("**", i)) {
+                re.append(".*");
+                i += 2;
+            } else if (pattern.charAt(i) == '*') {
+                re.append("[^/]*");
+                i += 1;
+            } else {
+                re.append(java.util.regex.Pattern.quote(String.valueOf(pattern.charAt(i))));
+                i += 1;
+            }
+        }
+        return path.matches(re.toString());
     }
 
     /**

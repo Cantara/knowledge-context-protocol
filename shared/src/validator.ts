@@ -230,12 +230,43 @@ function supersededCycleIds(successor: Map<string, string>): string[] {
  * validator's overlap lint share one adjudication rule, the way §4.3a.1 `spend` and
  * the allowlist share one fail-closed default.
  */
+/**
+ * §4.3a (v0.32.1): glob matching for path patterns. `**` matches across segment
+ * boundaries, `*` within a single segment, every other character literally.
+ * Path entries in `deny.paths` (and the allowlist) are patterns, not literals —
+ * exact-string comparison would never fire the `schema/secrets/**` carve-out the
+ * spec promises, leaving the paths dimension of a deny unenforced.
+ */
+export function pathGlobMatches(pattern: string, path: string): boolean {
+  let re = "";
+  for (let i = 0; i < pattern.length; ) {
+    if (pattern.startsWith("**", i)) {
+      re += ".*";
+      i += 2;
+    } else if (pattern[i] === "*") {
+      re += "[^/]*";
+      i += 1;
+    } else {
+      re += pattern[i]!.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+      i += 1;
+    }
+  }
+  return new RegExp("^" + re + "$").test(path);
+}
+
 export function deniesToken(
   scope: ActionScope | undefined,
   dimension: "tools" | "paths" | "capabilities",
   token: string
 ): boolean {
-  return scope?.deny?.[dimension]?.includes(token) ?? false;
+  const entries = scope?.deny?.[dimension];
+  if (!entries) return false;
+  // paths are patterns (§4.3a): a requested path is denied when any deny entry
+  // glob-matches it. tools/capabilities remain exact tokens.
+  if (dimension === "paths") {
+    return entries.some((p) => p === token || pathGlobMatches(p, token));
+  }
+  return entries.includes(token);
 }
 
 /**
