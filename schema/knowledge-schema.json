@@ -258,7 +258,7 @@
             },
             "deny": {
               "type": "object",
-              "description": "PROPOSED (v0.31): explicit negative scope. Same {tools, paths, capabilities} shape as the allowlist, but every entry is a PROHIBITION — a token listed here is denied even when the allowlist grants it. Checked in addition to and overriding the allowlist, fail-closed. A deny that is a narrower glob of an allow is the intended carve-out; an exact-token collision with the allowlist neutralizes that allow. See SPEC.md §4.3a.",
+              "description": "v0.31: explicit negative scope. Same {tools, paths, capabilities} shape as the allowlist, but every entry is a PROHIBITION — a token listed here is denied even when the allowlist grants it. Checked in addition to and overriding the allowlist, fail-closed. A deny that is a narrower glob of an allow is the intended carve-out; an exact-token collision with the allowlist neutralizes that allow. See SPEC.md §4.3a. PROPOSED (v0.32, RFC-0030): on a kind:playbook unit this sub-object is NORMATIVE (unlike the rest of the playbook envelope, which is declarative) — the effective denylist for a step is the union of the playbook's deny and the used skill's. See SPEC.md §4.3b.",
               "properties": {
                 "tools": {
                   "type": "array",

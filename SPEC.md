@@ -2070,6 +2070,63 @@ This requirement binds an actor rather than a field, so no validator can check i
 - A validator SHOULD warn when a step omits `authority_level` while its `uses` unit declares
   a mutating `action_scope`.
 
+#### 4.3b — playbook-level prohibitions and deny finality (PROPOSED, v0.32)
+
+> **PROPOSED (RFC-0030), for design review.** This subsection makes one sub-object of the
+> playbook `action_scope` envelope normative and clarifies one §4.3a sentence. No existing
+> gate is weakened; fail-closed by construction.
+
+**`action_scope.deny` on a `kind: playbook` unit is normative for enactment.** Unlike the
+rest of the playbook's `action_scope` envelope — which remains a *declaration for review,
+not a grant* (see *Scope verifiability* above) — a `deny` declared on the playbook is a
+blanket prohibition over **every step**, inline steps included. The effective denylist for a
+step is, per dimension:
+
+```
+effective_deny(step) = playbook.action_scope.deny ∪ uses(step).action_scope.deny
+```
+
+A requested token matching **either** source is denied, overriding any allow, deny-first,
+exactly as §4.3a specifies for the skill-level list. The matching source is the **binding
+source**, named in the decision trace (both, when both match) — the same auditing shape as
+the `grant_ceiling` minimum's binding source (§3.13).
+
+The asymmetry with the allow side is principled, not incidental: an enforced playbook-level
+*allow* would be a grant that could widen a step beyond its skill's scope, and is unsound
+whenever the steps' union is uncomputable. An enforced *deny* needs no union to be sound —
+it only ever removes, so it can be applied to each step independently. Union is likewise the
+only sound composition: adding a deny source can only refuse more, never less — the
+scope-axis mirror of the §3.13 lowest-of rule, and the property that makes automatic
+composition safe. A playbook `deny` also puts the first hard edge on an inline (`action`)
+step — such a step remains scope-*unbounded* on the allow axis, but what it may *never*
+touch is now enforceable at the orchestration gate.
+
+**A deny is never grantable.** The §4.3a guidance that an action a `deny` holds "SHOULD
+raise a grant request rather than fail silently" is hereby sharpened, for skill-level and
+playbook-level `deny` alike: the action is **refused, finally**, and what is raised is a
+**prohibited-attempt notification** — an auditable §17 event, not a request for permission.
+No response to that notification — human or otherwise — enacts the refused action; a grant
+resolved against it records acknowledgement and MUST NOT cause enactment. This is the
+deliberate contrast with over-threshold `spend` (§4.3a.1), where a granted request *does*
+proceed: a spend ceiling is a *threshold* human judgment may move per-case; a `deny` is a
+*boundary*, and boundaries are redrawn only where they are drawn — in the manifest, via the
+ordinary lifecycle (`supersedes`, review, signature). The prohibited-attempt event exists
+because repeated attempts to do forbidden things is a governance signal — misconfiguration,
+compromise, or probing — and that signal is only trustworthy if the answer at the gate is
+always no.
+
+Conformance (in addition to the §4.3b rules above):
+
+- A conformance checker MUST apply a playbook's `action_scope.deny` to every step of the
+  playbook, including steps enacted after `on_failure: continue` or resumption from
+  escalation, and including inline (`action`) steps.
+- A checker MUST NOT treat a playbook `deny` as making the declared allow scope *verified*.
+- A validator MUST error on a malformed playbook `deny`; the §4.3a empty-deny lint applies.
+- A validator SHOULD warn when every token a step's used unit allows on a dimension is
+  contained in the step's effective deny — the step is self-nullified on that dimension.
+- An implementation MUST NOT enact an action held by a `deny` in response to any grant,
+  approval, or escalation outcome.
+
 ### 4.3c `load_eligible` — the eligibility grant (v0.30)
 
 §16.3 C4 requires that a governed procedure "becomes load/invoke-eligible only when the

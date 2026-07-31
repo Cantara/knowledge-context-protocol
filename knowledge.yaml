@@ -69,7 +69,7 @@ units:
     triggers: [ spec, specification, fields, validation, conformance, yaml, format ]
     content_hash:
       algorithm: sha256
-      value: 57435b1a4bf49705f1ef3f2cc0870c5a1d393a29903088e32f225a06ad2b9e0b
+      value: 7804c22147bdf31f05db156d0e166e9eaae3d9e9d9c8d041a28d82033206f175
 
   - id: proposal
     path: PROPOSAL.md
