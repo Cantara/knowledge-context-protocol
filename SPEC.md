@@ -4604,7 +4604,7 @@ Promoted from [RFC-0017](./RFC-0017-Observability-Hooks.md). A local-first obser
 convention: bridges and renderers MAY record events to a well-known SQLite database at
 `~/.kcp/usage.db` (WAL mode required; writes MUST never block serving). `kcp stats` reads it.
 
-Four tables:
+Five tables:
 
 - **`usage_events`** — bridge query traffic and the runtime-depth procedural lifecycle. Columns:
   `timestamp`, `event_type` (`search` | `get_unit` | `inject` | `skill_selected` |
@@ -4629,6 +4629,25 @@ Four tables:
   `resolved_by` (populated on `granted`/`denied` rows only), `correlation_id`. Same local-only,
   consent-gated transmission rule as `usage_events` — grant requests can contain sensitive
   internal-escalation context.
+- **`prohibited_attempt_events`** (v0.32.1, RFC-0030) — the notify-only audit trail for
+  deny-hits (§4.3a negative scope, §4.3b playbook prohibitions). **One row per refused
+  attempt** — unlike `grant_request_events` there is no state machine to transition, because a
+  deny-hit is final by definition: no row in this table may ever correlate with an enactment
+  of the refused action. Columns: `timestamp`, `unit_id` (the `kind: skill` whose enactment
+  was refused), `playbook_id` (NULL unless refused inside a `kind: playbook` context),
+  `step_id` (NULL likewise), `dimension` (`tools` | `paths` | `capabilities`), `token` (the
+  requested tool, path, or capability), `matched_pattern` (the `deny` entry that matched —
+  differs from `token` when a path glob fires), `binding_source` (`skill` | `playbook` |
+  `both`), `acknowledged_by` (NULL until a human acknowledges the notification; a populated
+  value records **acknowledgement only** and MUST NOT enact — see §4.3b *deny finality*),
+  `correlation_id`. Rows sharing (`unit_id`, `dimension`, `token`) are the governance signal
+  this table exists for: a climbing repeat count means misconfiguration, compromise, or
+  probing. Same local-only, consent-gated transmission rule as `usage_events`.
+
+  Where transmission **is** consented (e.g. a dashboard `/trace` sink), the wire format is a
+  JSON object with `kind: "prohibited_attempt"` and the same field names — the canonical
+  example lives at `conformance/fixtures/observability/prohibited-attempt.json`, and an
+  emitter and an ingester are conformant when that fixture round-trips between them.
 
 Wall-clock timestamps live here, not in rendered artifacts — observability wants time;
 render determinism (§16.1) forbids it. A repository whose quarantine count moves from 0 to 3
