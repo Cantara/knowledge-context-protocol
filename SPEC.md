@@ -1,6 +1,6 @@
 # Knowledge Context Protocol (KCP) Specification
 
-**Version:** 0.31
+**Version:** 0.32
 **Status:** Draft
 **Date:** 2026-07-24
 **Repository:** github.com/cantara/knowledge-context-protocol
@@ -2070,9 +2070,9 @@ This requirement binds an actor rather than a field, so no validator can check i
 - A validator SHOULD warn when a step omits `authority_level` while its `uses` unit declares
   a mutating `action_scope`.
 
-#### 4.3b — playbook-level prohibitions and deny finality (PROPOSED, v0.32)
+#### 4.3b — playbook-level prohibitions and deny finality (v0.32)
 
-> **PROPOSED (RFC-0030), for design review.** This subsection makes one sub-object of the
+> **Added in v0.32 (RFC-0030).** This subsection makes one sub-object of the
 > playbook `action_scope` envelope normative and clarifies one §4.3a sentence. No existing
 > gate is weakened; fail-closed by construction.
 

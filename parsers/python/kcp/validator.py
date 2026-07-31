@@ -95,7 +95,7 @@ VALID_INDEXING_SHORTHANDS = {"open", "read-only", "no-train", "none"}
 VALID_ACCESS_VALUES = {"public", "authenticated", "restricted"}
 VALID_SENSITIVITY_VALUES = {"public", "internal", "confidential", "restricted"}
 # human_in_the_loop is an object per spec §3.4 — no HITL enum, validation done inline
-KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26", "0.27", "0.28", "0.29", "0.30", "0.31"}
+KNOWN_KCP_VERSIONS = {"0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26", "0.27", "0.28", "0.29", "0.30", "0.31", "0.32"}
 # content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
 VALID_CONTENT_MODALITIES = {"prose", "table", "code", "list", "diagram", "reference", "mixed"}
 VALID_DENSITY = {"sparse", "normal", "dense"}
@@ -213,6 +213,17 @@ def denies_token(scope, dimension: str, token: str) -> bool:
         return False
     values = getattr(scope.deny, dimension, None)
     return bool(values) and token in values
+
+
+def effective_denies_token(scopes, dimension: str, token: str) -> bool:
+    """§4.3b (v0.32, RFC-0030): does the UNION of deny lists deny ``token`` on
+    ``dimension``? The effective denylist for a playbook step is the union of the
+    playbook's own ``action_scope.deny`` and the used skill's — a match in either
+    denies, overriding any allow. Union is the only sound composition: adding a
+    source can only refuse more, never less (the scope-axis mirror of the §3.13
+    lowest-of rule). Mirrors ``effectiveDeniesToken`` in the TypeScript validator.
+    """
+    return any(denies_token(scope, dimension, token) for scope in scopes)
 
 
 def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) -> ValidationResult:
@@ -611,6 +622,28 @@ def validate(manifest: KnowledgeManifest, manifest_dir: Optional[str] = None) ->
                     f"{sctx}: 'authority_level' value '{step.authority_level}' is "
                     f"not in the declared 'authority_level_scale' (§3.13)"
                 )
+
+            # §4.3b (v0.32, RFC-0030): a step whose used unit's allowlist is entirely
+            # contained in the effective deny (playbook deny ∪ skill deny) for a
+            # dimension is self-nullified on that dimension — it reads enactable but
+            # cannot act. A warning: denying never widens anything, so the slip fails
+            # safe, but a dead step is worth naming.
+            if step.uses is not None:
+                target_scope = getattr(units_by_id.get(step.uses), "action_scope", None)
+                if target_scope is not None:
+                    for dim in ("tools", "paths", "capabilities"):
+                        allowed = getattr(target_scope, dim, None) or []
+                        if allowed and all(
+                            effective_denies_token(
+                                [unit.action_scope, target_scope], dim, token
+                            )
+                            for token in allowed
+                        ):
+                            warnings.append(
+                                f"{sctx}: every '{dim}' entry '{step.uses}' allows is "
+                                f"denied by the effective deny (playbook ∪ skill) — the "
+                                f"step is self-nullified on '{dim}' (§4.3b, RFC-0030)"
+                            )
 
             # A step whose unit can mutate but which declares no ceiling is bounded
             # only by the enacting agent's own grant — looser than intended (§4.3b).
