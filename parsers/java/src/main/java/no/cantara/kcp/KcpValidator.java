@@ -69,7 +69,7 @@ public class KcpValidator {
     private static final Set<String> VALID_ACCESS_VALUES = Set.of("public", "authenticated", "restricted");
     private static final Set<String> VALID_SENSITIVITY_VALUES = Set.of("public", "internal", "confidential", "restricted");
     private static final Set<String> VALID_HITL_MECHANISMS = Set.of("oauth_consent", "uma", "custom");
-    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26", "0.27", "0.28", "0.29", "0.30", "0.31");
+    private static final Set<String> KNOWN_KCP_VERSIONS = Set.of("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "0.10", "0.11", "0.12", "0.13", "0.14", "0.16", "0.17", "0.18", "0.19", "0.20", "0.21", "0.22", "0.23", "0.24", "0.25", "0.26", "0.27", "0.28", "0.29", "0.30", "0.31", "0.32");
     // content_structure vocabularies (RFC-0016, v0.17). Unknown values warn but pass through.
     private static final Set<String> VALID_CONTENT_MODALITIES = Set.of("prose", "table", "code", "list", "diagram", "reference", "mixed");
     private static final Set<String> VALID_DENSITY = Set.of("sparse", "normal", "dense");
@@ -446,6 +446,32 @@ public class KcpValidator {
                         && !declaredLevels.contains(step.authorityLevel())) {
                     warnings.add(sctx + ": 'authority_level' value '" + step.authorityLevel()
                             + "' is not in the declared 'authority_level_scale' (§3.13)");
+                }
+
+                // §4.3b (v0.32, RFC-0030): a step whose used unit's allowlist is entirely
+                // contained in the effective deny (playbook deny ∪ skill deny) for a
+                // dimension is self-nullified on that dimension — it reads enactable but
+                // cannot act. A warning: denying never widens anything, so the slip fails
+                // safe, but a dead step is worth naming.
+                if (step.uses() != null) {
+                    KnowledgeUnit denyTarget = unitsById.get(step.uses());
+                    ActionScope targetScope = denyTarget != null ? denyTarget.actionScope() : null;
+                    if (targetScope != null) {
+                        for (String dim : List.of("tools", "paths", "capabilities")) {
+                            List<String> allowed = switch (dim) {
+                                case "tools" -> targetScope.tools();
+                                case "paths" -> targetScope.paths();
+                                default -> targetScope.capabilities();
+                            };
+                            if (allowed != null && !allowed.isEmpty()
+                                    && allowed.stream().allMatch(token -> effectiveDeniesToken(
+                                            java.util.Arrays.asList(unit.actionScope(), targetScope), dim, token))) {
+                                warnings.add(sctx + ": every '" + dim + "' entry '" + step.uses()
+                                        + "' allows is denied by the effective deny (playbook ∪ skill)"
+                                        + " — the step is self-nullified on '" + dim + "' (§4.3b, RFC-0030)");
+                            }
+                        }
+                    }
                 }
 
                 // A step whose unit can mutate but which declares no ceiling is bounded
@@ -937,6 +963,21 @@ public class KcpValidator {
             default -> null;
         };
         return values != null && values.contains(token);
+    }
+
+    /**
+     * §4.3b (v0.32, RFC-0030): does the UNION of deny lists deny {@code token} on
+     * {@code dimension}? The effective denylist for a playbook step is the union of the
+     * playbook's own {@code action_scope.deny} and the used skill's — a match in either
+     * denies, overriding any allow. Union is the only sound composition: adding a source
+     * can only refuse more, never less (the scope-axis mirror of the §3.13 lowest-of rule).
+     * Mirrors {@code effectiveDeniesToken} in the TypeScript validator.
+     */
+    public static boolean effectiveDeniesToken(List<ActionScope> scopes, String dimension, String token) {
+        for (ActionScope scope : scopes) {
+            if (deniesToken(scope, dimension, token)) return true;
+        }
+        return false;
     }
 
     /**

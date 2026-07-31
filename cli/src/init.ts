@@ -224,7 +224,7 @@ function yamlQuote(s: string): string {
 
 // Scaffolded manifests declare the spec version this CLI release implements.
 // Guarded against the validator's known-version list in consistency.test.ts.
-export const SCAFFOLD_KCP_VERSION = "0.31";
+export const SCAFFOLD_KCP_VERSION = "0.32";
 
 function writeManifest(
   outputPath: string,
