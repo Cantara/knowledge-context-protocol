@@ -237,6 +237,23 @@ export function deniesToken(
   return scope?.deny?.[dimension]?.includes(token) ?? false;
 }
 
+/**
+ * §4.3b (PROPOSED v0.32, RFC-0030): does the UNION of deny lists deny `token` on
+ * `dimension`? The effective denylist for a playbook step is the union of the
+ * playbook's own `action_scope.deny` and the used skill's — a match in either
+ * denies, overriding any allow. Union is the only sound composition: adding a
+ * source can only refuse more, never less (the scope-axis mirror of the §3.13
+ * lowest-of rule). Exported so runtime enforcers and the validator's
+ * self-nullified-step lint share one adjudication rule, like `deniesToken`.
+ */
+export function effectiveDeniesToken(
+  scopes: ReadonlyArray<ActionScope | undefined>,
+  dimension: "tools" | "paths" | "capabilities",
+  token: string
+): boolean {
+  return scopes.some((scope) => deniesToken(scope, dimension, token));
+}
+
 export function validate(
   manifest: KnowledgeManifest,
   manifestDir?: string
@@ -660,6 +677,31 @@ export function validate(
         warnings.push(
           `${sctx}: 'authority_level' value '${step.authority_level}' is not in the declared 'authority_level_scale' (§3.13)`
         );
+      }
+
+      // §4.3b (PROPOSED v0.32, RFC-0030): a step whose used unit's allowlist is
+      // entirely contained in the effective deny (playbook deny ∪ skill deny) for a
+      // dimension is self-nullified on that dimension — it reads enactable but cannot
+      // act. A warning, not an error: denying never widens anything, so the slip
+      // fails safe, but a dead step is worth naming.
+      if (step.uses !== undefined) {
+        const target = manifest.units.find((u) => u.id === step.uses);
+        const targetScope = target?.action_scope;
+        if (targetScope !== undefined) {
+          for (const dim of ["tools", "paths", "capabilities"] as const) {
+            const allowed = targetScope[dim] ?? [];
+            if (
+              allowed.length > 0 &&
+              allowed.every((token) =>
+                effectiveDeniesToken([unit.action_scope, targetScope], dim, token)
+              )
+            ) {
+              warnings.push(
+                `${sctx}: every '${dim}' entry '${step.uses}' allows is denied by the effective deny (playbook ∪ skill) — the step is self-nullified on '${dim}' (§4.3b, RFC-0030)`
+              );
+            }
+          }
+        }
       }
 
       // A step whose unit can mutate but which declares no ceiling is bounded only by
