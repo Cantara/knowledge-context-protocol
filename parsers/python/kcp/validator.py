@@ -203,16 +203,43 @@ def _find_step_cycle(steps) -> Optional[list]:
     return None
 
 
+def path_glob_matches(pattern: str, path: str) -> bool:
+    """§4.3a (v0.32.1): glob matching for path patterns. ``**`` matches across
+    segment boundaries, ``*`` within a single segment, every other character
+    literally. Mirrors ``pathGlobMatches`` in the TypeScript validator.
+    """
+    out = []
+    i = 0
+    while i < len(pattern):
+        if pattern.startswith("**", i):
+            out.append(".*")
+            i += 2
+        elif pattern[i] == "*":
+            out.append("[^/]*")
+            i += 1
+        else:
+            out.append(re.escape(pattern[i]))
+            i += 1
+    return re.fullmatch("".join(out), path) is not None
+
+
 def denies_token(scope, dimension: str, token: str) -> bool:
     """§4.3a (v0.31, RFC-0029): does a skill's ``action_scope.deny`` deny ``token`` on
     ``dimension``? Fail-closed override — a deny entry denies the token even when the
-    allowlist grants it. Exact-string match. Mirrors ``deniesToken`` in the TypeScript
-    validator, so a runtime enforcer and the validator's overlap lint share one rule.
+    allowlist grants it. Mirrors ``deniesToken`` in the TypeScript validator, so a
+    runtime enforcer and the validator's overlap lint share one rule. Since v0.32.1,
+    ``paths`` entries are PATTERNS matched structurally (§4.3a) — exact comparison
+    would never fire the ``schema/secrets/**`` carve-out; tools/capabilities remain
+    exact tokens.
     """
     if scope is None or getattr(scope, "deny", None) is None:
         return False
     values = getattr(scope.deny, dimension, None)
-    return bool(values) and token in values
+    if not values:
+        return False
+    if dimension == "paths":
+        return any(p == token or path_glob_matches(p, token) for p in values)
+    return token in values
 
 
 def effective_denies_token(scopes, dimension: str, token: str) -> bool:

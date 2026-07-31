@@ -1853,9 +1853,20 @@ region and carve a prohibited hole inside it — allow `schema/**` while forbidd
 `schema/secrets/**` — without having to enumerate the complement. The override is the safe
 direction by construction: a denylist can only *narrow* what the allowlist already bounded, so it
 can never widen a skill's reach, and a checker that cannot resolve a match denies rather than
-permits. Where an implementation supports escalation (§3.14), an action a `deny` holds SHOULD
-raise a grant request rather than fail silently, exactly as an over-threshold `spend` does
-(§4.3a.1). Two validator lints surface authoring slips without weakening the gate: a `deny`
+permits. An action a `deny` holds is refused **finally**: what an implementation SHOULD raise
+is a notify-only *prohibited-attempt* event (§4.3b, RFC-0030) — never a grant request. No
+grant, approval, or escalation outcome may enact the action; unlike an over-threshold `spend`
+(§4.3a.1), which a granted request proceeds past, a `deny` is a boundary rather than a
+threshold, and is changed only by a superseding, reviewed, signed manifest version.
+
+**Path entries in `deny.paths` are patterns, and matching MUST be structural, not literal.**
+A requested path is denied when any `deny.paths` entry matches it under the allowlist's glob
+semantics: `**` matches across segment boundaries, `*` within a single segment, every other
+character literally. An implementation that compares path tokens for string equality only
+does not enforce this subsection — the `schema/secrets/**` carve-out above would never fire,
+because no requested path is ever the literal string `schema/secrets/**`.
+
+Two validator lints surface authoring slips without weakening the gate: a `deny`
 that lists nothing prohibits nothing, and a token that is **both** allowlisted and forbidden
 leaves an allow entry the `deny` neutralizes — the declaration reads wider than it enforces.
 
