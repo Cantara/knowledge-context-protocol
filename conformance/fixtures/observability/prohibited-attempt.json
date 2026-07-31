@@ -1,0 +1,13 @@
+{
+  "kind": "prohibited_attempt",
+  "timestamp": "2026-07-31T06:15:04Z",
+  "unit_id": "sletteagent",
+  "playbook_id": "pb-002-gdpr-sletting",
+  "step_id": "slett",
+  "dimension": "paths",
+  "token": "legal/hold/2025/case-4711/evidence.pdf",
+  "matched_pattern": "legal/hold/**",
+  "binding_source": "playbook",
+  "acknowledged_by": null,
+  "correlation_id": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+}
