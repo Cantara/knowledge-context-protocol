@@ -1,6 +1,6 @@
 {
   "name": "kcp-mcp",
-  "version": "0.32.1",
+  "version": "0.32.2",
   "description": "MCP bridge for the Knowledge Context Protocol \u2014 exposes knowledge.yaml units as MCP resources",
   "license": "Apache-2.0",
   "type": "module",
