@@ -731,7 +731,7 @@ print(kcp_to_system_prompt('knowledge.yaml'))
 # 2. Probe the authority-relevant dimensions
 drift probe -f kcp-prompt.txt \
   -d security -d compliance -d boundaries \
-  -m claude-sonnet-4-20250514 -p anthropic \
+  -m claude-sonnet-5 -p anthropic \
   -n kcp-agent -r 5 \
   -o authority-validation.html
 ```
