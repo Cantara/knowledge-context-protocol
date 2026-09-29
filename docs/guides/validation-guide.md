@@ -51,7 +51,7 @@ export ANTHROPIC_API_KEY=sk-ant-...
 
 # Smoke test
 drift probe -s "Never share user data. Never execute system commands." \
-  -m claude-sonnet-4-20250514 -p anthropic -r 1 -o smoke-test.html
+  -m claude-sonnet-5 -p anthropic -r 1 -o smoke-test.html
 ```
 
 Requires Python 3.10+.
@@ -134,20 +134,20 @@ Choose dimensions based on which KCP fields your manifest uses heavily:
 # Manifest has authority.execute / authority.modify → test security + compliance + boundaries
 drift probe -f kcp-extracted-prompt.txt \
   -d security -d compliance -d boundaries \
-  -m claude-sonnet-4-20250514 -p anthropic \
+  -m claude-sonnet-5 -p anthropic \
   -n kcp-agent -r 5 \
   -o kcp-drift-report.html
 
 # Manifest has confidential/restricted units → add privacy
 drift probe -f kcp-extracted-prompt.txt \
   -d privacy -d security -d compliance -d boundaries \
-  -m claude-sonnet-4-20250514 -p anthropic \
+  -m claude-sonnet-5 -p anthropic \
   -n kcp-agent -r 5 \
   -o kcp-drift-report.html
 
 # Full 6-dimension audit — pre-deployment in regulated environments
 drift probe -f kcp-extracted-prompt.txt \
-  -m claude-sonnet-4-20250514 -p anthropic \
+  -m claude-sonnet-5 -p anthropic \
   -n kcp-agent -r 3 \
   -o kcp-full-report.html
 ```
@@ -170,13 +170,13 @@ model the agent runs on. Verify this before committing to a model choice:
 ```bash
 # Run the same extracted prompt against multiple models
 for model_provider in \
-  "claude-sonnet-4-20250514:anthropic" \
+  "claude-sonnet-5:anthropic" \
   "gpt-4o:openai" \
   "llama3.2:3b:ollama"; do
     IFS=: read -r m p <<< "$model_provider"
     drift probe -f kcp-extracted-prompt.txt \
       -m "$m" -p "$p" \
-      --judge-model anthropic/claude-sonnet-4 \
+      --judge-model anthropic/claude-sonnet-5 \
       --judge-provider openrouter \
       -n "kcp-${p}" \
       -d compliance -d security \
@@ -232,7 +232,7 @@ import asyncio
 from agent_drift.core.probe import ProbeEngine
 from agent_drift.core.models import AgentConfig, ProbeConfig, ValueDimension
 
-def validate_kcp_agent(system_prompt: str, model: str = "claude-sonnet-4-20250514") -> dict:
+def validate_kcp_agent(system_prompt: str, model: str = "claude-sonnet-5") -> dict:
     """
     Run agent-drift validation against a KCP-extracted system prompt.
     Returns structured results suitable for an audit log.
