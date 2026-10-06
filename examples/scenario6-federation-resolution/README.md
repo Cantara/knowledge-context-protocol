@@ -49,19 +49,19 @@ jbang FederationResolutionSimulation.java
 ```bash
 cd examples/scenario6-federation-resolution
 
-# Compile (requires snakeyaml-2.6.jar on classpath)
-javac -cp ~/.m2/repository/org/yaml/snakeyaml/2.6/snakeyaml-2.6.jar \
+# Compile (requires snakeyaml-2.7.jar on classpath)
+javac -cp ~/.m2/repository/org/yaml/snakeyaml/2.7/snakeyaml-2.7.jar \
     FederationResolutionSimulation.java
 
 # Run
-java -cp .:~/.m2/repository/org/yaml/snakeyaml/2.6/snakeyaml-2.6.jar \
+java -cp .:~/.m2/repository/org/yaml/snakeyaml/2.7/snakeyaml-2.7.jar \
     FederationResolutionSimulation
 ```
 
 ### Option C: Specify directory
 
 ```bash
-java -cp .:snakeyaml-2.6.jar FederationResolutionSimulation \
+java -cp .:snakeyaml-2.7.jar FederationResolutionSimulation \
     --dir /path/to/scenario6-federation-resolution
 ```
 
