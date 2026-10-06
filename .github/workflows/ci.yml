@@ -187,14 +187,14 @@ jobs:
 
       - name: Compile conformance runner
         run: |
-          SNAKEYAML=$(find ~/.m2/repository/org/yaml/snakeyaml -name "snakeyaml-2.6.jar" | head -1)
+          SNAKEYAML=$(cd parsers/java && mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout -Dmdep.includeScope=runtime)
           javac -cp parsers/java/target/classes:${SNAKEYAML} \
             -d conformance/runners/java \
             conformance/runners/java/ConformanceRunner.java
 
       - name: Run conformance tests
         run: |
-          SNAKEYAML=$(find ~/.m2/repository/org/yaml/snakeyaml -name "snakeyaml-2.6.jar" | head -1)
+          SNAKEYAML=$(cd parsers/java && mvn -q dependency:build-classpath -Dmdep.outputFile=/dev/stdout -Dmdep.includeScope=runtime)
           java -cp conformance/runners/java:parsers/java/target/classes:${SNAKEYAML} \
             no.cantara.kcp.conformance.ConformanceRunner conformance/fixtures
 
