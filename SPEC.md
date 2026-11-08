@@ -2206,6 +2206,92 @@ permissive one cannot be narrowed without breaking manifests that relied on it.
 > silently. Closing that requires diagnostics the parse layer does not have
 > (RFC-0028, Open Question 4).
 
+### 4.3d `charter` — the agent charter on a knowledge unit (PROPOSED, v0.33)
+
+> **PROPOSED (RFC-0031), for design review.** This subsection adds one OPTIONAL structured
+> object to `kind: knowledge`. It seals no new `kind`, weakens no existing gate, and grants
+> nothing — a charter declares limits and names an accountable office. It is fail-closed by
+> construction: absent, the unit is an ordinary knowledge unit.
+
+A `kind: knowledge` unit MAY declare a `charter` object. Presence of a `charter` is what makes
+the unit an **Agent**: a bound identity accountable to a named authority, a deny-by-default
+action scope, a set of decision rules, and the conditions under which it must escalate to a
+human. This follows the §4.3a/§4.3b pattern for optional structured extensions to a kind —
+`action_scope` on `skill`, `steps` on `playbook` — attached, deliberately, to the kind that does
+*not* act.
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `charter.scope` | REQUIRED | object | Deny-by-default action scope: `read` / `propose` / `never`, each an array of string. `never` is REQUIRED and MUST be non-empty. |
+| `charter.authority` | REQUIRED | string | The entity or office this charter's authority derives from. A named accountable office, not an ordinal level (contrast §4.23). |
+| `charter.rules` | OPTIONAL | array of object | Decision rules: `id` (REQUIRED, unique within the charter), `text` (REQUIRED), `decision` (OPTIONAL, free text), `authority_required` (OPTIONAL). |
+| `charter.escalate_when` | OPTIONAL | array of string | Plain-language conditions requiring escalation, independent of any single rule. |
+| `charter.authority_required` | OPTIONAL | string | Default named role an escalation defers to when the triggering rule names none. |
+| `charter.persona` | OPTIONAL | string | Cosmetic display label. See below. |
+
+```yaml
+- id: expense-approval-agent
+  kind: knowledge
+  intent: "When may an expense be auto-approved, and when must it go to a named human?"
+  charter:
+    authority: "Meridian Systems AS — Finance"
+    persona: "Fjalar"                     # cosmetic only
+    scope:
+      read:    [expense-request, approved-vendor-list]
+      propose: [auto-approve, escalate]
+      never:   [execute-payment, add-vendor, modify-policy, escalate-authority]
+    rules:
+      - id: EXP-2
+        text: "Any amount above €500 exceeds delegated authority."
+        decision: escalate
+        authority_required: cost-centre-owner
+    escalate_when: ["the rule does not clearly apply to the request"]
+```
+
+**A charter grants nothing.** `kind: knowledge` has no enactment path — `load_eligible` is
+defined only for `skill` and `playbook` (§4.3c), and `action_scope` enforcement attaches to those
+kinds (§4.3a) — so a `charter` cannot widen anything. It declares limits and an accountable
+office; whatever enacts on the agent's behalf remains governed by the skill/playbook machinery.
+An implementation MUST NOT treat a charter as an eligibility grant or as an authorisation to
+enact.
+
+`charter.scope` is **not** `action_scope`, and the two MUST NOT be conflated. `action_scope`
+entries are runtime tokens (tools, paths, capabilities) adjudicated by string match at a gate
+(§4.3a); `charter.scope` entries are domain acts in the charter's own vocabulary. No projection
+between them is specified (RFC-0031, Open Question 2): a charter documents a boundary that only
+the skill layer enforces.
+
+**`charter.persona` is cosmetic.** An implementation **MUST NOT** derive authority, scope,
+routing, or any rule from `charter.persona`. It is a display label, never an identity or a
+selector — which is what makes a wrong or missing `persona` incapable of widening anything.
+
+`escalate_when` and the rules' `text` are **prose, not an expression language**. This
+specification defines no evaluator for them, and an implementation MUST NOT infer that one exists
+(the same posture §4.3b takes toward `success_condition`).
+
+Conformance:
+
+- A validator MUST error when `charter` appears on a unit whose `kind` is not `knowledge`. An
+  omitted `kind` resolves to `knowledge` (§4.3a) and is therefore legal.
+- A validator MUST error when `charter.scope` or `charter.authority` is absent, and when
+  `charter.scope.never` is absent or empty — deny-by-default with nothing denied is not
+  deny-by-default.
+- A validator MUST error when two rules in one charter share an `id`, and when
+  `charter.scope.propose` and `charter.scope.never` list the same entry.
+- A validator SHOULD warn when a rule whose `decision` reads as an escalation names no
+  `authority_required` and the charter declares no default; when a `charter.scope.propose` entry
+  reads as an executed act rather than a proposal; and when `charter.persona` appears verbatim in
+  the unit's `intent` or any rule's `text`. All three are heuristics over free text, which is why
+  they are SHOULD.
+- No charter field participates in the §3.13 multi-source minimum. `charter.authority` is a named
+  office; §4.23 `authority_level` is an ordinal token. They are unrelated.
+
+Corpus conventions, stated here so they are not mistaken for spec rules: an implementation
+serving a demonstration or synthetic corpus SHOULD enforce that `charter.authority` names a
+fictional entity, and an implementation MAY require baseline entries in `scope.never` (for
+example a policy-modification guard and an authority-escalation guard — an agent may *request*
+escalation, never grant it). KCP defines neither requirement.
+
 ### 4.4 `intent`
 
 The `intent` MUST be a single sentence describing the question this unit answers or the task it
