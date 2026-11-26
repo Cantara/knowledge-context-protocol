@@ -222,7 +222,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "24"
+          node-version: "26"
 
       - name: Install dependencies
         run: |
@@ -257,7 +257,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 26
           # NB: no registry-url here — setup-node would write an .npmrc with a
           # placeholder NODE_AUTH_TOKEN, which takes precedence over OIDC and
           # makes npm fail the PUT with a masked E404. Trusted Publishing is
@@ -283,7 +283,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 26
           # NB: no registry-url — see publish-kcp-mcp.
       - run: npm ci
       - run: npm run build
